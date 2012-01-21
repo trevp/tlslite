@@ -382,7 +382,10 @@ def clientTest(address, dir):
             connection.write("hello"*10000)
             h = connection.read(min=50000, max=50000)
             stopTime = time.clock()
-            print "100K exchanged at rate of %d bytes/sec" % int(100000/(stopTime-startTime))
+            if stopTime-startTime:
+                print "100K exchanged at rate of %d bytes/sec" % int(100000/(stopTime-startTime))
+            else:
+                print "100K exchanged very fast"
 
             assert(h == "hello"*10000)
             connection.close()
