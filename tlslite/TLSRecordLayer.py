@@ -141,7 +141,7 @@ class TLSRecordLayer:
         self.allegedSrpUsername = None
 
         #On a call to close(), do we close the socket? (writeable)
-        self.closeSocket = False
+        self.closeSocket = True
 
         #If the socket is abruptly closed, do we ignore it
         #and pretend the connection was shut down properly? (writeable)
@@ -322,17 +322,24 @@ class TLSRecordLayer:
                         AlertDescription.close_notify, AlertLevel.warning)):
                     yield result
                 alert = None
-                while not alert:
-                    for result in self._getMsg((ContentType.alert, \
-                                              ContentType.application_data)):
-                        if result in (0,1):
-                            yield result
-                    if result.contentType == ContentType.alert:
-                        alert = result
-                if alert.description == AlertDescription.close_notify:
+                # By default close the socket, since it's been observed
+                # that some other libraries will not respond to the 
+                # close_notify alert, thus leaving us hanging if we're
+                # expecting it
+                if self.closeSocket:
                     self._shutdown(True)
                 else:
-                    raise TLSRemoteAlert(alert)
+                    while not alert:
+                        for result in self._getMsg((ContentType.alert, \
+                                                  ContentType.application_data)):
+                            if result in (0,1):
+                                yield result
+                        if result.contentType == ContentType.alert:
+                            alert = result
+                    if alert.description == AlertDescription.close_notify:
+                        self._shutdown(True)
+                    else:
+                        raise TLSRemoteAlert(alert)
             except (socket.error, TLSAbruptCloseError):
                 #If the other side closes the socket, that's okay
                 self._shutdown(True)
