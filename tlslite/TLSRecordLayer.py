@@ -59,13 +59,6 @@ class TLSRecordLayer:
     @type resumed: bool
     @ivar resumed: If this connection is based on a resumed session.
 
-    @type allegedSharedKeyUsername: str or None
-    @ivar allegedSharedKeyUsername:  This is set to the shared-key
-    username asserted by the client, whether the handshake succeeded or
-    not.  If the handshake fails, this can be inspected to
-    determine if a guessing attack is in progress against a particular
-    user account.
-
     @type allegedSrpUsername: str or None
     @ivar allegedSrpUsername:  This is set to the SRP username
     asserted by the client, whether the handshake succeeded or not.
@@ -131,11 +124,10 @@ class TLSRecordLayer:
         self.closed = True #read-only
         self._refCount = 0 #Used to trigger closure
 
-        #Is this a resumed (or shared-key) session?
+        #Is this a resumed session?
         self.resumed = False #read-only
 
         #What username did the client claim in his handshake?
-        self.allegedSharedKeyUsername = None
         self.allegedSrpUsername = None
 
         #On a call to close(), do we close the socket? (writeable)
@@ -952,7 +944,6 @@ class TLSRecordLayer:
         self._handshake_md5 = md5()
         self._handshake_sha = sha1()
         self._handshakeBuffer = []
-        self.allegedSharedKeyUsername = None
         self.allegedSrpUsername = None
         self._refCount = 1
 

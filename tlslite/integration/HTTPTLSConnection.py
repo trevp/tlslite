@@ -57,7 +57,7 @@ class HTTPTLSConnection(HTTPBaseTLSConnection, ClientHelper):
     common types of handshaking."""
 
     def __init__(self, host, port=None,
-                 username=None, password=None, sharedKey=None,
+                 username=None, password=None,
                  certChain=None, privateKey=None,
                  cryptoID=None, protocol=None,
                  x509Fingerprint=None,
@@ -68,20 +68,18 @@ class HTTPTLSConnection(HTTPBaseTLSConnection, ClientHelper):
         For client authentication, use one of these argument
         combinations:
          - username, password (SRP)
-         - username, sharedKey (shared-key)
          - certChain, privateKey (certificate)
 
         For server authentication, you can either rely on the
-        implicit mutual authentication performed by SRP or
-        shared-keys, or you can do certificate-based server
+        implicit mutual authentication performed by SRP
+        or you can do certificate-based server
         authentication with one of these argument combinations:
          - cryptoID[, protocol] (requires cryptoIDlib)
          - x509Fingerprint
          - x509TrustList[, x509CommonName] (requires cryptlib_py)
 
         Certificate-based server authentication is compatible with
-        SRP or certificate-based client authentication.  It is
-        not compatible with shared-keys.
+        SRP or certificate-based client authentication.
 
         The constructor does not perform the TLS handshake itself, but
         simply stores these arguments for later.  The handshake is
@@ -100,27 +98,21 @@ class HTTPTLSConnection(HTTPBaseTLSConnection, ClientHelper):
         @param port: Port to connect to.
 
         @type username: str
-        @param username: SRP or shared-key username.  Requires the
-        'password' or 'sharedKey' argument.
+        @param username: SRP username.  Requires the
+        'password' argument.
 
         @type password: str
         @param password: SRP password for mutual authentication.
         Requires the 'username' argument.
 
-        @type sharedKey: str
-        @param sharedKey: Shared key for mutual authentication.
-        Requires the 'username' argument.
-
         @type certChain: L{tlslite.X509CertChain.X509CertChain} or
         L{cryptoIDlib.CertChain.CertChain}
         @param certChain: Certificate chain for client authentication.
-        Requires the 'privateKey' argument.  Excludes the SRP or
-        shared-key related arguments.
-
+        Requires the 'privateKey' argument.  Excludes the SRP arguments.
+        
         @type privateKey: L{tlslite.utils.RSAKey.RSAKey}
         @param privateKey: Private key for client authentication.
-        Requires the 'certChain' argument.  Excludes the SRP or
-        shared-key related arguments.
+        Requires the 'certChain' argument.  Excludes the SRP arguments.
 
         @type cryptoID: str
         @param cryptoID: cryptoID for server authentication.  Mutually
@@ -158,7 +150,7 @@ class HTTPTLSConnection(HTTPBaseTLSConnection, ClientHelper):
         HTTPBaseTLSConnection.__init__(self, host, port)
 
         ClientHelper.__init__(self,
-                 username, password, sharedKey,
+                 username, password, 
                  certChain, privateKey,
                  cryptoID, protocol,
                  x509Fingerprint,

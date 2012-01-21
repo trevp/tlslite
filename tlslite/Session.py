@@ -25,10 +25,6 @@ class Session:
     @type srpUsername: str
     @ivar srpUsername: The client's SRP username (or None).
 
-    @type sharedKeyUsername: str
-    @ivar sharedKeyUsername: The client's shared-key username (or
-    None).
-
     @type clientCertChain: L{tlslite.X509CertChain.X509CertChain} or
     L{cryptoIDlib.CertChain.CertChain}
     @ivar clientCertChain: The client's certificate chain (or None).
@@ -43,11 +39,9 @@ class Session:
         self.sessionID = createByteArraySequence([])
         self.cipherSuite = 0
         self.srpUsername = None
-        self.sharedKeyUsername = None
         self.clientCertChain = None
         self.serverCertChain = None
         self.resumable = False
-        self.sharedKey = False
 
     def _clone(self):
         other = Session()
@@ -55,11 +49,9 @@ class Session:
         other.sessionID = self.sessionID
         other.cipherSuite = self.cipherSuite
         other.srpUsername = self.srpUsername
-        other.sharedKeyUsername = self.sharedKeyUsername
         other.clientCertChain = self.clientCertChain
         other.serverCertChain = self.serverCertChain
         other.resumable = self.resumable
-        other.sharedKey = self.sharedKey
         return other
 
     def _calcMasterSecret(self, version, premasterSecret, clientRandom,
@@ -79,14 +71,12 @@ class Session:
         @rtype: bool
         @return: If this session can be used for session resumption.
         """
-        return self.resumable or self.sharedKey
+        return self.resumable
 
     def _setResumable(self, boolean):
-        #Only let it be set if this isn't a shared key
-        if not self.sharedKey:
-            #Only let it be set to True if the sessionID is non-null
-            if (not boolean) or (boolean and self.sessionID):
-                self.resumable = boolean
+        #Only let it be set to True if the sessionID is non-null
+        if (not boolean) or (boolean and self.sessionID):
+            self.resumable = boolean
 
     def getCipherName(self):
         """Get the name of the cipher used with this connection.
@@ -105,27 +95,3 @@ class Session:
             return "3des"
         else:
             return None
-
-    def _createSharedKey(self, sharedKeyUsername, sharedKey):
-        if len(sharedKeyUsername)>16:
-            raise ValueError()
-        if len(sharedKey)>47:
-            raise ValueError()
-
-        self.sharedKeyUsername = sharedKeyUsername
-
-        self.sessionID = createByteArrayZeros(16)
-        for x in range(len(sharedKeyUsername)):
-            self.sessionID[x] = ord(sharedKeyUsername[x])
-
-        premasterSecret = createByteArrayZeros(48)
-        sharedKey = chr(len(sharedKey)) + sharedKey
-        for x in range(48):
-            premasterSecret[x] = ord(sharedKey[x % len(sharedKey)])
-
-        self.masterSecret = PRF(premasterSecret, "shared secret",
-                                createByteArraySequence([]), 48)
-        self.sharedKey = True
-        return self
-
-

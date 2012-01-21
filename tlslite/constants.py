@@ -35,7 +35,7 @@ class AlertDescription:
     """
     @cvar bad_record_mac: A TLS record failed to decrypt properly.
 
-    If this occurs during a shared-key or SRP handshake it most likely
+    If this occurs during a SRP handshake it most likely
     indicates a bad password.  It may also indicate an implementation
     error, or some tampering with the data in transit.
 
@@ -43,8 +43,6 @@ class AlertDescription:
     may also be signalled by the server if the SRP username is unknown to the
     server, but it doesn't wish to reveal that fact.
 
-    This alert will be signalled by the client if the shared-key username is
-    bad.
 
     @cvar handshake_failure: A problem occurred while handshaking.
 
@@ -189,10 +187,6 @@ class Fault:
     shortPremasterSecret = 502
     clientNoAuthFaults = range(501,503)
 
-    badIdentifier = 401
-    badSharedKey = 402
-    clientSharedKeyFaults = range(401,403)
-
     badB = 201
     serverFaults = range(201,202)
 
@@ -206,8 +200,6 @@ class Fault:
                       AlertDescription.bad_record_mac),\
         badPassword: (AlertDescription.bad_record_mac,),\
         badA: (AlertDescription.illegal_parameter,),\
-        badIdentifier: (AlertDescription.handshake_failure,),\
-        badSharedKey: (AlertDescription.bad_record_mac,),\
         badPremasterPadding: (AlertDescription.bad_record_mac,),\
         shortPremasterSecret: (AlertDescription.bad_record_mac,),\
         badVerifyMessage: (AlertDescription.decrypt_error,),\
@@ -220,8 +212,6 @@ class Fault:
         badUsername: "bad username",\
         badPassword: "bad password",\
         badA: "bad A",\
-        badIdentifier: "bad identifier",\
-        badSharedKey: "bad sharedkey",\
         badPremasterPadding: "bad premaster padding",\
         shortPremasterSecret: "short premaster secret",\
         badVerifyMessage: "bad verify message",\

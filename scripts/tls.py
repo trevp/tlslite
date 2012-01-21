@@ -56,24 +56,6 @@ def clientTest(address, dir):
 
     badFault = False
 
-    print "Test 1 - good shared key"
-    connection = connect()
-    connection.handshakeClientSharedKey("shared", "key")
-    connection.close()
-    connection.sock.close()
-
-    print "Test 2 - shared key faults"
-    for fault in Fault.clientSharedKeyFaults + Fault.genericFaults:
-        connection = connect()
-        connection.fault = fault
-        try:
-            connection.handshakeClientSharedKey("shared", "key")
-            print "  Good Fault %s" % (Fault.faultNames[fault])
-        except TLSFaultError, e:
-            print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
-            badFault = True
-        connection.sock.close()
-
     print "Test 3 - good SRP"
     connection = connect()
     connection.handshakeClientSRP("test", "password")
@@ -354,7 +336,7 @@ def clientTest(address, dir):
             settings = HandshakeSettings()
             settings.cipherNames = [cipher]
             settings.cipherImplementations = [implementation, "python"]
-            connection.handshakeClientSharedKey("shared", "key", settings=settings)
+            connection.handshakeClientCert(settings=settings)
             print ("%s %s" % (connection.getCipherName(), connection.getCipherImplementation()))
 
             connection.write("hello")
@@ -375,7 +357,7 @@ def clientTest(address, dir):
             settings = HandshakeSettings()
             settings.cipherNames = [cipher]
             settings.cipherImplementations = [implementation, "python"]
-            connection.handshakeClientSharedKey("shared", "key", settings=settings)
+            connection.handshakeClientCert(settings=settings)
             print ("%s %s:" % (connection.getCipherName(), connection.getCipherImplementation())),
 
             startTime = time.clock()
@@ -423,26 +405,6 @@ def serverTest(address, dir):
 
     def connect():
         return TLSConnection(lsock.accept()[0])
-
-    print "Test 1 - good shared key"
-    sharedKeyDB = SharedKeyDB()
-    sharedKeyDB["shared"] = "key"
-    sharedKeyDB["shared2"] = "key2"
-    connection = connect()
-    connection.handshakeServer(sharedKeyDB=sharedKeyDB)
-    connection.close()
-    connection.sock.close()
-
-    print "Test 2 - shared key faults"
-    for fault in Fault.clientSharedKeyFaults + Fault.genericFaults:
-        connection = connect()
-        connection.fault = fault
-        try:
-            connection.handshakeServer(sharedKeyDB=sharedKeyDB)
-            assert()
-        except:
-            pass
-        connection.sock.close()
 
     print "Test 3 - good SRP"
     #verifierDB = tlslite.VerifierDB(os.path.join(dir, "verifierDB"))
@@ -706,7 +668,8 @@ def serverTest(address, dir):
             settings.cipherNames = [cipher]
             settings.cipherImplementations = [implementation, "python"]
 
-            connection.handshakeServer(sharedKeyDB=sharedKeyDB, settings=settings)
+            connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
+                                        settings=settings)
             print connection.getCipherName(), connection.getCipherImplementation()
             h = connection.read(min=5, max=5)
             assert(h == "hello")
@@ -727,7 +690,8 @@ def serverTest(address, dir):
             settings.cipherNames = [cipher]
             settings.cipherImplementations = [implementation, "python"]
 
-            connection.handshakeServer(sharedKeyDB=sharedKeyDB, settings=settings)
+            connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
+                                        settings=settings)
             print connection.getCipherName(), connection.getCipherImplementation()
             h = connection.read(min=50000, max=50000)
             assert(h == "hello"*10000)
@@ -779,14 +743,12 @@ if len(sys.argv) == 1 or (len(sys.argv)==2 and sys.argv[1].lower().endswith("hel
     print "Commands:"
     print ""
     print "  clientcert      <server> [<chain> <key>]"
-    print "  clientsharedkey <server> <user> <pass>"
     print "  clientsrp       <server> <user> <pass>"
     print "  clienttest      <server> <dir>"
     print ""
     print "  serversrp       <server> <verifierDB>"
     print "  servercert      <server> <chain> <key> [req]"
     print "  serversrpcert   <server> <verifierDB> <chain> <key>"
-    print "  serversharedkey <server> <sharedkeyDB>"
     print "  servertest      <server> <dir>"
     sys.exit()
 
@@ -846,12 +808,6 @@ try:
                 connection = connect()
                 start = time.clock()
                 connection.handshakeClientSRP(username, password)
-            elif cmd == "clientsharedkey":
-                username = args.get(3)
-                password = args.getLast(4)
-                connection = connect()
-                start = time.clock()
-                connection.handshakeClientSharedKey(username, password)
             elif cmd == "clientcert":
                 certChain = None
                 privateKey = None
@@ -885,12 +841,7 @@ try:
                 raise SyntaxError("Unknown command")
 
         except TLSLocalAlert, a:
-            if a.description == AlertDescription.bad_record_mac:
-                if cmd == "clientsharedkey":
-                    print "Bad sharedkey password"
-                else:
-                    raise
-            elif a.description == AlertDescription.user_canceled:
+            if a.description == AlertDescription.user_canceled:
                 print str(a)
             else:
                 raise
@@ -919,8 +870,6 @@ try:
         print "  Cipher: %s %s" % (connection.getCipherName(), connection.getCipherImplementation())
         if connection.session.srpUsername:
             print "  Client SRP username: %s" % connection.session.srpUsername
-        if connection.session.sharedKeyUsername:
-            print "  Client shared key username: %s" % connection.session.sharedKeyUsername
         if connection.session.clientCertChain:
             print "  Client fingerprint: %s" % connection.session.clientCertChain.getFingerprint()
         if connection.session.serverCertChain:
@@ -938,10 +887,8 @@ try:
         address = ( address[0], int(address[1]) )
 
         verifierDBFilename = None
-        sharedKeyDBFilename = None
         certFilename = None
         keyFilename = None
-        sharedKeyDB = None
         reqCert = False
 
         if cmd == "serversrp":
@@ -958,8 +905,6 @@ try:
             verifierDBFilename = args.get(3)
             certFilename = args.get(4)
             keyFilename = args.getLast(5)
-        elif cmd == "serversharedkey":
-            sharedKeyDBFilename = args.getLast(3)
         elif cmd == "servertest":
             address = args.get(2)
             dir = args.getLast(3)
@@ -970,11 +915,6 @@ try:
         if verifierDBFilename:
             verifierDB = VerifierDB(verifierDBFilename)
             verifierDB.open()
-
-        sharedKeyDB = None
-        if sharedKeyDBFilename:
-            sharedKeyDB = SharedKeyDB(sharedKeyDBFilename)
-            sharedKeyDB.open()
 
         certChain = None
         privateKey = None
@@ -1005,7 +945,7 @@ try:
             try:
                 connection = TLSConnection(sock)
                 settings = HandshakeSettings()
-                connection.handshakeServer(sharedKeyDB=sharedKeyDB, verifierDB=verifierDB, \
+                connection.handshakeServer(verifierDB=verifierDB, \
                                            certChain=certChain, privateKey=privateKey, \
                                            reqCert=reqCert, settings=settings)
                 print "Handshake success"
@@ -1013,8 +953,6 @@ try:
                 print "  Cipher: %s %s" % (connection.getCipherName(), connection.getCipherImplementation())
                 if connection.session.srpUsername:
                     print "  Client SRP username: %s" % connection.session.srpUsername
-                if connection.session.sharedKeyUsername:
-                    print "  Client shared key username: %s" % connection.session.sharedKeyUsername
                 if connection.session.clientCertChain:
                     print "  Client fingerprint: %s" % connection.session.clientCertChain.getFingerprint()
                 if connection.session.serverCertChain:
@@ -1042,12 +980,7 @@ try:
                 else:
                     raise
             except TLSRemoteAlert, a:
-                if a.description == AlertDescription.bad_record_mac:
-                    if cmd == "serversharedkey":
-                        print "Bad sharedkey password for:", connection.allegedSharedKeyUsername
-                    else:
-                        raise
-                elif a.description == AlertDescription.user_canceled:
+                if a.description == AlertDescription.user_canceled:
                     print "Handshake cancelled"
                 elif a.description == AlertDescription.handshake_failure:
                     print "Unable to negotiate mutually acceptable parameters"

@@ -50,7 +50,6 @@ if len(sys.argv) == 1 or (len(sys.argv)==2 and sys.argv[1].lower().endswith("hel
     print "Commands:"
     print ""
     print "  createsrp       <db>"
-    print "  createsharedkey <db>"
     print ""
     print "  add    <db> <user> <pass> [<bits>]"
     print "  del    <db> <user>"
@@ -95,46 +94,25 @@ try:
         db = VerifierDB(dbName)
         db.create()
 
-    elif cmd == "createsharedkey":
-        dbName = args.getLast(2)
-
-        db = SharedKeyDB(dbName)
-        db.create()
-
     elif cmd == "add":
         dbName = args.get(2)
         username = args.get(3)
         password = args.get(4)
 
-        try:
-            db = VerifierDB(dbName)
-            db.open()
-            if username in db:
-                print "User already in database!"
-                sys.exit()
-            bits = int(args.getLast(5))
-            N, g, salt, verifier = VerifierDB.makeVerifier(username, password, bits)
-            db[username] = N, g, salt, verifier
-        except ValueError:
-            db = SharedKeyDB(dbName)
-            db.open()
-            if username in db:
-                print "User already in database!"
-                sys.exit()
-            args.getLast(4)
-            db[username] = password
+        db = VerifierDB(dbName)
+        db.open()
+        if username in db:
+            print "User already in database!"
+            sys.exit()
+        bits = int(args.getLast(5))
+        N, g, salt, verifier = VerifierDB.makeVerifier(username, password, bits)
+        db[username] = N, g, salt, verifier
 
     elif cmd == "del":
         dbName = args.get(2)
         username = args.getLast(3)
-
-        try:
-            db = VerifierDB(dbName)
-            db.open()
-        except ValueError:
-            db = SharedKeyDB(dbName)
-            db.open()
-
+        db = VerifierDB(dbName)
+        db.open()
         del(db[username])
 
     elif cmd == "check":
@@ -145,12 +123,8 @@ try:
         else:
             password = None
 
-        try:
-            db = VerifierDB(dbName)
-            db.open()
-        except ValueError:
-            db = SharedKeyDB(dbName)
-            db.open()
+        db = VerifierDB(dbName)
+        db.open()
 
         try:
             db[username]
@@ -167,27 +141,17 @@ try:
 
     elif cmd == "list":
         dbName = args.get(2)
+        db = VerifierDB(dbName)
+        db.open()
 
-        try:
-            db = VerifierDB(dbName)
-            db.open()
-        except ValueError:
-            db = SharedKeyDB(dbName)
-            db.open()
-
-        if isinstance(db, VerifierDB):
-            print "Verifier Database"
-            def numBits(n):
-                if n==0:
-                    return 0
-                return int(math.floor(math.log(n, 2))+1)
-            for username in db.keys():
-                N, g, s, v = db[username]
-                print numBits(N), username
-        else:
-            print "Shared Key Database"
-            for username in db.keys():
-                print username
+        print "Verifier Database"
+        def numBits(n):
+            if n==0:
+                return 0
+            return int(math.floor(math.log(n, 2))+1)
+        for username in db.keys():
+            N, g, s, v = db[username]
+            print numBits(N), username
     else:
         print "Bad command: '%s'" % cmd
 except:

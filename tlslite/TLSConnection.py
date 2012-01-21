@@ -289,89 +289,22 @@ class TLSConnection(TLSRecordLayer):
         for result in handshaker:
             pass
 
-    def handshakeClientSharedKey(self, username, sharedKey, settings=None,
-                                 checker=None, async=False):
-        """Perform a shared-key handshake in the role of client.
-
-        This function performs a shared-key handshake.  Using shared
-        symmetric keys of high entropy (128 bits or greater) mutually
-        authenticates both parties to each other.
-
-        TLS with shared-keys is non-standard.  Most TLS
-        implementations don't support it.  See
-        U{http://www.ietf.org/html.charters/tls-charter.html} for the
-        latest information on TLS with shared-keys.  If the shared-keys
-        Internet-Draft changes or is superceded, TLS Lite will track
-        those changes, so the shared-key support in later versions of
-        TLS Lite may become incompatible with this version.
-
-        Like any handshake function, this can be called on a closed
-        TLS connection, or on a TLS connection that is already open.
-        If called on an open connection it performs a re-handshake.
-
-        If the function completes without raising an exception, the
-        TLS connection will be open and available for data transfer.
-
-        If an exception is raised, the connection will have been
-        automatically closed (if it was ever open).
-
-        @type username: str
-        @param username: The shared-key username.
-
-        @type sharedKey: str
-        @param sharedKey: The shared key.
-
-        @type settings: L{tlslite.HandshakeSettings.HandshakeSettings}
-        @param settings: Various settings which can be used to control
-        the ciphersuites, certificate types, and SSL/TLS versions
-        offered by the client.
-
-        @type checker: L{tlslite.Checker.Checker}
-        @param checker: A Checker instance.  This instance will be
-        invoked to examine the other party's authentication
-        credentials, if the handshake completes succesfully.
-
-        @type async: bool
-        @param async: If False, this function will block until the
-        handshake is completed.  If True, this function will return a
-        generator.  Successive invocations of the generator will
-        return 0 if it is waiting to read from the socket, 1 if it is
-        waiting to write to the socket, or will raise StopIteration if
-        the handshake operation is completed.
-
-        @rtype: None or an iterable
-        @return: If 'async' is True, a generator object will be
-        returned.
-
-        @raise socket.error: If a socket error occurs.
-        @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
-        without a preceding alert.
-        @raise tlslite.errors.TLSAlert: If a TLS alert is signalled.
-        @raise tlslite.errors.TLSAuthenticationError: If the checker
-        doesn't like the other party's authentication credentials.
-        """
-        handshaker = self._handshakeClientAsync(sharedKeyParams=(username,
-                        sharedKey), settings=settings, checker=checker)
-        if async:
-            return handshaker
-        for result in handshaker:
-            pass
 
     def _handshakeClientAsync(self, srpParams=(), certParams=(),
-                             unknownParams=(), sharedKeyParams=(),
+                             unknownParams=(),
                              session=None, settings=None, checker=None,
                              recursive=False):
 
         handshaker = self._handshakeClientAsyncHelper(srpParams=srpParams,
                 certParams=certParams, unknownParams=unknownParams,
-                sharedKeyParams=sharedKeyParams, session=session,
+                session=session,
                 settings=settings, recursive=recursive)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
 
     def _handshakeClientAsyncHelper(self, srpParams, certParams, unknownParams,
-                               sharedKeyParams, session, settings, recursive):
+                               session, settings, recursive):
         if not recursive:
             self._handshakeStart(client=True)
 
@@ -382,7 +315,7 @@ class TLSConnection(TLSRecordLayer):
         privateKey = None       # certParams
         srpCallback = None      # unknownParams
         certCallback = None     # unknownParams
-        #session                # sharedKeyParams (or session)
+        #session                # (session)
         #settings               # settings
 
         if srpParams:
@@ -391,8 +324,6 @@ class TLSConnection(TLSRecordLayer):
             clientCertChain, privateKey = certParams
         elif unknownParams:
             srpCallback, certCallback = unknownParams
-        elif sharedKeyParams:
-            session = Session()._createSharedKey(*sharedKeyParams)
 
         if not settings:
             settings = HandshakeSettings()
@@ -444,16 +375,6 @@ class TLSConnection(TLSRecordLayer):
             srpUsername += "GARBAGE"
         if password and self.fault == Fault.badPassword:
             password += "GARBAGE"
-        if sharedKeyParams:
-            identifier = sharedKeyParams[0]
-            sharedKey = sharedKeyParams[1]
-            if self.fault == Fault.badIdentifier:
-                identifier += "GARBAGE"
-                session = Session()._createSharedKey(identifier, sharedKey)
-            elif self.fault == Fault.badSharedKey:
-                sharedKey += "GARBAGE"
-                session = Session()._createSharedKey(identifier, sharedKey)
-
 
         #Initialize locals
         serverCertChain = None
@@ -478,8 +399,6 @@ class TLSConnection(TLSRecordLayer):
                 cipherSuites += \
                     CipherSuite.getSrpSuites(settings.cipherNames)
             cipherSuites += CipherSuite.getRsaSuites(settings.cipherNames)
-        elif sharedKeyParams:
-            cipherSuites += CipherSuite.getRsaSuites(settings.cipherNames)
         else:
             cipherSuites += CipherSuite.getRsaSuites(settings.cipherNames)
 
@@ -493,10 +412,9 @@ class TLSConnection(TLSRecordLayer):
 
         #Either send ClientHello (with a resumable session)...
         if session:
-            #If it's a resumable (i.e. not a shared-key session), then its
+            #If it's resumable, then its
             #ciphersuite must be one of the acceptable ciphersuites
-            if (not sharedKeyParams) and \
-                session.cipherSuite not in cipherSuites:
+            if session.cipherSuite not in cipherSuites:
                 raise ValueError("Session's cipher suite not consistent "\
                                  "with parameters")
             else:
@@ -556,7 +474,7 @@ class TLSConnection(TLSRecordLayer):
 
             #Recursively perform handshake
             for result in self._handshakeClientAsyncHelper(srpParams,
-                            None, None, None, None, settings, True):
+                            None, None, None, settings, True):
                 yield result
             return
 
@@ -601,11 +519,7 @@ class TLSConnection(TLSRecordLayer):
         if session and session.sessionID and \
                        serverHello.session_id == session.sessionID:
 
-            #If a shared-key, we're flexible about suites; otherwise the
-            #server-chosen suite has to match the session's suite
-            if sharedKeyParams:
-                session.cipherSuite = serverHello.cipher_suite
-            elif serverHello.cipher_suite != session.cipherSuite:
+            if serverHello.cipher_suite != session.cipherSuite:
                 for result in self._sendError(\
                     AlertDescription.illegal_parameter,\
                     "Server's ciphersuite doesn't match session"):
@@ -629,12 +543,6 @@ class TLSConnection(TLSRecordLayer):
 
         #If server DOES NOT agree to resume
         else:
-
-            if sharedKeyParams:
-                for result in self._sendError(\
-                        AlertDescription.user_canceled,
-                        "Was expecting a shared-key resumption"):
-                    yield result
 
             #We've already validated these
             cipherSuite = serverHello.cipher_suite
@@ -937,14 +845,14 @@ class TLSConnection(TLSRecordLayer):
 
 
 
-    def handshakeServer(self, sharedKeyDB=None, verifierDB=None,
+    def handshakeServer(self, verifierDB=None,
                         certChain=None, privateKey=None, reqCert=False,
                         sessionCache=None, settings=None, checker=None):
         """Perform a handshake in the role of server.
 
         This function performs an SSL or TLS handshake.  Depending on
         the arguments and the behavior of the client, this function can
-        perform a shared-key, SRP, or certificate-based handshake.  It
+        perform an SRP, or certificate-based handshake.  It
         can also perform a combined SRP and server-certificate
         handshake.
 
@@ -961,12 +869,6 @@ class TLSConnection(TLSRecordLayer):
 
         If an exception is raised, the connection will have been
         automatically closed (if it was ever open).
-
-        @type sharedKeyDB: L{tlslite.SharedKeyDB.SharedKeyDB}
-        @param sharedKeyDB: A database of shared symmetric keys
-        associated with usernames.  If the client performs a
-        shared-key handshake, the session's sharedKeyUsername
-        attribute will be set.
 
         @type verifierDB: L{tlslite.VerifierDB.VerifierDB}
         @param verifierDB: A database of SRP password verifiers
@@ -985,8 +887,8 @@ class TLSConnection(TLSRecordLayer):
         @type reqCert: bool
         @param reqCert: Whether to request client certificate
         authentication.  This only applies if the client chooses server
-        certificate authentication; if the client chooses SRP or
-        shared-key authentication, this will be ignored.  If the client
+        certificate authentication; if the client chooses SRP
+        authentication, this will be ignored.  If the client
         performs a client certificate authentication, the sessions's
         clientCertChain attribute will be set.
 
@@ -1012,13 +914,13 @@ class TLSConnection(TLSRecordLayer):
         @raise tlslite.errors.TLSAuthenticationError: If the checker
         doesn't like the other party's authentication credentials.
         """
-        for result in self.handshakeServerAsync(sharedKeyDB, verifierDB,
+        for result in self.handshakeServerAsync(verifierDB,
                 certChain, privateKey, reqCert, sessionCache, settings,
                 checker):
             pass
 
 
-    def handshakeServerAsync(self, sharedKeyDB=None, verifierDB=None,
+    def handshakeServerAsync(self, verifierDB=None,
                              certChain=None, privateKey=None, reqCert=False,
                              sessionCache=None, settings=None, checker=None):
         """Start a server handshake operation on the TLS connection.
@@ -1033,7 +935,6 @@ class TLSConnection(TLSRecordLayer):
         @return: A generator; see above for details.
         """
         handshaker = self._handshakeServerAsyncHelper(\
-            sharedKeyDB=sharedKeyDB,
             verifierDB=verifierDB, certChain=certChain,
             privateKey=privateKey, reqCert=reqCert,
             sessionCache=sessionCache, settings=settings)
@@ -1041,13 +942,13 @@ class TLSConnection(TLSRecordLayer):
             yield result
 
 
-    def _handshakeServerAsyncHelper(self, sharedKeyDB, verifierDB,
+    def _handshakeServerAsyncHelper(self, verifierDB,
                              certChain, privateKey, reqCert, sessionCache,
                              settings):
 
         self._handshakeStart(client=False)
 
-        if (not sharedKeyDB) and (not verifierDB) and (not certChain):
+        if (not verifierDB) and (not certChain):
             raise ValueError("Caller passed no authentication credentials")
         if certChain and not privateKey:
             raise ValueError("Caller passed a certChain but no privateKey")
@@ -1065,7 +966,7 @@ class TLSConnection(TLSRecordLayer):
                 cipherSuites += \
                     CipherSuite.getSrpRsaSuites(settings.cipherNames)
             cipherSuites += CipherSuite.getSrpSuites(settings.cipherNames)
-        if sharedKeyDB or certChain:
+        if certChain:
             cipherSuites += CipherSuite.getRsaSuites(settings.cipherNames)
 
         #Initialize acceptable certificate type
@@ -1123,8 +1024,8 @@ class TLSConnection(TLSRecordLayer):
 
         #Calculate the first cipher suite intersection.
         #This is the 'privileged' ciphersuite.  We'll use it if we're
-        #doing a shared-key resumption or a new negotiation.  In fact,
-        #the only time we won't use it is if we're resuming a non-sharedkey
+        #doing a new negotiation.  In fact,
+        #the only time we won't use it is if we're resuming a
         #session, in which case we use the ciphersuite from the session.
         #
         #Given the current ciphersuite ordering, this means we prefer SRP
@@ -1138,33 +1039,14 @@ class TLSConnection(TLSRecordLayer):
                 yield result
 
         #If resumption was requested...
-        if clientHello.session_id and (sharedKeyDB or sessionCache):
+        if clientHello.session_id and sessionCache:
             session = None
 
-            #Check in the sharedKeys container
-            if sharedKeyDB and len(clientHello.session_id)==16:
-                try:
-                    #Trim off zero padding, if any
-                    for x in range(16):
-                        if clientHello.session_id[x]==0:
-                            break
-                    self.allegedSharedKeyUsername = bytesToString(\
-                                            clientHello.session_id[:x])
-                    session = sharedKeyDB[self.allegedSharedKeyUsername]
-                    if not session.sharedKey:
-                        raise AssertionError()
-                    #use privileged ciphersuite
-                    session.cipherSuite = cipherSuite
-                except KeyError:
-                    pass
-
-            #Then check in the session cache
+            #Check in the session cache
             if sessionCache and not session:
                 try:
                     session = sessionCache[bytesToString(\
                                                clientHello.session_id)]
-                    if session.sharedKey:
-                        raise AssertionError()
                     if not session.resumable:
                         raise AssertionError()
                     #Check for consistency with ClientHello
@@ -1217,19 +1099,7 @@ class TLSConnection(TLSRecordLayer):
 
         #If not a resumption...
 
-        #TRICKY: we might have chosen an RSA suite that was only deemed
-        #acceptable because of the shared-key resumption.  If the shared-
-        #key resumption failed, because the identifier wasn't recognized,
-        #we might fall through to here, where we have an RSA suite
-        #chosen, but no certificate.
-        if cipherSuite in CipherSuite.rsaSuites and not certChain:
-            for result in self._sendError(\
-                    AlertDescription.handshake_failure):
-                yield result
-
         #If an RSA suite is chosen, check for certificate type intersection
-        #(We do this check down here because if the mismatch occurs but the
-        # client is using a shared-key session, it's okay)
         if cipherSuite in CipherSuite.rsaSuites + \
                           CipherSuite.srpRsaSuites:
             if certificateType not in clientHello.certificate_types:

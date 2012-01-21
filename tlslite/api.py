@@ -23,7 +23,6 @@ imports::
     from HandshakeSettings import HandshakeSettings
     from Session import Session
     from SessionCache import SessionCache
-    from SharedKeyDB import SharedKeyDB
     from TLSConnection import TLSConnection
     from VerifierDB import VerifierDB
     from X509 import X509
@@ -49,7 +48,6 @@ from Checker import Checker
 from HandshakeSettings import HandshakeSettings
 from Session import Session
 from SessionCache import SessionCache
-from SharedKeyDB import SharedKeyDB
 from TLSConnection import TLSConnection
 from VerifierDB import VerifierDB
 from X509 import X509
