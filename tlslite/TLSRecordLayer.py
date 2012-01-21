@@ -12,8 +12,6 @@ from constants import *
 from utils.cryptomath import getRandomBytes
 from utils import hmac
 from FileObject import FileObject
-import sha
-import md5
 import socket
 import errno
 import traceback
@@ -116,8 +114,8 @@ class TLSRecordLayer:
         self._readBuffer = ""
 
         #Handshake digests
-        self._handshake_md5 = md5.md5()
-        self._handshake_sha = sha.sha()
+        self._handshake_md5 = md5()
+        self._handshake_sha = sha1()
 
         #TLS Protocol Version
         self.version = (0,0) #read-only
@@ -945,8 +943,8 @@ class TLSRecordLayer:
 
     def _handshakeStart(self, client):
         self._client = client
-        self._handshake_md5 = md5.md5()
-        self._handshake_sha = sha.sha()
+        self._handshake_md5 = md5()
+        self._handshake_sha = sha1()
         self._handshakeBuffer = []
         self.allegedSharedKeyUsername = None
         self.allegedSrpUsername = None
@@ -1010,10 +1008,8 @@ class TLSRecordLayer:
         serverKeyBlock = bytesToString(p.getFixBytes(keyLength))
         clientIVBlock  = bytesToString(p.getFixBytes(ivLength))
         serverIVBlock  = bytesToString(p.getFixBytes(ivLength))
-        clientPendingState.macContext = createMACFunc(clientMACBlock,
-                                                      digestmod=sha)
-        serverPendingState.macContext = createMACFunc(serverMACBlock,
-                                                      digestmod=sha)
+        clientPendingState.macContext = createMACFunc(clientMACBlock)
+        serverPendingState.macContext = createMACFunc(serverMACBlock)
         clientPendingState.encContext = createCipherFunc(clientKeyBlock,
                                                          clientIVBlock,
                                                          implementations)
@@ -1124,9 +1120,9 @@ class TLSRecordLayer:
         imac_md5.update(label + masterSecretStr + '\x36'*48)
         imac_sha.update(label + masterSecretStr + '\x36'*40)
 
-        md5Str = md5.md5(masterSecretStr + ('\x5c'*48) + \
+        md5Str = md5(masterSecretStr + ('\x5c'*48) + \
                          imac_md5.digest()).digest()
-        shaStr = sha.sha(masterSecretStr + ('\x5c'*40) + \
+        shaStr = sha1(masterSecretStr + ('\x5c'*40) + \
                          imac_sha.digest()).digest()
 
         return stringToBytes(md5Str + shaStr)

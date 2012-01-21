@@ -48,6 +48,12 @@ if sys.version_info < (2,3):
         def __iter__(self):
             return iter(set.values.keys())
 
+if sys.version_info >= (2,5):
+    from hashlib import md5
+    from hashlib import sha1
+else:
+    from md5 import md5
+    from sha import sha as sha1
 
 if os.name != "java":
 

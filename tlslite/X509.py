@@ -98,7 +98,7 @@ class X509:
         @rtype: str
         @return: A hex-encoded fingerprint.
         """
-        return sha.sha(self.bytes).hexdigest()
+        return sha1(self.bytes).hexdigest()
 
     def getCommonName(self):
         """Get the Subject's Common Name from the certificate.

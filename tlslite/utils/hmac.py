@@ -6,6 +6,8 @@ Implements the HMAC algorithm as described by RFC 2104.
 copying)
 """
 
+from compat import md5, sha1
+
 def _strxor(s1, s2):
     """Utility method. XOR the two strings s1 and s2 (must have same length).
     """
@@ -21,31 +23,26 @@ class HMAC:
     This supports the API for Cryptographic Hash Functions (PEP 247).
     """
 
-    def __init__(self, key, msg = None, digestmod = None):
+    def __init__(self, key, msg = None):
         """Create a new HMAC object.
 
         key:       key for the keyed hash object.
         msg:       Initial input for the hash, if provided.
-        digestmod: A module supporting PEP 247. Defaults to the md5 module.
         """
-        if digestmod is None:
-            import md5
-            digestmod = md5
 
         if key == None: #TREVNEW - for faster copying
             return      #TREVNEW
 
-        self.digestmod = digestmod
-        self.outer = digestmod.new()
-        self.inner = digestmod.new()
-        self.digest_size = digestmod.digest_size
+        self.outer = sha1()
+        self.inner = sha1()
+        self.digest_size = 20
 
         blocksize = 64
         ipad = "\x36" * blocksize
         opad = "\x5C" * blocksize
 
         if len(key) > blocksize:
-            key = digestmod.new(key).digest()
+            key = sha1(key).digest()
 
         key = key + chr(0) * (blocksize - len(key))
         self.outer.update(_strxor(key, opad))
@@ -68,7 +65,6 @@ class HMAC:
         """
         other = HMAC(None) #TREVNEW - for faster copying
         other.digest_size = self.digest_size #TREVNEW
-        other.digestmod = self.digestmod
         other.inner = self.inner.copy()
         other.outer = self.outer.copy()
         return other
@@ -90,7 +86,7 @@ class HMAC:
         return "".join([hex(ord(x))[2:].zfill(2)
                         for x in tuple(self.digest())])
 
-def new(key, msg = None, digestmod = None):
+def new(key, msg = None):
     """Create a new hashing object and return it.
 
     key: The starting key for the hash.
@@ -101,4 +97,4 @@ def new(key, msg = None, digestmod = None):
     method, and can ask for the hash value at any time by calling its digest()
     method.
     """
-    return HMAC(key, msg, digestmod)
+    return HMAC(key, msg)

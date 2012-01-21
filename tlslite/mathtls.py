@@ -4,8 +4,6 @@ from utils.compat import *
 from utils.cryptomath import *
 
 import hmac
-import md5
-import sha
 
 #1024, 1536, 2048, 3072, 4096, 6144, and 8192 bit groups]
 goodGroupParameters = [(2,0xEEAF0AB9ADB38DD69C33F80AFA8FC5E86072618775FF3C0B9EA2314C9C256576D674DF7496EA81D3383B4813D692C6E0E0D5D8E250B98BE48E495C1D6089DAD15DC7D7B46154D6B6CE8EF4AD69B15D4982559B297BCF1885C529F566660E57EC68EDBC3C05726CC02FD4CBF4976EAA9AFD5138FE8376435B9FC61D2FC0EB06E3),\
@@ -39,7 +37,7 @@ def PRF(secret, label, seed, length):
 
     #Run the left half through P_MD5 and the right half through P_SHA1
     p_md5 = P_hash(md5, S1, concatArrays(stringToBytes(label), seed), length)
-    p_sha1 = P_hash(sha, S2, concatArrays(stringToBytes(label), seed), length)
+    p_sha1 = P_hash(sha1, S2, concatArrays(stringToBytes(label), seed), length)
 
     #XOR the output values and return the result
     for x in range(length):
@@ -54,8 +52,8 @@ def PRF_SSL(secret, seed, length):
     index = 0
     for x in range(26):
         A = chr(ord('A')+x) * (x+1) # 'A', 'BB', 'CCC', etc..
-        input = secretStr + sha.sha(A + secretStr + seedStr).digest()
-        output = md5.md5(input).digest()
+        input = secretStr + sha1(A + secretStr + seedStr).digest()
+        output = md5(input).digest()
         for c in output:
             if index >= length:
                 return bytes
@@ -68,7 +66,7 @@ def makeX(salt, username, password):
         raise ValueError("username too long")
     if len(salt)>=256:
         raise ValueError("salt too long")
-    return stringToNumber(sha.sha(salt + sha.sha(username + ":" + password)\
+    return stringToNumber(sha1(salt + sha1(username + ":" + password)\
            .digest()).digest())
 
 #This function is used by VerifierDB.makeVerifier
@@ -88,10 +86,10 @@ def PAD(n, x):
     return s
 
 def makeU(N, A, B):
-  return stringToNumber(sha.sha(PAD(N, A) + PAD(N, B)).digest())
+  return stringToNumber(sha1(PAD(N, A) + PAD(N, B)).digest())
 
 def makeK(N, g):
-  return stringToNumber(sha.sha(numberToString(N) + PAD(N, g)).digest())
+  return stringToNumber(sha1(numberToString(N) + PAD(N, g)).digest())
 
 
 """
@@ -105,24 +103,18 @@ class MAC_SSL:
     This supports the API for Cryptographic Hash Functions (PEP 247).
     """
 
-    def __init__(self, key, msg = None, digestmod = None):
+    def __init__(self, key, msg = None):
         """Create a new MAC_SSL object.
 
         key:       key for the keyed hash object.
         msg:       Initial input for the hash, if provided.
-        digestmod: A module supporting PEP 247. Defaults to the md5 module.
         """
-        if digestmod is None:
-            import md5
-            digestmod = md5
-
         if key == None: #TREVNEW - for faster copying
             return      #TREVNEW
 
-        self.digestmod = digestmod
-        self.outer = digestmod.new()
-        self.inner = digestmod.new()
-        self.digest_size = digestmod.digest_size
+        self.outer = sha1()
+        self.inner = sha1()
+        self.digest_size = 20
 
         ipad = "\x36" * 40
         opad = "\x5C" * 40
@@ -147,7 +139,6 @@ class MAC_SSL:
         """
         other = MAC_SSL(None) #TREVNEW - for faster copying
         other.digest_size = self.digest_size #TREVNEW
-        other.digestmod = self.digestmod
         other.inner = self.inner.copy()
         other.outer = self.outer.copy()
         return other

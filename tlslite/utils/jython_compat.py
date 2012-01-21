@@ -43,7 +43,7 @@ if os.name != "java":
 
     #Factory function for getting a SHA1 object
     def getSHA1(s):
-        return sha.sha(s)
+        return sha1(s)
 
     import sys
     import traceback
@@ -175,7 +175,7 @@ else:
     #release, and needs to be patched
     def getSHA1(s):
         #return JCE_SHA1(s)
-        return sha.sha(s)
+        return sha1(s)
 
 
     #Adjust the string to an array of bytes
