@@ -54,6 +54,9 @@ if sys.version_info >= (2,5):
 else:
     from md5 import md5
     from sha import sha as sha1
+    
+    class GeneratorExit(Exception):
+        pass    
 
 if os.name != "java":
 

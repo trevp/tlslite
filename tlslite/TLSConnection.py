@@ -1545,9 +1545,11 @@ class TLSConnection(TLSRecordLayer):
                         for result in self._sendMsg(alert):
                             yield result
                         raise
+            except GeneratorExit:
+                raise
             except:
-                    self._shutdown(False)
-                    raise
+                self._shutdown(False)
+                raise
         else:
             try:
                 for result in handshaker:
@@ -1570,6 +1572,8 @@ class TLSConnection(TLSRecordLayer):
                     raise TLSFaultError(str(alert))
                 else:
                     pass
+            except GeneratorExit:
+                raise
             except:
                 self._shutdown(False)
                 raise
