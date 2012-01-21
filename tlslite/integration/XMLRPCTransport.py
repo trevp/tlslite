@@ -122,6 +122,10 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
     def make_connection(self, host):
         # create a HTTPS connection object from a host descriptor
         host, extra_headers, x509 = self.get_host_info(host)
+        if hasattr(self, "http") and self.http:
+            tlsSession = self.http.tlsSession
+        else:
+            tlsSession = None        
         http = HTTPTLSConnection(host, None,
                                  self.username, self.password,
                                  self.sharedKey,
@@ -132,6 +136,7 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
                                  self.checker.x509TrustList,
                                  self.checker.x509CommonName,
                                  self.settings)
+        self.http.tlsSession = tlsSession                                 
         http2 = httplib.HTTP()
         http2._setup(http)
         return http2
