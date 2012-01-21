@@ -91,7 +91,7 @@ def clientTest(address, dir):
             badFault = True
         connection.sock.close()
 
-    print "Test 5 - good SRP: unknown_srp_username idiom"
+    print "Test 5 - good SRP: unknown_psk_identity idiom"
     def srpCallback():
         return ("test", "password")
     connection = connect()
@@ -468,7 +468,7 @@ def serverTest(address, dir):
             pass
         connection.sock.close()
 
-    print "Test 5 - good SRP: unknown_srp_username idiom"
+    print "Test 5 - good SRP: unknown_psk_identity idiom"
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB)
     connection.close()
@@ -896,7 +896,7 @@ try:
                 raise
             sys.exit()
         except TLSRemoteAlert, a:
-            if a.description == AlertDescription.unknown_srp_username:
+            if a.description == AlertDescription.unknown_psk_identity:
                 if cmd == "clientsrp":
                     print "Unknown username"
                 else:
@@ -1030,7 +1030,7 @@ try:
                         connection.write(s)
                         s = ""
             except TLSLocalAlert, a:
-                if a.description == AlertDescription.unknown_srp_username:
+                if a.description == AlertDescription.psk_identity:
                     print "Unknown SRP username"
                 elif a.description == AlertDescription.bad_record_mac:
                     if cmd == "serversrp" or cmd == "serversrpcert":
