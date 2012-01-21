@@ -89,20 +89,10 @@ except:
                 return stringToBytes(devRandomFile.read(howMany))
             prngName = "/dev/urandom"
         except IOError:
-            #Else get Win32 CryptoAPI PRNG
-            try:
-                import win32prng
-                def getRandomBytes(howMany):
-                    s = win32prng.getRandomBytes(howMany)
-                    if len(s) != howMany:
-                        raise AssertionError()
-                    return stringToBytes(s)
-                prngName ="CryptoAPI"
-            except ImportError:
-                #Else no PRNG :-(
-                def getRandomBytes(howMany):
-                    raise NotImplementedError("No Random Number Generator "\
-                                              "available.")
+            #Else no PRNG :-(
+            def getRandomBytes(howMany):
+                raise NotImplementedError("No Random Number Generator "\
+                                          "available.")
             prngName = "None"
 
 # **************************************************************************
