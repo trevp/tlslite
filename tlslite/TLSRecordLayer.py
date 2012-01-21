@@ -422,6 +422,9 @@ class TLSRecordLayer:
         """Set the value of the given socket option (socket emulation)."""
         return self.sock.setsockopt(level, optname, value)
 
+    def shutdown(self, how):
+        """Shutdown the underlying socket."""
+    	return self.sock.shutdown(how)
 
      #*********************************************************
      # Public Functions END
