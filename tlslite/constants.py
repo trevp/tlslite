@@ -24,6 +24,9 @@ class ContentType:
     application_data = 23
     all = (20,21,22,23)
 
+class ClientHelloExtension:
+    srp = 12
+
 class AlertLevel:
     warning = 1
     fatal = 2
@@ -82,18 +85,18 @@ class AlertDescription:
     internal_error = 80
     user_canceled = 90
     no_renegotiation = 100
-    unknown_srp_username = 120
-    missing_srp_username = 121
-    untrusted_srp_parameters = 122
+    unknown_psk_identity = 115
+
 
 class CipherSuite:
-    TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA  = 0x0050
-    TLS_SRP_SHA_WITH_AES_128_CBC_SHA = 0x0053
-    TLS_SRP_SHA_WITH_AES_256_CBC_SHA = 0x0056
+    TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA  = 0xC01A
+    TLS_SRP_SHA_WITH_AES_128_CBC_SHA = 0xC01D
+    TLS_SRP_SHA_WITH_AES_256_CBC_SHA = 0xC020
 
-    TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA = 0x0051
-    TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA = 0x0054
-    TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA = 0x0057
+    TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA = 0xC01B
+    TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA = 0xC01E
+    TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA = 0xC021
+
 
     TLS_RSA_WITH_3DES_EDE_CBC_SHA = 0x000A
     TLS_RSA_WITH_AES_128_CBC_SHA = 0x002F
@@ -170,6 +173,9 @@ class CipherSuite:
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
 
 
+# The following faults are induced as part of testing.  The faultAlerts
+# dictionary describes the allowed alerts that may be triggered by these
+# faults.
 class Fault:
     badUsername = 101
     badPassword = 102
@@ -196,7 +202,7 @@ class Fault:
     genericFaults = range(300,303)
 
     faultAlerts = {\
-        badUsername: (AlertDescription.unknown_srp_username, \
+        badUsername: (AlertDescription.unknown_psk_identity, \
                       AlertDescription.bad_record_mac),\
         badPassword: (AlertDescription.bad_record_mac,),\
         badA: (AlertDescription.illegal_parameter,),\

@@ -514,7 +514,7 @@ class TLSConnection(TLSRecordLayer):
         for result in self._sendMsg(clientHello):
             yield result
 
-        #Get ServerHello (or missing_srp_username)
+        #Get ServerHello (or unknown_psk_identity)
         for result in self._getMsg((ContentType.handshake,
                                   ContentType.alert),
                                   HandshakeType.server_hello):
@@ -529,10 +529,18 @@ class TLSConnection(TLSRecordLayer):
         elif isinstance(msg, Alert):
             alert = msg
 
-            #If it's not a missing_srp_username, re-raise
-            if alert.description != AlertDescription.missing_srp_username:
+            # If it's not an unknown_psk_identity, re-raise
+            # OR, re-raise if the unknown_psk_identity is in response to
+            # a bad SRP username, instead of a response to a missing
+            # SRP username.
+            # Note that unknown_psk_identity at this stage of the 
+            # handshake can only be in reference to TLS-SRP, not TLS-PSK.
+            if alert.description != AlertDescription.unknown_psk_identity or\
+                    srpUsername:
                 self._shutdown(False)
                 raise TLSRemoteAlert(alert)
+
+            # OK, the server is telling us we didn't send an SRP username:
 
             #If we're not in SRP callback mode, we won't have offered SRP
             #without a username, so we shouldn't get this alert
@@ -726,17 +734,17 @@ class TLSConnection(TLSRecordLayer):
 
                 if (g,N) not in goodGroupParameters:
                     for result in self._sendError(\
-                            AlertDescription.untrusted_srp_parameters,
+                            AlertDescription.insufficient_security,
                             "Unknown group parameters"):
                         yield result
                 if numBits(N) < settings.minKeySize:
                     for result in self._sendError(\
-                            AlertDescription.untrusted_srp_parameters,
+                            AlertDescription.insufficient_security,
                             "N value is too small: %d" % numBits(N)):
                         yield result
                 if numBits(N) > settings.maxKeySize:
                     for result in self._sendError(\
-                            AlertDescription.untrusted_srp_parameters,
+                            AlertDescription.insufficient_security,
                             "N value is too large: %d" % numBits(N)):
                         yield result
                 if B % N == 0:
@@ -1249,7 +1257,7 @@ class TLSConnection(TLSRecordLayer):
 
                 #Ask the client to re-send ClientHello with one
                 for result in self._sendMsg(Alert().create(\
-                        AlertDescription.missing_srp_username,
+                        AlertDescription.unknown_psk_identity,
                         AlertLevel.warning)):
                     yield result
 
@@ -1313,7 +1321,7 @@ class TLSConnection(TLSRecordLayer):
                 entry = verifierDB[self.allegedSrpUsername]
             except KeyError:
                 for result in self._sendError(\
-                        AlertDescription.unknown_srp_username):
+                        AlertDescription.unknown_psk_identity):
                     yield result
             (N, g, s, v) = entry
 

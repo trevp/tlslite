@@ -50,8 +50,7 @@ class TLSAlert(TLSError):
         AlertDescription.internal_error: "internal_error",\
         AlertDescription.user_canceled: "user_canceled",\
         AlertDescription.no_renegotiation: "no_renegotiation",\
-        AlertDescription.unknown_srp_username: "unknown_srp_username",\
-        AlertDescription.missing_srp_username: "missing_srp_username"}
+        AlertDescription.unknown_psk_identity: "unknown_psk_identity"}
 
 class TLSLocalAlert(TLSAlert):
     """A TLS alert has been signalled by the local implementation.
