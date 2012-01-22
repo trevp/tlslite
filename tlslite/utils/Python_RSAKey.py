@@ -65,8 +65,8 @@ class Python_RSAKey(RSAKey):
 
     def generate(bits):
         key = Python_RSAKey()
-        p = getRandomPrime(bits/2, False)
-        q = getRandomPrime(bits/2, False)
+        p = getRandomPrime(bits//2, False)
+        q = getRandomPrime(bits//2, False)
         t = lcm(p-1, q-1)
         key.n = p * q
         key.e = 3L  #Needed to be long, for Java

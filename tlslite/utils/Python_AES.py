@@ -21,7 +21,7 @@ class Python_AES(AES):
         chainBytes = stringToBytes(self.IV)
 
         #CBC Mode: For each block...
-        for x in range(len(plaintextBytes)/16):
+        for x in range(len(plaintextBytes)//16):
 
             #XOR with the chaining block
             blockBytes = plaintextBytes[x*16 : (x*16)+16]
@@ -49,7 +49,7 @@ class Python_AES(AES):
         chainBytes = stringToBytes(self.IV)
 
         #CBC Mode: For each block...
-        for x in range(len(ciphertextBytes)/16):
+        for x in range(len(ciphertextBytes)//16):
 
             #Decrypt it
             blockBytes = ciphertextBytes[x*16 : (x*16)+16]

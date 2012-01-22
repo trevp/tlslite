@@ -219,13 +219,13 @@ class rijndael:
         self.block_size = block_size
 
         ROUNDS = num_rounds[len(key)][block_size]
-        BC = block_size / 4
+        BC = block_size // 4
         # encryption round keys
         Ke = [[0] * BC for i in xrange(ROUNDS + 1)]
         # decryption round keys
         Kd = [[0] * BC for i in xrange(ROUNDS + 1)]
         ROUND_KEY_COUNT = (ROUNDS + 1) * BC
-        KC = len(key) / 4
+        KC = len(key) // 4
 
         # copy user material bytes into temporary ints
         tk = []
@@ -237,8 +237,8 @@ class rijndael:
         t = 0
         j = 0
         while j < KC and t < ROUND_KEY_COUNT:
-            Ke[t / BC][t % BC] = tk[j]
-            Kd[ROUNDS - (t / BC)][t % BC] = tk[j]
+            Ke[t // BC][t % BC] = tk[j]
+            Kd[ROUNDS - (t // BC)][t % BC] = tk[j]
             j += 1
             t += 1
         tt = 0
@@ -256,20 +256,20 @@ class rijndael:
                 for i in xrange(1, KC):
                     tk[i] ^= tk[i-1]
             else:
-                for i in xrange(1, KC / 2):
+                for i in xrange(1, KC // 2):
                     tk[i] ^= tk[i-1]
-                tt = tk[KC / 2 - 1]
-                tk[KC / 2] ^= (S[ tt        & 0xFF] & 0xFF)       ^ \
+                tt = tk[KC // 2 - 1]
+                tk[KC // 2] ^= (S[ tt        & 0xFF] & 0xFF)       ^ \
                               (S[(tt >>  8) & 0xFF] & 0xFF) <<  8 ^ \
                               (S[(tt >> 16) & 0xFF] & 0xFF) << 16 ^ \
                               (S[(tt >> 24) & 0xFF] & 0xFF) << 24
-                for i in xrange(KC / 2 + 1, KC):
+                for i in xrange(KC // 2 + 1, KC):
                     tk[i] ^= tk[i-1]
             # copy values into round key arrays
             j = 0
             while j < KC and t < ROUND_KEY_COUNT:
-                Ke[t / BC][t % BC] = tk[j]
-                Kd[ROUNDS - (t / BC)][t % BC] = tk[j]
+                Ke[t // BC][t % BC] = tk[j]
+                Kd[ROUNDS - (t // BC)][t % BC] = tk[j]
                 j += 1
                 t += 1
         # inverse MixColumn where needed
@@ -288,7 +288,7 @@ class rijndael:
             raise ValueError('wrong block length, expected ' + str(self.block_size) + ' got ' + str(len(plaintext)))
         Ke = self.Ke
 
-        BC = self.block_size / 4
+        BC = self.block_size // 4
         ROUNDS = len(Ke) - 1
         if BC == 4:
             SC = 0
@@ -331,7 +331,7 @@ class rijndael:
             raise ValueError('wrong block length, expected ' + str(self.block_size) + ' got ' + str(len(plaintext)))
         Kd = self.Kd
 
-        BC = self.block_size / 4
+        BC = self.block_size // 4
         ROUNDS = len(Kd) - 1
         if BC == 4:
             SC = 0

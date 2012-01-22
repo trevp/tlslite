@@ -32,6 +32,7 @@ def P_hash(hashModule, secret, seed, length):
 
 def PRF(secret, label, seed, length):
     #Split the secret into left and right halves
+    # which may share a byte if len is odd
     S1 = secret[ : int(math.ceil(len(secret)/2.0))]
     S2 = secret[ int(math.floor(len(secret)/2.0)) : ]
 

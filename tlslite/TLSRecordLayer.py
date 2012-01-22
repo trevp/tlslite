@@ -491,13 +491,13 @@ class TLSRecordLayer:
             mac.update(seqnumStr)
             mac.update(chr(contentType))
             if self.version == (3,0):
-                mac.update( chr( int(len(bytes)/256) ) )
-                mac.update( chr( int(len(bytes)%256) ) )
+                mac.update( chr( len(bytes)//256 ) )
+                mac.update( chr( len(bytes)%256 ) )
             elif self.version in ((3,1), (3,2)):
                 mac.update(chr(self.version[0]))
                 mac.update(chr(self.version[1]))
-                mac.update( chr( int(len(bytes)/256) ) )
-                mac.update( chr( int(len(bytes)%256) ) )
+                mac.update( chr( len(bytes)//256 ) )
+                mac.update( chr( len(bytes)%256 ) )
             else:
                 raise AssertionError()
             mac.update(bytesStr)
@@ -915,13 +915,13 @@ class TLSRecordLayer:
                 mac.update(seqnumStr)
                 mac.update(chr(recordType))
                 if self.version == (3,0):
-                    mac.update( chr( int(len(bytes)/256) ) )
-                    mac.update( chr( int(len(bytes)%256) ) )
+                    mac.update( chr( len(bytes)//256 ) )
+                    mac.update( chr( len(bytes)%256 ) )
                 elif self.version in ((3,1), (3,2)):
                     mac.update(chr(self.version[0]))
                     mac.update(chr(self.version[1]))
-                    mac.update( chr( int(len(bytes)/256) ) )
-                    mac.update( chr( int(len(bytes)%256) ) )
+                    mac.update( chr( len(bytes)//256 ) )
+                    mac.update( chr( len(bytes)%256 ) )
                 else:
                     raise AssertionError()
                 mac.update(bytesStr)

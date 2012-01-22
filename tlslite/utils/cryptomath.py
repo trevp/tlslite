@@ -109,7 +109,7 @@ def numberToBytes(n):
     howManyBytes = numBytes(n)
     bytes = createByteArrayZeros(howManyBytes)
     for count in range(howManyBytes-1, -1, -1):
-        bytes[count] = int(n % 256)
+        bytes[count] = n % 256
         n >>= 8
     return bytes
 
@@ -206,9 +206,7 @@ def gcd(a,b):
     return a
 
 def lcm(a, b):
-    #This will break when python division changes, but we can't use // cause
-    #of Jython
-    return (a * b) / gcd(a, b)
+    return (a * b) // gcd(a, b)
 
 #Returns inverse of a mod b, zero if none
 #Uses Extended Euclidean Algorithm
@@ -216,9 +214,7 @@ def invMod(a, b):
     c, d = a, b
     uc, ud = 1, 0
     while c != 0:
-        #This will break when python division changes, but we can't use //
-        #cause of Jython
-        q = d / c
+        q = d // c
         c, d = d-(q*c), c
         uc, ud = ud - (q * uc), uc
     if d == 1:
@@ -257,7 +253,7 @@ else:
         # The list is recursive so easy to read in reverse direction.
         nibbles = None
         while power:
-            nibbles = int(power & mask), nibbles
+            nibbles = power & mask, nibbles
             power = power >> nBitScan
 
         # Make a table of powers of base up to 2**nBitScan - 1
@@ -313,7 +309,7 @@ def isPrime(n, iterations=5, display=False):
     if display: print "*",
     s, t = n-1, 0
     while s % 2 == 0:
-        s, t = s/2, t+1
+        s, t = s//2, t+1
     #Repeat Rabin-Miller x times
     a = 2 #Use 2 as a base for first iteration speedup, per HAC
     for count in range(iterations):
@@ -337,7 +333,7 @@ def getRandomPrime(bits, display=False):
     #
     #Since 30 is lcm(2,3,5), we'll set our test numbers to
     #29 % 30 and keep them there
-    low = (2L ** (bits-1)) * 3/2
+    low = ((2L ** (bits-1)) * 3) // 2
     high = 2L ** bits - 30
     p = getRandomNumber(low, high)
     p += 29 - (p % 30)
@@ -359,7 +355,7 @@ def getRandomSafePrime(bits, display=False):
     #
     #Since 30 is lcm(2,3,5), we'll set our test numbers to
     #29 % 30 and keep them there
-    low = (2 ** (bits-2)) * 3/2
+    low = (2 ** (bits-2)) * 3//2
     high = (2 ** (bits-1)) - 30
     q = getRandomNumber(low, high)
     q += 29 - (q % 30)

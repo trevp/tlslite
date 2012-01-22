@@ -67,7 +67,7 @@ class Parser:
         lengthList = self.get(lengthLength)
         if lengthList % length != 0:
             raise SyntaxError()
-        lengthList = int(lengthList/length)
+        lengthList = lengthList // length
         l = [0] * lengthList
         for x in range(lengthList):
             l[x] = self.get(length)

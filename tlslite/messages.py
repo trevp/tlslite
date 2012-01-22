@@ -136,7 +136,7 @@ class ClientHello(HandshakeMsg):
             cipherSpecsLength = p.get(2)
             sessionIDLength = p.get(2)
             randomLength = p.get(2)
-            self.cipher_suites = p.getFixList(3, int(cipherSpecsLength/3))
+            self.cipher_suites = p.getFixList(3, cipherSpecsLength//3)
             self.session_id = p.getFixBytes(sessionIDLength)
             self.random = p.getFixBytes(randomLength)
             if len(self.random) < 32:
