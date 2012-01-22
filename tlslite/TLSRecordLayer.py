@@ -940,6 +940,8 @@ class TLSRecordLayer:
         yield bytes
 
     def _handshakeStart(self, client):
+        if not self.closed:
+            raise ValueError("Renegotiation disallowed for security reasons")
         self._client = client
         self._handshake_md5 = md5()
         self._handshake_sha = sha1()

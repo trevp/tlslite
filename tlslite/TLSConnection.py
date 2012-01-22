@@ -63,10 +63,6 @@ class TLSConnection(TLSRecordLayer):
         chooses to authenticate itself with a certificate chain in
         addition to doing SRP.
 
-        Like any handshake function, this can be called on a closed
-        TLS connection, or on a TLS connection that is already open.
-        If called on an open connection it performs a re-handshake.
-
         If the function completes without raising an exception, the
         TLS connection will be open and available for data transfer.
 
@@ -139,10 +135,6 @@ class TLSConnection(TLSRecordLayer):
         certificate chain and private key were passed in, the client
         will attempt to proceed without client authentication.  The
         server may or may not allow this.
-
-        Like any handshake function, this can be called on a closed
-        TLS connection, or on a TLS connection that is already open.
-        If called on an open connection it performs a re-handshake.
 
         If the function completes without raising an exception, the
         TLS connection will be open and available for data transfer.
@@ -369,7 +361,7 @@ class TLSConnection(TLSRecordLayer):
         clientRandom = getRandomBytes(32)
 
         #Initialize acceptable ciphersuites
-        cipherSuites = []
+        cipherSuites = [CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
         if srpParams:
             cipherSuites += CipherSuite.getSrpRsaSuites(settings.cipherNames)
             cipherSuites += CipherSuite.getSrpSuites(settings.cipherNames)

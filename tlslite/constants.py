@@ -86,6 +86,12 @@ class AlertDescription:
 
 
 class CipherSuite:
+    # Weird pseudo-ciphersuite from RFC 5746
+    # Signals that "secure renegotiation" is supported
+    # We actually don't do any renegotiation, but this
+    # prevents renegotiation attacks
+    TLS_EMPTY_RENEGOTIATION_INFO_SCSV = 0x00FF
+    
     TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA  = 0xC01A
     TLS_SRP_SHA_WITH_AES_128_CBC_SHA = 0xC01D
     TLS_SRP_SHA_WITH_AES_256_CBC_SHA = 0xC020
