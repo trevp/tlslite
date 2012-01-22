@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys
-from distutils.core import setup, Extension
+from distutils.core import setup
 
 if sys.version_info < (2, 2):
     raise AssertionError("Python 2.2 or later required")

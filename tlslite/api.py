@@ -60,12 +60,6 @@ from integration.POP3_TLS import POP3_TLS
 from integration.IMAP4_TLS import IMAP4_TLS
 from integration.SMTP_TLS import SMTP_TLS
 from integration.XMLRPCTransport import XMLRPCTransport
-try:
-    import twisted
-    del(twisted)
-    from integration.TLSTwistedProtocolWrapper import TLSTwistedProtocolWrapper
-except ImportError:
-    pass
 
 from utils.cryptomath import cryptlibpyLoaded, m2cryptoLoaded, gmpyLoaded, \
                              pycryptoLoaded, prngName
