@@ -22,9 +22,6 @@ if pycryptoLoaded:
         def hasPrivateKey(self):
             return self.rsa.has_private()
 
-        def hash(self):
-            return Python_RSAKey(self.n, self.e).hash()
-
         def _rawPrivateKeyOp(self, m):
             s = numberToString(m)
             byteLength = numBytes(self.n)
@@ -48,9 +45,6 @@ if pycryptoLoaded:
                 raise AssertionError()
             m = stringToNumber(self.rsa.encrypt(s, None)[0])
             return m
-
-        def writeXMLPublicKey(self, indent=''):
-            return Python_RSAKey(self.n, self.e).write(indent)
 
         def generate(bits):
             key = PyCrypto_RSAKey()

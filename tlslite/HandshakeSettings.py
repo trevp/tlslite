@@ -46,13 +46,10 @@ class HandshakeSettings:
     @ivar certificateTypes: The allowed certificate types, in order of
     preference.
 
-    The allowed values in this list are 'x509' and 'cryptoID'.  This
+    The allowed values in this list are 'x509'.  This
     list is only used with a client handshake.  The client will
     advertise to the server which certificate types are supported, and
     will check that the server uses one of the appropriate types.
-
-    NOTE:  If 'cryptoID' is used in this list, but cryptoIDlib is not
-    installed, then 'cryptoID' will be silently removed.
 
     @type minVersion: tuple
     @ivar minVersion: The minimum allowed SSL/TLS version.
@@ -78,7 +75,7 @@ class HandshakeSettings:
         self.cipherNames = ["aes256", "aes128", "3des", "rc4"]
         self.cipherImplementations = ["cryptlib", "openssl", "pycrypto",
                                       "python"]
-        self.certificateTypes = ["x509", "cryptoID"]
+        self.certificateTypes = ["x509"]
         self.minVersion = (3,0)
         self.maxVersion = (3,2)
 
@@ -97,12 +94,6 @@ class HandshakeSettings:
             other.cipherNames = [e for e in self.cipherNames if e != "3des"]
         if len(other.cipherNames)==0:
             raise ValueError("No supported ciphers")
-
-        try:
-            import cryptoIDlib
-        except ImportError:
-            other.certificateTypes = [e for e in self.certificateTypes \
-                                      if e != "cryptoID"]
         if len(other.certificateTypes)==0:
             raise ValueError("No supported certificate types")
 
@@ -133,7 +124,7 @@ class HandshakeSettings:
             if s not in ("cryptlib", "openssl", "python", "pycrypto"):
                 raise ValueError("Unknown cipher implementation: '%s'" % s)
         for s in other.certificateTypes:
-            if s not in ("x509", "cryptoID"):
+            if s not in ("x509"):
                 raise ValueError("Unknown certificate type: '%s'" % s)
 
         if other.minVersion > other.maxVersion:
@@ -152,8 +143,6 @@ class HandshakeSettings:
         for ct in self.certificateTypes:
             if ct == "x509":
                 l.append(CertificateType.x509)
-            elif ct == "cryptoID":
-                l.append(CertificateType.cryptoID)
             else:
                 raise AssertionError()
         return l

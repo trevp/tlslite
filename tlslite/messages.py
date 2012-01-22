@@ -289,15 +289,6 @@ class Certificate(HandshakeMsg):
                 index += len(certBytes)+3
             if certificate_list:
                 self.certChain = X509CertChain(certificate_list)
-        elif self.certificateType == CertificateType.cryptoID:
-            s = bytesToString(p.getVarBytes(2))
-            if s:
-                try:
-                    import cryptoIDlib.CertChain
-                except ImportError:
-                    raise SyntaxError(\
-                    "cryptoID cert chain received, cryptoIDlib not present")
-                self.certChain = cryptoIDlib.CertChain.CertChain().parse(s)
         else:
             raise AssertionError()
 
@@ -321,12 +312,6 @@ class Certificate(HandshakeMsg):
             for cert in certificate_list:
                 bytes = cert.writeBytes()
                 w.addVarSeq(bytes, 1, 3)
-        elif self.certificateType == CertificateType.cryptoID:
-            if self.certChain:
-                bytes = stringToBytes(self.certChain.write())
-            else:
-                bytes = createByteArraySequence([])
-            w.addVarSeq(bytes, 1, 2)
         else:
             raise AssertionError()
         return HandshakeMsg.postWrite(self, w, trial)

@@ -35,54 +35,6 @@ def generateRSAKey(bits, implementations=["openssl", "python"]):
             return Python_RSAKey.generate(bits)
     raise ValueError("No acceptable implementations")
 
-def parseXMLKey(s, private=False, public=False, implementations=["python"]):
-    """Parse an XML-format key.
-
-    The XML format used here is specific to tlslite and cryptoIDlib.  The
-    format can store the public component of a key, or the public and
-    private components.  For example::
-
-        <publicKey xmlns="http://trevp.net/rsa">
-            <n>4a5yzB8oGNlHo866CAspAC47M4Fvx58zwK8pou...
-            <e>Aw==</e>
-        </publicKey>
-
-        <privateKey xmlns="http://trevp.net/rsa">
-            <n>4a5yzB8oGNlHo866CAspAC47M4Fvx58zwK8pou...
-            <e>Aw==</e>
-            <d>JZ0TIgUxWXmL8KJ0VqyG1V0J3ern9pqIoB0xmy...
-            <p>5PreIj6z6ldIGL1V4+1C36dQFHNCQHJvW52GXc...
-            <q>/E/wDit8YXPCxx126zTq2ilQ3IcW54NJYyNjiZ...
-            <dP>mKc+wX8inDowEH45Qp4slRo1YveBgExKPROu6...
-            <dQ>qDVKtBz9lk0shL5PR3ickXDgkwS576zbl2ztB...
-            <qInv>j6E8EA7dNsTImaXexAmLA1DoeArsYeFAInr...
-        </privateKey>
-
-    @type s: str
-    @param s: A string containing an XML public or private key.
-
-    @type private: bool
-    @param private: If True, a L{SyntaxError} will be raised if the private
-    key component is not present.
-
-    @type public: bool
-    @param public: If True, the private key component (if present) will be
-    discarded, so this function will always return a public key.
-
-    @rtype: L{tlslite.utils.RSAKey.RSAKey}
-    @return: An RSA key.
-
-    @raise SyntaxError: If the key is not properly formatted.
-    """
-    for implementation in implementations:
-        if implementation == "python":
-            key = Python_RSAKey.parseXML(s)
-            break
-    else:
-        raise ValueError("No acceptable implementations")
-
-    return _parseKeyHelper(key, private, public)
-
 #Parse as an OpenSSL or Python key
 def parsePEMKey(s, private=False, public=False, passwordCallback=None,
                 implementations=["openssl", "python"]):

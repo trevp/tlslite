@@ -133,7 +133,7 @@ class TLSConnection(TLSRecordLayer):
         """Perform a certificate-based handshake in the role of client.
 
         This function performs an SSL or TLS handshake.  The server
-        will authenticate itself using an X.509 or cryptoID certificate
+        will authenticate itself using an X.509 certificate
         chain.  If the handshake succeeds, the server's certificate
         chain will be stored in the session's serverCertChain attribute.
         Unless a checker object is passed in, this function does no
@@ -156,8 +156,7 @@ class TLSConnection(TLSRecordLayer):
         If an exception is raised, the connection will have been
         automatically closed (if it was ever open).
 
-        @type certChain: L{tlslite.X509CertChain.X509CertChain} or
-        L{cryptoIDlib.CertChain.CertChain}
+        @type certChain: L{tlslite.X509CertChain.X509CertChain}
         @param certChain: The certificate chain to be used if the
         server requests client authentication.
 
@@ -342,16 +341,6 @@ class TLSConnection(TLSRecordLayer):
 
         if clientCertChain:
             foundType = False
-            try:
-                import cryptoIDlib.CertChain
-                if isinstance(clientCertChain, cryptoIDlib.CertChain.CertChain):
-                    if "cryptoID" not in settings.certificateTypes:
-                        raise ValueError("Client certificate doesn't "\
-                                         "match Handshake Settings")
-                    settings.certificateTypes = ["cryptoID"]
-                    foundType = True
-            except ImportError:
-                pass
             if not foundType and isinstance(clientCertChain,
                                             X509CertChain):
                 if "x509" not in settings.certificateTypes:
@@ -765,10 +754,6 @@ class TLSConnection(TLSRecordLayer):
                         if certificateType == CertificateType.x509:
                             if not isinstance(clientCertChain, X509CertChain):
                                 wrongType = True
-                        elif certificateType == CertificateType.cryptoID:
-                            if not isinstance(clientCertChain,
-                                              cryptoIDlib.CertChain.CertChain):
-                                wrongType = True
                         if wrongType:
                             for result in self._sendError(\
                                     AlertDescription.handshake_failure,
@@ -875,8 +860,7 @@ class TLSConnection(TLSRecordLayer):
         associated with usernames.  If the client performs an SRP
         handshake, the session's srpUsername attribute will be set.
 
-        @type certChain: L{tlslite.X509CertChain.X509CertChain} or
-        L{cryptoIDlib.CertChain.CertChain}
+        @type certChain: L{tlslite.X509CertChain.X509CertChain}
         @param certChain: The certificate chain to be used if the
         client requests server certificate authentication.
 
@@ -972,12 +956,6 @@ class TLSConnection(TLSRecordLayer):
         #Initialize acceptable certificate type
         certificateType = None
         if certChain:
-            try:
-                import cryptoIDlib.CertChain
-                if isinstance(certChain, cryptoIDlib.CertChain.CertChain):
-                    certificateType = CertificateType.cryptoID
-            except ImportError:
-                pass
             if isinstance(certChain, X509CertChain):
                 certificateType = CertificateType.x509
             if certificateType == None:

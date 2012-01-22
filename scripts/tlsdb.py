@@ -6,13 +6,6 @@ import socket
 import thread
 import math
 
-try:
-    import cryptoIDlib
-    cryptoIDlibLoaded = True
-except:
-    cryptoIDlibLoaded = False
-
-
 if __name__ != "__main__":
     raise "This must be run as a command, not used as a module!"
 
@@ -42,10 +35,6 @@ if len(sys.argv) == 1 or (len(sys.argv)==2 and sys.argv[1].lower().endswith("hel
         print "  GMPY        : Loaded"
     else:
         print "  GMPY        : Not Loaded"
-    if cryptoIDlibLoaded:
-        print "  cryptoIDlib : Loaded"
-    else:
-        print "  cryptoIDlib : Not Loaded"
     print ""
     print "Commands:"
     print ""

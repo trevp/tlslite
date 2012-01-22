@@ -14,7 +14,6 @@ class POP3_TLS(POP3, ClientHelper):
     def __init__(self, host, port = POP3_TLS_PORT,
                  username=None, password=None,
                  certChain=None, privateKey=None,
-                 cryptoID=None, protocol=None,
                  x509Fingerprint=None,
                  x509TrustList=None, x509CommonName=None,
                  settings=None):
@@ -29,7 +28,6 @@ class POP3_TLS(POP3, ClientHelper):
         implicit mutual authentication performed by SRP or
         you can do certificate-based server
         authentication with one of these argument combinations:
-         - cryptoID[, protocol] (requires cryptoIDlib)
          - x509Fingerprint
          - x509TrustList[, x509CommonName] (requires cryptlib_py)
 
@@ -54,8 +52,7 @@ class POP3_TLS(POP3, ClientHelper):
         @param password: SRP password for mutual authentication.
         Requires the 'username' argument.
 
-        @type certChain: L{tlslite.X509CertChain.X509CertChain} or
-        L{cryptoIDlib.CertChain.CertChain}
+        @type certChain: L{tlslite.X509CertChain.X509CertChain}
         @param certChain: Certificate chain for client authentication.
         Requires the 'privateKey' argument.  Excludes the SRP argument.
 
@@ -63,31 +60,23 @@ class POP3_TLS(POP3, ClientHelper):
         @param privateKey: Private key for client authentication.
         Requires the 'certChain' argument.  Excludes the SRP argument.
 
-        @type cryptoID: str
-        @param cryptoID: cryptoID for server authentication.  Mutually
-        exclusive with the 'x509...' arguments.
-
-        @type protocol: str
-        @param protocol: cryptoID protocol URI for server
-        authentication.  Requires the 'cryptoID' argument.
-
         @type x509Fingerprint: str
         @param x509Fingerprint: Hex-encoded X.509 fingerprint for
-        server authentication.  Mutually exclusive with the 'cryptoID'
-        and 'x509TrustList' arguments.
+        server authentication.  Mutually exclusive with the
+        'x509TrustList' arguments.
 
         @type x509TrustList: list of L{tlslite.X509.X509}
         @param x509TrustList: A list of trusted root certificates.  The
         other party must present a certificate chain which extends to
         one of these root certificates.  The cryptlib_py module must be
         installed to use this parameter.  Mutually exclusive with the
-        'cryptoID' and 'x509Fingerprint' arguments.
+        'x509Fingerprint' arguments.
 
         @type x509CommonName: str
         @param x509CommonName: The end-entity certificate's 'CN' field
         must match this value.  For a web server, this is typically a
         server name such as 'www.amazon.com'.  Mutually exclusive with
-        the 'cryptoID' and 'x509Fingerprint' arguments.  Requires the
+        the 'x509Fingerprint' arguments.  Requires the
         'x509TrustList' argument.
 
         @type settings: L{tlslite.HandshakeSettings.HandshakeSettings}
@@ -118,7 +107,6 @@ class POP3_TLS(POP3, ClientHelper):
         ClientHelper.__init__(self,
                  username, password,
                  certChain, privateKey,
-                 cryptoID, protocol,
                  x509Fingerprint,
                  x509TrustList, x509CommonName,
                  settings)

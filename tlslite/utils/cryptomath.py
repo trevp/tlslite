@@ -29,9 +29,7 @@ try:
     try:
         cryptlib_py.cryptInit()
     except cryptlib_py.CryptException, e:
-        #If tlslite and cryptoIDlib are both present,
-        #they might each try to re-initialize this,
-        #so we're tolerant of that.
+        #If someone else has init's cryptlib we're tolerant of that.
         if e[0] != cryptlib_py.CRYPT_ERROR_INITED:
             raise
     cryptlibpyLoaded = True
@@ -182,15 +180,6 @@ def numBytes(n):
         return 0
     bits = numBits(n)
     return int(math.ceil(bits / 8.0))
-
-def hashAndBase64(s):
-    return stringToBase64(sha1(s).digest())
-
-def getBase64Nonce(numChars=22): #defaults to an 132 bit nonce
-    bytes = getRandomBytes(numChars)
-    bytesStr = "".join([chr(b) for b in bytes])
-    return stringToBase64(bytesStr)[:numChars]
-
 
 # **************************************************************************
 # Big Number Math

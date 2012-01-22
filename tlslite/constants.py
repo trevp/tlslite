@@ -3,7 +3,6 @@
 class CertificateType:
     x509 = 0
     openpgp = 1
-    cryptoID = 2
 
 class HandshakeType:
     hello_request = 0

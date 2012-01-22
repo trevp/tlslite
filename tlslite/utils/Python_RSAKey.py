@@ -23,10 +23,6 @@ class Python_RSAKey(RSAKey):
     def hasPrivateKey(self):
         return self.d != 0
 
-    def hash(self):
-        s = self.writeXMLPublicKey('\t\t')
-        return hashAndBase64(s.strip())
-
     def _rawPrivateKeyOp(self, m):
         #Create blinding values, on the first pass:
         if not self.blinder:
@@ -67,31 +63,6 @@ class Python_RSAKey(RSAKey):
         return m
 
     def acceptsPassword(self): return False
-
-    def write(self, indent=''):
-        if self.d:
-            s = indent+'<privateKey xmlns="http://trevp.net/rsa">\n'
-        else:
-            s = indent+'<publicKey xmlns="http://trevp.net/rsa">\n'
-        s += indent+'\t<n>%s</n>\n' % numberToBase64(self.n)
-        s += indent+'\t<e>%s</e>\n' % numberToBase64(self.e)
-        if self.d:
-            s += indent+'\t<d>%s</d>\n' % numberToBase64(self.d)
-            s += indent+'\t<p>%s</p>\n' % numberToBase64(self.p)
-            s += indent+'\t<q>%s</q>\n' % numberToBase64(self.q)
-            s += indent+'\t<dP>%s</dP>\n' % numberToBase64(self.dP)
-            s += indent+'\t<dQ>%s</dQ>\n' % numberToBase64(self.dQ)
-            s += indent+'\t<qInv>%s</qInv>\n' % numberToBase64(self.qInv)
-            s += indent+'</privateKey>'
-        else:
-            s += indent+'</publicKey>'
-        #Only add \n if part of a larger structure
-        if indent != '':
-            s += '\n'
-        return s
-
-    def writeXMLPublicKey(self, indent=''):
-        return Python_RSAKey(self.n, self.e).write(indent)
 
     def generate(bits):
         key = Python_RSAKey()

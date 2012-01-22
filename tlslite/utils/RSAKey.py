@@ -44,21 +44,6 @@ class RSAKey:
         """
         raise NotImplementedError()
 
-    def hash(self):
-        """Return the cryptoID <keyHash> value corresponding to this
-        key.
-
-        @rtype: str
-        """
-        raise NotImplementedError()
-
-    def getSigningAlgorithm(self):
-        """Return the cryptoID sigAlgo value corresponding to this key.
-
-        @rtype: str
-        """
-        return "pkcs1-sha1"
-
     def hashAndSign(self, bytes):
         """Hash and sign the passed-in bytes.
 

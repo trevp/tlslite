@@ -55,9 +55,6 @@ if m2cryptoLoaded:
         def hasPrivateKey(self):
             return self._hasPrivateKey
 
-        def hash(self):
-            return Python_RSAKey(self.n, self.e).hash()
-
         def _rawPrivateKeyOp(self, m):
             s = numberToString(m)
             byteLength = numBytes(self.n)
@@ -102,9 +99,6 @@ if m2cryptoLoaded:
             s = m2.bio_read(bio, m2.bio_ctrl_pending(bio))
             m2.bio_free(bio)
             return s
-
-        def writeXMLPublicKey(self, indent=''):
-            return Python_RSAKey(self.n, self.e).write(indent)
 
         def generate(bits):
             key = OpenSSL_RSAKey()
