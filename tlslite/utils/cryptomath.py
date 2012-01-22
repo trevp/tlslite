@@ -56,41 +56,17 @@ except ImportError:
 # PRNG Functions
 # **************************************************************************
 
-# Get os.urandom PRNG
-try:
-    os.urandom(1)
-    def getRandomBytes(howMany):
-        return stringToBytes(os.urandom(howMany))
-    prngName = "os.urandom"
+# Check that os.urandom works
+import zlib
+length = len(zlib.compress(os.urandom(1000)))
+assert(length > 900)
 
-except:
-    # Else get cryptlib PRNG
-    if cryptlibpyLoaded:
-        def getRandomBytes(howMany):
-            randomKey = cryptlib_py.cryptCreateContext(cryptlib_py.CRYPT_UNUSED,
-                                                       cryptlib_py.CRYPT_ALGO_AES)
-            cryptlib_py.cryptSetAttribute(randomKey,
-                                          cryptlib_py.CRYPT_CTXINFO_MODE,
-                                          cryptlib_py.CRYPT_MODE_OFB)
-            cryptlib_py.cryptGenerateKey(randomKey)
-            bytes = createByteArrayZeros(howMany)
-            cryptlib_py.cryptEncrypt(randomKey, bytes)
-            return bytes
-        prngName = "cryptlib"
+def getRandomBytes(howMany):
+    s = os.urandom(howMany)
+    assert(len(s) == howMany)
+    return stringToBytes(s)
+prngName = "os.urandom"
 
-    else:
-        #Else get UNIX /dev/urandom PRNG
-        try:
-            devRandomFile = open("/dev/urandom", "rb")
-            def getRandomBytes(howMany):
-                return stringToBytes(devRandomFile.read(howMany))
-            prngName = "/dev/urandom"
-        except IOError:
-            #Else no PRNG :-(
-            def getRandomBytes(howMany):
-                raise NotImplementedError("No Random Number Generator "\
-                                          "available.")
-            prngName = "None"
 
 # **************************************************************************
 # Converter Functions
