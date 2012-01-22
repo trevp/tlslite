@@ -213,9 +213,22 @@ class RSAKey:
     # Helper Functions for RSA Keys
     # **************************************************************************
 
-    def _addPKCS1SHA1Prefix(self, bytes):
-        prefixBytes = createByteArraySequence(\
-            [48,33,48,9,6,5,43,14,3,2,26,5,0,4,20])
+    def _addPKCS1SHA1Prefix(self, bytes, withNULL=False):
+        # There is a long history of confusion over whether the SHA1 
+        # algorithmIdentifier should be encoded with a NULL parameter or 
+        # with the parameter omitted.  While the original intention was 
+        # apparently to omit it, many toolkits went the other way.  TLS 1.2
+        # specifies the NULL should be omitted, so maybe the pendulum is 
+        # swinging back towards the original intention.  Anyways, verification
+        # code should accept both, so the above hashAndVerify() is not
+        # yet correct.  However, nothing uses this code yet - an eventual
+        # TLS 1.2 implementation will have to fix that.
+        if not withNULL:
+            prefixBytes = createByteArraySequence(\
+            [0x30,0x1f,0x30,0x07,0x06,0x05,0x2b,0x0e,0x03,0x02,0x1a,0x04,0x14])            
+        else:
+            prefixBytes = createByteArraySequence(\
+            [0x30,0x21,0x30,0x09,0x06,0x05,0x2b,0x0e,0x03,0x02,0x1a,0x05,0x00,0x04,0x14])            
         prefixedBytes = prefixBytes + bytes
         return prefixedBytes
 

@@ -63,12 +63,6 @@ class TLSConnection(TLSRecordLayer):
         chooses to authenticate itself with a certificate chain in
         addition to doing SRP.
 
-        TLS/SRP is non-standard.  Most TLS implementations don't
-        support it.  See
-        U{http://www.ietf.org/html.charters/tls-charter.html} or
-        U{http://trevp.net/tlssrp/} for the latest information on
-        TLS/SRP.
-
         Like any handshake function, this can be called on a closed
         TLS connection, or on a TLS connection that is already open.
         If called on an open connection it performs a re-handshake.
