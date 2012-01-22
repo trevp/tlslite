@@ -35,7 +35,6 @@ imports::
     from integration.XMLRPCTransport import XMLRPCTransport
     from integration.TLSSocketServerMixIn import TLSSocketServerMixIn
     from integration.TLSAsyncDispatcherMixIn import TLSAsyncDispatcherMixIn
-    from integration.TLSTwistedProtocolWrapper import TLSTwistedProtocolWrapper
     from utils.cryptomath import cryptlibpyLoaded, m2cryptoLoaded,
                                  gmpyLoaded, pycryptoLoaded, prngName
     from utils.keyfactory import generateRSAKey, parsePEMKey
