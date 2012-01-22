@@ -36,8 +36,7 @@ class TLSConnection(TLSRecordLayer):
     not use the asynchronous functions directly, but should use some
     framework like asyncore or Twisted which TLS Lite integrates with
     (see
-    L{tlslite.integration.TLSAsyncDispatcherMixIn.TLSAsyncDispatcherMixIn} or
-    L{tlslite.integration.TLSTwistedProtocolWrapper.TLSTwistedProtocolWrapper}).
+    L{tlslite.integration.TLSAsyncDispatcherMixIn.TLSAsyncDispatcherMixIn}).
     """
 
 
