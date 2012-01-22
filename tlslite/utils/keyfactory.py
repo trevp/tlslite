@@ -1,5 +1,5 @@
 """Factory functions for asymmetric cryptography.
-@sort: generateRSAKey, parseXMLKey, parsePEMKey, parseAsPublicKey,
+@sort: generateRSAKey, parsePEMKey, parseAsPublicKey,
 parseAsPrivateKey
 """
 
@@ -123,36 +123,30 @@ def _parseKeyHelper(key, private, public):
     return key
 
 def parseAsPublicKey(s):
-    """Parse an XML or PEM-formatted public key.
+    """Parse a PEM-formatted public key.
 
     @type s: str
-    @param s: A string containing an XML or PEM-encoded public or private key.
+    @param s: A string containing a PEM-encoded public or private key.
 
     @rtype: L{tlslite.utils.RSAKey.RSAKey}
     @return: An RSA public key.
 
     @raise SyntaxError: If the key is not properly formatted.
     """
-    try:
-        return parsePEMKey(s, public=True)
-    except:
-        return parseXMLKey(s, public=True)
+    return parsePEMKey(s, public=True)
 
 def parsePrivateKey(s):
-    """Parse an XML or PEM-formatted private key.
+    """Parse a PEM-formatted private key.
 
     @type s: str
-    @param s: A string containing an XML or PEM-encoded private key.
+    @param s: A string containing a PEM-encoded private key.
 
     @rtype: L{tlslite.utils.RSAKey.RSAKey}
     @return: An RSA private key.
 
     @raise SyntaxError: If the key is not properly formatted.
     """
-    try:
-        return parsePEMKey(s, private=True)
-    except:
-        return parseXMLKey(s, private=True)
+    return parsePEMKey(s, private=True)
 
 def _createPublicKey(key):
     """

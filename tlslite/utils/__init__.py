@@ -27,5 +27,4 @@ __all__ = ["AES",
            "RC4",
            "rijndael",
            "RSAKey",
-           "TripleDES",
-           "xmltools"]
+           "TripleDES"]

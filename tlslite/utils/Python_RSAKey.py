@@ -1,7 +1,6 @@
 """Pure-Python RSA implementation."""
 
 from cryptomath import *
-import xmltools
 from ASN1Parser import ASN1Parser
 from RSAKey import *
 
@@ -104,11 +103,6 @@ class Python_RSAKey(RSAKey):
         raise SyntaxError("Missing PEM Prefix")
     parsePEM = staticmethod(parsePEM)
 
-    def parseXML(s):
-        element = xmltools.parseAndStripWhitespace(s)
-        return Python_RSAKey._parseXML(element)
-    parseXML = staticmethod(parseXML)
-
     def _parsePKCS8(bytes):
         p = ASN1Parser(bytes)
 
@@ -148,33 +142,3 @@ class Python_RSAKey(RSAKey):
         qInv = bytesToNumber(privateKeyP.getChild(8).value)
         return Python_RSAKey(n, e, d, p, q, dP, dQ, qInv)
     _parseASN1PrivateKey = staticmethod(_parseASN1PrivateKey)
-
-    def _parseXML(element):
-        try:
-            xmltools.checkName(element, "privateKey")
-        except SyntaxError:
-            xmltools.checkName(element, "publicKey")
-
-        #Parse attributes
-        xmltools.getReqAttribute(element, "xmlns", "http://trevp.net/rsa\Z")
-        xmltools.checkNoMoreAttributes(element)
-
-        #Parse public values (<n> and <e>)
-        n = base64ToNumber(xmltools.getText(xmltools.getChild(element, 0, "n"), xmltools.base64RegEx))
-        e = base64ToNumber(xmltools.getText(xmltools.getChild(element, 1, "e"), xmltools.base64RegEx))
-        d = 0
-        p = 0
-        q = 0
-        dP = 0
-        dQ = 0
-        qInv = 0
-        #Parse private values, if present
-        if element.childNodes.length>=3:
-            d = base64ToNumber(xmltools.getText(xmltools.getChild(element, 2, "d"), xmltools.base64RegEx))
-            p = base64ToNumber(xmltools.getText(xmltools.getChild(element, 3, "p"), xmltools.base64RegEx))
-            q = base64ToNumber(xmltools.getText(xmltools.getChild(element, 4, "q"), xmltools.base64RegEx))
-            dP = base64ToNumber(xmltools.getText(xmltools.getChild(element, 5, "dP"), xmltools.base64RegEx))
-            dQ = base64ToNumber(xmltools.getText(xmltools.getChild(element, 6, "dQ"), xmltools.base64RegEx))
-            qInv = base64ToNumber(xmltools.getText(xmltools.getLastChild(element, 7, "qInv"), xmltools.base64RegEx))
-        return Python_RSAKey(n, e, d, p, q, dP, dQ, qInv)
-    _parseXML = staticmethod(_parseXML)

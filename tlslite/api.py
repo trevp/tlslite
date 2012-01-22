@@ -38,7 +38,7 @@ imports::
     from integration.TLSTwistedProtocolWrapper import TLSTwistedProtocolWrapper
     from utils.cryptomath import cryptlibpyLoaded, m2cryptoLoaded,
                                  gmpyLoaded, pycryptoLoaded, prngName
-    from utils.keyfactory import generateRSAKey, parsePEMKey, parseXMLKey,
+    from utils.keyfactory import generateRSAKey, parsePEMKey
                                  parseAsPublicKey, parsePrivateKey
 """
 

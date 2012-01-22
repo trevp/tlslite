@@ -195,18 +195,10 @@ class RSAKey:
         """Return a string containing the key.
 
         @rtype: str
-        @return: A string describing the key, in whichever format (PEM
-        or XML) is native to the implementation.
+        @return: A string describing the key, in whichever format (PEM)
+        is native to the implementation.
         """
         raise NotImplementedError()
-
-    def writeXMLPublicKey(self, indent=''):
-        """Return a string containing the key.
-
-        @rtype: str
-        @return: A string describing the public key, in XML format.
-        """
-        return Python_RSAKey(self.n, self.e).write(indent)
 
     def generate(bits):
         """Generate a new key with the specified bit length.
