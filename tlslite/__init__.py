@@ -5,7 +5,7 @@ such as SRP, shared keys, and cryptoIDs, in addition to X.509
 certificates.  TLS Lite is pure python, however it can access OpenSSL,
 cryptlib, pycrypto, and GMPY for faster crypto operations.  TLS Lite
 integrates with httplib, xmlrpclib, poplib, imaplib, smtplib,
-SocketServer, asyncore, and Twisted.
+SocketServer, asyncore.
 
 To use, do::
 

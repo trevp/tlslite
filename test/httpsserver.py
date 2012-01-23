@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from SocketServer import *
 from BaseHTTPServer import *
 from SimpleHTTPServer import *
@@ -25,5 +27,5 @@ class MyHTTPServer(ThreadingMixIn, TLSSocketServerMixIn, HTTPServer):
             print "Handshake failure:", str(error)
             return False
 
-httpd = MyHTTPServer(('localhost', 443), SimpleHTTPRequestHandler)
+httpd = MyHTTPServer(('localhost', 4443), SimpleHTTPRequestHandler)
 httpd.serve_forever()

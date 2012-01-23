@@ -32,21 +32,6 @@ if len(sys.argv)>1:
             f.write(s.replace(oldVersion, newVersion))
             f.close()
 
-
-#Make windows installers
-os.system("del installers\*.exe")
-
-#Python 2.3
-os.system("rmdir build /s /q")
-os.system("python23 setup.py bdist_wininst -o")
-os.system("copy dist\* installers")
-
-#Python 2.4
-os.system("rmdir build /s /q")
-os.system("python24 setup.py bdist_wininst -o")
-os.system("copy dist\* installers")
-
-
 #Make documentation
 os.system("python23 c:\\devtools\\python23\\scripts\\epydoc.py --html -o docs tlslite")
 

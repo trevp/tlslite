@@ -1,6 +1,5 @@
 """Factory functions for asymmetric cryptography.
-@sort: generateRSAKey, parsePEMKey, parseAsPublicKey,
-parseAsPrivateKey
+@sort: generateRSAKey, parsePEMKey, parseAsPublicKey
 """
 
 from compat import *

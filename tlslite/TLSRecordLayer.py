@@ -68,7 +68,7 @@ class TLSRecordLayer:
 
     @type closeSocket: bool
     @ivar closeSocket: If the socket should be closed when the
-    connection is closed (writable).
+    connection is closed, defaults to True (writable).
 
     If you set this to True, TLS Lite will assume the responsibility of
     closing the socket when the TLS Connection is shutdown (either
