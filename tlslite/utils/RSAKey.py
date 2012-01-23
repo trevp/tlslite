@@ -50,10 +50,10 @@ class RSAKey:
         This requires the key to have a private component.  It performs
         a PKCS1-SHA1 signature on the passed-in data.
 
-        @type bytes: str or L{array.array} of unsigned bytes
+        @type bytes: str or L{bytearray} of unsigned bytes
         @param bytes: The value which will be hashed and signed.
 
-        @rtype: L{array.array} of unsigned bytes.
+        @rtype: L{bytearray} of unsigned bytes.
         @return: A PKCS1-SHA1 signature on the passed-in data.
         """
         if not isinstance(bytes, type("")):
@@ -68,10 +68,10 @@ class RSAKey:
 
         This verifies a PKCS1-SHA1 signature on the passed-in data.
 
-        @type sigBytes: L{array.array} of unsigned bytes
+        @type sigBytes: L{bytearray} of unsigned bytes
         @param sigBytes: A PKCS1-SHA1 signature.
 
-        @type bytes: str or L{array.array} of unsigned bytes
+        @type bytes: str or L{bytearray} of unsigned bytes
         @param bytes: The value which will be hashed and verified.
 
         @rtype: bool
@@ -89,10 +89,10 @@ class RSAKey:
         This requires the key to have a private component.  It performs
         a PKCS1 signature on the passed-in data.
 
-        @type bytes: L{array.array} of unsigned bytes
+        @type bytes: L{bytearray} of unsigned bytes
         @param bytes: The value which will be signed.
 
-        @rtype: L{array.array} of unsigned bytes.
+        @rtype: L{bytearray} of unsigned bytes.
         @return: A PKCS1 signature on the passed-in data.
         """
         if not self.hasPrivateKey():
@@ -110,10 +110,10 @@ class RSAKey:
 
         This verifies a PKCS1 signature on the passed-in data.
 
-        @type sigBytes: L{array.array} of unsigned bytes
+        @type sigBytes: L{bytearray} of unsigned bytes
         @param sigBytes: A PKCS1 signature.
 
-        @type bytes: L{array.array} of unsigned bytes
+        @type bytes: L{bytearray} of unsigned bytes
         @param bytes: The value which will be verified.
 
         @rtype: bool
@@ -132,10 +132,10 @@ class RSAKey:
 
         This performs PKCS1 encryption of the passed-in data.
 
-        @type bytes: L{array.array} of unsigned bytes
+        @type bytes: L{bytearray} of unsigned bytes
         @param bytes: The value which will be encrypted.
 
-        @rtype: L{array.array} of unsigned bytes.
+        @rtype: L{bytearray} of unsigned bytes.
         @return: A PKCS1 encryption of the passed-in data.
         """
         paddedBytes = self._addPKCS1Padding(bytes, 2)
@@ -152,10 +152,10 @@ class RSAKey:
         This requires the key to have a private component.  It performs
         PKCS1 decryption of the passed-in data.
 
-        @type encBytes: L{array.array} of unsigned bytes
+        @type encBytes: L{bytearray} of unsigned bytes
         @param encBytes: The value which will be decrypted.
 
-        @rtype: L{array.array} of unsigned bytes or None.
+        @rtype: L{bytearray} of unsigned bytes or None.
         @return: A PKCS1 decryption of the passed-in data or None if
         the data is not properly formatted.
         """

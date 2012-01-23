@@ -8,7 +8,7 @@ from utils.keyfactory import _createPublicRSAKey
 class X509:
     """This class represents an X.509 certificate.
 
-    @type bytes: L{array.array} of unsigned bytes
+    @type bytes: L{bytearray} of unsigned bytes
     @ivar bytes: The DER-encoded ASN.1 certificate
 
     @type publicKey: L{tlslite.utils.RSAKey.RSAKey}
@@ -43,7 +43,7 @@ class X509:
     def parseBinary(self, bytes):
         """Parse a DER-encoded X.509 certificate.
 
-        @type bytes: str or L{array.array} of unsigned bytes
+        @type bytes: str or L{bytearray} of unsigned bytes
         @param bytes: A DER-encoded X.509 certificate.
         """
 

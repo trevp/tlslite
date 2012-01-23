@@ -60,19 +60,17 @@ else:
 
 if os.name != "java":
 
-    import array
     def createByteArraySequence(seq):
-        return array.array('B', seq)
+        return bytearray(seq)
     def createByteArrayZeros(howMany):
-        return array.array('B', [0] * howMany)
+        return bytearray(howMany)
     def concatArrays(a1, a2):
         return a1+a2
 
     def bytesToString(bytes):
-        return bytes.tostring()
+        return str(bytes)
     def stringToBytes(s):
-        bytes = createByteArrayZeros(0)
-        bytes.fromstring(s)
+        bytes = bytearray(s)
         return bytes
 
     import math
