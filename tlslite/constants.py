@@ -110,6 +110,8 @@ class CipherSuite:
     srpSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
+    
+    @staticmethod
     def getSrpSuites(ciphers):
         suites = []
         for cipher in ciphers:
@@ -120,13 +122,14 @@ class CipherSuite:
             elif cipher == "3des":
                 suites.append(CipherSuite.TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
         return suites
-    getSrpSuites = staticmethod(getSrpSuites)
 
     srpRsaSuites = []
     srpRsaSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
     srpRsaSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
     srpRsaSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
-    def getSrpRsaSuites(ciphers):
+    
+    @staticmethod
+    def getSrpCertSuites(ciphers):
         suites = []
         for cipher in ciphers:
             if cipher == "aes128":
@@ -136,14 +139,20 @@ class CipherSuite:
             elif cipher == "3des":
                 suites.append(CipherSuite.TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
         return suites
-    getSrpRsaSuites = staticmethod(getSrpRsaSuites)
+
+    @staticmethod
+    def getSrpAllSuites(ciphers):
+        return CipherSuite.getSrpSuites(ciphers) + \
+         CipherSuite.getSrpCertSuites(ciphers)
 
     rsaSuites = []
     rsaSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
     rsaSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
     rsaSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
     rsaSuites.append(TLS_RSA_WITH_RC4_128_SHA)
-    def getRsaSuites(ciphers):
+    
+    @staticmethod    
+    def getCertSuites(ciphers):
         suites = []
         for cipher in ciphers:
             if cipher == "aes128":
@@ -155,7 +164,6 @@ class CipherSuite:
             elif cipher == "3des":
                 suites.append(CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA)
         return suites
-    getRsaSuites = staticmethod(getRsaSuites)
 
     tripleDESSuites = []
     tripleDESSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)

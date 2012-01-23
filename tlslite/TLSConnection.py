@@ -302,13 +302,17 @@ class TLSConnection(TLSRecordLayer):
         #session                # (session)
         #settings               # settings
 
+        # Assert only one of (srpParams, certParams, unknownParams)
         if srpParams:
+            assert(not certParams and not unknownParams)
             srpUsername, password = srpParams
-        elif certParams:
+        if certParams:
+            assert(not srpParams and not unknownParams)
             clientCertChain, privateKey = certParams
-        elif unknownParams:
+        if unknownParams:
+            assert(not srpParams and not certParams)
             srpCallback, certCallback = unknownParams
-
+            
         if not settings:
             settings = HandshakeSettings()
         settings = settings._filter()
@@ -325,18 +329,12 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed a privateKey but no certChain")
 
         if clientCertChain:
-            foundType = False
-            if not foundType and isinstance(clientCertChain,
-                                            X509CertChain):
-                if "x509" not in settings.certificateTypes:
-                    raise ValueError("Client certificate doesn't match "\
-                                     "Handshake Settings")
-                settings.certificateTypes = ["x509"]
-                foundType = True
-            if not foundType:
+            if not isinstance(clientCertChain, X509CertChain):
                 raise ValueError("Unrecognized certificate type")
-
-
+            if "x509" not in settings.certificateTypes:
+                raise ValueError("Client certificate doesn't match "\
+                                 "Handshake Settings")
+                                 
         if session:
             if not session.valid():
                 session = None #ignore non-resumable sessions...
@@ -362,19 +360,15 @@ class TLSConnection(TLSRecordLayer):
         #Initialize acceptable ciphersuites
         cipherSuites = [CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
         if srpParams:
-            cipherSuites += CipherSuite.getSrpRsaSuites(settings.cipherNames)
-            cipherSuites += CipherSuite.getSrpSuites(settings.cipherNames)
+            cipherSuites += CipherSuite.getSrpAllSuites(settings.cipherNames)
         elif certParams:
-            cipherSuites += CipherSuite.getRsaSuites(settings.cipherNames)
+            cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
         elif unknownParams:
             if srpCallback:
-                cipherSuites += \
-                    CipherSuite.getSrpRsaSuites(settings.cipherNames)
-                cipherSuites += \
-                    CipherSuite.getSrpSuites(settings.cipherNames)
-            cipherSuites += CipherSuite.getRsaSuites(settings.cipherNames)
+                cipherSuites += CipherSuite.getSrpAllSuites(settings.cipherNames)
+            cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
         else:
-            cipherSuites += CipherSuite.getRsaSuites(settings.cipherNames)
+            cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
 
         #Initialize acceptable certificate types
         certificateTypes = settings._getCertificateTypes()
@@ -933,10 +927,10 @@ class TLSConnection(TLSRecordLayer):
         if verifierDB:
             if certChain:
                 cipherSuites += \
-                    CipherSuite.getSrpRsaSuites(settings.cipherNames)
+                    CipherSuite.getSrpCertSuites(settings.cipherNames)
             cipherSuites += CipherSuite.getSrpSuites(settings.cipherNames)
         if certChain:
-            cipherSuites += CipherSuite.getRsaSuites(settings.cipherNames)
+            cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
 
         #Initialize acceptable certificate type
         certificateType = None
