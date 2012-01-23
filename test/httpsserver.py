@@ -27,5 +27,6 @@ class MyHTTPServer(ThreadingMixIn, TLSSocketServerMixIn, HTTPServer):
             print "Handshake failure:", str(error)
             return False
 
+print("I am a TLS Lite test server, I will listen on localhost:4443")
 httpd = MyHTTPServer(('localhost', 4443), SimpleHTTPRequestHandler)
 httpd.serve_forever()

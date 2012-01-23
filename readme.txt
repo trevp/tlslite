@@ -18,10 +18,9 @@ Table of Contents
 9  Using TLS Lite with smtplib
 10 Using TLS Lite with SocketServer
 11 Using TLS Lite with asyncore
-12 Using TLS Lite with Twisted
-13 SECURITY CONSIDERATIONS
-14 History
-15 References
+12 SECURITY CONSIDERATIONS
+13 History
+14 References
 
 
 1 Introduction 
@@ -445,13 +444,13 @@ in TLSAsyncDispatcherMixIn.py for details.  This is still experimental, and
 may not work with all asyncore.dispatcher subclasses.
 
 
-13 Security Considerations
+12 Security Considerations
 ===========================
 TLS Lite is beta-quality code.  It hasn't received much security analysis.
 Use at your own risk.
 
 
-14 History
+13 History
 ===========
 0.3.8a - don't call it a comeback
 0.3.8 - 2/21/2005
@@ -564,43 +563,3 @@ Use at your own risk.
  - added testing functions to tls.py
 0.1.0 - 2/01/2004
  - first release
-
-
-15 References
-==============
-[0] http://www.ietf.org/html.charters/tls-charter.html
-[1] http://www.trevp.net/tls_srp/draft-ietf-tls-srp-07.html
-[2] http://www.ietf.org/internet-drafts/draft-ietf-tls-sharedkeys-02.txt
-[3] http://www.trevp.net/cryptoID/
-[4] http://www.openssl.org/
-[5] http://www.cs.auckland.ac.nz/~pgut001/cryptlib/
-[6] http://sandbox.rulemaker.net/ngps/m2/
-[7] http://trevp.net/cryptlibConverter/
-[8] http://www.trevp.net/cryptoID/
-[9] http://www.amk.ca/python/code/crypto.html
-[10] http://gmpy.sourceforge.net/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
