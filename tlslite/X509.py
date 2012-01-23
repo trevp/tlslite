@@ -100,33 +100,6 @@ class X509:
         """
         return sha1(self.bytes).hexdigest()
 
-    def getCommonName(self):
-        """Get the Subject's Common Name from the certificate.
-
-        The cryptlib_py module must be installed in order to use this
-        function.
-
-        @rtype: str or None
-        @return: The CN component of the certificate's subject DN, if
-        present.
-        """
-        import cryptlib_py
-        import array
-        c = cryptlib_py.cryptImportCert(self.bytes, cryptlib_py.CRYPT_UNUSED)
-        name = cryptlib_py.CRYPT_CERTINFO_COMMONNAME
-        try:
-            try:
-                length = cryptlib_py.cryptGetAttributeString(c, name, None)
-                returnVal = array.array('B', [0] * length)
-                cryptlib_py.cryptGetAttributeString(c, name, returnVal)
-                returnVal = returnVal.tostring()
-            except cryptlib_py.CryptException, e:
-                if e[0] == cryptlib_py.CRYPT_ERROR_NOTFOUND:
-                    returnVal = None
-            return returnVal
-        finally:
-            cryptlib_py.cryptDestroyCert(c)
-
     def writeBytes(self):
         return self.bytes
 
