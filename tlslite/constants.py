@@ -123,10 +123,11 @@ class CipherSuite:
                 suites.append(CipherSuite.TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
         return suites
 
-    srpRsaSuites = []
-    srpRsaSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
-    srpRsaSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
-    srpRsaSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
+    srpCertSuites = []
+    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
+    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
+    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
+    srpAllSuites = srpSuites + srpCertSuites
     
     @staticmethod
     def getSrpCertSuites(ciphers):
@@ -145,11 +146,11 @@ class CipherSuite:
         return CipherSuite.getSrpSuites(ciphers) + \
          CipherSuite.getSrpCertSuites(ciphers)
 
-    rsaSuites = []
-    rsaSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
-    rsaSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
-    rsaSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
-    rsaSuites.append(TLS_RSA_WITH_RC4_128_SHA)
+    certSuites = []
+    certSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
+    certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
+    certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
+    certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     
     @staticmethod    
     def getCertSuites(ciphers):

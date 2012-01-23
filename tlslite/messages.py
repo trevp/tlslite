@@ -365,7 +365,7 @@ class ServerKeyExchange(HandshakeMsg):
         self.srp_g = bytesToNumber(p.getVarBytes(2))
         self.srp_s = p.getVarBytes(1)
         self.srp_B = bytesToNumber(p.getVarBytes(2))
-        if self.cipherSuite in CipherSuite.srpRsaSuites:
+        if self.cipherSuite in CipherSuite.srpCertSuites:
             self.signature = p.getVarBytes(2)
         p.stopLengthCheck()
         return self
@@ -377,7 +377,7 @@ class ServerKeyExchange(HandshakeMsg):
         w.addVarSeq(numberToBytes(self.srp_g), 1, 2)
         w.addVarSeq(self.srp_s, 1, 1)
         w.addVarSeq(numberToBytes(self.srp_B), 1, 2)
-        if self.cipherSuite in CipherSuite.srpRsaSuites:
+        if self.cipherSuite in CipherSuite.srpCertSuites:
             w.addVarSeq(self.signature, 1, 2)
         return HandshakeMsg.postWrite(self, w, trial)
 
@@ -425,10 +425,9 @@ class ClientKeyExchange(HandshakeMsg):
 
     def parse(self, p):
         p.startLengthCheck(3)
-        if self.cipherSuite in CipherSuite.srpSuites + \
-                               CipherSuite.srpRsaSuites:
+        if self.cipherSuite in CipherSuite.srpAllSuites:
             self.srp_A = bytesToNumber(p.getVarBytes(2))
-        elif self.cipherSuite in CipherSuite.rsaSuites:
+        elif self.cipherSuite in CipherSuite.certSuites:
             if self.version in ((3,1), (3,2)):
                 self.encryptedPreMasterSecret = p.getVarBytes(2)
             elif self.version == (3,0):
@@ -444,10 +443,9 @@ class ClientKeyExchange(HandshakeMsg):
     def write(self, trial=False):
         w = HandshakeMsg.preWrite(self, HandshakeType.client_key_exchange,
                                   trial)
-        if self.cipherSuite in CipherSuite.srpSuites + \
-                               CipherSuite.srpRsaSuites:
+        if self.cipherSuite in CipherSuite.srpAllSuites:
             w.addVarSeq(numberToBytes(self.srp_A), 1, 2)
-        elif self.cipherSuite in CipherSuite.rsaSuites:
+        elif self.cipherSuite in CipherSuite.certSuites:
             if self.version in ((3,1), (3,2)):
                 w.addVarSeq(self.encryptedPreMasterSecret, 1, 2)
             elif self.version == (3,0):
