@@ -207,57 +207,13 @@ if gmpyLoaded:
         return long(result)
 
 else:
-    #Copied from Bryan G. Olson's post to comp.lang.python
-    #Does left-to-right instead of pow()'s right-to-left,
-    #thus about 30% faster than the python built-in with small bases
     def powMod(base, power, modulus):
-        nBitScan = 5
-
-        """ Return base**power mod modulus, using multi bit scanning
-        with nBitScan bits at a time."""
-
-        #TREV - Added support for negative exponents
-        negativeResult = False
-        if (power < 0):
-            power *= -1
-            negativeResult = True
-
-        exp2 = 2**nBitScan
-        mask = exp2 - 1
-
-        # Break power into a list of digits of nBitScan bits.
-        # The list is recursive so easy to read in reverse direction.
-        nibbles = None
-        while power:
-            nibbles = power & mask, nibbles
-            power = power >> nBitScan
-
-        # Make a table of powers of base up to 2**nBitScan - 1
-        lowPowers = [1]
-        for i in xrange(1, exp2):
-            lowPowers.append((lowPowers[i-1] * base) % modulus)
-
-        # To exponentiate by the first nibble, look it up in the table
-        nib, nibbles = nibbles
-        prod = lowPowers[nib]
-
-        # For the rest, square nBitScan times, then multiply by
-        # base^nibble
-        while nibbles:
-            nib, nibbles = nibbles
-            for i in xrange(nBitScan):
-                prod = (prod * prod) % modulus
-            if nib: prod = (prod * lowPowers[nib]) % modulus
-
-        #TREV - Added support for negative exponents
-        if negativeResult:
-            prodInv = invMod(prod, modulus)
-            #Check to make sure the inverse is correct
-            if (prod * prodInv) % modulus != 1:
-                raise AssertionError()
-            return prodInv
-        return prod
-
+        if power < 0:
+            result = pow(base, power*-1, modulus)
+            result = invMod(result, modulus)
+            return result
+        else:
+            return pow(base, power, modulus)
 
 #Pre-calculate a sieve of the ~100 primes < 1000:
 def makeSieve(n):
