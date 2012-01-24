@@ -109,6 +109,11 @@ if m2cryptoLoaded:
         generate = staticmethod(generate)
 
         def parse(s, passwordCallback=None):
+            # Skip forward to the first PEM header
+            start = s.find("-----BEGIN ")
+            if start == -1:
+                raise SyntaxError()
+            s = s[start:]            
             if s.startswith("-----BEGIN "):
                 if passwordCallback==None:
                     callback = password_callback
