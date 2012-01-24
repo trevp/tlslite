@@ -79,7 +79,8 @@ class HandshakeSettings:
         self.minVersion = (3,0)
         self.maxVersion = (3,2)
 
-    #Filters out options that are not supported
+    # Validates the min/max fields, and certificateTypes
+    # Filters out unsupported cipherNames and cipherImplementations
     def _filter(self):
         other = HandshakeSettings()
         other.minKeySize = self.minKeySize

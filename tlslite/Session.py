@@ -69,7 +69,7 @@ class Session:
         @rtype: bool
         @return: If this session can be used for session resumption.
         """
-        return self.resumable
+        return self.resumable and self.sessionID
 
     def _setResumable(self, boolean):
         #Only let it be set to True if the sessionID is non-null

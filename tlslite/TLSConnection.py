@@ -320,7 +320,9 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed a certChain but no privateKey")
         if privateKey and not clientCertChain:
             raise ValueError("Caller passed a privateKey but no certChain")
-            
+        
+        # Validates the settings and filters out any unsupported ciphers
+        # or crypto libraries that were requested        
         if not settings:
             settings = HandshakeSettings()
         settings = settings._filter()
@@ -333,6 +335,8 @@ class TLSConnection(TLSRecordLayer):
                                  "Handshake Settings")
                                   
         if session:
+            # session.valid() ensures session is resumable and has 
+            # non-empty sessionID
             if not session.valid():
                 session = None #ignore non-resumable sessions...
             elif session.resumable and \
@@ -350,6 +354,8 @@ class TLSConnection(TLSRecordLayer):
         #parsing the Server Hello, we'll use this version for the response
         self.version = settings.maxVersion
 
+        # Create and send a ClientHello message, containing the 
+        # appropriate ciphersuites and sessionID etc.
         for result in self._clientSendClientHello(settings, session, 
                                             srpUsername,
                                             srpParams, certParams, 
@@ -360,6 +366,14 @@ class TLSConnection(TLSRecordLayer):
                 break
         clientHello = result
         
+        #Get the ServerHello or any Alert that was returned.  If the client
+        #offered SRP ciphersuites without an srpUsername (meaning that an
+        #srpCallback is being used), an unknown_psk_identity may have
+        #been returned, causing this function to call the srpCallback to
+        #get a username/password, then recursively perform an SRP
+        #handshake with these new parameters.
+        #Otherwise the ServerHello is checked for validity and then
+        #returned.
         for result in self._clientGetServerHello(settings, clientHello, 
                                 srpUsername, srpCallback):
             if result in (0,1):
@@ -371,6 +385,8 @@ class TLSConnection(TLSRecordLayer):
         serverHello = result
         cipherSuite = serverHello.cipher_suite
         
+        #If the server elected to resume the session, it is handled
+        #here.
         for result in self._clientResume(session, serverHello, 
                         clientHello.random, 
                         settings.cipherImplementations):
@@ -381,6 +397,9 @@ class TLSConnection(TLSRecordLayer):
         if result == "resumed_and_finished":
             return
 
+        #If the server selected an SRP ciphersuite, the client finishes
+        #reading the post-ServerHello messages, then derives a
+        #premasterSecret and sends a corresponding ClientKeyExchange.
         if cipherSuite in CipherSuite.srpAllSuites:
             for result in self._clientSRPKeyExchange(\
                     settings, cipherSuite, serverHello.certificate_type, 
@@ -390,7 +409,14 @@ class TLSConnection(TLSRecordLayer):
                     yield result
                 else:
                     break
-            (premasterSecret, serverCertChain) = result                
+            (premasterSecret, serverCertChain) = result           
+                
+        #If the server selected a certificate-based RSA ciphersuite,
+        #the client finishes reading the post-ServerHello messages. If 
+        #a CertificateRequest message was sent, the client responds with
+        #a Certificate message containing its certificate chain (if any),
+        #and also produces a CertificateVerify message that signs the 
+        #ClientKeyExchange.
         else:
             for result in self._clientRSAKeyExchange(settings, cipherSuite,
                                     certCallback, clientCertChain, privateKey,
@@ -410,6 +436,10 @@ class TLSConnection(TLSRecordLayer):
         self.session.srpUsername = srpUsername
         self.session.clientCertChain = clientCertChain
         self.session.serverCertChain = serverCertChain
+        
+        
+        #After having previously sent a ClientKeyExchange, the client now
+        #initiates an exchange of Finished messages.
         for result in self._clientFinished(clientHello.random, 
                             serverHello.random,
                             settings.cipherImplementations):
@@ -736,7 +766,6 @@ class TLSConnection(TLSRecordLayer):
                 certParamsNew = certCallback()
                 if certParamsNew:
                     clientCertChain, privateKey = certParamsNew 
-            # What if there's no cert or key?                   
             serverHelloDone = result
         elif isinstance(msg, ServerHelloDone):
             serverHelloDone = msg
@@ -782,8 +811,6 @@ class TLSConnection(TLSRecordLayer):
                         yield result
 
                 clientCertificate.create(clientCertChain)
-
-            #!!! Uhh, what if there's not client cert??
             for result in self._sendMsg(clientCertificate):
                 yield result
         else:
