@@ -319,7 +319,9 @@ class Certificate(HandshakeMsg):
 class CertificateRequest(HandshakeMsg):
     def __init__(self):
         self.contentType = ContentType.handshake
-        self.certificate_types = []
+        #Apple's implementation rejects empty certificate_types, so
+        #default to rsa_sign.
+        self.certificate_types = [ClientCertificateType.rsa_sign]
         #treat as opaque bytes for now
         self.certificate_authorities = createByteArraySequence([])
 
