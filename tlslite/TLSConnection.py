@@ -288,6 +288,7 @@ class TLSConnection(TLSRecordLayer):
 
     def _handshakeClientAsyncHelper(self, srpParams, certParams, unknownParams,
                                session, settings):
+        
         self._handshakeStart(client=True)
 
         #Unpack parameters
@@ -358,10 +359,8 @@ class TLSConnection(TLSRecordLayer):
                                             srpUsername,
                                             srpParams, certParams, 
                                             unknownParams, srpCallback):
-            if result in (0,1):
-                yield result
-            else:
-                break
+            if result in (0,1): yield result
+            else: break
         clientHello = result
         
         #Get the ServerHello or any Alert that was returned.  If the client
@@ -374,24 +373,19 @@ class TLSConnection(TLSRecordLayer):
         #returned.
         for result in self._clientGetServerHello(settings, clientHello, 
                                 srpUsername, srpCallback):
-            if result in (0,1):
-                yield result
-            else:
-                break
+            if result in (0,1): yield result
+            else: break
         if result == "recursed_and_finished_due_to_srp_idiom":
             return
         serverHello = result
         cipherSuite = serverHello.cipher_suite
         
-        #If the server elected to resume the session, it is handled
-        #here.
+        #If the server elected to resume the session, it is handled here.
         for result in self._clientResume(session, serverHello, 
                         clientHello.random, 
                         settings.cipherImplementations):
-            if result in (0,1):
-                yield result
-            else:
-                break
+            if result in (0,1): yield result
+            else: break
         if result == "resumed_and_finished":
             return
 
@@ -403,10 +397,8 @@ class TLSConnection(TLSRecordLayer):
                     settings, cipherSuite, serverHello.certificate_type, 
                     srpUsername, password,
                     clientHello.random, serverHello.random):                
-                if result in (0,1):
-                    yield result
-                else:
-                    break
+                if result in (0,1): yield result
+                else: break                
             (premasterSecret, serverCertChain) = result           
                 
         #If the server selected a certificate-based RSA ciphersuite,
@@ -420,10 +412,8 @@ class TLSConnection(TLSRecordLayer):
                                     certCallback, clientCertChain, privateKey,
                                     serverHello.certificate_type,
                                     clientHello.random, serverHello.random):
-                if result in (0,1):
-                    yield result
-                else:
-                    break
+                if result in (0,1): yield result
+                else: break
             (premasterSecret, serverCertChain) = result
                 
         self.session = Session()
@@ -501,10 +491,8 @@ class TLSConnection(TLSRecordLayer):
         for result in self._getMsg((ContentType.handshake,
                                   ContentType.alert),
                                   HandshakeType.server_hello):
-            if result in (0,1):
-                yield result
-            else:
-                break
+            if result in (0,1): yield result
+            else: break
         msg = result
 
         if isinstance(msg, ServerHello):
@@ -617,28 +605,22 @@ class TLSConnection(TLSRecordLayer):
             #Get Certificate, ServerKeyExchange, ServerHelloDone
             for result in self._getMsg(ContentType.handshake,
                     HandshakeType.certificate, certificateType):
-                if result in (0,1):
-                    yield result
-                else:
-                    break
+                if result in (0,1): yield result
+                else: break
             serverCertificate = result
         else:
             serverCertificate = None
 
         for result in self._getMsg(ContentType.handshake,
                 HandshakeType.server_key_exchange, cipherSuite):
-            if result in (0,1):
-                yield result
-            else:
-                break
+            if result in (0,1): yield result
+            else: break
         serverKeyExchange = result
 
         for result in self._getMsg(ContentType.handshake,
                 HandshakeType.server_hello_done):
-            if result in (0,1):
-                yield result
-            else:
-                break
+            if result in (0,1): yield result
+            else: break
         serverHelloDone = result
             
         #Calculate SRP premaster secret
@@ -688,10 +670,8 @@ class TLSConnection(TLSRecordLayer):
             #Get server's public key from the Certificate message
             for result in self._clientGetKeyFromChain(serverCertificate,
                                                settings):
-                if result in (0,1):
-                    yield result
-                else:
-                    break
+                if result in (0,1): yield result
+                else: break
             publicKey, serverCertChain = result
 
             #Verify signature
@@ -736,19 +716,15 @@ class TLSConnection(TLSRecordLayer):
         #Get Certificate[, CertificateRequest], ServerHelloDone
         for result in self._getMsg(ContentType.handshake,
                 HandshakeType.certificate, certificateType):
-            if result in (0,1):
-                yield result
-            else:
-                break
+            if result in (0,1): yield result
+            else: break
         serverCertificate = result
 
         for result in self._getMsg(ContentType.handshake,
                 (HandshakeType.server_hello_done,
                 HandshakeType.certificate_request)):
-            if result in (0,1):
-                yield result
-            else:
-                break
+            if result in (0,1): yield result
+            else: break
         msg = result
 
         certificateRequest = None
@@ -756,10 +732,8 @@ class TLSConnection(TLSRecordLayer):
             certificateRequest = msg
             for result in self._getMsg(ContentType.handshake,
                     HandshakeType.server_hello_done):
-                if result in (0,1):
-                    yield result
-                else:
-                    break
+                if result in (0,1): yield result
+                else: break
             if certCallback:
                 certParamsNew = certCallback()
                 if certParamsNew:
@@ -771,10 +745,8 @@ class TLSConnection(TLSRecordLayer):
         #Get server's public key from the Certificate message
         for result in self._clientGetKeyFromChain(serverCertificate,
                                            settings):
-            if result in (0,1):
-                yield result
-            else:
-                break
+            if result in (0,1): yield result
+            else: break
         publicKey, serverCertChain = result
 
         #Calculate premaster secret
@@ -861,7 +833,7 @@ class TLSConnection(TLSRecordLayer):
         for result in self._sendFinished():
             yield result
         for result in self._getFinished():
-            yield result        
+            yield result
 
 
     def handshakeServer(self, verifierDB=None,
@@ -1018,10 +990,8 @@ class TLSConnection(TLSRecordLayer):
         #Get ClientHello
         for result in self._getMsg(ContentType.handshake,
                                    HandshakeType.client_hello):
-            if result in (0,1):
-                yield result
-            else:
-                break
+            if result in (0,1): yield result
+            else: break
         clientHello = result
 
         #If client's version is too low, reject it
@@ -1159,10 +1129,8 @@ class TLSConnection(TLSRecordLayer):
                 #Get ClientHello
                 for result in self._getMsg(ContentType.handshake,
                         HandshakeType.client_hello):
-                    if result in (0,1):
-                        yield result
-                    else:
-                        break
+                    if result in (0,1): yield result
+                    else: break
                 clientHello = result
 
                 #Check ClientHello
@@ -1256,10 +1224,8 @@ class TLSConnection(TLSRecordLayer):
             for result in self._getMsg(ContentType.handshake,
                                       HandshakeType.client_key_exchange,
                                       cipherSuite):
-                if result in (0,1):
-                    yield result
-                else:
-                    break
+                if result in (0,1): yield result
+                else: break
             clientKeyExchange = result
             A = clientKeyExchange.srp_A
             if A % N == 0:
@@ -1302,10 +1268,8 @@ class TLSConnection(TLSRecordLayer):
                                                ContentType.alert),
                                                HandshakeType.certificate,
                                                certificateType):
-                        if result in (0,1):
-                            yield result
-                        else:
-                            break
+                        if result in (0,1): yield result
+                        else: break
                     msg = result
 
                     if isinstance(msg, Alert):
@@ -1326,10 +1290,8 @@ class TLSConnection(TLSRecordLayer):
                     for result in self._getMsg(ContentType.handshake,
                                               HandshakeType.certificate,
                                               certificateType):
-                        if result in (0,1):
-                            yield result
-                        else:
-                            break
+                        if result in (0,1): yield result
+                        else: break
                     clientCertificate = result
                     if clientCertificate.certChain and \
                             clientCertificate.certChain.getNumCerts()!=0:
@@ -1341,10 +1303,8 @@ class TLSConnection(TLSRecordLayer):
             for result in self._getMsg(ContentType.handshake,
                                       HandshakeType.client_key_exchange,
                                       cipherSuite):
-                if result in (0,1):
-                    yield result
-                else:
-                    break
+                if result in (0,1): yield result
+                else: break
             clientKeyExchange = result
 
             #Decrypt ClientKeyExchange
@@ -1376,10 +1336,8 @@ class TLSConnection(TLSRecordLayer):
                                                 self._handshake_sha.digest())
                 for result in self._getMsg(ContentType.handshake,
                                           HandshakeType.certificate_verify):
-                    if result in (0,1):
-                        yield result
-                    else:
-                        break
+                    if result in (0,1): yield result
+                    else: break
                 certificateVerify = result
                 publicKey = clientCertChain.getEndEntityPublicKey()
                 if len(publicKey) < settings.minKeySize:

@@ -802,10 +802,8 @@ class TLSRecordLayer:
 
         #Decrypt the record
         for result in self._decryptRecord(r.type, bytes):
-            if result in (0,1):
-                yield result
-            else:
-                break
+            if result in (0,1): yield result
+            else: break
         bytes = result
         p = Parser(bytes)
 
