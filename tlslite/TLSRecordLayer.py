@@ -469,8 +469,8 @@ class TLSRecordLayer:
         #Whenever we're connected and asked to send a message,
         #we first send an empty Application Data message.  This prevents
         #an attacker from launching a chosen-plaintext attack based on
-        #knowing the next IV.
-        if not self.closed and not skipEmptyFrag and self.version == (3,1):
+        #knowing the next IV (a la BEAST).
+        if not self.closed and not skipEmptyFrag and self.version <= (3,1):
             if self._writeState.encContext:
                 if self._writeState.encContext.isBlockCipher:
                     for result in self._sendMsg(ApplicationData(),
