@@ -965,7 +965,7 @@ class TLSConnection(TLSRecordLayer):
             verifierDB=verifierDB, certChain=certChain,
             privateKey=privateKey, reqCert=reqCert,
             sessionCache=sessionCache, settings=settings, 
-            reqCAs=None)
+            reqCAs=reqCAs)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
