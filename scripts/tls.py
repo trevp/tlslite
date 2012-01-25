@@ -29,6 +29,20 @@ def parsePrivateKey(s):
         return parseXMLKey(s, private=True)
 
 
+def testConnClient(conn):
+    b1 = os.urandom(1)
+    b10 = os.urandom(10)
+    b100 = os.urandom(100)
+    b1000 = os.urandom(1000)
+    conn.write(b1)
+    conn.write(b10)
+    conn.write(b100)
+    conn.write(b1000)
+    assert(conn.read(min=1, max=1) == b1)
+    assert(conn.read(min=10, max=10) == b10)
+    assert(conn.read(min=100, max=100) == b100)
+    assert(conn.read(min=1000, max=1000) == b1000)
+
 def clientTest(address, dir):
 
     #Split address into hostname/port tuple
@@ -52,6 +66,7 @@ def clientTest(address, dir):
     print "Test 3 - good SRP"
     connection = connect()
     connection.handshakeClientSRP("test", "password")
+    testConnClient(connection)
     connection.close()
 
     print "Test 4 - SRP faults"
@@ -64,7 +79,6 @@ def clientTest(address, dir):
         except TLSFaultError, e:
             print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
             badFault = True
-        connection.sock.close()
 
     #print "Test 5 - good SRP: unknown_psk_identity idiom"
     #def srpCallback():
@@ -72,14 +86,13 @@ def clientTest(address, dir):
     #connection = connect()
     #connection.handshakeClientUnknown(srpCallback=srpCallback)
     #connection.close()
-    #connection.sock.close()
 
     print "Test 6 - good SRP: with X.509 certificate"
     connection = connect()
     connection.handshakeClientSRP("test", "password")
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    testConnClient(connection)
     connection.close()
-    connection.sock.close()
 
     print "Test 7 - X.509 with SRP faults"
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
@@ -91,14 +104,13 @@ def clientTest(address, dir):
         except TLSFaultError, e:
             print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
             badFault = True
-        connection.sock.close()
 
     print "Test 10 - good X509"
     connection = connect()
     connection.handshakeClientCert()
+    testConnClient(connection)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
-    connection.sock.close()
 
     print "Test 10.a - good X509, SSLv3"
     connection = connect()
@@ -106,9 +118,9 @@ def clientTest(address, dir):
     settings.minVersion = (3,0)
     settings.maxVersion = (3,0)
     connection.handshakeClientCert(settings=settings)
+    testConnClient(connection)    
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
-    connection.sock.close()
 
     print "Test 11 - X.509 faults"
     for fault in Fault.clientNoAuthFaults + Fault.genericFaults:
@@ -120,7 +132,6 @@ def clientTest(address, dir):
         except TLSFaultError, e:
             print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
             badFault = True
-        connection.sock.close()
 
     print "Test 14 - good mutual X509"
     x509Cert = X509().parse(open(os.path.join(dir, "clientX509Cert.pem")).read())
@@ -130,9 +141,9 @@ def clientTest(address, dir):
 
     connection = connect()
     connection.handshakeClientCert(x509Chain, x509Key)
+    testConnClient(connection)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
-    connection.sock.close()
 
     print "Test 14.a - good mutual X509, SSLv3"
     connection = connect()
@@ -140,9 +151,9 @@ def clientTest(address, dir):
     settings.minVersion = (3,0)
     settings.maxVersion = (3,0)
     connection.handshakeClientCert(x509Chain, x509Key, settings=settings)
+    testConnClient(connection)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
-    connection.sock.close()
 
     print "Test 15 - mutual X.509 faults"
     for fault in Fault.clientCertFaults + Fault.genericFaults:
@@ -154,18 +165,18 @@ def clientTest(address, dir):
         except TLSFaultError, e:
             print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
             badFault = True
-        connection.sock.close()
 
     print "Test 18 - good SRP, prepare to resume..."
     connection = connect()
     connection.handshakeClientSRP("test", "password")
+    testConnClient(connection)
     connection.close()
-    connection.sock.close()
     session = connection.session
 
     print "Test 19 - resumption"
     connection = connect()
     connection.handshakeClientSRP("test", "garbage", session=session)
+    testConnClient(connection)
     #Don't close! -- see below
 
     print "Test 20 - invalidated resumption"
@@ -173,11 +184,12 @@ def clientTest(address, dir):
     connection = connect()
     try:
         connection.handshakeClientSRP("test", "garbage", session=session)
+        testConnClient(connection)
         assert()
     except TLSRemoteAlert, alert:
         if alert.description != AlertDescription.bad_record_mac:
             raise
-    connection.sock.close()
+    connection.close()
 
     print "Test 21 - HTTPS test X.509"
     address = address[0], address[1]+1
@@ -229,13 +241,9 @@ def clientTest(address, dir):
             settings.cipherNames = [cipher]
             settings.cipherImplementations = [implementation, "python"]
             connection.handshakeClientCert(settings=settings)
+            testConnClient(connection)
             print ("%s %s" % (connection.getCipherName(), connection.getCipherImplementation()))
-
-            connection.write("hello")
-            h = connection.read(min=5, max=5)
-            assert(h == "hello")
             connection.close()
-            connection.sock.close()
 
     print "Test 23 - throughput test"
     for implementation in implementations:
@@ -263,7 +271,6 @@ def clientTest(address, dir):
 
             assert(h == "hello"*10000)
             connection.close()
-            connection.sock.close()
 
     print "Test 24 - Internet servers test"
     try:
@@ -282,6 +289,18 @@ def clientTest(address, dir):
     else:
         print "Test failed"
 
+
+
+def testConnServer(connection):
+    count = 0
+    while 1:
+        s = connection.read()
+        count += len(s)
+        if len(s) == 0:
+            break
+        connection.write(s)
+        if count == 1111:
+            break
 
 def serverTest(address, dir):
     #Split address into hostname/port tuple
@@ -308,8 +327,8 @@ def serverTest(address, dir):
 
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB)
+    testConnServer(connection)
     connection.close()
-    connection.sock.close()
 
     print "Test 4 - SRP faults"
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
@@ -320,7 +339,7 @@ def serverTest(address, dir):
             assert()
         except:
             pass
-        connection.sock.close()
+        connection.close()
 
     #print "Test 5 - good SRP: unknown_psk_identity idiom"
     #connection = connect()
@@ -337,8 +356,8 @@ def serverTest(address, dir):
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB, \
                                certChain=x509Chain, privateKey=x509Key)
+    testConnServer(connection)    
     connection.close()
-    connection.sock.close()
 
     print "Test 7 - X.509 with SRP faults"
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
@@ -350,13 +369,13 @@ def serverTest(address, dir):
             assert()
         except:
             pass
-        connection.sock.close()
+        connection.close()
 
     print "Test 10 - good X.509"
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
+    testConnServer(connection)    
     connection.close()
-    connection.sock.close()
 
     print "Test 10.a - good X.509, SSL v3"
     connection = connect()
@@ -364,8 +383,8 @@ def serverTest(address, dir):
     settings.minVersion = (3,0)
     settings.maxVersion = (3,0)
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
+    testConnServer(connection)
     connection.close()
-    connection.sock.close()
 
     print "Test 11 - X.509 faults"
     for fault in Fault.clientNoAuthFaults + Fault.genericFaults:
@@ -376,14 +395,14 @@ def serverTest(address, dir):
             assert()
         except:
             pass
-        connection.sock.close()
+        connection.close()
 
     print "Test 14 - good mutual X.509"
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True)
+    testConnServer(connection)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
-    connection.sock.close()
 
     print "Test 14a - good mutual X.509, SSLv3"
     connection = connect()
@@ -391,9 +410,9 @@ def serverTest(address, dir):
     settings.minVersion = (3,0)
     settings.maxVersion = (3,0)
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True, settings=settings)
+    testConnServer(connection)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
-    connection.sock.close()
 
     print "Test 15 - mutual X.509 faults"
     for fault in Fault.clientCertFaults + Fault.genericFaults:
@@ -404,18 +423,19 @@ def serverTest(address, dir):
             assert()
         except:
             pass
-        connection.sock.close()
+        connection.close()
 
     print "Test 18 - good SRP, prepare to resume"
     sessionCache = SessionCache()
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB, sessionCache=sessionCache)
+    testConnServer(connection)
     connection.close()
-    connection.sock.close()
 
     print "Test 19 - resumption"
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB, sessionCache=sessionCache)
+    testConnServer(connection)    
     #Don't close! -- see next test
 
     print "Test 20 - invalidated resumption"
@@ -430,7 +450,7 @@ def serverTest(address, dir):
     except TLSLocalAlert, alert:
         if alert.description != AlertDescription.bad_record_mac:
             raise
-    connection.sock.close()
+    connection.close()
 
     print "Test 21 - HTTPS test X.509"
 
@@ -484,11 +504,8 @@ def serverTest(address, dir):
             connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
                                         settings=settings)
             print connection.getCipherName(), connection.getCipherImplementation()
-            h = connection.read(min=5, max=5)
-            assert(h == "hello")
-            connection.write(h)
+            testConnServer(connection)
             connection.close()
-            connection.sock.close()
 
     print "Test 23 - throughput test"
     for implementation in implementations:
@@ -510,7 +527,6 @@ def serverTest(address, dir):
             assert(h == "hello"*10000)
             connection.write(h)
             connection.close()
-            connection.sock.close()
 
     print "Test succeeded"
 
@@ -675,7 +691,6 @@ try:
         if connection.session.serverCertChain:
             print "  Server fingerprint: %s" % connection.session.serverCertChain.getFingerprint()
         connection.close()
-        connection.sock.close()
 
     elif cmd.startswith("server"):
         address = args.get(2)

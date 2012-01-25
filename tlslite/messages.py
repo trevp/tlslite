@@ -546,6 +546,11 @@ class ApplicationData(Msg):
     def create(self, bytes):
         self.bytes = bytes
         return self
+        
+    def splitFirstByte(self):
+        newMsg = ApplicationData().create(self.bytes[:1])
+        self.bytes = self.bytes[1:]
+        return newMsg
 
     def parse(self, p):
         self.bytes = p.bytes

@@ -247,7 +247,7 @@ class TLSRecordLayer:
 
             index = 0
             blockSize = 16384
-            skipEmptyFrag = False
+            randomizeFirstBlock = True
             while 1:
                 startIndex = index * blockSize
                 endIndex = startIndex + blockSize
@@ -257,9 +257,10 @@ class TLSRecordLayer:
                     endIndex = len(s)
                 block = stringToBytes(s[startIndex : endIndex])
                 applicationData = ApplicationData().create(block)
-                for result in self._sendMsg(applicationData, skipEmptyFrag):
+                for result in self._sendMsg(applicationData, \
+                                            randomizeFirstBlock):
                     yield result
-                skipEmptyFrag = True #only send an empy fragment on 1st message
+                randomizeFirstBlock = False #only on 1st message
                 index += 1
         except GeneratorExit:
             raise
@@ -456,26 +457,34 @@ class TLSRecordLayer:
         raise TLSLocalAlert(alert, errorStr)
 
     def _sendMsgs(self, msgs):
-        skipEmptyFrag = False
+        randomizeFirstBlock = True
         for msg in msgs:
-            for result in self._sendMsg(msg, skipEmptyFrag):
+            for result in self._sendMsg(msg, randomizeFirstBlock):
                 yield result
-            skipEmptyFrag = True
+            randomizeFirstBlock = True
 
-    def _sendMsg(self, msg, skipEmptyFrag=False):
-        bytes = msg.write()
-        contentType = msg.contentType
-
-        #Whenever we're connected and asked to send a message,
-        #we first send an empty Application Data message.  This prevents
+    def _sendMsg(self, msg, randomizeFirstBlock = True):
+        #Whenever we're connected and asked to send an app data message,
+        #we first send the first byte of the message.  This prevents
         #an attacker from launching a chosen-plaintext attack based on
         #knowing the next IV (a la BEAST).
-        if not self.closed and not skipEmptyFrag and self.version <= (3,1):
-            if self._writeState.encContext:
-                if self._writeState.encContext.isBlockCipher:
-                    for result in self._sendMsg(ApplicationData(),
-                                               skipEmptyFrag=True):
-                        yield result
+        if not self.closed and randomizeFirstBlock and self.version <= (3,1) \
+                and self._writeState.encContext \
+                and self._writeState.encContext.isBlockCipher \
+                and isinstance(msg, ApplicationData):
+            msgFirstByte = msg.splitFirstByte()
+            for result in self._sendMsg(msgFirstByte,
+                                       randomizeFirstBlock = False):
+                yield result                                            
+
+        bytes = msg.write()
+        
+        # For example, if a 1-byte message was passed in, and we "split" the 
+        # first(only) byte off above, we may get here
+        if len(bytes) == 0:
+            return
+            
+        contentType = msg.contentType
 
         #Update handshake hashes
         if contentType == ContentType.handshake:
