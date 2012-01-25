@@ -865,9 +865,11 @@ class TLSConnection(TLSRecordLayer):
         for result in self._getFinished():
             yield result        
 
+
     def handshakeServer(self, verifierDB=None,
                         certChain=None, privateKey=None, reqCert=False,
-                        sessionCache=None, settings=None, checker=None):
+                        sessionCache=None, settings=None, checker=None,
+                        reqCAs = None):
         """Perform a handshake in the role of server.
 
         This function performs an SSL or TLS handshake.  Depending on
@@ -925,6 +927,11 @@ class TLSConnection(TLSRecordLayer):
         @param checker: A Checker instance.  This instance will be
         invoked to examine the other party's authentication
         credentials, if the handshake completes succesfully.
+        
+        @type reqCAs: list of L{array.array} of unsigned bytes
+        @param reqCAs: A collection of DER-encoded DistinguishedNames that
+        will be sent along with a certificate request. This does not affect
+        verification.        
 
         @raise socket.error: If a socket error occurs.
         @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
@@ -935,13 +942,14 @@ class TLSConnection(TLSRecordLayer):
         """
         for result in self.handshakeServerAsync(verifierDB,
                 certChain, privateKey, reqCert, sessionCache, settings,
-                checker):
+                checker, reqCAs):
             pass
 
 
     def handshakeServerAsync(self, verifierDB=None,
                              certChain=None, privateKey=None, reqCert=False,
-                             sessionCache=None, settings=None, checker=None):
+                             sessionCache=None, settings=None, checker=None,
+                             reqCAs=None):
         """Start a server handshake operation on the TLS connection.
 
         This function returns a generator which behaves similarly to
@@ -956,14 +964,15 @@ class TLSConnection(TLSRecordLayer):
         handshaker = self._handshakeServerAsyncHelper(\
             verifierDB=verifierDB, certChain=certChain,
             privateKey=privateKey, reqCert=reqCert,
-            sessionCache=sessionCache, settings=settings)
+            sessionCache=sessionCache, settings=settings, 
+            reqCAs=None)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
 
     def _handshakeServerAsyncHelper(self, verifierDB,
                              certChain, privateKey, reqCert, sessionCache,
-                             settings):
+                             settings, reqCAs):
 
         self._handshakeStart(client=False)
 
@@ -973,6 +982,8 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed a certChain but no privateKey")
         if privateKey and not certChain:
             raise ValueError("Caller passed a privateKey but no certChain")
+        if reqCAs and not reqCert:
+            raise ValueError("Caller passed reqCAs but not reqCert")            
 
         if not settings:
             settings = HandshakeSettings()
@@ -1271,7 +1282,10 @@ class TLSConnection(TLSRecordLayer):
             msgs.append(ServerHello().create(self.version, serverRandom,
                         sessionID, cipherSuite, certificateType))
             msgs.append(Certificate(certificateType).create(serverCertChain))
-            if reqCert:
+            if reqCert and reqCAs:
+                msgs.append(CertificateRequest().create(\
+                    [ClientCertificateType.rsa_sign], reqCAs))
+            elif reqCert:
                 msgs.append(CertificateRequest())
             msgs.append(ServerHelloDone())
             for result in self._sendMsgs(msgs):
