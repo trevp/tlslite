@@ -457,9 +457,6 @@ class TLSConnection(TLSRecordLayer):
 
         #Initialize acceptable certificate types
         certificateTypes = settings._getCertificateTypes()
-        
-        #Get client nonce
-        clientRandom = getRandomBytes(32)        
             
         #Either send ClientHello (with a resumable session)...
         if session and session.sessionID:
@@ -470,14 +467,14 @@ class TLSConnection(TLSRecordLayer):
                                  "with parameters")
             else:
                 clientHello = ClientHello()
-                clientHello.create(settings.maxVersion, clientRandom,
+                clientHello.create(settings.maxVersion, getRandomBytes(32),
                                    session.sessionID, cipherSuites,
                                    certificateTypes, session.srpUsername)
 
         #Or send ClientHello (without)
         else:
             clientHello = ClientHello()
-            clientHello.create(settings.maxVersion, clientRandom,
+            clientHello.create(settings.maxVersion, getRandomBytes(32),
                                createByteArraySequence([]), cipherSuites,
                                certificateTypes, srpUsername)
         for result in self._sendMsg(clientHello):
@@ -959,142 +956,25 @@ class TLSConnection(TLSRecordLayer):
             settings = HandshakeSettings()
         settings = settings._filter()
 
-        #Initialize acceptable cipher suites
-        cipherSuites = []
-        if verifierDB:
-            if certChain:
-                cipherSuites += \
-                    CipherSuite.getSrpCertSuites(settings.cipherNames)
-            cipherSuites += CipherSuite.getSrpSuites(settings.cipherNames)
-        if certChain:
-            cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
-
-        #Initialize acceptable certificate type
-        certificateType = None
-        if certChain:
-            if isinstance(certChain, X509CertChain):
-                certificateType = CertificateType.x509
-            if certificateType == None:
-                raise ValueError("Unrecognized certificate type")
-
         #Initialize locals
         clientCertChain = None
         serverCertChain = None #We may set certChain to this later
         postFinishedError = None
-
-        #Tentatively set version to most-desirable version, so if an error
-        #occurs parsing the ClientHello, this is what we'll use for the
-        #error alert
-        self.version = settings.maxVersion
-
-        #Get ClientHello
-        for result in self._getMsg(ContentType.handshake,
-                                   HandshakeType.client_hello):
+        
+        for result in self._serverGetClientHello(settings, certChain,\
+                                                 verifierDB, False, sessionCache):
             if result in (0,1): yield result
+            elif result == None:
+                return # Handshake was resumed, we're done 
             else: break
-        clientHello = result
-
-        #If client's version is too low, reject it
-        if clientHello.client_version < settings.minVersion:
-            self.version = settings.minVersion
-            for result in self._sendError(\
-                  AlertDescription.protocol_version,
-                  "Too old version: %s" % str(clientHello.client_version)):
-                yield result
-
-        #If client's version is too high, propose my highest version
-        elif clientHello.client_version > settings.maxVersion:
-            self.version = settings.maxVersion
-
-        else:
-            #Set the version to the client's version
-            self.version = clientHello.client_version
-
-        #Get the client nonce; create server nonce
-        clientRandom = clientHello.random
-        serverRandom = getRandomBytes(32)
-
-        #Calculate the first cipher suite intersection.
-        #This is the 'privileged' ciphersuite.  We'll use it if we're
-        #doing a new negotiation.  In fact,
-        #the only time we won't use it is if we're resuming a
-        #session, in which case we use the ciphersuite from the session.
-        #
-        #Given the current ciphersuite ordering, this means we prefer SRP
-        #over non-SRP.
-        for cipherSuite in cipherSuites:
-            if cipherSuite in clientHello.cipher_suites:
-                break
-        else:
-            for result in self._sendError(\
-                    AlertDescription.handshake_failure):
-                yield result
-
-        #If resumption was requested...
-        if clientHello.session_id and sessionCache:
-            session = None
-
-            #Check in the session cache
-            if sessionCache and not session:
-                try:
-                    session = sessionCache[bytesToString(\
-                                               clientHello.session_id)]
-                    if not session.resumable:
-                        raise AssertionError()
-                    #Check for consistency with ClientHello
-                    if session.cipherSuite not in cipherSuites:
-                        for result in self._sendError(\
-                                AlertDescription.handshake_failure):
-                            yield result
-                    if session.cipherSuite not in clientHello.cipher_suites:
-                        for result in self._sendError(\
-                                AlertDescription.handshake_failure):
-                            yield result
-                    if clientHello.srp_username:
-                        if clientHello.srp_username != session.srpUsername:
-                            for result in self._sendError(\
-                                    AlertDescription.handshake_failure):
-                                yield result
-                except KeyError:
-                    pass
-
-            #If a session is found..
-            if session:
-                #Set the session
-                self.session = session
-
-                #Send ServerHello
-                serverHello = ServerHello()
-                serverHello.create(self.version, serverRandom,
-                                   session.sessionID, session.cipherSuite,
-                                   certificateType)
-                for result in self._sendMsg(serverHello):
-                    yield result
-
-                #From here on, the client's messages must have the right version
-                self._versionCheck = True
-
-                #Calculate pending connection states
-                self._calcPendingStates(clientRandom, serverRandom,
-                                       settings.cipherImplementations)
-
-                #Exchange ChangeCipherSpec and Finished messages
-                for result in self._sendFinished():
-                    yield result
-                for result in self._getFinished():
-                    yield result
-
-                #Mark the connection as open
-                self._handshakeDone(resumed=True)
-                return
-
-
-        #If not a resumption...
+        (clientHello, cipherSuite) = result
+        
+        #If not a resumption
 
         #If an RSA suite is chosen, check for certificate type intersection
         if cipherSuite in CipherSuite.certSuites + \
                           CipherSuite.srpCertSuites:
-            if certificateType not in clientHello.certificate_types:
+            if CertificateType.x509 not in clientHello.certificate_types:
                 for result in self._sendError(\
                         AlertDescription.handshake_failure,
                         "the client doesn't support my certificate type"):
@@ -1102,7 +982,6 @@ class TLSConnection(TLSRecordLayer):
 
             #Move certChain -> serverCertChain, now that we're using it
             serverCertChain = certChain
-
 
         #Create sessionID
         if sessionCache:
@@ -1125,56 +1004,13 @@ class TLSConnection(TLSRecordLayer):
                     
                 # Reset the handshake hashes
                 self._handshakeStart(client=False)
-
-                #Get ClientHello
-                for result in self._getMsg(ContentType.handshake,
-                        HandshakeType.client_hello):
-                    if result in (0,1): yield result
+                
+                # Get a second ClientHello
+                for result in self._serverGetClientHello(settings, certChain,\
+                                                         verifierDB, False, sessionCache):
+                    if result in (0,1): yield result 
                     else: break
-                clientHello = result
-
-                #Check ClientHello
-                #If client's version is too low, reject it (COPIED CODE; BAD!)
-                if clientHello.client_version < settings.minVersion:
-                    self.version = settings.minVersion
-                    for result in self._sendError(\
-                          AlertDescription.protocol_version,
-                          "Too old version: %s" % str(clientHello.client_version)):
-                        yield result
-
-                #If client's version is too high, propose my highest version
-                elif clientHello.client_version > settings.maxVersion:
-                    self.version = settings.maxVersion
-
-                else:
-                    #Set the version to the client's version
-                    self.version = clientHello.client_version
-
-                #Recalculate the privileged cipher suite, making sure to
-                #pick an SRP suite
-                cipherSuites = [c for c in cipherSuites if c in \
-                                CipherSuite.srpSuites + \
-                                CipherSuite.srpCertSuites]
-                for cipherSuite in cipherSuites:
-                    if cipherSuite in clientHello.cipher_suites:
-                        break
-                else:
-                    for result in self._sendError(\
-                            AlertDescription.handshake_failure):
-                        yield result
-
-                #Get the client nonce; create server nonce
-                clientRandom = clientHello.random
-                serverRandom = getRandomBytes(32)
-
-                #The username better be there, this time
-                if not clientHello.srp_username:
-                    for result in self._sendError(\
-                            AlertDescription.illegal_parameter,
-                            "Client resent a hello, but without the SRP"\
-                            " username"):
-                        yield result
-
+                (clientHello, cipherSuite) = result                
 
             #Get username
             self.allegedSrpUsername = clientHello.srp_username
@@ -1188,6 +1024,10 @@ class TLSConnection(TLSRecordLayer):
                     yield result
             (N, g, s, v) = entry
 
+            serverHello = ServerHello()
+            serverHello.create(self.version, serverHello.random, sessionID,
+                               cipherSuite, CertificateType.x509)            
+
             #Calculate server's ephemeral DH values (b, B)
             b = bytesToNumber(getRandomBytes(32))
             k = makeK(N, g)
@@ -1197,19 +1037,16 @@ class TLSConnection(TLSRecordLayer):
             serverKeyExchange = ServerKeyExchange(cipherSuite)
             serverKeyExchange.createSRP(N, g, stringToBytes(s), B)
             if cipherSuite in CipherSuite.srpCertSuites:
-                hashBytes = serverKeyExchange.hash(clientRandom,
-                                                   serverRandom)
+                hashBytes = serverKeyExchange.hash(clientHello.random,
+                                                   serverHello.random)
                 serverKeyExchange.signature = privateKey.sign(hashBytes)
 
             #Send ServerHello[, Certificate], ServerKeyExchange,
             #ServerHelloDone
             msgs = []
-            serverHello = ServerHello()
-            serverHello.create(self.version, serverRandom, sessionID,
-                               cipherSuite, certificateType)
             msgs.append(serverHello)
             if cipherSuite in CipherSuite.srpCertSuites:
-                certificateMsg = Certificate(certificateType)
+                certificateMsg = Certificate(CertificateType.x509)
                 certificateMsg.create(serverCertChain)
                 msgs.append(certificateMsg)
             msgs.append(serverKeyExchange)
@@ -1246,9 +1083,11 @@ class TLSConnection(TLSRecordLayer):
             #Send ServerHello, Certificate[, CertificateRequest],
             #ServerHelloDone
             msgs = []
-            msgs.append(ServerHello().create(self.version, serverRandom,
-                        sessionID, cipherSuite, certificateType))
-            msgs.append(Certificate(certificateType).create(serverCertChain))
+            serverHello = ServerHello()
+            serverHello.create(self.version, getRandomBytes(32),
+                        sessionID, cipherSuite, CertificateType.x509)
+            msgs.append(serverHello)
+            msgs.append(Certificate(CertificateType.x509).create(serverCertChain))
             if reqCert and reqCAs:
                 msgs.append(CertificateRequest().create(\
                     [ClientCertificateType.rsa_sign], reqCAs))
@@ -1267,7 +1106,7 @@ class TLSConnection(TLSRecordLayer):
                     for result in self._getMsg((ContentType.handshake,
                                                ContentType.alert),
                                                HandshakeType.certificate,
-                                               certificateType):
+                                               CertificateType.x509):
                         if result in (0,1): yield result
                         else: break
                     msg = result
@@ -1289,7 +1128,7 @@ class TLSConnection(TLSRecordLayer):
                 elif self.version in ((3,1), (3,2)):
                     for result in self._getMsg(ContentType.handshake,
                                               HandshakeType.certificate,
-                                              certificateType):
+                                              CertificateType.x509):
                         if result in (0,1): yield result
                         else: break
                     clientCertificate = result
@@ -1328,7 +1167,7 @@ class TLSConnection(TLSRecordLayer):
                     #of checking the CertificateVerify
                     session = Session()
                     session._calcMasterSecret(self.version, premasterSecret,
-                                             clientRandom, serverRandom)
+                                             clientHello.random, serverHello.random)
                     verifyBytes = self._calcSSLHandshakeHash(\
                                     session.masterSecret, "")
                 elif self.version in ((3,1), (3,2)):
@@ -1356,7 +1195,7 @@ class TLSConnection(TLSRecordLayer):
         #Create the session object
         self.session = Session()
         self.session._calcMasterSecret(self.version, premasterSecret,
-                                      clientRandom, serverRandom)
+                                      clientHello.random, serverHello.random)
         self.session.sessionID = sessionID
         self.session.cipherSuite = cipherSuite
         self.session.srpUsername = self.allegedSrpUsername
@@ -1364,7 +1203,7 @@ class TLSConnection(TLSRecordLayer):
         self.session.serverCertChain = serverCertChain
 
         #Calculate pending connection states
-        self._calcPendingStates(clientRandom, serverRandom,
+        self._calcPendingStates(clientHello.random, serverHello.random,
                                settings.cipherImplementations)
 
         #Exchange ChangeCipherSpec and Finished messages
@@ -1393,6 +1232,147 @@ class TLSConnection(TLSRecordLayer):
         #Mark the connection as open
         self.session._setResumable(True)
         self._handshakeDone(resumed=False)
+
+
+
+    def _serverGetClientHello(self, settings, certChain, verifierDB, srpMust,
+                                sessionCache):
+        #Initialize acceptable cipher suites
+        cipherSuites = []
+        if srpMust:
+            assert(verifierDB)
+        if verifierDB:
+            if certChain:
+                cipherSuites += \
+                    CipherSuite.getSrpCertSuites(settings.cipherNames)
+            cipherSuites += CipherSuite.getSrpSuites(settings.cipherNames)        
+        if certChain and not srpMust:
+            cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
+
+        #Initialize acceptable certificate type
+        if certChain:
+            if not isinstance(certChain, X509CertChain):
+                ValueError("Unrecognized certificate type")
+
+        #Tentatively set version to most-desirable version, so if an error
+        #occurs parsing the ClientHello, this is what we'll use for the
+        #error alert
+        self.version = settings.maxVersion
+
+        #Get ClientHello
+        for result in self._getMsg(ContentType.handshake,
+                                   HandshakeType.client_hello):
+            if result in (0,1): yield result
+            else: break
+        clientHello = result
+
+        #If client's version is too low, reject it
+        if clientHello.client_version < settings.minVersion:
+            self.version = settings.minVersion
+            for result in self._sendError(\
+                  AlertDescription.protocol_version,
+                  "Too old version: %s" % str(clientHello.client_version)):
+                yield result
+
+        #If client's version is too high, propose my highest version
+        elif clientHello.client_version > settings.maxVersion:
+            self.version = settings.maxVersion
+
+        else:
+            #Set the version to the client's version
+            self.version = clientHello.client_version
+
+        #Calculate the first cipher suite intersection.
+        #This is the 'privileged' ciphersuite.  We'll use it if we're
+        #doing a new negotiation.  In fact,
+        #the only time we won't use it is if we're resuming a
+        #session, in which case we use the ciphersuite from the session.
+        #
+        #Given the current ciphersuite ordering, this means we prefer SRP
+        #over non-SRP.
+        for cipherSuite in cipherSuites:
+            if cipherSuite in clientHello.cipher_suites:
+                break
+        else:
+            for result in self._sendError(\
+                    AlertDescription.handshake_failure):
+                yield result
+
+        # If doing the SRP missing username idiom
+        # the username better be there, this time
+        if srpMust and not clientHello.srp_username:
+            for result in self._sendError(\
+                    AlertDescription.illegal_parameter,
+                    "Client resent a hello, but without the SRP"\
+                    " username"):
+                yield result    
+        
+        #If resumption was requested and we have a session cache...
+        if clientHello.session_id and sessionCache:
+            session = None
+
+            #Check in the session cache
+            if sessionCache and not session:
+                try:
+                    session = sessionCache[bytesToString(\
+                                               clientHello.session_id)]
+                    if not session.resumable:
+                        raise AssertionError()
+                    #Check for consistency with ClientHello
+                    if session.cipherSuite not in cipherSuites:
+                        for result in self._sendError(\
+                                AlertDescription.handshake_failure):
+                            yield result
+                    if session.cipherSuite not in clientHello.cipher_suites:
+                        for result in self._sendError(\
+                                AlertDescription.handshake_failure):
+                            yield result
+                    if clientHello.srp_username:
+                        if clientHello.srp_username != session.srpUsername:
+                            for result in self._sendError(\
+                                    AlertDescription.handshake_failure):
+                                yield result
+                except KeyError:
+                    pass
+
+            #If a session is found..
+            if session:
+                #Set the session
+                self.session = session
+
+                #Send ServerHello
+                serverHello = ServerHello()
+                serverHello.create(self.version, getRandomBytes(32),
+                                   session.sessionID, session.cipherSuite,
+                                   CertificateType.x509)
+                for result in self._sendMsg(serverHello):
+                    yield result
+
+                #From here on, the client's messages must have the right version
+                self._versionCheck = True
+
+                #Calculate pending connection states
+                self._calcPendingStates(clientHello.random, serverHello.random,
+                                       settings.cipherImplementations)
+
+                #Exchange ChangeCipherSpec and Finished messages
+                for result in self._sendFinished():
+                    yield result
+                for result in self._getFinished():
+                    yield result
+
+                #Mark the connection as open
+                self._handshakeDone(resumed=True)
+                yield None # Handshake done!
+
+        # If resumption was not requested, or
+        # we have no session cache, or
+        # the client's session_id was not found in cache:
+        yield (clientHello, cipherSuite)
+
+
+
+
 
 
     def _handshakeWrapperAsync(self, handshaker, checker):
