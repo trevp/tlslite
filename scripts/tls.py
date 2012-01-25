@@ -66,13 +66,13 @@ def clientTest(address, dir):
             badFault = True
         connection.sock.close()
 
-    print "Test 5 - good SRP: unknown_psk_identity idiom"
-    def srpCallback():
-        return ("test", "password")
-    connection = connect()
-    connection.handshakeClientUnknown(srpCallback=srpCallback)
-    connection.close()
-    connection.sock.close()
+    #print "Test 5 - good SRP: unknown_psk_identity idiom"
+    #def srpCallback():
+    #    return ("test", "password")
+    #connection = connect()
+    #connection.handshakeClientUnknown(srpCallback=srpCallback)
+    #connection.close()
+    #connection.sock.close()
 
     print "Test 6 - good SRP: with X.509 certificate"
     connection = connect()
@@ -322,11 +322,11 @@ def serverTest(address, dir):
             pass
         connection.sock.close()
 
-    print "Test 5 - good SRP: unknown_psk_identity idiom"
-    connection = connect()
-    connection.handshakeServer(verifierDB=verifierDB)
-    connection.close()
-    connection.sock.close()
+    #print "Test 5 - good SRP: unknown_psk_identity idiom"
+    #connection = connect()
+    #connection.handshakeServer(verifierDB=verifierDB)
+    #connection.close()
+    #connection.sock.close()
 
     print "Test 6 - good SRP: with X.509 cert"
     x509Cert = X509().parse(open(os.path.join(dir, "serverX509Cert.pem")).read())

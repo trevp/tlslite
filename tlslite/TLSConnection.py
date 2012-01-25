@@ -991,26 +991,7 @@ class TLSConnection(TLSRecordLayer):
 
         #If we've selected an SRP suite, exchange keys and calculate
         #premaster secret:
-        if cipherSuite in CipherSuite.srpSuites + CipherSuite.srpCertSuites:
-
-            #If there's no SRP username...
-            if not clientHello.srp_username:
-
-                #Ask the client to re-send ClientHello with one
-                for result in self._sendMsg(Alert().create(\
-                        AlertDescription.unknown_psk_identity,
-                        AlertLevel.warning)):
-                    yield result
-                    
-                # Reset the handshake hashes
-                self._handshakeStart(client=False)
-                
-                # Get a second ClientHello
-                for result in self._serverGetClientHello(settings, certChain,\
-                                                         verifierDB, False, sessionCache):
-                    if result in (0,1): yield result 
-                    else: break
-                (clientHello, cipherSuite) = result                
+        if cipherSuite in CipherSuite.srpAllSuites:
 
             #Get username
             self.allegedSrpUsername = clientHello.srp_username
@@ -1280,32 +1261,7 @@ class TLSConnection(TLSRecordLayer):
 
         else:
             #Set the version to the client's version
-            self.version = clientHello.client_version
-
-        #Calculate the first cipher suite intersection.
-        #This is the 'privileged' ciphersuite.  We'll use it if we're
-        #doing a new negotiation.  In fact,
-        #the only time we won't use it is if we're resuming a
-        #session, in which case we use the ciphersuite from the session.
-        #
-        #Given the current ciphersuite ordering, this means we prefer SRP
-        #over non-SRP.
-        for cipherSuite in cipherSuites:
-            if cipherSuite in clientHello.cipher_suites:
-                break
-        else:
-            for result in self._sendError(\
-                    AlertDescription.handshake_failure):
-                yield result
-
-        # If doing the SRP missing username idiom
-        # the username better be there, this time
-        if srpMust and not clientHello.srp_username:
-            for result in self._sendError(\
-                    AlertDescription.illegal_parameter,
-                    "Client resent a hello, but without the SRP"\
-                    " username"):
-                yield result    
+            self.version = clientHello.client_version  
         
         #If resumption was requested and we have a session cache...
         if clientHello.session_id and sessionCache:
@@ -1365,6 +1321,28 @@ class TLSConnection(TLSRecordLayer):
                 self._handshakeDone(resumed=True)
                 yield None # Handshake done!
 
+        #Calculate the first cipher suite intersection.
+        #This is the 'privileged' ciphersuite.  We'll use it if we're
+        #doing a new negotiation.  In fact,
+        #the only time we won't use it is if we're resuming a
+        #session, in which case we use the ciphersuite from the session.
+        #
+        #Given the current ciphersuite ordering, this means we prefer SRP
+        #over non-SRP.
+        for cipherSuite in cipherSuites:
+            if cipherSuite in clientHello.cipher_suites:
+                break
+        else:
+            for result in self._sendError(\
+                    AlertDescription.handshake_failure):
+                yield result
+
+        if cipherSuite in CipherSuite.srpAllSuites and not clientHello.srp_username:
+            for result in self._sendError(\
+                    AlertDescription.unknown_psk_identity,
+                    "Client sent a hello, but without the SRP username"):
+                yield result
+                
         # If resumption was not requested, or
         # we have no session cache, or
         # the client's session_id was not found in cache:
