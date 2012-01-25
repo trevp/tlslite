@@ -276,21 +276,19 @@ class TLSConnection(TLSRecordLayer):
 
     def _handshakeClientAsync(self, srpParams=(), certParams=(),
                              unknownParams=(),
-                             session=None, settings=None, checker=None,
-                             recursive=False):
+                             session=None, settings=None, checker=None):
 
         handshaker = self._handshakeClientAsyncHelper(srpParams=srpParams,
                 certParams=certParams, unknownParams=unknownParams,
                 session=session,
-                settings=settings, recursive=recursive)
+                settings=settings)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
 
     def _handshakeClientAsyncHelper(self, srpParams, certParams, unknownParams,
-                               session, settings, recursive):
-        if not recursive:
-            self._handshakeStart(client=True)
+                               session, settings):
+        self._handshakeStart(client=True)
 
         #Unpack parameters
         srpUsername = None      # srpParams[0]
@@ -542,7 +540,7 @@ class TLSConnection(TLSRecordLayer):
 
             #Recursively perform handshake
             for result in self._handshakeClientAsyncHelper(srpParams,
-                            None, None, None, settings, True):
+                            None, None, None, settings):
                 yield result
             yield "recursed_and_finished_due_to_srp_idiom"
 
@@ -1154,6 +1152,9 @@ class TLSConnection(TLSRecordLayer):
                         AlertDescription.unknown_psk_identity,
                         AlertLevel.warning)):
                     yield result
+                    
+                # Reset the handshake hashes
+                self._handshakeStart(client=False)
 
                 #Get ClientHello
                 for result in self._getMsg(ContentType.handshake,
