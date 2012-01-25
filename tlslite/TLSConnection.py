@@ -843,12 +843,9 @@ class TLSConnection(TLSRecordLayer):
         #premaster secret:
         if cipherSuite in CipherSuite.srpAllSuites:
 
-            #Get username
-            self.allegedSrpUsername = clientHello.srp_username
-
             #Get parameters from username
             try:
-                entry = verifierDB[self.allegedSrpUsername]
+                entry = verifierDB[clientHello.srp_username]
             except KeyError:
                 for result in self._sendError(\
                         AlertDescription.unknown_psk_identity):
@@ -1029,7 +1026,7 @@ class TLSConnection(TLSRecordLayer):
                                       clientHello.random, serverHello.random)
         self.session.sessionID = sessionID
         self.session.cipherSuite = cipherSuite
-        self.session.srpUsername = self.allegedSrpUsername
+        self.session.srpUsername = clientHello.srp_username
         self.session.clientCertChain = clientCertChain
         self.session.serverCertChain = serverCertChain
 
