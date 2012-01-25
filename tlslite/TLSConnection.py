@@ -191,102 +191,19 @@ class TLSConnection(TLSRecordLayer):
         for result in handshaker:
             pass
 
-    def handshakeClientUnknown(self, srpCallback=None, certCallback=None,
-                               session=None, settings=None, checker=None,
-                               async=False):
-        """Perform a to-be-determined type of handshake in the role of client.
-
-        This function performs an SSL or TLS handshake.  If the server
-        requests client certificate authentication, the
-        certCallback will be invoked and should return a (certChain,
-        privateKey) pair.  If the callback returns None, the library
-        will attempt to proceed without client authentication.  The
-        server may or may not allow this.
-
-        If the server requests SRP authentication, the srpCallback
-        will be invoked and should return a (username, password) pair.
-        If the callback returns None, the local implementation will
-        signal a user_canceled error alert.
-
-        After the handshake completes, the client can inspect the
-        connection's session attribute to determine what type of
-        authentication was performed.
-
-        Like any handshake function, this can be called on a closed
-        TLS connection, or on a TLS connection that is already open.
-        If called on an open connection it performs a re-handshake.
-
-        If the function completes without raising an exception, the
-        TLS connection will be open and available for data transfer.
-
-        If an exception is raised, the connection will have been
-        automatically closed (if it was ever open).
-
-        @type srpCallback: callable
-        @param srpCallback: The callback to be used if the server
-        requests SRP authentication.  If None, the client will not
-        offer support for SRP ciphersuites.
-
-        @type certCallback: callable
-        @param certCallback: The callback to be used if the server
-        requests client certificate authentication.
-
-        @type session: L{tlslite.Session.Session}
-        @param session: A TLS session to attempt to resume.  If the
-        resumption does not succeed, a full handshake will be
-        performed.
-
-        @type settings: L{tlslite.HandshakeSettings.HandshakeSettings}
-        @param settings: Various settings which can be used to control
-        the ciphersuites, certificate types, and SSL/TLS versions
-        offered by the client.
-
-        @type checker: L{tlslite.Checker.Checker}
-        @param checker: A Checker instance.  This instance will be
-        invoked to examine the other party's authentication
-        credentials, if the handshake completes succesfully.
-
-        @type async: bool
-        @param async: If False, this function will block until the
-        handshake is completed.  If True, this function will return a
-        generator.  Successive invocations of the generator will
-        return 0 if it is waiting to read from the socket, 1 if it is
-        waiting to write to the socket, or will raise StopIteration if
-        the handshake operation is completed.
-
-        @rtype: None or an iterable
-        @return: If 'async' is True, a generator object will be
-        returned.
-
-        @raise socket.error: If a socket error occurs.
-        @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
-        without a preceding alert.
-        @raise tlslite.errors.TLSAlert: If a TLS alert is signalled.
-        @raise tlslite.errors.TLSAuthenticationError: If the checker
-        doesn't like the other party's authentication credentials.
-        """
-        handshaker = self._handshakeClientAsync(unknownParams=(srpCallback,
-                        certCallback), session=session, settings=settings,
-                        checker=checker)
-        if async:
-            return handshaker
-        for result in handshaker:
-            pass
-
 
     def _handshakeClientAsync(self, srpParams=(), certParams=(),
-                             unknownParams=(),
                              session=None, settings=None, checker=None):
 
         handshaker = self._handshakeClientAsyncHelper(srpParams=srpParams,
-                certParams=certParams, unknownParams=unknownParams,
+                certParams=certParams,
                 session=session,
                 settings=settings)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
 
-    def _handshakeClientAsyncHelper(self, srpParams, certParams, unknownParams,
+    def _handshakeClientAsyncHelper(self, srpParams, certParams, 
                                session, settings):
         
         self._handshakeStart(client=True)
@@ -296,19 +213,14 @@ class TLSConnection(TLSRecordLayer):
         password = None         # srpParams[1]
         clientCertChain = None  # certParams[0]
         privateKey = None       # certParams[1]
-        srpCallback = None      # unknownParams[0]
-        certCallback = None     # unknownParams[1]
 
-        # Allow only one of (srpParams, certParams, unknownParams)
+        # Allow only one of (srpParams, certParams)
         if srpParams:
-            assert(not certParams and not unknownParams)
+            assert(not certParams)
             srpUsername, password = srpParams
         if certParams:
-            assert(not srpParams and not unknownParams)
+            assert(not srpParams)
             clientCertChain, privateKey = certParams
-        if unknownParams:
-            assert(not srpParams and not certParams)
-            srpCallback, certCallback = unknownParams
 
         #Validate parameters
         if srpUsername and not password:
@@ -353,30 +265,17 @@ class TLSConnection(TLSRecordLayer):
         #parsing the Server Hello, we'll use this version for the response
         self.version = settings.maxVersion
 
-        # Create and send a ClientHello message, containing the 
-        # appropriate ciphersuites and sessionID etc.
+        # Send the ClientHello.
         for result in self._clientSendClientHello(settings, session, 
-                                            srpUsername,
-                                            srpParams, certParams, 
-                                            unknownParams, srpCallback):
+                                        srpUsername, srpParams, certParams):
             if result in (0,1): yield result
             else: break
         clientHello = result
         
-        #Get the ServerHello or any Alert that was returned.  If the client
-        #offered SRP ciphersuites without an srpUsername (meaning that an
-        #srpCallback is being used), an unknown_psk_identity may have
-        #been returned, causing this function to call the srpCallback to
-        #get a username/password, then recursively perform an SRP
-        #handshake with these new parameters.
-        #Otherwise the ServerHello is checked for validity and then
-        #returned.
-        for result in self._clientGetServerHello(settings, clientHello, 
-                                srpUsername, srpCallback):
+        #Get the ServerHello.
+        for result in self._clientGetServerHello(settings, clientHello):
             if result in (0,1): yield result
             else: break
-        if result == "recursed_and_finished_due_to_srp_idiom":
-            return
         serverHello = result
         cipherSuite = serverHello.cipher_suite
         
@@ -409,7 +308,7 @@ class TLSConnection(TLSRecordLayer):
         #ClientKeyExchange.
         else:
             for result in self._clientRSAKeyExchange(settings, cipherSuite,
-                                    certCallback, clientCertChain, privateKey,
+                                    clientCertChain, privateKey,
                                     serverHello.certificate_type,
                                     clientHello.random, serverHello.random):
                 if result in (0,1): yield result
@@ -439,18 +338,12 @@ class TLSConnection(TLSRecordLayer):
 
 
     def _clientSendClientHello(self, settings, session, srpUsername,
-                                srpParams, certParams, unknownParams,
-                                srpCallback):
+                                srpParams, certParams):
         #Initialize acceptable ciphersuites
         cipherSuites = [CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
         if srpParams:
             cipherSuites += CipherSuite.getSrpAllSuites(settings.cipherNames)
         elif certParams:
-            cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
-        elif unknownParams:
-            if srpCallback:
-                cipherSuites += \
-                    CipherSuite.getSrpAllSuites(settings.cipherNames)
             cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
         else:
             cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
@@ -482,52 +375,13 @@ class TLSConnection(TLSRecordLayer):
         yield clientHello
 
 
-    def _clientGetServerHello(self, settings, clientHello, 
-                                sentSrpUsername, srpCallback):
+    def _clientGetServerHello(self, settings, clientHello):
         #Get ServerHello (or unknown_psk_identity)
-        for result in self._getMsg((ContentType.handshake,
-                                  ContentType.alert),
+        for result in self._getMsg(ContentType.handshake,
                                   HandshakeType.server_hello):
             if result in (0,1): yield result
             else: break
-        msg = result
-
-        if isinstance(msg, ServerHello):
-            serverHello = msg
-        elif isinstance(msg, Alert):
-            alert = msg
-
-            # If it's not an unknown_psk_identity, re-raise
-            # OR, re-raise if the unknown_psk_identity is in response to
-            # a bad SRP username, instead of a response to a missing
-            # SRP username.
-            # Note that unknown_psk_identity at this stage of the 
-            # handshake can only be in reference to TLS-SRP, not TLS-PSK.
-            # (Even if we supported PSK)
-            if alert.description != AlertDescription.unknown_psk_identity or\
-                    sentSrpUsername:
-                self._shutdown(False)
-                raise TLSRemoteAlert(alert)
-
-            # OK, the server is telling us we didn't send an SRP username:
-
-            #If we're not in SRP callback mode, we won't have offered SRP
-            #without a username, so we shouldn't get this alert
-            if not srpCallback:
-                for result in self._sendError(\
-                                AlertDescription.unexpected_message):
-                    yield result
-            srpParams = srpCallback()
-            #If the callback returns None, cancel the handshake
-            if srpParams == None:
-                for result in self._sendError(AlertDescription.user_canceled):
-                    yield result
-
-            #Recursively perform handshake
-            for result in self._handshakeClientAsyncHelper(srpParams,
-                            None, None, None, settings):
-                yield result
-            yield "recursed_and_finished_due_to_srp_idiom"
+        serverHello = result
 
         #Get the server version.  Do this before anything else, so any
         #error alerts will use the server's version
@@ -706,7 +560,7 @@ class TLSConnection(TLSRecordLayer):
                    
 
     def _clientRSAKeyExchange(self, settings, cipherSuite, 
-                                certCallback, clientCertChain, privateKey,
+                                clientCertChain, privateKey,
                                 certificateType,
                                 clientRandom, serverRandom):
 
@@ -731,10 +585,6 @@ class TLSConnection(TLSRecordLayer):
                     HandshakeType.server_hello_done):
                 if result in (0,1): yield result
                 else: break
-            if certCallback:
-                certParamsNew = certCallback()
-                if certParamsNew:
-                    clientCertChain, privateKey = certParamsNew 
             serverHelloDone = result
         elif isinstance(msg, ServerHelloDone):
             serverHelloDone = msg

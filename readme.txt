@@ -135,7 +135,6 @@ call, depending on how you want to authenticate:
   connection.handshakeClientCert()
   connection.handshakeClientCert(certChain, privateKey)
   connection.handshakeClientSRP("alice", "abra123cadabra")
-  connection.handshakeClientUnknown(srpCallback, certCallback)
 
 The ClientCert function without arguments is used when connecting to a site
 like Amazon, which doesn't require client authentication.  The server will
@@ -157,14 +156,6 @@ Below is an example of loading an X.509 certificate chain:
   privateKey = parsePEMKey(s, private=True)
 
 The SRP function does mutual authentication with a username and password.
-
-The Unknown function is used when you're not sure if the server requires
-client authentication. If the server requests SRP or certificate-based
-authentication, the appropriate callback will be triggered, and you should
-return a tuple containing either a (username, password) or (certChain,
-privateKey), as appropriate. Alternatively, you can return None, which will
-cancel the handshake from an SRP callback, or cause it to continue without
-client authentication (if the server is willing) from a certificate callback.
 
 If you want more control over the handshake, you can pass in a
 HandshakeSettings instance. For example, if you're performing SRP, but you
@@ -274,7 +265,7 @@ Example of handling a remote alert:
   try:
       [...]
   except TLSRemoteAlert, alert:
-      if alert.description == AlertDescription.unknown_srp_username:
+      if alert.description == AlertDescription.unknown_psk_identity:
           print "Unknown user."
   [...]
 
@@ -290,9 +281,6 @@ their probable causes, and whether they are signalled by the client or server.
 
 Client handshake failure:
  - SRP parameters are not recognized by client
-
-Client user_canceled:
- - The client might have returned None from an SRP callback.
 
 Client insufficient_security:
  - SRP parameters are too small
