@@ -80,16 +80,12 @@ def clientTest(address, dir):
             print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
             badFault = True
 
-    #print "Test 5 - good SRP: unknown_psk_identity idiom"
-    #def srpCallback():
-    #    return ("test", "password")
-    #connection = connect()
-    #connection.handshakeClientUnknown(srpCallback=srpCallback)
-    #connection.close()
-
-    print "Test 6 - good SRP: with X.509 certificate"
+    print "Test 6 - good SRP: with X.509 certificate, TLSv1.0"
+    settings = HandshakeSettings()
+    settings.minVersion = (3,1)
+    settings.maxVersion = (3,1)    
     connection = connect()
-    connection.handshakeClientSRP("test", "password")
+    connection.handshakeClientSRP("test", "password", settings=settings)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     testConnClient(connection)
     connection.close()
@@ -230,7 +226,7 @@ def clientTest(address, dir):
         implementations.append("pycrypto")
     implementations.append("python")
 
-    print "Test 22 - different ciphers"
+    print "Test 22 - different ciphers, TLSv1.0"
     for implementation in implementations:
         for cipher in ["aes128", "aes256", "rc4"]:
 
@@ -240,6 +236,8 @@ def clientTest(address, dir):
             settings = HandshakeSettings()
             settings.cipherNames = [cipher]
             settings.cipherImplementations = [implementation, "python"]
+            settings.minVersion = (3,1)
+            settings.maxVersion = (3,1)            
             connection.handshakeClientCert(settings=settings)
             testConnClient(connection)
             print ("%s %s" % (connection.getCipherName(), connection.getCipherImplementation()))
@@ -340,12 +338,6 @@ def serverTest(address, dir):
         except:
             pass
         connection.close()
-
-    #print "Test 5 - good SRP: unknown_psk_identity idiom"
-    #connection = connect()
-    #connection.handshakeServer(verifierDB=verifierDB)
-    #connection.close()
-    #connection.sock.close()
 
     print "Test 6 - good SRP: with X.509 cert"
     x509Cert = X509().parse(open(os.path.join(dir, "serverX509Cert.pem")).read())

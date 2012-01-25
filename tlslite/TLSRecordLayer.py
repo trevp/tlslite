@@ -479,8 +479,8 @@ class TLSRecordLayer:
 
         bytes = msg.write()
         
-        # For example, if a 1-byte message was passed in, and we "split" the 
-        # first(only) byte off above, we may get here
+        # If a 1-byte message was passed in, and we "split" the 
+        # first(only) byte off above, we may have a 0-length msg:
         if len(bytes) == 0:
             return
             

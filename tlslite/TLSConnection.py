@@ -376,7 +376,6 @@ class TLSConnection(TLSRecordLayer):
 
 
     def _clientGetServerHello(self, settings, clientHello):
-        #Get ServerHello (or unknown_psk_identity)
         for result in self._getMsg(ContentType.handshake,
                                   HandshakeType.server_hello):
             if result in (0,1): yield result
