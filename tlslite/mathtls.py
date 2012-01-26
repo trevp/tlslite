@@ -37,8 +37,8 @@ def PRF(secret, label, seed, length):
     S2 = secret[ int(math.floor(len(secret)/2.0)) : ]
 
     #Run the left half through P_MD5 and the right half through P_SHA1
-    p_md5 = P_hash(md5, S1, concatArrays(stringToBytes(label), seed), length)
-    p_sha1 = P_hash(sha1, S2, concatArrays(stringToBytes(label), seed), length)
+    p_md5 = P_hash(md5, S1, stringToBytes(label) + seed, length)
+    p_sha1 = P_hash(sha1, S2, stringToBytes(label) + seed, length)
 
     #XOR the output values and return the result
     for x in range(length):
@@ -65,10 +65,10 @@ def PRF_SSL(secret, seed, length):
 def calcMasterSecret(version, premasterSecret, clientRandom, serverRandom):
     if version == (3,0):
         masterSecret = PRF_SSL(premasterSecret,
-                            concatArrays(clientRandom, serverRandom), 48)
+                            clientRandom + serverRandom, 48)
     elif version in ((3,1), (3,2)):
         masterSecret = PRF(premasterSecret, "master secret",
-                            concatArrays(clientRandom, serverRandom), 48)
+                            clientRandom + serverRandom, 48)
     else:
         raise AssertionError()
     return masterSecret

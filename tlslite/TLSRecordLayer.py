@@ -533,8 +533,8 @@ class TLSRecordLayer:
                                                        (paddingLength+1))
                 if self.fault == Fault.badPadding:
                     paddingBytes[0] = (paddingBytes[0]+1) % 256
-                endBytes = concatArrays(macBytes, paddingBytes)
-                bytes = concatArrays(bytes, endBytes)
+                endBytes = macBytes + paddingBytes
+                bytes += endBytes
                 #Encrypt
                 plaintext = stringToBytes(bytes)
                 ciphertext = self._writeState.encContext.encrypt(plaintext)
@@ -542,14 +542,14 @@ class TLSRecordLayer:
 
             #Encrypt (for Stream Cipher)
             else:
-                bytes = concatArrays(bytes, macBytes)
+                bytes += macBytes
                 plaintext = bytesToString(bytes)
                 ciphertext = self._writeState.encContext.encrypt(plaintext)
                 bytes = stringToBytes(ciphertext)
 
         #Add record header and send
         r = RecordHeader3().create(self.version, contentType, len(bytes))
-        s = bytesToString(concatArrays(r.write(), bytes))
+        s = bytesToString(r.write() + bytes)
         while 1:
             try:
                 bytesSent = self.sock.send(s) #Might raise socket.error
@@ -1025,12 +1025,12 @@ class TLSRecordLayer:
         #Calculate Keying Material from Master Secret
         if self.version == (3,0):
             keyBlock = PRF_SSL(masterSecret,
-                               concatArrays(serverRandom, clientRandom),
+                               serverRandom + clientRandom,
                                outputLength)
         elif self.version in ((3,1), (3,2)):
             keyBlock = PRF(masterSecret,
                            "key expansion",
-                           concatArrays(serverRandom,clientRandom),
+                           serverRandom + clientRandom,
                            outputLength)
         else:
             raise AssertionError()

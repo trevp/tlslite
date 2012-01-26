@@ -64,8 +64,6 @@ if os.name != "java":
         return bytearray(seq)
     def createByteArrayZeros(howMany):
         return bytearray(howMany)
-    def concatArrays(a1, a2):
-        return a1+a2
 
     def bytesToString(bytes):
         return str(bytes)
@@ -109,9 +107,6 @@ else:
         return jarray.array(seq, 'h') #use short instead of bytes, cause bytes are signed
     def createByteArrayZeros(howMany):
         return jarray.zeros(howMany, 'h') #use short instead of bytes, cause bytes are signed
-    def concatArrays(a1, a2):
-        l = list(a1)+list(a2)
-        return createByteArraySequence(l)
 
     #WAY TOO SLOW - MUST BE REPLACED------------
     def bytesToString(bytes):

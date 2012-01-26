@@ -145,7 +145,7 @@ def numberToMPI(n):
     if (numBits(n) & 0x7)==0:
         ext = 1
     length = numBytes(n) + ext
-    bytes = concatArrays(createByteArrayZeros(4+ext), bytes)
+    bytes = createByteArrayZeros(4+ext) + bytes
     bytes[0] = (length >> 24) & 0xFF
     bytes[1] = (length >> 16) & 0xFF
     bytes[2] = (length >> 8) & 0xFF
