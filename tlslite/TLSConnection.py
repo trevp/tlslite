@@ -818,7 +818,7 @@ class TLSConnection(TLSRecordLayer):
             else: break
         (clientHello, cipherSuite) = result
         
-        #If not a resumption
+        #If not a resumption...
 
         #If an RSA suite is chosen, check for certificate type intersection
         if cipherSuite in CipherSuite.certSuites + \
@@ -838,69 +838,19 @@ class TLSConnection(TLSRecordLayer):
         else:
             sessionID = createByteArraySequence([])
 
+        serverHello = ServerHello()
+        serverHello.create(self.version, getRandomBytes(32),
+                    sessionID, cipherSuite, CertificateType.x509)
+
         #If we've selected an SRP suite, exchange keys and calculate
         #premaster secret:
         if cipherSuite in CipherSuite.srpAllSuites:
-
-            #Get parameters from username
-            try:
-                entry = verifierDB[clientHello.srp_username]
-            except KeyError:
-                for result in self._sendError(\
-                        AlertDescription.unknown_psk_identity):
-                    yield result
-            (N, g, s, v) = entry
-
-            serverHello = ServerHello()
-            serverHello.create(self.version, serverHello.random, sessionID,
-                               cipherSuite, CertificateType.x509)            
-
-            #Calculate server's ephemeral DH values (b, B)
-            b = bytesToNumber(getRandomBytes(32))
-            k = makeK(N, g)
-            B = (powMod(g, b, N) + (k*v)) % N
-
-            #Create ServerKeyExchange, signing it if necessary
-            serverKeyExchange = ServerKeyExchange(cipherSuite)
-            serverKeyExchange.createSRP(N, g, stringToBytes(s), B)
-            if cipherSuite in CipherSuite.srpCertSuites:
-                hashBytes = serverKeyExchange.hash(clientHello.random,
-                                                   serverHello.random)
-                serverKeyExchange.signature = privateKey.sign(hashBytes)
-
-            #Send ServerHello[, Certificate], ServerKeyExchange,
-            #ServerHelloDone
-            msgs = []
-            msgs.append(serverHello)
-            if cipherSuite in CipherSuite.srpCertSuites:
-                certificateMsg = Certificate(CertificateType.x509)
-                certificateMsg.create(serverCertChain)
-                msgs.append(certificateMsg)
-            msgs.append(serverKeyExchange)
-            msgs.append(ServerHelloDone())
-            for result in self._sendMsgs(msgs):
-                yield result
-
-            #From here on, the client's messages must have the right version
-            self._versionCheck = True
-
-            #Get and check ClientKeyExchange
-            for result in self._getMsg(ContentType.handshake,
-                                      HandshakeType.client_key_exchange,
-                                      cipherSuite):
+            for result in self._serverSRPKeyExchange(clientHello, serverHello, 
+                                    verifierDB, cipherSuite, 
+                                    privateKey, serverCertChain):
                 if result in (0,1): yield result
                 else: break
-            clientKeyExchange = result
-            A = clientKeyExchange.srp_A
-            if A % N == 0:
-                postFinishedError = (AlertDescription.illegal_parameter,
-                                     "Suspicious A value")
-            #Calculate u
-            u = makeU(N, A, B)
-
-            #Calculate premaster secret
-            S = powMod((A * powMod(v,u,N)) % N, b, N)
-            premasterSecret = numberToBytes(S)
+            premasterSecret = result
 
 
         #If we've selected an RSA suite, exchange keys and calculate
@@ -910,9 +860,7 @@ class TLSConnection(TLSRecordLayer):
             #Send ServerHello, Certificate[, CertificateRequest],
             #ServerHelloDone
             msgs = []
-            serverHello = ServerHello()
-            serverHello.create(self.version, getRandomBytes(32),
-                        sessionID, cipherSuite, CertificateType.x509)
+
             msgs.append(serverHello)
             msgs.append(Certificate(CertificateType.x509).create(serverCertChain))
             if reqCert and reqCAs:
@@ -1194,7 +1142,65 @@ class TLSConnection(TLSRecordLayer):
         # the client's session_id was not found in cache:
         yield (clientHello, cipherSuite)
 
+    def _serverSRPKeyExchange(self, clientHello, serverHello, verifierDB, 
+                                cipherSuite, privateKey, serverCertChain):
+        #Get parameters from username
+        try:
+            entry = verifierDB[clientHello.srp_username]
+        except KeyError:
+            for result in self._sendError(\
+                    AlertDescription.unknown_psk_identity):
+                yield result
+        (N, g, s, v) = entry
 
+        #Calculate server's ephemeral DH values (b, B)
+        b = bytesToNumber(getRandomBytes(32))
+        k = makeK(N, g)
+        B = (powMod(g, b, N) + (k*v)) % N
+
+        #Create ServerKeyExchange, signing it if necessary
+        serverKeyExchange = ServerKeyExchange(cipherSuite)
+        serverKeyExchange.createSRP(N, g, stringToBytes(s), B)
+        if cipherSuite in CipherSuite.srpCertSuites:
+            hashBytes = serverKeyExchange.hash(clientHello.random,
+                                               serverHello.random)
+            serverKeyExchange.signature = privateKey.sign(hashBytes)
+
+        #Send ServerHello[, Certificate], ServerKeyExchange,
+        #ServerHelloDone
+        msgs = []
+        msgs.append(serverHello)
+        if cipherSuite in CipherSuite.srpCertSuites:
+            certificateMsg = Certificate(CertificateType.x509)
+            certificateMsg.create(serverCertChain)
+            msgs.append(certificateMsg)
+        msgs.append(serverKeyExchange)
+        msgs.append(ServerHelloDone())
+        for result in self._sendMsgs(msgs):
+            yield result
+
+        #From here on, the client's messages must have the right version
+        self._versionCheck = True
+
+        #Get and check ClientKeyExchange
+        for result in self._getMsg(ContentType.handshake,
+                                  HandshakeType.client_key_exchange,
+                                  cipherSuite):
+            if result in (0,1): yield result
+            else: break
+        clientKeyExchange = result
+        A = clientKeyExchange.srp_A
+        if A % N == 0:
+            postFinishedError = (AlertDescription.illegal_parameter,
+                                 "Suspicious A value")
+        #Calculate u
+        u = makeU(N, A, B)
+
+        #Calculate premaster secret
+        S = powMod((A * powMod(v,u,N)) % N, b, N)
+        premasterSecret = numberToBytes(S)
+        
+        yield premasterSecret
 
 
 
