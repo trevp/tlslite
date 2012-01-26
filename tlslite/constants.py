@@ -157,6 +157,7 @@ class CipherSuite:
     certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
     certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
+    certAllSuites = srpCertSuites + certSuites
     
     @staticmethod    
     def getCertSuites(ciphers):

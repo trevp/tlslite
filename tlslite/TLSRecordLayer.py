@@ -558,7 +558,37 @@ class TLSRecordLayer:
                     yield 1
                     continue
                 else:
-                    raise
+                    # The socket was unexpectedly closed.  The tricky part
+                    # is that there may be an alert sent by the other party
+                    # sitting in the read buffer.  So, if we get here after
+                    # handshaking, we will just raise the error and let the
+                    # caller read more data if it would like, thus stumbling
+                    # upon the error.
+                    #
+                    # However, if we get here DURING handshaking, we take
+                    # it upon ourselves to see if the next message is an 
+                    # Alert.
+                    if contentType == ContentType.handshake:
+                        
+                        # See if there's an alert record
+                        # Could raise socket.error or TLSAbruptCloseError
+                        for result in self._getNextRecord():
+                            if result in (0,1):
+                                yield result
+                                
+                        # Closes the socket
+                        self._shutdown(False)
+                        
+                        # If we got an alert, raise it        
+                        recordHeader, p = result                        
+                        if recordHeader.type == ContentType.alert:
+                            alert = Alert().parse(p)
+                            raise TLSRemoteAlert(alert)
+                    else:
+                        # If we got some other message who know what
+                        # the remote side is doing, just go ahead and
+                        # raise the socket.error
+                        raise
             if bytesSent == len(s):
                 return
             s = s[bytesSent:]

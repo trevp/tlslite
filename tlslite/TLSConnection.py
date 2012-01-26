@@ -549,7 +549,7 @@ class TLSConnection(TLSRecordLayer):
         if self.fault == Fault.badA:
             A = N
             S = 0
-        premasterSecret = numberToBytes(S)
+        premasterSecret = numberToBytes(S, numBytes(N))
 
         #Send ClientKeyExchange
         for result in self._sendMsg(\
@@ -804,14 +804,10 @@ class TLSConnection(TLSRecordLayer):
         if not settings:
             settings = HandshakeSettings()
         settings = settings._filter()
-
-        #Initialize locals
-        clientCertChain = None
-        serverCertChain = None #We may set certChain to this later
-        postFinishedError = None
         
+        # Handle ClientHello and and resumption
         for result in self._serverGetClientHello(settings, certChain,\
-                                                 verifierDB, False, sessionCache):
+                                            verifierDB, sessionCache):
             if result in (0,1): yield result
             elif result == None:
                 return # Handshake was resumed, we're done 
@@ -820,163 +816,50 @@ class TLSConnection(TLSRecordLayer):
         
         #If not a resumption...
 
-        #If an RSA suite is chosen, check for certificate type intersection
-        if cipherSuite in CipherSuite.certSuites + \
-                          CipherSuite.srpCertSuites:
-            if CertificateType.x509 not in clientHello.certificate_types:
-                for result in self._sendError(\
-                        AlertDescription.handshake_failure,
-                        "the client doesn't support my certificate type"):
-                    yield result
-
-            #Move certChain -> serverCertChain, now that we're using it
-            serverCertChain = certChain
-
-        #Create sessionID
+        # Create the ServerHello message
         if sessionCache:
             sessionID = getRandomBytes(32)
         else:
-            sessionID = createByteArraySequence([])
-
+            sessionID = createByteArraySequence([])            
         serverHello = ServerHello()
-        serverHello.create(self.version, getRandomBytes(32),
-                    sessionID, cipherSuite, CertificateType.x509)
+        serverHello.create(self.version, getRandomBytes(32), sessionID, \
+                            cipherSuite, CertificateType.x509)
 
-        #If we've selected an SRP suite, exchange keys and calculate
-        #premaster secret:
+        # Perform the SRP key exchange
+        clientCertChain = None
         if cipherSuite in CipherSuite.srpAllSuites:
             for result in self._serverSRPKeyExchange(clientHello, serverHello, 
                                     verifierDB, cipherSuite, 
-                                    privateKey, serverCertChain):
+                                    privateKey, certChain):
                 if result in (0,1): yield result
                 else: break
             premasterSecret = result
 
 
-        #If we've selected an RSA suite, exchange keys and calculate
-        #premaster secret:
+        # Perform the RSA key exchange
         elif cipherSuite in CipherSuite.certSuites:
-
-            #Send ServerHello, Certificate[, CertificateRequest],
-            #ServerHelloDone
-            msgs = []
-
-            msgs.append(serverHello)
-            msgs.append(Certificate(CertificateType.x509).create(serverCertChain))
-            if reqCert and reqCAs:
-                msgs.append(CertificateRequest().create(\
-                    [ClientCertificateType.rsa_sign], reqCAs))
-            elif reqCert:
-                msgs.append(CertificateRequest())
-            msgs.append(ServerHelloDone())
-            for result in self._sendMsgs(msgs):
-                yield result
-
-            #From here on, the client's messages must have the right version
-            self._versionCheck = True
-
-            #Get [Certificate,] (if was requested)
-            if reqCert:
-                if self.version == (3,0):
-                    for result in self._getMsg((ContentType.handshake,
-                                               ContentType.alert),
-                                               HandshakeType.certificate,
-                                               CertificateType.x509):
-                        if result in (0,1): yield result
-                        else: break
-                    msg = result
-
-                    if isinstance(msg, Alert):
-                        #If it's not a no_certificate alert, re-raise
-                        alert = msg
-                        if alert.description != \
-                                AlertDescription.no_certificate:
-                            self._shutdown(False)
-                            raise TLSRemoteAlert(alert)
-                    elif isinstance(msg, Certificate):
-                        clientCertificate = msg
-                        if clientCertificate.certChain and \
-                                clientCertificate.certChain.getNumCerts()!=0:
-                            clientCertChain = clientCertificate.certChain
-                    else:
-                        raise AssertionError()
-                elif self.version in ((3,1), (3,2)):
-                    for result in self._getMsg(ContentType.handshake,
-                                              HandshakeType.certificate,
-                                              CertificateType.x509):
-                        if result in (0,1): yield result
-                        else: break
-                    clientCertificate = result
-                    if clientCertificate.certChain and \
-                            clientCertificate.certChain.getNumCerts()!=0:
-                        clientCertChain = clientCertificate.certChain
-                else:
-                    raise AssertionError()
-
-            #Get ClientKeyExchange
-            for result in self._getMsg(ContentType.handshake,
-                                      HandshakeType.client_key_exchange,
-                                      cipherSuite):
+            for result in self._serverCertKeyExchange(clientHello, serverHello, 
+                                        certChain, privateKey,
+                                        reqCert, reqCAs, cipherSuite,
+                                        settings):
                 if result in (0,1): yield result
                 else: break
-            clientKeyExchange = result
-
-            #Decrypt ClientKeyExchange
-            premasterSecret = privateKey.decrypt(\
-                clientKeyExchange.encryptedPreMasterSecret)
-
-            randomPreMasterSecret = getRandomBytes(48)
-            versionCheck = (premasterSecret[0], premasterSecret[1])
-            if not premasterSecret:
-                premasterSecret = randomPreMasterSecret
-            elif len(premasterSecret)!=48:
-                premasterSecret = randomPreMasterSecret
-            elif versionCheck != clientHello.client_version:
-                if versionCheck != self.version: #Tolerate buggy IE clients
-                    premasterSecret = randomPreMasterSecret
-
-            #Get and check CertificateVerify, if relevant
-            if clientCertChain:
-                if self.version == (3,0):
-                    #Create a temporary session object, just for the purpose
-                    #of checking the CertificateVerify
-                    session = Session()
-                    session._calcMasterSecret(self.version, premasterSecret,
-                                             clientHello.random, serverHello.random)
-                    verifyBytes = self._calcSSLHandshakeHash(\
-                                    session.masterSecret, "")
-                elif self.version in ((3,1), (3,2)):
-                    verifyBytes = stringToBytes(self._handshake_md5.digest() +\
-                                                self._handshake_sha.digest())
-                for result in self._getMsg(ContentType.handshake,
-                                          HandshakeType.certificate_verify):
-                    if result in (0,1): yield result
-                    else: break
-                certificateVerify = result
-                publicKey = clientCertChain.getEndEntityPublicKey()
-                if len(publicKey) < settings.minKeySize:
-                    postFinishedError = (AlertDescription.handshake_failure,
-                        "Client's public key too small: %d" % len(publicKey))
-                if len(publicKey) > settings.maxKeySize:
-                    postFinishedError = (AlertDescription.handshake_failure,
-                        "Client's public key too large: %d" % len(publicKey))
-
-                if not publicKey.verify(certificateVerify.signature,
-                                        verifyBytes):
-                    postFinishedError = (AlertDescription.decrypt_error,
-                                         "Signature failed to verify")
-
+            (premasterSecret, clientCertChain) = result
 
         #Create the session object
         self.session = Session()
         self.session._calcMasterSecret(self.version, premasterSecret,
                                       clientHello.random, serverHello.random)
-        self.session.sessionID = sessionID
+        self.session.sessionID = serverHello.session_id
         self.session.cipherSuite = cipherSuite
         self.session.srpUsername = clientHello.srp_username
         self.session.clientCertChain = clientCertChain
-        self.session.serverCertChain = serverCertChain
-
+        #If an RSA suite is chosen, check for certificate type intersection
+        if cipherSuite in CipherSuite.certAllSuites:        
+            self.session.serverCertChain = certChain
+        else:
+            self.session.serverCertChain = None
+            
         #Calculate pending connection states
         self._calcPendingStates(clientHello.random, serverHello.random,
                                settings.cipherImplementations)
@@ -984,18 +867,6 @@ class TLSConnection(TLSRecordLayer):
         #Exchange ChangeCipherSpec and Finished messages
         for result in self._getFinished():
             yield result
-
-        #If we were holding a post-finished error until receiving the client
-        #finished message, send it now.  We delay the call until this point
-        #because calling sendError() throws an exception, and our caller might
-        #shut down the socket upon receiving the exception.  If he did, and the
-        #client was still sending its ChangeCipherSpec or Finished messages, it
-        #would cause a socket error on the client side.  This is a lot of
-        #consideration to show to misbehaving clients, but this would also
-        #cause problems with fault-testing.
-        if postFinishedError:
-            for result in self._sendError(*postFinishedError):
-                yield result
 
         for result in self._sendFinished():
             yield result
@@ -1010,19 +881,19 @@ class TLSConnection(TLSRecordLayer):
 
 
 
-    def _serverGetClientHello(self, settings, certChain, verifierDB, srpMust,
+    def _serverGetClientHello(self, settings, certChain, verifierDB,
                                 sessionCache):
         #Initialize acceptable cipher suites
         cipherSuites = []
-        if srpMust:
-            assert(verifierDB)
         if verifierDB:
             if certChain:
                 cipherSuites += \
                     CipherSuite.getSrpCertSuites(settings.cipherNames)
-            cipherSuites += CipherSuite.getSrpSuites(settings.cipherNames)        
-        if certChain and not srpMust:
+            cipherSuites += CipherSuite.getSrpSuites(settings.cipherNames)
+        elif certChain:
             cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
+        else:
+            assert(False)
 
         #Initialize acceptable certificate type
         if certChain:
@@ -1131,12 +1002,21 @@ class TLSConnection(TLSRecordLayer):
                     AlertDescription.handshake_failure):
                 yield result
 
-        if cipherSuite in CipherSuite.srpAllSuites and not clientHello.srp_username:
+        if cipherSuite in CipherSuite.srpAllSuites and \
+                            not clientHello.srp_username:
             for result in self._sendError(\
                     AlertDescription.unknown_psk_identity,
                     "Client sent a hello, but without the SRP username"):
                 yield result
-                
+           
+        #If an RSA suite is chosen, check for certificate type intersection
+        if cipherSuite in CipherSuite.certAllSuites and CertificateType.x509 \
+                                not in clientHello.certificate_types:
+            for result in self._sendError(\
+                    AlertDescription.handshake_failure,
+                    "the client doesn't support my certificate type"):
+                yield result
+        
         # If resumption was not requested, or
         # we have no session cache, or
         # the client's session_id was not found in cache:
@@ -1191,18 +1071,143 @@ class TLSConnection(TLSRecordLayer):
         clientKeyExchange = result
         A = clientKeyExchange.srp_A
         if A % N == 0:
-            postFinishedError = (AlertDescription.illegal_parameter,
-                                 "Suspicious A value")
+            for result in self._sendError(AlertDescription.illegal_parameter,
+                    "Suspicious A value"):
+                yield result
+            assert(False) # Just to ensure we don't fall through somehow
+
         #Calculate u
         u = makeU(N, A, B)
 
         #Calculate premaster secret
         S = powMod((A * powMod(v,u,N)) % N, b, N)
-        premasterSecret = numberToBytes(S)
+        premasterSecret = numberToBytes(S, numBytes(N))
         
         yield premasterSecret
 
 
+    def _serverCertKeyExchange(self, clientHello, serverHello, 
+                                serverCertChain, privateKey,
+                                reqCert, reqCAs, cipherSuite,
+                                settings):
+        #Send ServerHello, Certificate[, CertificateRequest],
+        #ServerHelloDone
+        msgs = []
+
+        # If we verify a client cert chain, return it
+        clientCertChain = None
+
+        msgs.append(serverHello)
+        msgs.append(Certificate(CertificateType.x509).create(serverCertChain))
+        if reqCert and reqCAs:
+            msgs.append(CertificateRequest().create(\
+                [ClientCertificateType.rsa_sign], reqCAs))
+        elif reqCert:
+            msgs.append(CertificateRequest())
+        msgs.append(ServerHelloDone())
+        for result in self._sendMsgs(msgs):
+            yield result
+
+        #From here on, the client's messages must have the right version
+        self._versionCheck = True
+
+        #Get [Certificate,] (if was requested)
+        if reqCert:
+            if self.version == (3,0):
+                for result in self._getMsg((ContentType.handshake,
+                                           ContentType.alert),
+                                           HandshakeType.certificate,
+                                           CertificateType.x509):
+                    if result in (0,1): yield result
+                    else: break
+                msg = result
+
+                if isinstance(msg, Alert):
+                    #If it's not a no_certificate alert, re-raise
+                    alert = msg
+                    if alert.description != \
+                            AlertDescription.no_certificate:
+                        self._shutdown(False)
+                        raise TLSRemoteAlert(alert)
+                elif isinstance(msg, Certificate):
+                    clientCertificate = msg
+                    if clientCertificate.certChain and \
+                            clientCertificate.certChain.getNumCerts()!=0:
+                        clientCertChain = clientCertificate.certChain
+                else:
+                    raise AssertionError()
+            elif self.version in ((3,1), (3,2)):
+                for result in self._getMsg(ContentType.handshake,
+                                          HandshakeType.certificate,
+                                          CertificateType.x509):
+                    if result in (0,1): yield result
+                    else: break
+                clientCertificate = result
+                if clientCertificate.certChain and \
+                        clientCertificate.certChain.getNumCerts()!=0:
+                    clientCertChain = clientCertificate.certChain
+            else:
+                raise AssertionError()
+
+        #Get ClientKeyExchange
+        for result in self._getMsg(ContentType.handshake,
+                                  HandshakeType.client_key_exchange,
+                                  cipherSuite):
+            if result in (0,1): yield result
+            else: break
+        clientKeyExchange = result
+
+        #Decrypt ClientKeyExchange
+        premasterSecret = privateKey.decrypt(\
+            clientKeyExchange.encryptedPreMasterSecret)
+
+        randomPreMasterSecret = getRandomBytes(48)
+        versionCheck = (premasterSecret[0], premasterSecret[1])
+        if not premasterSecret:
+            premasterSecret = randomPreMasterSecret
+        elif len(premasterSecret)!=48:
+            premasterSecret = randomPreMasterSecret
+        elif versionCheck != clientHello.client_version:
+            if versionCheck != self.version: #Tolerate buggy IE clients
+                premasterSecret = randomPreMasterSecret
+
+        #Get and check CertificateVerify, if relevant
+        if clientCertChain:
+            if self.version == (3,0):
+                #Create a temporary session object, just for the purpose
+                #of checking the CertificateVerify
+                session = Session()
+                session._calcMasterSecret(self.version, premasterSecret,
+                                         clientHello.random, serverHello.random)
+                verifyBytes = self._calcSSLHandshakeHash(\
+                                session.masterSecret, "")
+            elif self.version in ((3,1), (3,2)):
+                verifyBytes = stringToBytes(self._handshake_md5.digest() +\
+                                            self._handshake_sha.digest())
+            for result in self._getMsg(ContentType.handshake,
+                                      HandshakeType.certificate_verify):
+                if result in (0,1): yield result
+                else: break
+            certificateVerify = result
+            publicKey = clientCertChain.getEndEntityPublicKey()
+            if len(publicKey) < settings.minKeySize:
+                for result in self._sendError(\
+                        AlertDescription.handshake_failure,
+                        "Client's public key too small: %d" % len(publicKey)):
+                    yield result
+
+            if len(publicKey) > settings.maxKeySize:
+                for result in self._sendError(\
+                        AlertDescription.handshake_failure,
+                        "Client's public key too large: %d" % len(publicKey)):
+                    yield result
+
+            if not publicKey.verify(certificateVerify.signature, verifyBytes):
+                for result in self._sendError(\
+                        AlertDescription.decrypt_error,
+                        "Signature failed to verify"):
+                    yield result
+        yield (premasterSecret, clientCertChain)
 
 
     def _handshakeWrapperAsync(self, handshaker, checker):

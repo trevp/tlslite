@@ -81,13 +81,20 @@ def bytesToNumber(bytes):
         multiplier *= 256
     return total
 
-def numberToBytes(n):
-    howManyBytes = numBytes(n)
+def numberToBytes(n, howManyBytes=None):
+    """Convert an integer into a bytearray, zero-pad to howManyBytes.
+
+    The returned bytearray may be smaller than howManyBytes, but will
+    not be larger.  The returned bytearray will contain a big-endian
+    encoding of the input integer (n).
+    """    
+    if howManyBytes == None:
+        howManyBytes = numBytes(n)
     bytes = createByteArrayZeros(howManyBytes)
     for count in range(howManyBytes-1, -1, -1):
-        bytes[count] = n % 256
+        bytes[count] = int(n % 256)
         n >>= 8
-    return bytes
+    return bytes    
 
 def bytesToBase64(bytes):
     s = bytesToString(bytes)
