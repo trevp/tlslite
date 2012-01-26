@@ -41,6 +41,16 @@ class Session:
         self.serverCertChain = None
         self.resumable = False
 
+    def create(self, masterSecret, sessionID, cipherSuite,
+            srpUsername, clientCertChain, serverCertChain, resumable=True):
+        self.masterSecret = masterSecret
+        self.sessionID = sessionID
+        self.cipherSuite = cipherSuite
+        self.srpUsername = srpUsername
+        self.clientCertChain = clientCertChain
+        self.serverCertChain = serverCertChain
+        self.resumable = resumable
+
     def _clone(self):
         other = Session()
         other.masterSecret = self.masterSecret

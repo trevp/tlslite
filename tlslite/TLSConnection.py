@@ -327,14 +327,10 @@ class TLSConnection(TLSRecordLayer):
                 else: break
         masterSecret = result
         
+        # Create the session object which is used for resumptions
         self.session = Session()
-        self.session.masterSecret = masterSecret
-        self.session.sessionID = serverHello.session_id
-        self.session.cipherSuite = cipherSuite
-        self.session.srpUsername = srpUsername
-        self.session.clientCertChain = clientCertChain
-        self.session.serverCertChain = serverCertChain
-        self.session._setResumable(True)
+        self.session.create(masterSecret, serverHello.session_id, cipherSuite,
+            srpUsername, clientCertChain, serverCertChain)
         self._handshakeDone(resumed=False)
 
 
@@ -859,25 +855,18 @@ class TLSConnection(TLSRecordLayer):
 
         #Create the session object
         self.session = Session()
-        self.session.masterSecret = masterSecret
-        self.session.sessionID = serverHello.session_id
-        self.session.cipherSuite = cipherSuite
-        self.session.srpUsername = clientHello.srp_username
-        self.session.clientCertChain = clientCertChain
-        #If an RSA suite is chosen, check for certificate type intersection
         if cipherSuite in CipherSuite.certAllSuites:        
-            self.session.serverCertChain = certChain
+            serverCertChain = certChain
         else:
-            self.session.serverCertChain = None
-
+            serverCertChain = None
+        self.session.create(masterSecret, serverHello.session_id, cipherSuite,
+            clientHello.srp_username, clientCertChain, serverCertChain)
+            
         #Add the session object to the session cache
         if sessionCache and sessionID:
             sessionCache[bytesToString(sessionID)] = self.session
 
-        #Mark the connection as open
-        self.session._setResumable(True)
         self._handshakeDone(resumed=False)
-
 
 
     def _serverGetClientHello(self, settings, certChain, verifierDB,
