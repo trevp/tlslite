@@ -52,17 +52,6 @@ class Session:
         other.resumable = self.resumable
         return other
 
-    def _calcMasterSecret(self, version, premasterSecret, clientRandom,
-                         serverRandom):
-        if version == (3,0):
-            self.masterSecret = PRF_SSL(premasterSecret,
-                                concatArrays(clientRandom, serverRandom), 48)
-        elif version in ((3,1), (3,2)):
-            self.masterSecret = PRF(premasterSecret, "master secret",
-                                concatArrays(clientRandom, serverRandom), 48)
-        else:
-            raise AssertionError()
-
     def valid(self):
         """If this session can be used for session resumption.
 

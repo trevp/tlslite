@@ -990,23 +990,24 @@ class TLSRecordLayer:
         self.resumed = resumed
         self.closed = False
 
-    def _calcPendingStates(self, clientRandom, serverRandom, implementations):
-        if self.session.cipherSuite in CipherSuite.aes128Suites:
+    def _calcPendingStates(self, cipherSuite, masterSecret,
+            clientRandom, serverRandom, implementations):
+        if cipherSuite in CipherSuite.aes128Suites:
             macLength = 20
             keyLength = 16
             ivLength = 16
             createCipherFunc = createAES
-        elif self.session.cipherSuite in CipherSuite.aes256Suites:
+        elif cipherSuite in CipherSuite.aes256Suites:
             macLength = 20
             keyLength = 32
             ivLength = 16
             createCipherFunc = createAES
-        elif self.session.cipherSuite in CipherSuite.rc4Suites:
+        elif cipherSuite in CipherSuite.rc4Suites:
             macLength = 20
             keyLength = 16
             ivLength = 0
             createCipherFunc = createRC4
-        elif self.session.cipherSuite in CipherSuite.tripleDESSuites:
+        elif cipherSuite in CipherSuite.tripleDESSuites:
             macLength = 20
             keyLength = 24
             ivLength = 8
@@ -1023,11 +1024,11 @@ class TLSRecordLayer:
 
         #Calculate Keying Material from Master Secret
         if self.version == (3,0):
-            keyBlock = PRF_SSL(self.session.masterSecret,
+            keyBlock = PRF_SSL(masterSecret,
                                concatArrays(serverRandom, clientRandom),
                                outputLength)
         elif self.version in ((3,1), (3,2)):
-            keyBlock = PRF(self.session.masterSecret,
+            keyBlock = PRF(masterSecret,
                            "key expansion",
                            concatArrays(serverRandom,clientRandom),
                            outputLength)
@@ -1074,7 +1075,7 @@ class TLSRecordLayer:
         self._readState = self._pendingReadState
         self._pendingReadState = _ConnectionState()
 
-    def _sendFinished(self):
+    def _sendFinished(self, masterSecret):
         #Send ChangeCipherSpec
         for result in self._sendMsg(ChangeCipherSpec()):
             yield result
@@ -1083,7 +1084,7 @@ class TLSRecordLayer:
         self._changeWriteState()
 
         #Calculate verification data
-        verifyData = self._calcFinished(True)
+        verifyData = self._calcFinished(masterSecret, True)
         if self.fault == Fault.badFinished:
             verifyData[0] = (verifyData[0]+1)%256
 
@@ -1092,7 +1093,7 @@ class TLSRecordLayer:
         for result in self._sendMsg(finished):
             yield result
 
-    def _getFinished(self):
+    def _getFinished(self, masterSecret):
         #Get and check ChangeCipherSpec
         for result in self._getMsg(ContentType.change_cipher_spec):
             if result in (0,1):
@@ -1108,7 +1109,7 @@ class TLSRecordLayer:
         self._changeReadState()
 
         #Calculate verification data
-        verifyData = self._calcFinished(False)
+        verifyData = self._calcFinished(masterSecret, False)
 
         #Get and check Finished message under new state
         for result in self._getMsg(ContentType.handshake,
@@ -1121,15 +1122,14 @@ class TLSRecordLayer:
                                          "Finished message is incorrect"):
                 yield result
 
-    def _calcFinished(self, send=True):
+    def _calcFinished(self, masterSecret, send=True):
         if self.version == (3,0):
             if (self._client and send) or (not self._client and not send):
                 senderStr = "\x43\x4C\x4E\x54"
             else:
                 senderStr = "\x53\x52\x56\x52"
 
-            verifyData = self._calcSSLHandshakeHash(self.session.masterSecret,
-                                                   senderStr)
+            verifyData = self._calcSSLHandshakeHash(masterSecret, senderStr)
             return verifyData
 
         elif self.version in ((3,1), (3,2)):
@@ -1140,8 +1140,7 @@ class TLSRecordLayer:
 
             handshakeHashes = stringToBytes(self._handshake_md5.digest() + \
                                             self._handshake_sha.digest())
-            verifyData = PRF(self.session.masterSecret, label, handshakeHashes,
-                             12)
+            verifyData = PRF(masterSecret, label, handshakeHashes, 12)
             return verifyData
         else:
             raise AssertionError()

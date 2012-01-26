@@ -62,6 +62,18 @@ def PRF_SSL(secret, seed, length):
             index += 1
     return bytes
 
+def calcMasterSecret(version, premasterSecret, clientRandom, serverRandom):
+    if version == (3,0):
+        masterSecret = PRF_SSL(premasterSecret,
+                            concatArrays(clientRandom, serverRandom), 48)
+    elif version in ((3,1), (3,2)):
+        masterSecret = PRF(premasterSecret, "master secret",
+                            concatArrays(clientRandom, serverRandom), 48)
+    else:
+        raise AssertionError()
+    return masterSecret
+
+
 def makeX(salt, username, password):
     if len(username)>=256:
         raise ValueError("username too long")

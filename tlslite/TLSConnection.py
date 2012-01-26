@@ -286,12 +286,14 @@ class TLSConnection(TLSRecordLayer):
             if result in (0,1): yield result
             else: break
         if result == "resumed_and_finished":
+            self._handshakeDone(resumed=True)
             return
 
         #If the server selected an SRP ciphersuite, the client finishes
         #reading the post-ServerHello messages, then derives a
         #premasterSecret and sends a corresponding ClientKeyExchange.
         if cipherSuite in CipherSuite.srpAllSuites:
+            
             for result in self._clientSRPKeyExchange(\
                     settings, cipherSuite, serverHello.certificate_type, 
                     srpUsername, password,
@@ -314,25 +316,24 @@ class TLSConnection(TLSRecordLayer):
                 if result in (0,1): yield result
                 else: break
             (premasterSecret, serverCertChain) = result
-                
+                        
+        #After having previously sent a ClientKeyExchange, the client now
+        #initiates an exchange of Finished messages.
+        for result in self._clientFinished(premasterSecret,
+                            clientHello.random, 
+                            serverHello.random,
+                            cipherSuite, settings.cipherImplementations):
+                if result in (0,1): yield result
+                else: break
+        masterSecret = result
+        
         self.session = Session()
-        self.session._calcMasterSecret(self.version, premasterSecret,
-                                      clientHello.random, serverHello.random)
+        self.session.masterSecret = masterSecret
         self.session.sessionID = serverHello.session_id
         self.session.cipherSuite = cipherSuite
         self.session.srpUsername = srpUsername
         self.session.clientCertChain = clientCertChain
         self.session.serverCertChain = serverCertChain
-        
-        
-        #After having previously sent a ClientKeyExchange, the client now
-        #initiates an exchange of Finished messages.
-        for result in self._clientFinished(clientHello.random, 
-                            serverHello.random,
-                            settings.cipherImplementations):
-            yield result
-
-        #Mark the connection as open
         self.session._setResumable(True)
         self._handshakeDone(resumed=False)
 
@@ -429,21 +430,20 @@ class TLSConnection(TLSRecordLayer):
                     "Server's ciphersuite doesn't match session"):
                     yield result
 
-            #Set the session for this connection
-            self.session = session
-
             #Calculate pending connection states
-            self._calcPendingStates(clientRandom, serverHello.random,
-                                   cipherImplementations)
+            self._calcPendingStates(session.cipherSuite, 
+                                    session.masterSecret, 
+                                    clientRandom, serverHello.random, 
+                                    cipherImplementations)                                   
 
             #Exchange ChangeCipherSpec and Finished messages
-            for result in self._getFinished():
+            for result in self._getFinished(session.masterSecret):
                 yield result
-            for result in self._sendFinished():
+            for result in self._sendFinished(session.masterSecret):
                 yield result
 
-            #Mark the connection as open
-            self._handshakeDone(resumed=True)
+            #Set the session for this connection
+            self.session = session
             yield "resumed_and_finished"        
             
     def _clientSRPKeyExchange(self, settings, cipherSuite, certificateType, 
@@ -549,6 +549,7 @@ class TLSConnection(TLSRecordLayer):
         if self.fault == Fault.badA:
             A = N
             S = 0
+            
         premasterSecret = numberToBytes(S, numBytes(N))
 
         #Send ClientKeyExchange
@@ -576,7 +577,6 @@ class TLSConnection(TLSRecordLayer):
             if result in (0,1): yield result
             else: break
         msg = result
-
         certificateRequest = None
         if isinstance(msg, CertificateRequest):
             certificateRequest = msg
@@ -647,15 +647,11 @@ class TLSConnection(TLSRecordLayer):
         #private key, send CertificateVerify
         if certificateRequest and privateKey:
             if self.version == (3,0):
-                #Create a temporary session object, just for the
-                #purpose of creating the CertificateVerify
-                session = Session()
-                session._calcMasterSecret(self.version,
+                masterSecret = calcMasterSecret(self.version,
                                          premasterSecret,
                                          clientRandom,
                                          serverRandom)
-                verifyBytes = self._calcSSLHandshakeHash(\
-                                  session.masterSecret, "")
+                verifyBytes = self._calcSSLHandshakeHash(masterSecret, "")
             elif self.version in ((3,1), (3,2)):
                 verifyBytes = stringToBytes(\
                     self._handshake_md5.digest() + \
@@ -669,17 +665,21 @@ class TLSConnection(TLSRecordLayer):
                 yield result
         yield (premasterSecret, serverCertChain)
 
-    def _clientFinished(self, clientRandom, serverRandom,
-                        cipherImplementations):
-        #Calculate pending connection states
-        self._calcPendingStates(clientRandom, serverRandom,
-                               cipherImplementations)
+    def _clientFinished(self, premasterSecret, clientRandom, serverRandom,
+                        cipherSuite, cipherImplementations):
+                        
+        masterSecret = calcMasterSecret(self.version, premasterSecret,
+                            clientRandom, serverRandom)
+        self._calcPendingStates(cipherSuite, masterSecret, 
+                                clientRandom, serverRandom, 
+                                cipherImplementations)
 
         #Exchange ChangeCipherSpec and Finished messages
-        for result in self._sendFinished():
+        for result in self._sendFinished(masterSecret):
             yield result
-        for result in self._getFinished():
+        for result in self._getFinished(masterSecret):
             yield result
+        yield masterSecret
 
 
     def handshakeServer(self, verifierDB=None,
@@ -800,6 +800,8 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed a privateKey but no certChain")
         if reqCAs and not reqCert:
             raise ValueError("Caller passed reqCAs but not reqCert")            
+        if certChain and not isinstance(certChain, X509CertChain):
+            raise ValueError("Unrecognized certificate type")
 
         if not settings:
             settings = HandshakeSettings()
@@ -810,6 +812,7 @@ class TLSConnection(TLSRecordLayer):
                                             verifierDB, sessionCache):
             if result in (0,1): yield result
             elif result == None:
+                self._handshakeDone(resumed=True)                
                 return # Handshake was resumed, we're done 
             else: break
         (clientHello, cipherSuite) = result
@@ -846,10 +849,17 @@ class TLSConnection(TLSRecordLayer):
                 else: break
             (premasterSecret, clientCertChain) = result
 
+        # Exchange Finished messages
+        for result in self._serverFinished(premasterSecret, 
+                                clientHello.random, serverHello.random,
+                                cipherSuite, settings.cipherImplementations):
+                if result in (0,1): yield result
+                else: break
+        masterSecret = result
+
         #Create the session object
         self.session = Session()
-        self.session._calcMasterSecret(self.version, premasterSecret,
-                                      clientHello.random, serverHello.random)
+        self.session.masterSecret = masterSecret
         self.session.sessionID = serverHello.session_id
         self.session.cipherSuite = cipherSuite
         self.session.srpUsername = clientHello.srp_username
@@ -859,17 +869,6 @@ class TLSConnection(TLSRecordLayer):
             self.session.serverCertChain = certChain
         else:
             self.session.serverCertChain = None
-            
-        #Calculate pending connection states
-        self._calcPendingStates(clientHello.random, serverHello.random,
-                               settings.cipherImplementations)
-
-        #Exchange ChangeCipherSpec and Finished messages
-        for result in self._getFinished():
-            yield result
-
-        for result in self._sendFinished():
-            yield result
 
         #Add the session object to the session cache
         if sessionCache and sessionID:
@@ -894,11 +893,6 @@ class TLSConnection(TLSRecordLayer):
             cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
         else:
             assert(False)
-
-        #Initialize acceptable certificate type
-        if certChain:
-            if not isinstance(certChain, X509CertChain):
-                ValueError("Unrecognized certificate type")
 
         #Tentatively set version to most-desirable version, so if an error
         #occurs parsing the ClientHello, this is what we'll use for the
@@ -958,9 +952,6 @@ class TLSConnection(TLSRecordLayer):
 
             #If a session is found..
             if session:
-                #Set the session
-                self.session = session
-
                 #Send ServerHello
                 serverHello = ServerHello()
                 serverHello.create(self.version, getRandomBytes(32),
@@ -973,17 +964,21 @@ class TLSConnection(TLSRecordLayer):
                 self._versionCheck = True
 
                 #Calculate pending connection states
-                self._calcPendingStates(clientHello.random, serverHello.random,
-                                       settings.cipherImplementations)
+                self._calcPendingStates(session.cipherSuite, 
+                                        session.masterSecret,
+                                        clientHello.random, 
+                                        serverHello.random,
+                                        settings.cipherImplementations)
 
                 #Exchange ChangeCipherSpec and Finished messages
-                for result in self._sendFinished():
+                for result in self._sendFinished(session.masterSecret):
                     yield result
-                for result in self._getFinished():
+                for result in self._getFinished(session.masterSecret):
                     yield result
 
-                #Mark the connection as open
-                self._handshakeDone(resumed=True)
+                #Set the session
+                self.session = session
+                    
                 yield None # Handshake done!
 
         #Calculate the first cipher suite intersection.
@@ -1174,13 +1169,9 @@ class TLSConnection(TLSRecordLayer):
         #Get and check CertificateVerify, if relevant
         if clientCertChain:
             if self.version == (3,0):
-                #Create a temporary session object, just for the purpose
-                #of checking the CertificateVerify
-                session = Session()
-                session._calcMasterSecret(self.version, premasterSecret,
+                masterSecret = calcMasterSecret(self.version, premasterSecret,
                                          clientHello.random, serverHello.random)
-                verifyBytes = self._calcSSLHandshakeHash(\
-                                session.masterSecret, "")
+                verifyBytes = self._calcSSLHandshakeHash(masterSecret, "")
             elif self.version in ((3,1), (3,2)):
                 verifyBytes = stringToBytes(self._handshake_md5.digest() +\
                                             self._handshake_sha.digest())
@@ -1208,6 +1199,29 @@ class TLSConnection(TLSRecordLayer):
                         "Signature failed to verify"):
                     yield result
         yield (premasterSecret, clientCertChain)
+
+
+
+    def _serverFinished(self,  premasterSecret, clientRandom, serverRandom,
+                        cipherSuite, cipherImplementations):
+                        
+        masterSecret = calcMasterSecret(self.version, premasterSecret,
+                                      clientRandom, serverRandom)
+                        
+        #Calculate pending connection states
+        self._calcPendingStates(cipherSuite, masterSecret, 
+                                clientRandom, serverRandom,
+                                cipherImplementations)
+
+        #Exchange ChangeCipherSpec and Finished messages
+        for result in self._getFinished(masterSecret):
+            yield result
+
+        for result in self._sendFinished(masterSecret):
+            yield result
+        
+        yield masterSecret        
+
 
 
     def _handshakeWrapperAsync(self, handshaker, checker):
