@@ -39,7 +39,6 @@ class TLSConnection(TLSRecordLayer):
     L{tlslite.integration.TLSAsyncDispatcherMixIn.TLSAsyncDispatcherMixIn}).
     """
 
-
     def __init__(self, sock):
         """Create a new TLSConnection instance.
 
@@ -115,6 +114,13 @@ class TLSConnection(TLSRecordLayer):
         """
         handshaker = self._handshakeClientAsync(srpParams=(username, password),
                         session=session, settings=settings, checker=checker)
+        # The handshaker is a Python Generator which executes the handshake.
+        # It allows the handshake to be run in a "piecewise", asynchronous
+        # fashion, returning 1 when it is waiting to able to write, 0 when
+        # it is waiting to read.
+        #
+        # If 'async' is True, the generator is returned to the caller, 
+        # otherwise it is executed to completion here.  
         if async:
             return handshaker
         for result in handshaker:
@@ -190,6 +196,13 @@ class TLSConnection(TLSRecordLayer):
         handshaker = self._handshakeClientAsync(certParams=(certChain,
                         privateKey), session=session, settings=settings,
                         checker=checker)
+        # The handshaker is a Python Generator which executes the handshake.
+        # It allows the handshake to be run in a "piecewise", asynchronous
+        # fashion, returning 1 when it is waiting to able to write, 0 when
+        # it is waiting to read.
+        #
+        # If 'async' is True, the generator is returned to the caller, 
+        # otherwise it is executed to completion here.                        
         if async:
             return handshaker
         for result in handshaker:
@@ -268,6 +281,9 @@ class TLSConnection(TLSRecordLayer):
         #We'll use this for the ClientHello, and if an error occurs
         #parsing the Server Hello, we'll use this version for the response
         self.version = settings.maxVersion
+        
+        # OK Start sending messages!
+        # *****************************
 
         # Send the ClientHello.
         for result in self._clientSendClientHello(settings, session, 
@@ -834,6 +850,9 @@ class TLSConnection(TLSRecordLayer):
             settings = HandshakeSettings()
         settings = settings._filter()
         
+        # OK Start exchanging messages
+        # ******************************
+        
         # Handle ClientHello and resumption
         for result in self._serverGetClientHello(settings, certChain,\
                                             verifierDB, sessionCache):
@@ -1335,36 +1354,13 @@ class TLSConnection(TLSRecordLayer):
                         raise
             except GeneratorExit:
                 raise
-            except:
-                self._shutdown(False)
-                raise
-        else:
-            try:
-                for result in handshaker:
-                    yield result
-                if checker:
-                    try:
-                        checker(self)
-                    except TLSAuthenticationError:
-                        alert = Alert().create(AlertDescription.close_notify,
-                                               AlertLevel.fatal)
-                        for result in self._sendMsg(alert):
-                            yield result
-                        raise
-            except socket.error, e:
-                raise TLSFaultError("socket error!")
-            except TLSAbruptCloseError, e:
-                raise TLSFaultError("abrupt close error!")
             except TLSAlert, alert:
+                if not self.fault:
+                    raise
                 if alert.description not in Fault.faultAlerts[self.fault]:
                     raise TLSFaultError(str(alert))
                 else:
                     pass
-            except GeneratorExit:
-                raise
             except:
                 self._shutdown(False)
                 raise
-            else:
-                raise TLSFaultError("No error!")
-
