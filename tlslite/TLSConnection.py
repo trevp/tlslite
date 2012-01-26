@@ -51,6 +51,10 @@ class TLSConnection(TLSRecordLayer):
         """
         TLSRecordLayer.__init__(self, sock)
 
+    #*********************************************************
+    # Client Handshake Functions
+    #*********************************************************
+
     def handshakeClientSRP(self, username, password, session=None,
                            settings=None, checker=None, async=False):
         """Perform an SRP handshake in the role of client.
@@ -677,6 +681,33 @@ class TLSConnection(TLSRecordLayer):
             yield result
         yield masterSecret
 
+    def _clientGetKeyFromChain(self, certificate, settings):
+        #Get and check cert chain from the Certificate message
+        certChain = certificate.certChain
+        if not certChain or certChain.getNumCerts() == 0:
+            for result in self._sendError(AlertDescription.illegal_parameter,
+                    "Other party sent a Certificate message without "\
+                    "certificates"):
+                yield result
+
+        #Get and check public key from the cert chain
+        publicKey = certChain.getEndEntityPublicKey()
+        if len(publicKey) < settings.minKeySize:
+            for result in self._sendError(AlertDescription.handshake_failure,
+                    "Other party's public key too small: %d" % len(publicKey)):
+                yield result
+        if len(publicKey) > settings.maxKeySize:
+            for result in self._sendError(AlertDescription.handshake_failure,
+                    "Other party's public key too large: %d" % len(publicKey)):
+                yield result
+
+        yield publicKey, certChain
+
+
+    #*********************************************************
+    # Server Handshake Functions
+    #*********************************************************
+
 
     def handshakeServer(self, verifierDB=None,
                         certChain=None, privateKey=None, reqCert=False,
@@ -803,7 +834,7 @@ class TLSConnection(TLSRecordLayer):
             settings = HandshakeSettings()
         settings = settings._filter()
         
-        # Handle ClientHello and and resumption
+        # Handle ClientHello and resumption
         for result in self._serverGetClientHello(settings, certChain,\
                                             verifierDB, sessionCache):
             if result in (0,1): yield result
@@ -949,7 +980,7 @@ class TLSConnection(TLSRecordLayer):
                 for result in self._sendMsg(serverHello):
                     yield result
 
-                #From here on, the client's messages must have the right version
+                #From here on, the client's messages must have right version
                 self._versionCheck = True
 
                 #Calculate pending connection states
@@ -1212,6 +1243,81 @@ class TLSConnection(TLSRecordLayer):
         yield masterSecret        
 
 
+    #*********************************************************
+    # Shared Handshake Functions
+    #*********************************************************
+
+
+    def _sendFinished(self, masterSecret):
+        #Send ChangeCipherSpec
+        for result in self._sendMsg(ChangeCipherSpec()):
+            yield result
+
+        #Switch to pending write state
+        self._changeWriteState()
+
+        #Calculate verification data
+        verifyData = self._calcFinished(masterSecret, True)
+        if self.fault == Fault.badFinished:
+            verifyData[0] = (verifyData[0]+1)%256
+
+        #Send Finished message under new state
+        finished = Finished(self.version).create(verifyData)
+        for result in self._sendMsg(finished):
+            yield result
+
+    def _getFinished(self, masterSecret):
+        #Get and check ChangeCipherSpec
+        for result in self._getMsg(ContentType.change_cipher_spec):
+            if result in (0,1):
+                yield result
+        changeCipherSpec = result
+
+        if changeCipherSpec.type != 1:
+            for result in self._sendError(AlertDescription.illegal_parameter,
+                                         "ChangeCipherSpec type incorrect"):
+                yield result
+
+        #Switch to pending read state
+        self._changeReadState()
+
+        #Calculate verification data
+        verifyData = self._calcFinished(masterSecret, False)
+
+        #Get and check Finished message under new state
+        for result in self._getMsg(ContentType.handshake,
+                                  HandshakeType.finished):
+            if result in (0,1):
+                yield result
+        finished = result
+        if finished.verify_data != verifyData:
+            for result in self._sendError(AlertDescription.decrypt_error,
+                                         "Finished message is incorrect"):
+                yield result
+
+    def _calcFinished(self, masterSecret, send=True):
+        if self.version == (3,0):
+            if (self._client and send) or (not self._client and not send):
+                senderStr = "\x43\x4C\x4E\x54"
+            else:
+                senderStr = "\x53\x52\x56\x52"
+
+            verifyData = self._calcSSLHandshakeHash(masterSecret, senderStr)
+            return verifyData
+
+        elif self.version in ((3,1), (3,2)):
+            if (self._client and send) or (not self._client and not send):
+                label = "client finished"
+            else:
+                label = "server finished"
+
+            handshakeHashes = stringToBytes(self._handshake_md5.digest() + \
+                                            self._handshake_sha.digest())
+            verifyData = PRF(masterSecret, label, handshakeHashes, 12)
+            return verifyData
+        else:
+            raise AssertionError()
+
 
     def _handshakeWrapperAsync(self, handshaker, checker):
         if not self.fault:
@@ -1262,25 +1368,3 @@ class TLSConnection(TLSRecordLayer):
             else:
                 raise TLSFaultError("No error!")
 
-
-    def _clientGetKeyFromChain(self, certificate, settings):
-        #Get and check cert chain from the Certificate message
-        certChain = certificate.certChain
-        if not certChain or certChain.getNumCerts() == 0:
-            for result in self._sendError(AlertDescription.illegal_parameter,
-                    "Other party sent a Certificate message without "\
-                    "certificates"):
-                yield result
-
-        #Get and check public key from the cert chain
-        publicKey = certChain.getEndEntityPublicKey()
-        if len(publicKey) < settings.minKeySize:
-            for result in self._sendError(AlertDescription.handshake_failure,
-                    "Other party's public key too small: %d" % len(publicKey)):
-                yield result
-        if len(publicKey) > settings.maxKeySize:
-            for result in self._sendError(AlertDescription.handshake_failure,
-                    "Other party's public key too large: %d" % len(publicKey)):
-                yield result
-
-        yield publicKey, certChain
