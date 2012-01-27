@@ -35,8 +35,9 @@ class ContentType:
     application_data = 23
     all = (20,21,22,23)
 
-class ClientHelloExtension:
-    srp = 12
+class ExtensionType:    # RFC 4366
+    srp = 12            # RFC 5054  
+    cert_type = 9       # RFC 6091
 
 class AlertLevel:
     warning = 1
