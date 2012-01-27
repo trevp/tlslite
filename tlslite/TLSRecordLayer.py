@@ -1018,7 +1018,7 @@ class TLSRecordLayer:
             raise AssertionError()
 
         if self.version == (3,0):
-            createMACFunc = MAC_SSL
+            createMACFunc = createMAC_SSL
         elif self.version in ((3,1), (3,2)):
             createMACFunc = hmac.HMAC
 

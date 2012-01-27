@@ -108,70 +108,29 @@ def makeK(N, g):
   return stringToNumber(sha1(numberToString(N) + PAD(N, g)).digest())
 
 
-"""
-MAC_SSL
-Modified from Python HMAC by Trevor
-"""
-
+def createMAC_SSL(k):
+    mac = MAC_SSL()
+    mac.create(k)
+    return mac
+    
 class MAC_SSL:
-    """MAC_SSL class.
-
-    This supports the API for Cryptographic Hash Functions (PEP 247).
-    """
-
-    def __init__(self, key, msg = None):
-        """Create a new MAC_SSL object.
-
-        key:       key for the keyed hash object.
-        msg:       Initial input for the hash, if provided.
-        """
-        if key == None: #TREVNEW - for faster copying
-            return      #TREVNEW
-
-        self.outer = sha1()
-        self.inner = sha1()
+    def __init__(self):
         self.digest_size = 20
+        
+    def create(self, k):
+        self.ohash = sha1(k + ("\x5C" * 40))
+        self.ihash = sha1(k + ("\x36" * 40))
 
-        ipad = "\x36" * 40
-        opad = "\x5C" * 40
-
-        self.inner.update(key)
-        self.inner.update(ipad)
-        self.outer.update(key)
-        self.outer.update(opad)
-        if msg is not None:
-            self.update(msg)
-
-
-    def update(self, msg):
-        """Update this hashing object with the string msg.
-        """
-        self.inner.update(msg)
+    def update(self, m):
+        self.ihash.update(m)
 
     def copy(self):
-        """Return a separate copy of this hashing object.
-
-        An update to this copy won't affect the original object.
-        """
-        other = MAC_SSL(None) #TREVNEW - for faster copying
-        other.digest_size = self.digest_size #TREVNEW
-        other.inner = self.inner.copy()
-        other.outer = self.outer.copy()
-        return other
+        new = MAC_SSL()
+        new.ihash = self.ihash.copy()
+        new.ohash = self.ohash.copy()
+        return new
 
     def digest(self):
-        """Return the hash value of this hashing object.
-
-        This returns a string containing 8-bit data.  The object is
-        not altered in any way by this function; you can continue
-        updating the object after calling this function.
-        """
-        h = self.outer.copy()
-        h.update(self.inner.digest())
-        return h.digest()
-
-    def hexdigest(self):
-        """Like digest(), but returns a string of hexadecimal digits instead.
-        """
-        return "".join([hex(ord(x))[2:].zfill(2)
-                        for x in tuple(self.digest())])
+        ohash2 = self.ohash.copy()
+        ohash2.update(self.ihash.digest())
+        return ohash2.digest()
