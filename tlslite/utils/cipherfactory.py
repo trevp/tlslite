@@ -18,12 +18,6 @@ if cryptomath.m2cryptoLoaded:
     import OpenSSL_TripleDES
     tripleDESPresent = True
 
-if cryptomath.cryptlibpyLoaded:
-    import Cryptlib_AES
-    import Cryptlib_RC4
-    import Cryptlib_TripleDES
-    tripleDESPresent = True
-
 if cryptomath.pycryptoLoaded:
     import PyCrypto_AES
     import PyCrypto_RC4
@@ -47,12 +41,10 @@ def createAES(key, IV, implList=None):
     @return: An AES object.
     """
     if implList == None:
-        implList = ["cryptlib", "openssl", "pycrypto", "python"]
+        implList = ["openssl", "pycrypto", "python"]
 
     for impl in implList:
-        if impl == "cryptlib" and cryptomath.cryptlibpyLoaded:
-            return Cryptlib_AES.new(key, 2, IV)
-        elif impl == "openssl" and cryptomath.m2cryptoLoaded:
+        if impl == "openssl" and cryptomath.m2cryptoLoaded:
             return OpenSSL_AES.new(key, 2, IV)
         elif impl == "pycrypto" and cryptomath.pycryptoLoaded:
             return PyCrypto_AES.new(key, 2, IV)
@@ -73,14 +65,12 @@ def createRC4(key, IV, implList=None):
     @return: An RC4 object.
     """
     if implList == None:
-        implList = ["cryptlib", "openssl", "pycrypto", "python"]
+        implList = ["openssl", "pycrypto", "python"]
 
     if len(IV) != 0:
         raise AssertionError()
     for impl in implList:
-        if impl == "cryptlib" and cryptomath.cryptlibpyLoaded:
-            return Cryptlib_RC4.new(key)
-        elif impl == "openssl" and cryptomath.m2cryptoLoaded:
+        if impl == "openssl" and cryptomath.m2cryptoLoaded:
             return OpenSSL_RC4.new(key)
         elif impl == "pycrypto" and cryptomath.pycryptoLoaded:
             return PyCrypto_RC4.new(key)
@@ -102,12 +92,10 @@ def createTripleDES(key, IV, implList=None):
     @return: A 3DES object.
     """
     if implList == None:
-        implList = ["cryptlib", "openssl", "pycrypto"]
+        implList = ["openssl", "pycrypto"]
 
     for impl in implList:
-        if impl == "cryptlib" and cryptomath.cryptlibpyLoaded:
-           return Cryptlib_TripleDES.new(key, 2, IV)
-        elif impl == "openssl" and cryptomath.m2cryptoLoaded:
+        if impl == "openssl" and cryptomath.m2cryptoLoaded:
             return OpenSSL_TripleDES.new(key, 2, IV)
         elif impl == "pycrypto" and cryptomath.pycryptoLoaded:
             return PyCrypto_TripleDES.new(key, 2, IV)

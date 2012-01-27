@@ -25,21 +25,6 @@ try:
 except ImportError:
     m2cryptoLoaded = False
 
-
-# Try to load cryptlib
-try:
-    import cryptlib_py
-    try:
-        cryptlib_py.cryptInit()
-    except cryptlib_py.CryptException, e:
-        #If someone else has init's cryptlib we're tolerant of that.
-        if e[0] != cryptlib_py.CRYPT_ERROR_INITED:
-            raise
-    cryptlibpyLoaded = True
-
-except ImportError:
-    cryptlibpyLoaded = False
-
 #Try to load GMPY
 try:
     import gmpy

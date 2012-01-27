@@ -2,13 +2,14 @@
 # See the LICENSE file for legal information regarding use of this file.
 
 """
-TLS Lite is a free python library that implements SSL v3, TLS v1, and
-TLS v1.1.  TLS Lite supports non-traditional authentication methods
-such as SRP, shared keys, and cryptoIDs, in addition to X.509
-certificates.  TLS Lite is pure python, however it can access OpenSSL,
-cryptlib, pycrypto, and GMPY for faster crypto operations.  TLS Lite
-integrates with httplib, xmlrpclib, poplib, imaplib, smtplib,
-SocketServer, asyncore.
+TLS Lite is a free python library that implements SSL and TLS. TLS Lite
+supports RSA and SRP ciphersuites. TLS Lite is pure python, however it can use
+other libraries for faster crypto operations. TLS Lite integrates with several
+stdlib neworking libraries.
+
+API documentation is available in the 'docs' directory.
+
+If you have questions or feedback, feel free to contact me.
 
 To use, do::
 

@@ -38,7 +38,7 @@ imports::
     from integration.XMLRPCTransport import XMLRPCTransport
     from integration.TLSSocketServerMixIn import TLSSocketServerMixIn
     from integration.TLSAsyncDispatcherMixIn import TLSAsyncDispatcherMixIn
-    from utils.cryptomath import cryptlibpyLoaded, m2cryptoLoaded,
+    from utils.cryptomath import m2cryptoLoaded,
                                  gmpyLoaded, pycryptoLoaded, prngName
     from utils.keyfactory import generateRSAKey, parsePEMKey
                                  parseAsPublicKey, parsePrivateKey
@@ -63,7 +63,7 @@ from integration.IMAP4_TLS import IMAP4_TLS
 from integration.SMTP_TLS import SMTP_TLS
 from integration.XMLRPCTransport import XMLRPCTransport
 
-from utils.cryptomath import cryptlibpyLoaded, m2cryptoLoaded, gmpyLoaded, \
+from utils.cryptomath import m2cryptoLoaded, gmpyLoaded, \
                              pycryptoLoaded, prngName
 from utils.keyfactory import generateRSAKey, parsePEMKey, \
                              parseAsPublicKey, parsePrivateKey

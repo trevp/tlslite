@@ -183,8 +183,7 @@ def clientTest(address, dir):
     connection = connect()
     try:
         connection.handshakeClientSRP("test", "garbage", session=session)
-        testConnClient(connection)
-        assert()
+        assert(False)
     except TLSRemoteAlert, alert:
         if alert.description != AlertDescription.bad_record_mac:
             raise
@@ -221,8 +220,6 @@ def clientTest(address, dir):
     address = address[0], address[1]+1
 
     implementations = []
-    if cryptlibpyLoaded:
-        implementations.append("cryptlib")
     if m2cryptoLoaded:
         implementations.append("openssl")
     if pycryptoLoaded:
@@ -249,7 +246,7 @@ def clientTest(address, dir):
     print "Test 23 - throughput test"
     for implementation in implementations:
         for cipher in ["aes128", "aes256", "3des", "rc4"]:
-            if cipher == "3des" and implementation not in ("openssl", "cryptlib", "pycrypto"):
+            if cipher == "3des" and implementation not in ("openssl", "pycrypto"):
                 continue
 
             print "Test 23:",
@@ -477,8 +474,6 @@ def serverTest(address, dir):
         return TLSConnection(lsock.accept()[0])
 
     implementations = []
-    if cryptlibpyLoaded:
-        implementations.append("cryptlib")
     if m2cryptoLoaded:
         implementations.append("openssl")
     if pycryptoLoaded:
@@ -505,7 +500,7 @@ def serverTest(address, dir):
     print "Test 23 - throughput test"
     for implementation in implementations:
         for cipher in ["aes128", "aes256", "3des", "rc4"]:
-            if cipher == "3des" and implementation not in ("openssl", "cryptlib", "pycrypto"):
+            if cipher == "3des" and implementation not in ("openssl", "pycrypto"):
                 continue
 
             print "Test 23:",
@@ -543,10 +538,6 @@ if len(sys.argv) == 1 or (len(sys.argv)==2 and sys.argv[1].lower().endswith("hel
     print "RNG: %s" % prngName
     print ""
     print "Modules:"
-    if cryptlibpyLoaded:
-        print "  cryptlib_py : Loaded"
-    else:
-        print "  cryptlib_py : Not Loaded"
     if m2cryptoLoaded:
         print "  M2Crypto    : Loaded"
     else:

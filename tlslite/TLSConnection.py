@@ -319,14 +319,13 @@ class TLSConnection(TLSRecordLayer):
         #reading the post-ServerHello messages, then derives a
         #premasterSecret and sends a corresponding ClientKeyExchange.
         if cipherSuite in CipherSuite.srpAllSuites:
-            
             for result in self._clientSRPKeyExchange(\
                     settings, cipherSuite, serverHello.certificate_type, 
                     srpUsername, password,
                     clientHello.random, serverHello.random):                
                 if result in (0,1): yield result
                 else: break                
-            (premasterSecret, serverCertChain) = result           
+            (premasterSecret, serverCertChain) = result               
                 
         #If the server selected a certificate-based RSA ciphersuite,
         #the client finishes reading the post-ServerHello messages. If 

@@ -7,7 +7,6 @@ class IntegrationHelper:
               username=None, password=None,
               certChain=None, privateKey=None,
               x509Fingerprint=None,
-              x509TrustList=None, x509CommonName=None,
               settings = None):
 
         self.username = None
@@ -36,6 +35,5 @@ class IntegrationHelper:
         else:
             raise ValueError("Bad parameters")
 
-        self.checker = Checker(x509Fingerprint,
-                                x509TrustList, x509CommonName)
+        self.checker = Checker(x509Fingerprint)
         self.settings = settings

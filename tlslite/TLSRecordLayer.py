@@ -364,8 +364,7 @@ class TLSRecordLayer:
 
         @rtype: str
         @return: The name of the cipher implementation used with
-        this connection.  Either 'python', 'cryptlib', 'openssl',
-        or 'pycrypto'.
+        this connection.  Either 'python', 'openssl', or 'pycrypto'.
         """
         if not self._writeState.encContext:
             return None

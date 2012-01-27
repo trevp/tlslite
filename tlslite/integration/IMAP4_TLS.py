@@ -18,7 +18,6 @@ class IMAP4_TLS(IMAP4, ClientHelper):
                  username=None, password=None,
                  certChain=None, privateKey=None,
                  x509Fingerprint=None,
-                 x509TrustList=None, x509CommonName=None,
                  settings=None):
         """Create a new IMAP4_TLS.
 
@@ -32,7 +31,6 @@ class IMAP4_TLS(IMAP4, ClientHelper):
         or you can do certificate-based server
         authentication with one of these argument combinations:
          - x509Fingerprint
-         - x509TrustList[, x509CommonName] (requires cryptlib_py)
 
         Certificate-based server authentication is compatible with
         SRP or certificate-based client authentication.
@@ -66,22 +64,7 @@ class IMAP4_TLS(IMAP4, ClientHelper):
 
         @type x509Fingerprint: str
         @param x509Fingerprint: Hex-encoded X.509 fingerprint for
-        server authentication.  Mutually exclusive with the
-        'x509TrustList' argument.
-
-        @type x509TrustList: list of L{tlslite.X509.X509}
-        @param x509TrustList: A list of trusted root certificates.  The
-        other party must present a certificate chain which extends to
-        one of these root certificates.  The cryptlib_py module must be
-        installed to use this parameter.  Mutually exclusive with the
-        'x509Fingerprint' arguments.
-
-        @type x509CommonName: str
-        @param x509CommonName: The end-entity certificate's 'CN' field
-        must match this value.  For a web server, this is typically a
-        server name such as 'www.amazon.com'.  Mutually exclusive with
-        the 'x509Fingerprint' arguments.  Requires the
-        'x509TrustList' argument.
+        server authentication.
 
         @type settings: L{tlslite.HandshakeSettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
@@ -93,7 +76,6 @@ class IMAP4_TLS(IMAP4, ClientHelper):
                  username, password,
                  certChain, privateKey,
                  x509Fingerprint,
-                 x509TrustList, x509CommonName,
                  settings)
 
         IMAP4.__init__(self, host, port)

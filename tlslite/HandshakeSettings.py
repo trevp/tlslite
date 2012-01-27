@@ -76,8 +76,7 @@ class HandshakeSettings:
         self.minKeySize = 1023
         self.maxKeySize = 8193
         self.cipherNames = ["aes256", "aes128", "3des", "rc4"]
-        self.cipherImplementations = ["cryptlib", "openssl", "pycrypto",
-                                      "python"]
+        self.cipherImplementations = ["openssl", "pycrypto","python"]
         self.certificateTypes = ["x509"]
         self.minVersion = (3,0)
         self.maxVersion = (3,2)
@@ -101,9 +100,6 @@ class HandshakeSettings:
         if len(other.certificateTypes)==0:
             raise ValueError("No supported certificate types")
 
-        if not cryptomath.cryptlibpyLoaded:
-            other.cipherImplementations = [e for e in \
-                self.cipherImplementations if e != "cryptlib"]
         if not cryptomath.m2cryptoLoaded:
             other.cipherImplementations = [e for e in \
                 other.cipherImplementations if e != "openssl"]
@@ -125,7 +121,7 @@ class HandshakeSettings:
             if s not in ("aes256", "aes128", "rc4", "3des"):
                 raise ValueError("Unknown cipher name: '%s'" % s)
         for s in other.cipherImplementations:
-            if s not in ("cryptlib", "openssl", "python", "pycrypto"):
+            if s not in ("openssl", "python", "pycrypto"):
                 raise ValueError("Unknown cipher implementation: '%s'" % s)
         for s in other.certificateTypes:
             if s not in ("x509"):
