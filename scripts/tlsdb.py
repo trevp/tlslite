@@ -22,10 +22,6 @@ if len(sys.argv) == 1 or (len(sys.argv)==2 and sys.argv[1].lower().endswith("hel
     print "RNG: %s" % prngName
     print ""
     print "Modules:"
-    if cryptlibpyLoaded:
-        print "  cryptlib_py : Loaded"
-    else:
-        print "  cryptlib_py : Not Loaded"
     if m2cryptoLoaded:
         print "  M2Crypto    : Loaded"
     else:

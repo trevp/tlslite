@@ -25,10 +25,10 @@ Table of Contents
 
 1 Introduction 
 =============== 
-TLS Lite is a free python library that implements SSL and TLS. TLS Lite
-supports RSA and SRP ciphersuites. TLS Lite is pure python, however it can use
-other libraries for faster crypto operations. TLS Lite integrates with several
-stdlib neworking libraries.
+TLS Lite is an open source python library that implements SSL and TLS. TLS
+Lite supports RSA and SRP ciphersuites. TLS Lite is pure python, however it
+can use other libraries for faster crypto operations. TLS Lite integrates with
+several stdlib neworking libraries.
 
 API documentation is available in the 'docs' directory.
 
@@ -50,8 +50,7 @@ Thanks to Edward Loper for Epydoc, which generated the API docs.
 3 Installation
 ===============
 Requirements:
-  Python 2.7 has been tested. Earlier versions may work. Python 3 is not yet
-  supported.
+  Python 2.7 or higher is required. Python 3 is not supported.
 
 Options:
   - If you have the M2Crypto interface to OpenSSL, this will be used for fast
