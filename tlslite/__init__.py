@@ -1,3 +1,6 @@
+# Author: Trevor Perrin
+# See the LICENSE file for legal information regarding use of this file.
+
 """
 TLS Lite is a free python library that implements SSL v3, TLS v1, and
 TLS v1.1.  TLS Lite supports non-traditional authentication methods

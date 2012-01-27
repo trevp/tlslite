@@ -1,3 +1,6 @@
+# Author: Trevor Perrin
+# See the LICENSE file for legal information regarding use of this file.
+
 """Class representing an X.509 certificate chain."""
 
 from utils import cryptomath

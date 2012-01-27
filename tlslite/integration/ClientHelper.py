@@ -1,3 +1,6 @@
+# Author: Trevor Perrin
+# See the LICENSE file for legal information regarding use of this file.
+
 """
 A helper class for using TLS Lite with stdlib clients
 (httplib, xmlrpclib, imaplib, poplib).

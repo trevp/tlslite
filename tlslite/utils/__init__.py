@@ -1,3 +1,6 @@
+# Author: Trevor Perrin
+# See the LICENSE file for legal information regarding use of this file.
+
 """Toolkit for crypto and other stuff."""
 
 __all__ = ["AES",

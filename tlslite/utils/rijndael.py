@@ -1,3 +1,10 @@
+# Authors:
+#   Bram Cohen
+#   Trevor Perrin - various changes
+#
+# See the LICENSE file for legal information regarding use of this file.
+# Also see Bram Cohen's statement below
+
 """
 A pure python (slow) implementation of rijndael with a decent interface
 

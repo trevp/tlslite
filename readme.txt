@@ -25,11 +25,10 @@ Table of Contents
 
 1 Introduction 
 =============== 
-TLS Lite is a free python library that implements SSL v3, TLSv1, and TLSv1.1.
-TLS Lite supports RSA and SRP ciphersuites. TLS Lite is pure python, however
-it can use other libraries for faster crypto operations. TLS Lite can
-integrate with several stdlib neworking libraries to add SSL/TLS protection to
-their traffic.
+TLS Lite is a free python library that implements SSL and TLS. TLS Lite
+supports RSA and SRP ciphersuites. TLS Lite is pure python, however it can use
+other libraries for faster crypto operations. TLS Lite integrates with several
+stdlib neworking libraries.
 
 API documentation is available in the 'docs' directory.
 
@@ -38,9 +37,12 @@ If you have questions or feedback, feel free to contact me.
 
 2 Licenses/Acknowledgements
 ============================
-All code here is public domain.
+TLS Lite is written (mostly) by Trevor Perrin. It includes code from Bram
+Cohen and Google.
 
-Thanks to Bram Cohen for his public domain Rijndael implementation.
+All code in TLS Lite has either been dedicated to the public domain by its
+authors, or placed under a BSD-style license. See the LICENSE file for
+details.
 
 Thanks to Edward Loper for Epydoc, which generated the API docs.
 

@@ -1,3 +1,6 @@
+# Author: Trevor Perrin
+# See the LICENSE file for legal information regarding use of this file.
+
 """Pure-Python RC4 implementation."""
 
 from RC4 import RC4

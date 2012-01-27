@@ -1,3 +1,8 @@
+# Author: Trevor Perrin
+# Patch from Google adding getChildBytes()
+#
+# See the LICENSE file for legal information regarding use of this file.
+
 """Class for parsing ASN.1"""
 from compat import *
 from codec import *

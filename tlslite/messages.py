@@ -1,3 +1,9 @@
+# Authors: 
+#   Trevor Perrin
+#   Google - handling CertificateRequest.certificate_types
+#
+# See the LICENSE file for legal information regarding use of this file.
+
 """Classes representing TLS messages."""
 
 from utils.compat import *

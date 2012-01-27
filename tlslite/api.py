@@ -1,3 +1,6 @@
+# Author: Trevor Perrin
+# See the LICENSE file for legal information regarding use of this file.
+
 """Import this module for easy access to TLS Lite objects.
 
 The TLS Lite API consists of classes, functions, and variables spread

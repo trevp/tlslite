@@ -1,3 +1,9 @@
+# Authors: 
+#   Trevor Perrin
+#   Google - defining ClientCertificateType
+#
+# See the LICENSE file for legal information regarding use of this file.
+
 """Constants used in various places."""
 
 class CertificateType:

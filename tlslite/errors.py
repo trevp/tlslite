@@ -1,3 +1,6 @@
+# Author: Trevor Perrin
+# See the LICENSE file for legal information regarding use of this file.
+
 """Exception classes.
 @sort: TLSError, TLSAbruptCloseError, TLSAlert, TLSLocalAlert, TLSRemoteAlert,
 TLSAuthenticationError, TLSNoAuthenticationError, TLSAuthenticationTypeError,

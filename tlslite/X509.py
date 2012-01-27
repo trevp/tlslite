@@ -1,3 +1,9 @@
+# Authors: 
+#   Trevor Perrin
+#   Google - parsing subject field
+#
+# See the LICENSE file for legal information regarding use of this file.
+
 """Class representing an X.509 certificate."""
 
 from utils.ASN1Parser import ASN1Parser

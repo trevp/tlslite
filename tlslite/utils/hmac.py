@@ -1,3 +1,6 @@
+# Author: Trevor Perrin
+# See the LICENSE file for legal information regarding use of this file.
+
 """HMAC (Keyed-Hashing for Message Authentication) Python module.
 
 Implements the HMAC algorithm as described by RFC 2104.

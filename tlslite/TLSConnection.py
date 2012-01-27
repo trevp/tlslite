@@ -1,3 +1,9 @@
+# Authors: 
+#   Trevor Perrin
+#   Google - added reqCAs parameter
+#
+# See the LICENSE file for legal information regarding use of this file.
+
 """
 MAIN CLASS FOR TLS LITE (START HERE!).
 """

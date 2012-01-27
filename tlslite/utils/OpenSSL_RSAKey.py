@@ -1,3 +1,6 @@
+# Author: Trevor Perrin
+# See the LICENSE file for legal information regarding use of this file.
+
 """OpenSSL/M2Crypto RSA implementation."""
 
 from cryptomath import *
