@@ -164,9 +164,9 @@ class ClientHello(HandshakeMsg):
                 while soFar != totalExtLength:
                     extType = p.get(2)
                     extLength = p.get(2)
-                    if extType == 6:
+                    if extType == ClientHelloExtension.srp:
                         self.srp_username = bytesToString(p.getVarBytes(1))
-                    elif extType == 7:
+                    elif extType == ClientHelloExtension.cert_type:
                         self.certificate_types = p.getVarList(1, 1)
                     else:
                         p.getFixBytes(extLength)
@@ -194,11 +194,11 @@ class ClientHello(HandshakeMsg):
 
         if self.certificate_types and self.certificate_types != \
                 [CertificateType.x509]:
-            w.add(7, 2)
+            w.add(ClientHelloExtension.cert_type, 2)
             w.add(len(self.certificate_types)+1, 2)
             w.addVarSeq(self.certificate_types, 1, 1)
         if self.srp_username:
-            w.add(6, 2)
+            w.add(ClientHelloExtension.srp, 2)
             w.add(len(self.srp_username)+1, 2)
             w.addVarSeq(stringToBytes(self.srp_username), 1, 1)
 
@@ -238,7 +238,7 @@ class ServerHello(HandshakeMsg):
             while soFar != totalExtLength:
                 extType = p.get(2)
                 extLength = p.get(2)
-                if extType == 7:
+                if extType == ClientHelloExtension.cert_type:
                     self.certificate_type = p.get(1)
                 else:
                     p.getFixBytes(extLength)
@@ -265,7 +265,7 @@ class ServerHello(HandshakeMsg):
 
         if self.certificate_type and self.certificate_type != \
                 CertificateType.x509:
-            w.add(7, 2)
+            w.add(ClientHelloExtension.cert_type, 2)
             w.add(1, 2)
             w.add(self.certificate_type, 1)
 
