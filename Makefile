@@ -8,6 +8,7 @@ clean:
 	rm -rf dist
 	rm -rf docs
 	rm -rf build
+	rm -f MANIFEST
 
 docs:
 	epydoc --html -o docs tlslite
