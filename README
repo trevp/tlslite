@@ -70,7 +70,7 @@ Run 'python setup.py install'
 Test the Installation:
   - The 'tls.py' script should have been copied onto your path.  If not,
     you may have to copy it there manually.
-  - From the distribution's ./test subdirectory, run:
+  - From the distribution's ./tests subdirectory, run:
       tls.py servertest localhost:4443 .
   - While the test server is waiting, run:
       tls.py clienttest localhost:4443 .

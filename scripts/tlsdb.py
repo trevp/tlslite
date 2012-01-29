@@ -14,10 +14,11 @@ if __name__ != "__main__":
 
 
 from tlslite.api import *
+from tlslite import __version__
 
 if len(sys.argv) == 1 or (len(sys.argv)==2 and sys.argv[1].lower().endswith("help")):
     print ""
-    print "Version: 0.3.8"
+    print "Version: %s" % __version__
     print ""
     print "RNG: %s" % prngName
     print ""

@@ -18,9 +18,9 @@ To use, do::
 Then use the L{tlslite.TLSConnection.TLSConnection} class with a socket,
 or use one of the integration classes in L{tlslite.integration}.
 
-@version: 0.3.8
+@version: 0.3.8a
 """
-__version__ = "0.3.8"
+__version__ = "0.3.8a"
 
 __all__ = ["api",
            "BaseDB",
