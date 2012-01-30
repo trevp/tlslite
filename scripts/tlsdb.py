@@ -13,8 +13,7 @@ if __name__ != "__main__":
     raise "This must be run as a command, not used as a module!"
 
 
-from tlslite.api import *
-from tlslite import __version__
+from tlslite import *
 
 if len(sys.argv) == 1 or (len(sys.argv)==2 and sys.argv[1].lower().endswith("help")):
     print ""

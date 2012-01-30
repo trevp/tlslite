@@ -4,7 +4,7 @@
 """OpenSSL/M2Crypto RC4 implementation."""
 
 from cryptomath import *
-from RC4 import RC4
+from rc4 import RC4
 
 if m2cryptoLoaded:
 

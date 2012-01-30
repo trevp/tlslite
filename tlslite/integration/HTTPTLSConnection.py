@@ -5,8 +5,8 @@
 
 import socket
 import httplib
-from tlslite.TLSConnection import TLSConnection
-from tlslite.integration.ClientHelper import ClientHelper
+from tlslite.tlsconnection import TLSConnection
+from tlslite.integration.clienthelper import ClientHelper
 
 
 class HTTPBaseTLSConnection(httplib.HTTPConnection):
@@ -104,11 +104,11 @@ class HTTPTLSConnection(HTTPBaseTLSConnection, ClientHelper):
         @param password: SRP password for mutual authentication.
         Requires the 'username' argument.
 
-        @type certChain: L{tlslite.X509CertChain.X509CertChain} or
+        @type certChain: L{tlslite.x509certchain.X509CertChain} or
         @param certChain: Certificate chain for client authentication.
         Requires the 'privateKey' argument.  Excludes the SRP arguments.
         
-        @type privateKey: L{tlslite.utils.RSAKey.RSAKey}
+        @type privateKey: L{tlslite.utils.rsakey.RSAKey}
         @param privateKey: Private key for client authentication.
         Requires the 'certChain' argument.  Excludes the SRP arguments.
 
@@ -116,7 +116,7 @@ class HTTPTLSConnection(HTTPBaseTLSConnection, ClientHelper):
         @param x509Fingerprint: Hex-encoded X.509 fingerprint for
         server authentication.
 
-        @type settings: L{tlslite.HandshakeSettings.HandshakeSettings}
+        @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
         the ciphersuites, certificate types, and SSL/TLS versions
         offered by the client.

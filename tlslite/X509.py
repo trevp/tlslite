@@ -6,7 +6,7 @@
 
 """Class representing an X.509 certificate."""
 
-from utils.ASN1Parser import ASN1Parser
+from utils.asn1parser import ASN1Parser
 from utils.cryptomath import *
 from utils.keyfactory import _createPublicRSAKey
 
@@ -17,7 +17,7 @@ class X509:
     @type bytes: L{bytearray} of unsigned bytes
     @ivar bytes: The DER-encoded ASN.1 certificate
 
-    @type publicKey: L{tlslite.utils.RSAKey.RSAKey}
+    @type publicKey: L{tlslite.utils.rsakey.RSAKey}
     @ivar publicKey: The subject public key from the certificate.
 
     @type subject: L{array.array} of unsigned bytes

@@ -206,7 +206,7 @@ class AsyncStateMachine:
         """Start a handshake operation.
 
         The arguments passed to this function will be forwarded to
-        L{tlslite.TLSConnection.TLSConnection.handshakeServerAsync}.
+        L{tlslite.tlsconnection.TLSConnection.handshakeServerAsync}.
         """
         handshaker = self.tlsConnection.handshakeServerAsync(**args)
         self.setHandshakeOp(handshaker)

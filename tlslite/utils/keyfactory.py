@@ -7,15 +7,15 @@
 
 from compat import *
 
-from RSAKey import RSAKey
-from Python_RSAKey import Python_RSAKey
+from rsakey import RSAKey
+from python_rsakey import Python_RSAKey
 import cryptomath
 
 if cryptomath.m2cryptoLoaded:
-    from OpenSSL_RSAKey import OpenSSL_RSAKey
+    from openssl_rsakey import OpenSSL_RSAKey
 
 if cryptomath.pycryptoLoaded:
-    from PyCrypto_RSAKey import PyCrypto_RSAKey
+    from pycrypto_rsakey import PyCrypto_RSAKey
 
 # **************************************************************************
 # Factory Functions for RSA Keys
@@ -27,7 +27,7 @@ def generateRSAKey(bits, implementations=["openssl", "python"]):
     @type bits: int
     @param bits: Desired bit length of the new key's modulus.
 
-    @rtype: L{tlslite.utils.RSAKey.RSAKey}
+    @rtype: L{tlslite.utils.rsakey.RSAKey}
     @return: A new RSA private key.
     """
     for implementation in implementations:
@@ -130,7 +130,7 @@ def parseAsPublicKey(s):
     @type s: str
     @param s: A string containing a PEM-encoded public or private key.
 
-    @rtype: L{tlslite.utils.RSAKey.RSAKey}
+    @rtype: L{tlslite.utils.rsakey.RSAKey}
     @return: An RSA public key.
 
     @raise SyntaxError: If the key is not properly formatted.
@@ -143,7 +143,7 @@ def parsePrivateKey(s):
     @type s: str
     @param s: A string containing a PEM-encoded private key.
 
-    @rtype: L{tlslite.utils.RSAKey.RSAKey}
+    @rtype: L{tlslite.utils.rsakey.RSAKey}
     @return: An RSA private key.
 
     @raise SyntaxError: If the key is not properly formatted.

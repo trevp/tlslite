@@ -3,7 +3,7 @@
 from SocketServer import *
 from BaseHTTPServer import *
 from SimpleHTTPServer import *
-from tlslite.api import *
+from tlslite import *
 
 s = open("./serverX509Cert.pem").read()
 x509 = X509()

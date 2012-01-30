@@ -10,9 +10,9 @@ class RSAKey:
     """This is an abstract base class for RSA keys.
 
     Particular implementations of RSA keys, such as
-    L{OpenSSL_RSAKey.OpenSSL_RSAKey},
-    L{Python_RSAKey.Python_RSAKey}, and
-    L{PyCrypto_RSAKey.PyCrypto_RSAKey},
+    L{openssl_rsakey.OpenSSL_RSAKey},
+    L{python_rsakey.Python_RSAKey}, and
+    L{pycrypto_rsakey.PyCrypto_RSAKey},
     inherit from this.
 
     To create or parse an RSA key, don't use one of these classes

@@ -3,8 +3,8 @@
 
 """Class for post-handshake certificate checking."""
 
-from X509 import X509
-from X509CertChain import X509CertChain
+from x509 import X509
+from x509certchain import X509CertChain
 from errors import *
 
 
@@ -49,7 +49,7 @@ class Checker:
         When a Checker is passed to a handshake function, this will
         be called at the end of the function.
 
-        @type connection: L{tlslite.TLSConnection.TLSConnection}
+        @type connection: L{tlslite.tlsconnection.TLSConnection}
         @param connection: The TLSConnection to examine.
 
         @raise tlslite.errors.TLSAuthenticationError: If the other

@@ -11,7 +11,7 @@ clean:
 	rm -f MANIFEST
 
 docs:
-	epydoc --html -o docs tlslite
+	epydoc --html -v -o docs tlslite
 
 dist: docs
 	./setup.py sdist

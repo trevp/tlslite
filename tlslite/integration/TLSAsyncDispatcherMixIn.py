@@ -5,8 +5,8 @@
 
 
 import asyncore
-from tlslite.TLSConnection import TLSConnection
-from AsyncStateMachine import AsyncStateMachine
+from tlslite.tlsconnection import TLSConnection
+from asyncstatemachine import AsyncStateMachine
 
 
 class TLSAsyncDispatcherMixIn(AsyncStateMachine):
@@ -44,7 +44,7 @@ class TLSAsyncDispatcherMixIn(AsyncStateMachine):
     Add the following text into 'start_medusa.py', in the 'HTTP Server'
     section::
 
-        from tlslite.api import *
+        from tlslite import *
         s = open("./serverX509Cert.pem").read()
         x509 = X509()
         x509.parse(s)

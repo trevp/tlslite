@@ -3,11 +3,11 @@
 
 """Classes for integrating TLS Lite with other packages."""
 
-__all__ = ["AsyncStateMachine",
-           "HTTPTLSConnection",
-           "POP3_TLS",
-           "IMAP4_TLS",
-           "SMTP_TLS",
-           "XMLRPCTransport",
-           "TLSSocketServerMixIn",
-           "TLSAsyncDispatcherMixIn"]
+__all__ = ["asyncstatemachine",
+           "httptlsconnection",
+           "pop3_tls",
+           "imap4_tls",
+           "smtp_tls",
+           "xmlrpctransport",
+           "tlssocketservermixin",
+           "tlsasyncdispatchermixin"]

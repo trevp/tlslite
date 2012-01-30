@@ -5,8 +5,8 @@
 
 import xmlrpclib
 import httplib
-from tlslite.integration.HTTPTLSConnection import HTTPTLSConnection
-from tlslite.integration.ClientHelper import ClientHelper
+from tlslite.integration.httptlsconnection import HTTPTLSConnection
+from tlslite.integration.clienthelper import ClientHelper
 
 
 class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
@@ -22,7 +22,7 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
         An instance of this class can be passed to L{xmlrpclib.ServerProxy}
         to use TLS with XML-RPC calls::
 
-            from tlslite.api import XMLRPCTransport
+            from tlslite import XMLRPCTransport
             from xmlrpclib import ServerProxy
 
             transport = XMLRPCTransport(user="alice", password="abra123")
@@ -59,11 +59,11 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
         @param password: SRP password for mutual authentication.
         Requires the 'username' argument.
 
-        @type certChain: L{tlslite.X509CertChain.X509CertChain}
+        @type certChain: L{tlslite.x509certchain.X509CertChain}
         @param certChain: Certificate chain for client authentication.
         Requires the 'privateKey' argument.  Excludes the SRP arguments.
 
-        @type privateKey: L{tlslite.utils.RSAKey.RSAKey}
+        @type privateKey: L{tlslite.utils.rsakey.RSAKey}
         @param privateKey: Private key for client authentication.
         Requires the 'certChain' argument.  Excludes the SRP arguments.
 
@@ -71,7 +71,7 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
         @param x509Fingerprint: Hex-encoded X.509 fingerprint for
         server authentication.
 
-        @type settings: L{tlslite.HandshakeSettings.HandshakeSettings}
+        @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
         the ciphersuites, certificate types, and SSL/TLS versions
         offered by the client.

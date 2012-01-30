@@ -9,7 +9,7 @@ class X509CertChain:
     """This class represents a chain of X.509 certificates.
 
     @type x509List: list
-    @ivar x509List: A list of L{tlslite.X509.X509} instances,
+    @ivar x509List: A list of L{tlslite.x509.X509} instances,
     starting with the end-entity certificate and with every
     subsequent certificate certifying the previous.
     """
@@ -18,7 +18,7 @@ class X509CertChain:
         """Create a new X509CertChain.
 
         @type x509List: list
-        @param x509List: A list of L{tlslite.X509.X509} instances,
+        @param x509List: A list of L{tlslite.x509.X509} instances,
         starting with the end-entity certificate and with every
         subsequent certificate certifying the previous.
         """
@@ -37,7 +37,7 @@ class X509CertChain:
     def getEndEntityPublicKey(self):
         """Get the public key from the end-entity certificate.
 
-        @rtype: L{tlslite.utils.RSAKey.RSAKey}
+        @rtype: L{tlslite.utils.rsakey.RSAKey}
         """
         if self.getNumCerts() == 0:
             raise AssertionError()

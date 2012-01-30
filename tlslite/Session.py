@@ -28,10 +28,10 @@ class Session:
     @type srpUsername: str
     @ivar srpUsername: The client's SRP username (or None).
 
-    @type clientCertChain: L{tlslite.X509CertChain.X509CertChain}
+    @type clientCertChain: L{tlslite.x509certchain.X509CertChain}
     @ivar clientCertChain: The client's certificate chain (or None).
 
-    @type serverCertChain: L{tlslite.X509CertChain.X509CertChain}
+    @type serverCertChain: L{tlslite.x509certchain.X509CertChain}
     @ivar serverCertChain: The server's certificate chain (or None).
     """
 

@@ -14,7 +14,7 @@ from mathtls import *
 from constants import *
 from utils.cryptomath import getRandomBytes
 from utils import hmac
-from FileObject import FileObject
+from fileobject import FileObject
 import socket
 import errno
 import traceback

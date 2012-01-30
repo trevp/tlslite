@@ -24,22 +24,22 @@ __version__ = "0.3.8a"
 
 from constants import AlertLevel, AlertDescription, Fault
 from errors import *
-from Checker import Checker
-from HandshakeSettings import HandshakeSettings
-from Session import Session
-from SessionCache import SessionCache
-from TLSConnection import TLSConnection
-from VerifierDB import VerifierDB
-from X509 import X509
-from X509CertChain import X509CertChain
+from checker import Checker
+from handshakesettings import HandshakeSettings
+from session import Session
+from sessioncache import SessionCache
+from tlsconnection import TLSConnection
+from verifierdb import VerifierDB
+from x509 import X509
+from x509certchain import X509CertChain
 
-from integration.HTTPTLSConnection import HTTPTLSConnection
-from integration.TLSSocketServerMixIn import TLSSocketServerMixIn
-from integration.TLSAsyncDispatcherMixIn import TLSAsyncDispatcherMixIn
-from integration.POP3_TLS import POP3_TLS
-from integration.IMAP4_TLS import IMAP4_TLS
-from integration.SMTP_TLS import SMTP_TLS
-from integration.XMLRPCTransport import XMLRPCTransport
+from integration.httptlsconnection import HTTPTLSConnection
+from integration.tlssocketservermixin import TLSSocketServerMixIn
+from integration.tlsasyncdispatchermixin import TLSAsyncDispatcherMixIn
+from integration.pop3_tls import POP3_TLS
+from integration.imap4_tls import IMAP4_TLS
+from integration.smtp_tls import SMTP_TLS
+from integration.xmlrpctransport import XMLRPCTransport
 
 from utils.cryptomath import m2cryptoLoaded, gmpyLoaded, \
                              pycryptoLoaded, prngName

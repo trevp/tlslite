@@ -4,7 +4,7 @@
 """OpenSSL/M2Crypto AES implementation."""
 
 from cryptomath import *
-from AES import *
+from aes import *
 
 if m2cryptoLoaded:
 

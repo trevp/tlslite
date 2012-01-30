@@ -5,7 +5,7 @@
 
 class FileObject:
     """This class provides a file object interface to a
-    L{tlslite.TLSConnection.TLSConnection}.
+    L{tlslite.tlsconnection.TLSConnection}.
 
     Call makefile() on a TLSConnection to create a FileObject instance.
 

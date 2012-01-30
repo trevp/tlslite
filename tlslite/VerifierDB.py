@@ -6,7 +6,7 @@
 from utils.cryptomath import *
 from utils.compat import *
 import mathtls
-from BaseDB import BaseDB
+from basedb import BaseDB
 
 class VerifierDB(BaseDB):
     """This class represent an in-memory or on-disk database of SRP
@@ -46,7 +46,7 @@ class VerifierDB(BaseDB):
 
         @type verifierEntry: tuple
         @param verifierEntry: The verifier entry to add.  Use
-        L{tlslite.VerifierDB.VerifierDB.makeVerifier} to create a
+        L{tlslite.verifierdb.VerifierDB.makeVerifier} to create a
         verifier entry.
         """
         BaseDB.__setitem__(self, username, verifierEntry)

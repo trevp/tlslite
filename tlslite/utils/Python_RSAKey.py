@@ -4,8 +4,8 @@
 """Pure-Python RSA implementation."""
 
 from cryptomath import *
-from ASN1Parser import ASN1Parser
-from RSAKey import *
+from asn1parser import ASN1Parser
+from rsakey import *
 
 class Python_RSAKey(RSAKey):
     def __init__(self, n=0, e=0, d=0, p=0, q=0, dP=0, dQ=0, qInv=0):

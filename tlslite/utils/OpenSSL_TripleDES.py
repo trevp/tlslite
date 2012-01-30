@@ -4,7 +4,7 @@
 """OpenSSL/M2Crypto 3DES implementation."""
 
 from cryptomath import *
-from TripleDES import *
+from tripledes import *
 
 if m2cryptoLoaded:
 

@@ -3,7 +3,7 @@
 
 """Pure-Python RC4 implementation."""
 
-from RC4 import RC4
+from rc4 import RC4
 from cryptomath import *
 
 def new(key):

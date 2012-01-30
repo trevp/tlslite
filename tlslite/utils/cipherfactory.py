@@ -5,23 +5,23 @@
 
 import os
 
-import Python_AES
-import Python_RC4
+import python_aes
+import python_rc4
 
 import cryptomath
 
 tripleDESPresent = False
 
 if cryptomath.m2cryptoLoaded:
-    import OpenSSL_AES
-    import OpenSSL_RC4
-    import OpenSSL_TripleDES
+    import openssl_aes
+    import openssl_rc4
+    import openssl_tripledes
     tripleDESPresent = True
 
 if cryptomath.pycryptoLoaded:
-    import PyCrypto_AES
-    import PyCrypto_RC4
-    import PyCrypto_TripleDES
+    import pycrypto_aes
+    import pycrypto_rc4
+    import pycrypto_tripledes
     tripleDESPresent = True
 
 # **************************************************************************
@@ -45,11 +45,11 @@ def createAES(key, IV, implList=None):
 
     for impl in implList:
         if impl == "openssl" and cryptomath.m2cryptoLoaded:
-            return OpenSSL_AES.new(key, 2, IV)
+            return openssl_aes.new(key, 2, IV)
         elif impl == "pycrypto" and cryptomath.pycryptoLoaded:
-            return PyCrypto_AES.new(key, 2, IV)
+            return pycrypto_aes.new(key, 2, IV)
         elif impl == "python":
-            return Python_AES.new(key, 2, IV)
+            return python_aes.new(key, 2, IV)
     raise NotImplementedError()
 
 def createRC4(key, IV, implList=None):
@@ -71,11 +71,11 @@ def createRC4(key, IV, implList=None):
         raise AssertionError()
     for impl in implList:
         if impl == "openssl" and cryptomath.m2cryptoLoaded:
-            return OpenSSL_RC4.new(key)
+            return openssl_rc4.new(key)
         elif impl == "pycrypto" and cryptomath.pycryptoLoaded:
-            return PyCrypto_RC4.new(key)
+            return pycrypto_rc4.new(key)
         elif impl == "python":
-            return Python_RC4.new(key)
+            return python_rc4.new(key)
     raise NotImplementedError()
 
 #Create a new TripleDES instance
@@ -96,7 +96,7 @@ def createTripleDES(key, IV, implList=None):
 
     for impl in implList:
         if impl == "openssl" and cryptomath.m2cryptoLoaded:
-            return OpenSSL_TripleDES.new(key, 2, IV)
+            return openssl_tripledes.new(key, 2, IV)
         elif impl == "pycrypto" and cryptomath.pycryptoLoaded:
-            return PyCrypto_TripleDES.new(key, 2, IV)
+            return pycrypto_tripledes.new(key, 2, IV)
     raise NotImplementedError()

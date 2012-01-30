@@ -11,14 +11,14 @@ from __future__ import generators
 
 import socket
 from utils.compat import formatExceptionTrace
-from TLSRecordLayer import TLSRecordLayer
-from Session import Session
+from tlsrecordlayer import TLSRecordLayer
+from session import Session
 from constants import *
 from utils.cryptomath import getRandomBytes
 from errors import *
 from messages import *
 from mathtls import *
-from HandshakeSettings import HandshakeSettings
+from handshakesettings import HandshakeSettings
 
 
 class TLSConnection(TLSRecordLayer):
@@ -42,7 +42,7 @@ class TLSConnection(TLSRecordLayer):
     not use the asynchronous functions directly, but should use some
     framework like asyncore or Twisted which TLS Lite integrates with
     (see
-    L{tlslite.integration.TLSAsyncDispatcherMixIn.TLSAsyncDispatcherMixIn}).
+    L{tlslite.integration.tlsasyncdispatchermixin.TLSAsyncDispatcherMixIn}).
     """
 
     def __init__(self, sock):
@@ -83,18 +83,18 @@ class TLSConnection(TLSRecordLayer):
         @type password: str
         @param password: The SRP password.
 
-        @type session: L{tlslite.Session.Session}
+        @type session: L{tlslite.session.Session}
         @param session: A TLS session to attempt to resume.  This
         session must be an SRP session performed with the same username
         and password as were passed in.  If the resumption does not
         succeed, a full SRP handshake will be performed.
 
-        @type settings: L{tlslite.HandshakeSettings.HandshakeSettings}
+        @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
         the ciphersuites, certificate types, and SSL/TLS versions
         offered by the client.
 
-        @type checker: L{tlslite.Checker.Checker}
+        @type checker: L{tlslite.checker.Checker}
         @param checker: A Checker instance.  This instance will be
         invoked to examine the other party's authentication
         credentials, if the handshake completes succesfully.
@@ -157,25 +157,25 @@ class TLSConnection(TLSRecordLayer):
         If an exception is raised, the connection will have been
         automatically closed (if it was ever open).
 
-        @type certChain: L{tlslite.X509CertChain.X509CertChain}
+        @type certChain: L{tlslite.x509certchain.X509CertChain}
         @param certChain: The certificate chain to be used if the
         server requests client authentication.
 
-        @type privateKey: L{tlslite.utils.RSAKey.RSAKey}
+        @type privateKey: L{tlslite.utils.rsakey.RSAKey}
         @param privateKey: The private key to be used if the server
         requests client authentication.
 
-        @type session: L{tlslite.Session.Session}
+        @type session: L{tlslite.session.Session}
         @param session: A TLS session to attempt to resume.  If the
         resumption does not succeed, a full handshake will be
         performed.
 
-        @type settings: L{tlslite.HandshakeSettings.HandshakeSettings}
+        @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
         the ciphersuites, certificate types, and SSL/TLS versions
         offered by the client.
 
-        @type checker: L{tlslite.Checker.Checker}
+        @type checker: L{tlslite.checker.Checker}
         @param checker: A Checker instance.  This instance will be
         invoked to examine the other party's authentication
         credentials, if the handshake completes succesfully.
@@ -756,16 +756,16 @@ class TLSConnection(TLSRecordLayer):
         If an exception is raised, the connection will have been
         automatically closed (if it was ever open).
 
-        @type verifierDB: L{tlslite.VerifierDB.VerifierDB}
+        @type verifierDB: L{tlslite.verifierdb.VerifierDB}
         @param verifierDB: A database of SRP password verifiers
         associated with usernames.  If the client performs an SRP
         handshake, the session's srpUsername attribute will be set.
 
-        @type certChain: L{tlslite.X509CertChain.X509CertChain}
+        @type certChain: L{tlslite.x509certchain.X509CertChain}
         @param certChain: The certificate chain to be used if the
         client requests server certificate authentication.
 
-        @type privateKey: L{tlslite.utils.RSAKey.RSAKey}
+        @type privateKey: L{tlslite.utils.rsakey.RSAKey}
         @param privateKey: The private key to be used if the client
         requests server certificate authentication.
 
@@ -777,17 +777,17 @@ class TLSConnection(TLSRecordLayer):
         performs a client certificate authentication, the sessions's
         clientCertChain attribute will be set.
 
-        @type sessionCache: L{tlslite.SessionCache.SessionCache}
+        @type sessionCache: L{tlslite.sessioncache.SessionCache}
         @param sessionCache: An in-memory cache of resumable sessions.
         The client can resume sessions from this cache.  Alternatively,
         if the client performs a full handshake, a new session will be
         added to the cache.
 
-        @type settings: L{tlslite.HandshakeSettings.HandshakeSettings}
+        @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
         the ciphersuites and SSL/TLS version chosen by the server.
 
-        @type checker: L{tlslite.Checker.Checker}
+        @type checker: L{tlslite.checker.Checker}
         @param checker: A Checker instance.  This instance will be
         invoked to examine the other party's authentication
         credentials, if the handshake completes succesfully.
