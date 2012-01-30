@@ -3,7 +3,6 @@
 # Author: Trevor Perrin
 # See the LICENSE file for legal information regarding use of this file.
 
-import sys
 from distutils.core import setup
 from tlslite import __version__
 

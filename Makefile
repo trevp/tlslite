@@ -5,6 +5,9 @@ default:
 
 .PHONY : clean
 clean:
+	rm -rf tlslite/*.pyc
+	rm -rf tlslite/utils/*.pyc
+	rm -rf tlslite/integration/*.pyc	
 	rm -rf dist
 	rm -rf docs
 	rm -rf build
