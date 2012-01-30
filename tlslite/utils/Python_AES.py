@@ -3,10 +3,10 @@
 
 """Pure-Python AES implementation."""
 
-from cryptomath import *
+from .cryptomath import *
 
-from aes import *
-from rijndael import rijndael
+from .aes import *
+from .rijndael import rijndael
 
 def new(key, mode, IV):
     return Python_AES(key, mode, IV)

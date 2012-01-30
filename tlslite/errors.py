@@ -7,7 +7,7 @@ TLSAuthenticationError, TLSNoAuthenticationError, TLSAuthenticationTypeError,
 TLSFingerprintError, TLSAuthorizationError, TLSValidationError, TLSFaultError
 """
 
-from constants import AlertDescription, AlertLevel
+from .constants import AlertDescription, AlertLevel
 
 class TLSError(Exception):
     """Base class for all TLS Lite exceptions."""

@@ -3,7 +3,6 @@
 
 """Abstract class for RC4."""
 
-from compat import * #For False
 
 class RC4:
     def __init__(self, keyBytes, implementation):

@@ -10,7 +10,7 @@ import math
 import base64
 import binascii
 
-from compat import *
+from .compat import *
 
 
 # **************************************************************************

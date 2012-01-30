@@ -4,10 +4,9 @@
 # See the LICENSE file for legal information regarding use of this file.
 
 from distutils.core import setup
-from tlslite import __version__
 
 setup(name="tlslite",
-      version=__version__,
+      version="0.3.9",
       author="Trevor Perrin",
       author_email="tlslite@trevp.net",
       url="http://trevp.net/tlslite/",

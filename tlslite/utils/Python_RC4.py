@@ -3,8 +3,8 @@
 
 """Pure-Python RC4 implementation."""
 
-from rc4 import RC4
-from cryptomath import *
+from .rc4 import RC4
+from .cryptomath import *
 
 def new(key):
     return Python_RC4(key)

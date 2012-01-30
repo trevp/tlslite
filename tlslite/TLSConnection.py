@@ -7,18 +7,17 @@
 """
 MAIN CLASS FOR TLS LITE (START HERE!).
 """
-from __future__ import generators
 
 import socket
-from utils.compat import formatExceptionTrace
-from tlsrecordlayer import TLSRecordLayer
-from session import Session
-from constants import *
-from utils.cryptomath import getRandomBytes
-from errors import *
-from messages import *
-from mathtls import *
-from handshakesettings import HandshakeSettings
+from .utils.compat import formatExceptionTrace
+from .tlsrecordlayer import TLSRecordLayer
+from .session import Session
+from .constants import *
+from .utils.cryptomath import getRandomBytes
+from .errors import *
+from .messages import *
+from .mathtls import *
+from .handshakesettings import HandshakeSettings
 
 
 class TLSConnection(TLSRecordLayer):

@@ -3,8 +3,8 @@
 
 """PyCrypto 3DES implementation."""
 
-from cryptomath import *
-from tripledes import *
+from .cryptomath import *
+from .tripledes import *
 
 if pycryptoLoaded:
     import Crypto.Cipher.DES3

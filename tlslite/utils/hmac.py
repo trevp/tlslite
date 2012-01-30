@@ -9,7 +9,7 @@ Implements the HMAC algorithm as described by RFC 2104.
 copying)
 """
 
-from compat import md5, sha1
+from .compat import md5, sha1
 
 def _strxor(s1, s2):
     """Utility method. XOR the two strings s1 and s2 (must have same length).

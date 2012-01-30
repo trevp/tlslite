@@ -5,23 +5,23 @@
 
 import os
 
-import python_aes
-import python_rc4
+from tlslite.utils import python_aes
+from tlslite.utils import python_rc4
 
-import cryptomath
+from tlslite.utils import cryptomath
 
 tripleDESPresent = False
 
 if cryptomath.m2cryptoLoaded:
-    import openssl_aes
-    import openssl_rc4
-    import openssl_tripledes
+    from tlslite.utils import openssl_aes
+    from tlslite.utils import openssl_rc4
+    from tlslite.utils import openssl_tripledes
     tripleDESPresent = True
 
 if cryptomath.pycryptoLoaded:
-    import pycrypto_aes
-    import pycrypto_rc4
-    import pycrypto_tripledes
+    from tlslite.utils import pycrypto_aes
+    from tlslite.utils import pycrypto_rc4
+    from tlslite.utils import pycrypto_tripledes
     tripleDESPresent = True
 
 # **************************************************************************

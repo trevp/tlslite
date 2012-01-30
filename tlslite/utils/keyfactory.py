@@ -5,17 +5,17 @@
 @sort: generateRSAKey, parsePEMKey, parseAsPublicKey
 """
 
-from compat import *
+from .compat import *
 
-from rsakey import RSAKey
-from python_rsakey import Python_RSAKey
-import cryptomath
+from .rsakey import RSAKey
+from .python_rsakey import Python_RSAKey
+from tlslite.utils import cryptomath
 
 if cryptomath.m2cryptoLoaded:
-    from openssl_rsakey import OpenSSL_RSAKey
+    from .openssl_rsakey import OpenSSL_RSAKey
 
 if cryptomath.pycryptoLoaded:
-    from pycrypto_rsakey import PyCrypto_RSAKey
+    from .pycrypto_rsakey import PyCrypto_RSAKey
 
 # **************************************************************************
 # Factory Functions for RSA Keys

@@ -4,17 +4,18 @@
 """Helper class for TLSConnection."""
 from __future__ import generators
 
-from utils.compat import *
-from utils.cryptomath import *
-from utils.cipherfactory import createAES, createRC4, createTripleDES
-from utils.codec import *
-from errors import *
-from messages import *
-from mathtls import *
-from constants import *
-from utils.cryptomath import getRandomBytes
-from utils import hmac
-from fileobject import FileObject
+from .utils.compat import *
+from .utils.cryptomath import *
+from .utils.cipherfactory import createAES, createRC4, createTripleDES
+from .utils.codec import *
+from .errors import *
+from .messages import *
+from .mathtls import *
+from .constants import *
+from .utils.cryptomath import getRandomBytes
+from .utils import hmac
+from .fileobject import FileObject
+
 import socket
 import errno
 import traceback

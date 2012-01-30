@@ -3,9 +3,9 @@
 
 """Class for post-handshake certificate checking."""
 
-from x509 import X509
-from x509certchain import X509CertChain
-from errors import *
+from .x509 import X509
+from .x509certchain import X509CertChain
+from .errors import *
 
 
 class Checker:

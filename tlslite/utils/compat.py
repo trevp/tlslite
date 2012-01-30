@@ -9,9 +9,7 @@ import math
 
 # Requires Python 2.5
 from hashlib import md5
-from hashlib import sha1    
-class GeneratorExit(Exception):
-    pass    
+from hashlib import sha1 
 
 # Requires Python 2.6, will need to be changed for Python 3
 def createByteArraySequence(seq):

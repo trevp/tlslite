@@ -3,10 +3,10 @@
 
 """PyCrypto RSA implementation."""
 
-from cryptomath import *
+from .cryptomath import *
 
-from rsakey import *
-from python_rsakey import Python_RSAKey
+from .rsakey import *
+from .python_rsakey import Python_RSAKey
 
 if pycryptoLoaded:
 

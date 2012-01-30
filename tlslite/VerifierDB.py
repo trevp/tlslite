@@ -3,10 +3,10 @@
 
 """Class for storing SRP password verifiers."""
 
-from utils.cryptomath import *
-from utils.compat import *
-import mathtls
-from basedb import BaseDB
+from .utils.cryptomath import *
+from .utils.compat import *
+from tlslite import mathtls
+from .basedb import BaseDB
 
 class VerifierDB(BaseDB):
     """This class represent an in-memory or on-disk database of SRP

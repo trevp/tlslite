@@ -3,8 +3,8 @@
 
 """Miscellaneous helper functions."""
 
-from utils.compat import *
-from utils.cryptomath import *
+from .utils.compat import *
+from .utils.cryptomath import *
 
 import hmac
 

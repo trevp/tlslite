@@ -3,8 +3,8 @@
 
 """OpenSSL/M2Crypto AES implementation."""
 
-from cryptomath import *
-from aes import *
+from .cryptomath import *
+from .aes import *
 
 if m2cryptoLoaded:
 
