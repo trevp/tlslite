@@ -13,30 +13,35 @@ If you have questions or feedback, feel free to contact me.
 
 To use, do::
 
-    from tlslite.api import *
+    from tlslite import TLSConnection
 
-Then use the L{tlslite.TLSConnection.TLSConnection} class with a socket,
-or use one of the integration classes in L{tlslite.integration}.
+Then use the L{tlslite.TLSConnection.TLSConnection} class with a socket.
+(Or, use one of the integration classes in L{tlslite.integration}).
 
 @version: 0.3.8a
 """
 __version__ = "0.3.8a"
 
-__all__ = ["api",
-           "BaseDB",
-           "Checker",
-           "constants",
-           "errors",
-           "FileObject",
-           "HandshakeSettings",
-           "mathtls",
-           "messages",
-           "Session",
-           "SessionCache",
-           "TLSConnection",
-           "TLSRecordLayer",
-           "VerifierDB",
-           "X509",
-           "X509CertChain",
-           "integration",
-           "utils"]
+from constants import AlertLevel, AlertDescription, Fault
+from errors import *
+from Checker import Checker
+from HandshakeSettings import HandshakeSettings
+from Session import Session
+from SessionCache import SessionCache
+from TLSConnection import TLSConnection
+from VerifierDB import VerifierDB
+from X509 import X509
+from X509CertChain import X509CertChain
+
+from integration.HTTPTLSConnection import HTTPTLSConnection
+from integration.TLSSocketServerMixIn import TLSSocketServerMixIn
+from integration.TLSAsyncDispatcherMixIn import TLSAsyncDispatcherMixIn
+from integration.POP3_TLS import POP3_TLS
+from integration.IMAP4_TLS import IMAP4_TLS
+from integration.SMTP_TLS import SMTP_TLS
+from integration.XMLRPCTransport import XMLRPCTransport
+
+from utils.cryptomath import m2cryptoLoaded, gmpyLoaded, \
+                             pycryptoLoaded, prngName
+from utils.keyfactory import generateRSAKey, parsePEMKey, \
+                             parseAsPublicKey, parsePrivateKey

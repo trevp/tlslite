@@ -22,7 +22,12 @@ if __name__ != "__main__":
 #from tlslite.utils.jython_compat import formatExceptionTrace
 #from tlslite.X509 import X509, X509CertChain
 
-from tlslite.api import *
+#from tlslite.api import *
+from tlslite import TLSConnection, TLSFaultError, Fault, HandshakeSettings, \
+    X509, X509CertChain, IMAP4_TLS, VerifierDB, Session, SessionCache, \
+    TLSLocalAlert, TLSRemoteAlert, TLSAbruptCloseError, parsePEMKey, \
+    AlertDescription, HTTPTLSConnection, TLSSocketServerMixIn, \
+    POP3_TLS, m2cryptoLoaded, pycryptoLoaded, gmpyLoaded
 
 def parsePrivateKey(s):
     try:
