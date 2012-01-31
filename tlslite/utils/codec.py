@@ -6,35 +6,25 @@
 from .compat import *
 
 class Writer:
-    def __init__(self, length=0):
-        #If length is zero, then this is just a "trial run" to determine length
-        self.index = 0
-        self.bytes = createByteArrayZeros(length)
+    def __init__(self):
+        self.bytes = createByteArrayZeros(0)
 
     def add(self, x, length):
-        if self.bytes:
-            newIndex = self.index+length-1
-            while newIndex >= self.index:
-                self.bytes[newIndex] = x & 0xFF
-                x >>= 8
-                newIndex -= 1
-        self.index += length
+        self.bytes += createByteArrayZeros(length)
+        newIndex = len(self.bytes) - 1
+        for count in range(length):
+            self.bytes[newIndex] = x & 0xFF
+            x >>= 8
+            newIndex -= 1
 
     def addFixSeq(self, seq, length):
-        if self.bytes:
-            for e in seq:
-                self.add(e, length)
-        else:
-            self.index += len(seq)*length
+        for e in seq:
+            self.add(e, length)
 
     def addVarSeq(self, seq, length, lengthLength):
-        if self.bytes:
-            self.add(len(seq)*length, lengthLength)
-            for e in seq:
-                self.add(e, length)
-        else:
-            self.index += lengthLength + (len(seq)*length)
-
+        self.add(len(seq)*length, lengthLength)
+        for e in seq:
+            self.add(e, length)
 
 class Parser:
     def __init__(self, bytes):

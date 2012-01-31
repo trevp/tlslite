@@ -28,7 +28,7 @@ class RecordHeader3:
         return self
 
     def write(self):
-        w = Writer(5)
+        w = Writer()
         w.add(self.type, 1)
         w.add(self.version[0], 1)
         w.add(self.version[1], 1)
@@ -59,22 +59,7 @@ class RecordHeader2:
         return self
 
 
-class Msg:
-    def preWrite(self, trial):
-        if trial:
-            w = Writer()
-        else:
-            length = self.write(True)
-            w = Writer(length)
-        return w
-
-    def postWrite(self, w, trial):
-        if trial:
-            return w.index
-        else:
-            return w.bytes
-
-class Alert(Msg):
+class Alert:
     def __init__(self):
         self.contentType = ContentType.alert
         self.level = 0
@@ -93,29 +78,26 @@ class Alert(Msg):
         return self
 
     def write(self):
-        w = Writer(2)
+        w = Writer()
         w.add(self.level, 1)
         w.add(self.description, 1)
         return w.bytes
 
 
-class HandshakeMsg(Msg):
-    def preWrite(self, handshakeType, trial):
-        if trial:
-            w = Writer()
-            w.add(handshakeType, 1)
-            w.add(0, 3)
-        else:
-            length = self.write(True)
-            w = Writer(length)
-            w.add(handshakeType, 1)
-            w.add(length-4, 3)
-        return w
-
+class HandshakeMsg:
+    def __init__(self, handshakeType):
+        self.contentType = ContentType.handshake
+        self.handshakeType = handshakeType
+    
+    def postWrite(self, w):
+        headerWriter = Writer()
+        headerWriter.add(self.handshakeType, 1)
+        headerWriter.add(len(w.bytes), 3)
+        return headerWriter.bytes + w.bytes
 
 class ClientHello(HandshakeMsg):
     def __init__(self, ssl2=False):
-        self.contentType = ContentType.handshake
+        HandshakeMsg.__init__(self, HandshakeType.client_hello)
         self.ssl2 = ssl2
         self.client_version = (0,0)
         self.random = createByteArrayZeros(32)
@@ -174,8 +156,8 @@ class ClientHello(HandshakeMsg):
             p.stopLengthCheck()
         return self
 
-    def write(self, trial=False):
-        w = HandshakeMsg.preWrite(self, HandshakeType.client_hello, trial)
+    def write(self):
+        w = Writer()
         w.add(self.client_version[0], 1)
         w.add(self.client_version[1], 1)
         w.addFixSeq(self.random, 1)
@@ -201,13 +183,11 @@ class ClientHello(HandshakeMsg):
             w.add(ExtensionType.srp, 2)
             w.add(len(self.srp_username)+1, 2)
             w.addVarSeq(stringToBytes(self.srp_username), 1, 1)
-
-        return HandshakeMsg.postWrite(self, w, trial)
-
+        return self.postWrite(w)
 
 class ServerHello(HandshakeMsg):
     def __init__(self):
-        self.contentType = ContentType.handshake
+        HandshakeMsg.__init__(self, HandshakeType.server_hello)
         self.server_version = (0,0)
         self.random = createByteArrayZeros(32)
         self.session_id = createByteArraySequence([])
@@ -246,8 +226,8 @@ class ServerHello(HandshakeMsg):
         p.stopLengthCheck()
         return self
 
-    def write(self, trial=False):
-        w = HandshakeMsg.preWrite(self, HandshakeType.server_hello, trial)
+    def write(self):
+        w = Writer()
         w.add(self.server_version[0], 1)
         w.add(self.server_version[1], 1)
         w.addFixSeq(self.random, 1)
@@ -268,13 +248,13 @@ class ServerHello(HandshakeMsg):
             w.add(ExtensionType.cert_type, 2)
             w.add(1, 2)
             w.add(self.certificate_type, 1)
+        return self.postWrite(w)
 
-        return HandshakeMsg.postWrite(self, w, trial)
 
 class Certificate(HandshakeMsg):
     def __init__(self, certificateType):
+        HandshakeMsg.__init__(self, HandshakeType.certificate)
         self.certificateType = certificateType
-        self.contentType = ContentType.handshake
         self.certChain = None
 
     def create(self, certChain):
@@ -301,8 +281,8 @@ class Certificate(HandshakeMsg):
         p.stopLengthCheck()
         return self
 
-    def write(self, trial=False):
-        w = HandshakeMsg.preWrite(self, HandshakeType.certificate, trial)
+    def write(self):
+        w = Writer()
         if self.certificateType == CertificateType.x509:
             chainLength = 0
             if self.certChain:
@@ -320,11 +300,11 @@ class Certificate(HandshakeMsg):
                 w.addVarSeq(bytes, 1, 3)
         else:
             raise AssertionError()
-        return HandshakeMsg.postWrite(self, w, trial)
+        return self.postWrite(w)
 
 class CertificateRequest(HandshakeMsg):
     def __init__(self):
-        self.contentType = ContentType.handshake
+        HandshakeMsg.__init__(self, HandshakeType.certificate_request)
         #Apple's Secure Transport library rejects empty certificate_types, so
         #default to rsa_sign.
         self.certificate_types = [ClientCertificateType.rsa_sign]
@@ -348,9 +328,8 @@ class CertificateRequest(HandshakeMsg):
         p.stopLengthCheck()
         return self
 
-    def write(self, trial=False):
-        w = HandshakeMsg.preWrite(self, HandshakeType.certificate_request,
-                                  trial)
+    def write(self):
+        w = Writer()
         w.addVarSeq(self.certificate_types, 1, 1)
         caLength = 0
         #determine length
@@ -360,12 +339,12 @@ class CertificateRequest(HandshakeMsg):
         #add bytes
         for ca_dn in self.certificate_authorities:
             w.addVarSeq(ca_dn, 1, 2)
-        return HandshakeMsg.postWrite(self, w, trial)
+        return self.postWrite(w)
 
 class ServerKeyExchange(HandshakeMsg):
     def __init__(self, cipherSuite):
+        HandshakeMsg.__init__(self, HandshakeType.server_key_exchange)
         self.cipherSuite = cipherSuite
-        self.contentType = ContentType.handshake
         self.srp_N = 0L
         self.srp_g = 0L
         self.srp_s = createByteArraySequence([])
@@ -390,16 +369,15 @@ class ServerKeyExchange(HandshakeMsg):
         p.stopLengthCheck()
         return self
 
-    def write(self, trial=False):
-        w = HandshakeMsg.preWrite(self, HandshakeType.server_key_exchange,
-                                  trial)
+    def write(self):
+        w = Writer()
         w.addVarSeq(numberToBytes(self.srp_N), 1, 2)
         w.addVarSeq(numberToBytes(self.srp_g), 1, 2)
         w.addVarSeq(self.srp_s, 1, 1)
         w.addVarSeq(numberToBytes(self.srp_B), 1, 2)
         if self.cipherSuite in CipherSuite.srpCertSuites:
             w.addVarSeq(self.signature, 1, 2)
-        return HandshakeMsg.postWrite(self, w, trial)
+        return self.postWrite(w)
 
     def hash(self, clientRandom, serverRandom):
         oldCipherSuite = self.cipherSuite
@@ -413,7 +391,7 @@ class ServerKeyExchange(HandshakeMsg):
 
 class ServerHelloDone(HandshakeMsg):
     def __init__(self):
-        self.contentType = ContentType.handshake
+        HandshakeMsg.__init__(self, HandshakeType.server_hello_done)
 
     def create(self):
         return self
@@ -423,15 +401,15 @@ class ServerHelloDone(HandshakeMsg):
         p.stopLengthCheck()
         return self
 
-    def write(self, trial=False):
-        w = HandshakeMsg.preWrite(self, HandshakeType.server_hello_done, trial)
-        return HandshakeMsg.postWrite(self, w, trial)
+    def write(self):
+        w = Writer()
+        return self.postWrite(w)
 
 class ClientKeyExchange(HandshakeMsg):
     def __init__(self, cipherSuite, version=None):
+        HandshakeMsg.__init__(self, HandshakeType.client_key_exchange)
         self.cipherSuite = cipherSuite
         self.version = version
-        self.contentType = ContentType.handshake
         self.srp_A = 0
         self.encryptedPreMasterSecret = createByteArraySequence([])
 
@@ -460,9 +438,8 @@ class ClientKeyExchange(HandshakeMsg):
         p.stopLengthCheck()
         return self
 
-    def write(self, trial=False):
-        w = HandshakeMsg.preWrite(self, HandshakeType.client_key_exchange,
-                                  trial)
+    def write(self):
+        w = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
             w.addVarSeq(numberToBytes(self.srp_A), 1, 2)
         elif self.cipherSuite in CipherSuite.certSuites:
@@ -474,11 +451,11 @@ class ClientKeyExchange(HandshakeMsg):
                 raise AssertionError()
         else:
             raise AssertionError()
-        return HandshakeMsg.postWrite(self, w, trial)
+        return self.postWrite(w)
 
 class CertificateVerify(HandshakeMsg):
     def __init__(self):
-        self.contentType = ContentType.handshake
+        HandshakeMsg.__init__(self, HandshakeType.certificate_verify)
         self.signature = createByteArraySequence([])
 
     def create(self, signature):
@@ -491,13 +468,12 @@ class CertificateVerify(HandshakeMsg):
         p.stopLengthCheck()
         return self
 
-    def write(self, trial=False):
-        w = HandshakeMsg.preWrite(self, HandshakeType.certificate_verify,
-                                  trial)
+    def write(self):
+        w = Writer()
         w.addVarSeq(self.signature, 1, 2)
-        return HandshakeMsg.postWrite(self, w, trial)
+        return self.postWrite(w)
 
-class ChangeCipherSpec(Msg):
+class ChangeCipherSpec:
     def __init__(self):
         self.contentType = ContentType.change_cipher_spec
         self.type = 1
@@ -512,15 +488,15 @@ class ChangeCipherSpec(Msg):
         p.stopLengthCheck()
         return self
 
-    def write(self, trial=False):
-        w = Msg.preWrite(self, trial)
+    def write(self):
+        w = Writer()
         w.add(self.type,1)
-        return Msg.postWrite(self, w, trial)
+        return w.bytes
 
 
 class Finished(HandshakeMsg):
     def __init__(self, version):
-        self.contentType = ContentType.handshake
+        HandshakeMsg.__init__(self, HandshakeType.finished)
         self.version = version
         self.verify_data = createByteArraySequence([])
 
@@ -539,12 +515,12 @@ class Finished(HandshakeMsg):
         p.stopLengthCheck()
         return self
 
-    def write(self, trial=False):
-        w = HandshakeMsg.preWrite(self, HandshakeType.finished, trial)
+    def write(self):
+        w = Writer()
         w.addFixSeq(self.verify_data, 1)
-        return HandshakeMsg.postWrite(self, w, trial)
+        return self.postWrite(w)
 
-class ApplicationData(Msg):
+class ApplicationData:
     def __init__(self):
         self.contentType = ContentType.application_data
         self.bytes = createByteArraySequence([])

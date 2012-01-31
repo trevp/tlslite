@@ -27,7 +27,7 @@ class _ConnectionState:
         self.seqnum = 0
 
     def getSeqNumStr(self):
-        w = Writer(8)
+        w = Writer()
         w.add(self.seqnum, 8)
         seqnumStr = bytesToString(w.bytes)
         self.seqnum += 1
