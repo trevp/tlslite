@@ -63,8 +63,6 @@ def clientTestCmd(argv):
 
     #Split address into hostname/port tuple
     address = address.split(":")
-    if len(address)==1:
-        address.append("4443")
     address = ( address[0], int(address[1]) )
 
     def connect():
@@ -320,8 +318,6 @@ def serverTestCmd(argv):
     
     #Split address into hostname/port tuple
     address = address.split(":")
-    if len(address)==1:
-        address.append("4443")
     address = ( address[0], int(address[1]) )
 
     #Connect to server
