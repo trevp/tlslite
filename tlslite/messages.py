@@ -165,24 +165,19 @@ class ClientHello(HandshakeMsg):
         w.addVarSeq(self.cipher_suites, 2, 2)
         w.addVarSeq(self.compression_methods, 1, 1)
 
-        extLength = 0
+        w2 = Writer() # For Extensions
         if self.certificate_types and self.certificate_types != \
                 [CertificateType.x509]:
-            extLength += 5 + len(self.certificate_types)
+            w2.add(ExtensionType.cert_type, 2)
+            w2.add(len(self.certificate_types)+1, 2)
+            w2.addVarSeq(self.certificate_types, 1, 1)
         if self.srp_username:
-            extLength += 5 + len(self.srp_username)
-        if extLength > 0:
-            w.add(extLength, 2)
-
-        if self.certificate_types and self.certificate_types != \
-                [CertificateType.x509]:
-            w.add(ExtensionType.cert_type, 2)
-            w.add(len(self.certificate_types)+1, 2)
-            w.addVarSeq(self.certificate_types, 1, 1)
-        if self.srp_username:
-            w.add(ExtensionType.srp, 2)
-            w.add(len(self.srp_username)+1, 2)
-            w.addVarSeq(stringToBytes(self.srp_username), 1, 1)
+            w2.add(ExtensionType.srp, 2)
+            w2.add(len(self.srp_username)+1, 2)
+            w2.addVarSeq(stringToBytes(self.srp_username), 1, 1)
+        if len(w2.bytes):
+            w.add(len(w2.bytes), 2)
+            w.bytes += w2.bytes
         return self.postWrite(w)
 
 class ServerHello(HandshakeMsg):
@@ -235,19 +230,15 @@ class ServerHello(HandshakeMsg):
         w.add(self.cipher_suite, 2)
         w.add(self.compression_method, 1)
 
-        extLength = 0
+        w2 = Writer() # For Extensions
         if self.certificate_type and self.certificate_type != \
                 CertificateType.x509:
-            extLength += 5
-
-        if extLength != 0:
-            w.add(extLength, 2)
-
-        if self.certificate_type and self.certificate_type != \
-                CertificateType.x509:
-            w.add(ExtensionType.cert_type, 2)
-            w.add(1, 2)
-            w.add(self.certificate_type, 1)
+            w2.add(ExtensionType.cert_type, 2)
+            w2.add(1, 2)
+            w2.add(self.certificate_type, 1)
+        if len(w2.bytes):
+            w.add(len(w2.bytes), 2)
+            w.bytes += w2.bytes        
         return self.postWrite(w)
 
 
