@@ -38,6 +38,8 @@ class ContentType:
 class ExtensionType:    # RFC 4366
     srp = 12            # RFC 5054  
     cert_type = 9       # RFC 6091
+    tack = 0xF300
+    tack_break_sigs = 0xF301
 
 class AlertLevel:
     warning = 1

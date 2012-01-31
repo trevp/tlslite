@@ -348,6 +348,22 @@ class TLSRecordLayer:
                 self._shutdown(False)
                 raise
 
+    def getVersionName(self):
+        """Get the name of this TLS version.
+
+        @rtype: str
+        @return: The name of the TLS version used with this connection.
+        Either None, 'SSL 3.0', 'TLS 1.0', or 'TLS 1.1'.
+        """
+        if self.version == (3,0):
+            return "SSL 3.0"
+        elif self.version == (3,1):
+            return "TLS 1.0"
+        elif self.version == (3,2):
+            return "TLS 1.1"
+        else:
+            return None
+        
     def getCipherName(self):
         """Get the name of the cipher used with this connection.
 

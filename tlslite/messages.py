@@ -13,6 +13,7 @@ from .utils.codec import *
 from .constants import *
 from .x509 import X509
 from .x509certchain import X509CertChain
+from .utils.tackwrapper import *
 
 class RecordHeader3:
     def __init__(self):
@@ -106,9 +107,12 @@ class ClientHello(HandshakeMsg):
         self.certificate_types = [CertificateType.x509]
         self.compression_methods = []   # a list of 8-bit values
         self.srp_username = None        # a string
+        self.tack = False
+        self.tack_break_sigs = False
 
     def create(self, version, random, session_id, cipher_suites,
-               certificate_types=None, srp_username=None):
+               certificate_types=None, srp_username=None,
+               tack=False, tack_break_sigs=False):
         self.client_version = version
         self.random = random
         self.session_id = session_id
@@ -116,6 +120,8 @@ class ClientHello(HandshakeMsg):
         self.certificate_types = certificate_types
         self.compression_methods = [0]
         self.srp_username = srp_username
+        self.tack = tack
+        self.tack_break_sigs = tack_break_sigs
         return self
 
     def parse(self, p):
@@ -151,6 +157,10 @@ class ClientHello(HandshakeMsg):
                         self.srp_username = bytesToString(p.getVarBytes(1))
                     elif extType == ExtensionType.cert_type:
                         self.certificate_types = p.getVarList(1, 1)
+                    elif extType == ExtensionType.tack:
+                        self.tack = True
+                    elif extType == ExtensionType.tack_break_sigs:
+                        self.tack_break_sigs = True
                     else:
                         p.getFixBytes(extLength)
                     index2 = p.index
@@ -179,6 +189,12 @@ class ClientHello(HandshakeMsg):
             w2.add(ExtensionType.srp, 2)
             w2.add(len(self.srp_username)+1, 2)
             w2.addVarSeq(stringToBytes(self.srp_username), 1, 1)
+        if self.tack:
+            w2.add(ExtensionType.tack, 2)
+            w2.add(0, 2)
+        if self.tack_break_sigs:
+            w2.add(ExtensionType.tack_break_sigs, 2)
+            w2.add(0, 2)
         if len(w2.bytes):
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes
@@ -193,15 +209,19 @@ class ServerHello(HandshakeMsg):
         self.cipher_suite = 0
         self.certificate_type = CertificateType.x509
         self.compression_method = 0
+        self.tack = None # class TACK from TACKpy
+        self.tack_break_sigs = None # list of TACK_Break_Sig from TACKPy
 
     def create(self, version, random, session_id, cipher_suite,
-               certificate_type):
+               certificate_type, tack=None, tack_break_sigs=None):
         self.server_version = version
         self.random = random
         self.session_id = session_id
         self.cipher_suite = cipher_suite
         self.certificate_type = certificate_type
         self.compression_method = 0
+        self.tack = tack
+        self.tack_break_sigs = tack_break_sigs
         return self
 
     def parse(self, p):
@@ -219,6 +239,22 @@ class ServerHello(HandshakeMsg):
                 extLength = p.get(2)
                 if extType == ExtensionType.cert_type:
                     self.certificate_type = p.get(1)
+                elif extType == ExtensionType.tack:
+                    tack = TACK()
+                    tack.parse(p.getFixBytes(TACK.length))
+                    self.tack = tack
+                elif extType == ExtensionType.tack_break_sigs:
+                    break_sigs = []
+                    sigsLen = p.get(2)
+                    if sigsLen % TACK_Break_Sig.length != 0:
+                        raise SyntaxError("Bad length in TACK_Break_Sig")
+                    while sigsLen:
+                        b = p.getFixBytes(TACK_Break_Sig.length)
+                        break_sig = TACK_Break_Sig()
+                        break_sig.parse(b)
+                        break_sigs.append(break_sig)
+                        sigsLen -= TACK_Break_Sig.length
+                    self.break_sigs = break_sigs
                 else:
                     p.getFixBytes(extLength)
                 soFar += 4 + extLength
@@ -240,6 +276,21 @@ class ServerHello(HandshakeMsg):
             w2.add(ExtensionType.cert_type, 2)
             w2.add(1, 2)
             w2.add(self.certificate_type, 1)
+        if self.tack:
+            w2.add(ExtensionType.tack, 2)
+            w2.add(TACK.length, 2)
+            b = self.tack.write()
+            assert(len(b) == TACK.length)
+            w2.bytes += self.tack.write()
+        if self.tack_break_sigs:
+            w2.add(ExtensionType.tack_break_sigs, 2)
+            sigsLen = TACK_Break_Sig.length * len(self.tack_break_sigs)
+            w2.add(sigsLen+2, 2)
+            w2.add(sigsLen, 2)
+            for break_sig in self.tack_break_sigs:
+                b = break_sig.write()
+                assert(b == TACK_Break_Sig.length)
+                w2.bytes += b                
         if len(w2.bytes):
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes        

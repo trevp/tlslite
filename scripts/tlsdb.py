@@ -14,6 +14,7 @@ if __name__ != "__main__":
 
 
 from tlslite import *
+from tlslite import __version__
 
 if len(sys.argv) == 1 or (len(sys.argv)==2 and sys.argv[1].lower().endswith("help")):
     print ""

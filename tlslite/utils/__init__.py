@@ -30,4 +30,5 @@ __all__ = ["aes",
            "rc4",
            "rijndael",
            "rsakey",
+           "tackpywrapper",
            "tripledes"]
