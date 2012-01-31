@@ -146,12 +146,16 @@ class ClientHello(HandshakeMsg):
                 while soFar != totalExtLength:
                     extType = p.get(2)
                     extLength = p.get(2)
+                    index1 = p.index
                     if extType == ExtensionType.srp:
                         self.srp_username = bytesToString(p.getVarBytes(1))
                     elif extType == ExtensionType.cert_type:
                         self.certificate_types = p.getVarList(1, 1)
                     else:
                         p.getFixBytes(extLength)
+                    index2 = p.index
+                    if index2 - index1 != extLength:
+                        raise SyntaxError("Bad length for extension_data")
                     soFar += 4 + extLength
             p.stopLengthCheck()
         return self
