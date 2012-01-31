@@ -11,7 +11,10 @@ from .constants import AlertDescription, AlertLevel
 
 class TLSError(Exception):
     """Base class for all TLS Lite exceptions."""
-    pass
+    
+    def __str__(self):
+        """"At least print out the Exception time for str(...)."""
+        return repr(self)    
 
 class TLSAbruptCloseError(TLSError):
     """The socket was closed without a proper TLS shutdown.

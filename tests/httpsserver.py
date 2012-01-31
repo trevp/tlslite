@@ -5,12 +5,12 @@ from BaseHTTPServer import *
 from SimpleHTTPServer import *
 from tlslite import *
 
-s = open("./serverX509Cert.pem").read()
+s = open("./serverX509Cert.pem", "rU").read()
 x509 = X509()
 x509.parse(s)
 certChain = X509CertChain([x509])
 
-s = open("./serverX509Key.pem").read()
+s = open("./serverX509Key.pem", "rU").read()
 privateKey = parsePEMKey(s, private=True)
 
 sessionCache = SessionCache()
@@ -23,7 +23,8 @@ class MyHTTPServer(ThreadingMixIn, TLSSocketServerMixIn, HTTPServer):
                                           sessionCache=sessionCache)
             tlsConnection.ignoreAbruptClose = True
             return True
-        except TLSError, error:
+        except TLSError as error:
+            print type(error), error
             print "Handshake failure:", str(error)
             return False
 
