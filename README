@@ -68,37 +68,54 @@ Options:
 Run 'python setup.py install'
 
 Test the Installation:
-  - The 'tls.py' script should have been copied onto your path.  If not,
-    you may have to copy it there manually.
   - From the distribution's ./tests subdirectory, run:
-      tls.py servertest localhost:4443 .
+      ./tlstest.py server localhost:4443 .
   - While the test server is waiting, run:
-      tls.py clienttest localhost:4443 .
+      ./tlstest.py client localhost:4443 .
 
   If both say "Test succeeded" at the end, you're ready to go.
 
 
 4 Getting Started with the Command-Line Tools
 ==============================================
-tlslite comes with two command-line scripts: 'tlsdb.py' and 'tls.py'.  They
+tlslite installs two command-line scripts: 'tlsdb.py' and 'tls.py'.  They
 can be run with no arguments to see a list of commands.
+
+'tls.py' lets you run test clients and servers.  It can be used for testing
+other TLS implementations, or as example code for using tlslite.
 
 'tlsdb.py' lets you manage SRP verifier databases. These databases are used by
 a TLS server when authenticating clients with SRP.
 
-'tls.py' lets you run test clients and servers.  It can be used for testing
-other TLS implementations, or as example code for using tlslite.  To run an
-SRP server, try something like:
+
+X.509
+------
+To run an X.509 server, go to the ./tests directory and do:
+
+  tls.py server -k serverX509Key.pem -c serverX509Cert.pem -t TACK.pem   
+    localhost:4443
+
+try connecting to the server with:
+
+  tls.py client localhost:4443
+
+SRP
+----
+To run an SRP server, try something like:
 
   tlsdb.py createsrp verifierDB
   tlsdb.py add verifierDB alice abra123cadabra 1024
   tlsdb.py add verifierDB bob swordfish 2048
 
-  tls.py serversrp localhost:443 verifierDB
+  tls.py server -v verifierDB localhost:4443
 
 Then you can try connecting to the server with:
 
-  tls.py clientsrp localhost:443 alice abra123cadabra
+  tls.py client localhost:4443 alice abra123cadabra
+
+HTTPS
+------
+To run a test HTTPS server, go to ./tests and run ./httpsserver.py.
 
 
 5 Getting Started with the Library
