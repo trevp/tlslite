@@ -344,7 +344,7 @@ class TLSConnection(TLSRecordLayer):
                                     clientHello.random, serverHello.random):
                 if result in (0,1): yield result
                 else: break
-            (premasterSecret, serverCertChain) = result
+            (premasterSecret, serverCertChain, clientCertChain) = result
                         
         #After having previously sent a ClientKeyExchange, the client now
         #initiates an exchange of Finished messages.
@@ -701,7 +701,7 @@ class TLSConnection(TLSRecordLayer):
             certificateVerify.create(signedBytes)
             for result in self._sendMsg(certificateVerify):
                 yield result
-        yield (premasterSecret, serverCertChain)
+        yield (premasterSecret, serverCertChain, clientCertChain)
 
     def _clientFinished(self, premasterSecret, clientRandom, serverRandom,
                         cipherSuite, cipherImplementations):

@@ -57,12 +57,12 @@ def printError(s):
     sys.exit(-1)
 
 
-def handleArgs(argv, argString, mandatoryString=""):
+def handleArgs(argv, argString, flagsList=[]):
     # Convert to getopt argstring format:
     # Add ":" after each arg, ie "abc" -> "a:b:c:"
     getOptArgString = ":".join(argString) + ":"
     try:
-        opts, argv = getopt.getopt(argv, getOptArgString)
+        opts, argv = getopt.getopt(argv, getOptArgString, flagsList)
     except getopt.GetoptError as e:
         printError(e) 
     # Default values if arg not present  
@@ -100,9 +100,8 @@ def handleArgs(argv, argString, mandatoryString=""):
         elif opt == "-v":
             verifierDB = VerifierDB(arg)
             verifierDB.open()
-        elif opt == "-r":
-            if arg == "1":
-                reqCert = True
+        elif opt == "--reqcert":
+            reqCert = True
         else:
             assert(False)
             
@@ -133,7 +132,7 @@ def handleArgs(argv, argString, mandatoryString=""):
         retList.append(tackBreakSigs)
     if "v" in argString:
         retList.append(verifierDB)
-    if "r" in argString:
+    if "reqcert" in flagsList:
         retList.append(reqCert)
 
     return retList
@@ -207,7 +206,7 @@ def clientCmd(argv):
 
 def serverCmd(argv):
     (address, privateKey, certChain, tack, tackBreakSigs, 
-        verifierDB, reqCert) = handleArgs(argv, "kctbvr")
+        verifierDB, reqCert) = handleArgs(argv, "kctbv", ["reqcert"])
 
     if (certChain and not privateKey) or (not certChain and privateKey):
         raise SyntaxError("Must specify CERT and KEY together")
