@@ -898,16 +898,14 @@ class TLSConnection(TLSRecordLayer):
         else:
             sessionID = createByteArraySequence([])
         
-        # If not doing a certificate-based suite, discard the TACK stuff
+        # If not doing a certificate-based suite, discard the TACK
         if not cipherSuite in CipherSuite.certAllSuites:
             tack = None
+        # If the client didn't request TACK stuff, discard it (if any)
+        if not clientHello.tack:
+            tack = None
+        if not clientHello.break_sigs:
             tackBreakSigs = None
-        else:
-            # If the client didn't request TACK stuff, discard it
-            if not clientHello.tack:
-                tack = None
-            if not clientHello.break_sigs:
-                tackBreakSigs = None
         serverHello = ServerHello()
         serverHello.create(self.version, getRandomBytes(32), sessionID, \
                             cipherSuite, CertificateType.x509,

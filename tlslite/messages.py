@@ -240,10 +240,12 @@ class ServerHello(HandshakeMsg):
                 if extType == ExtensionType.cert_type:
                     self.certificate_type = p.get(1)
                 elif extType == ExtensionType.tack and tackpyLoaded:
+                    if self.cipher_suite not in CipherSuite.certAllSuites:
+                        raise SyntaxError()
                     tack = TACK()
                     tack.parse(p.getFixBytes(TACK.length))
                     self.tack = tack
-                elif extType == ExtensionType.break_sigs and tackpyLoaded:
+                elif extType == ExtensionType.break_sigs and tackpyLoaded:                    
                     break_sigs = []
                     sigsLen = p.get(2)
                     if sigsLen % TACK_Break_Sig.length != 0:
