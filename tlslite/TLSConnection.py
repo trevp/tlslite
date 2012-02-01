@@ -1404,6 +1404,9 @@ class TLSConnection(TLSRecordLayer):
                         raise
             except GeneratorExit:
                 raise
+            except TLSTackBroken:
+                # Don't automatically shut down the connection
+                raise
             except TLSAlert, alert:
                 if not self.fault:
                     raise

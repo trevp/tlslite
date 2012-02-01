@@ -144,6 +144,19 @@ class TLSValidationError(TLSAuthenticationError):
     chain is invalid."""
     pass
 
+class TLSTackMissingError(TLSAuthenticationError):
+    """No TACK was presented."""
+    pass
+
+class TLSTackMismatchError(TLSAuthenticationError):
+    """The chosen TACK ID did not match the presented TACK ID."""
+    pass
+
+class TLSTackBroken(TLSError):
+    """The chosen TACK ID is broken by a TACK Break Signature."""
+    pass
+
+
 class TLSFaultError(TLSError):
     """The other party responded incorrectly to an induced fault.
 

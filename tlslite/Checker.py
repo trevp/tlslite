@@ -6,6 +6,7 @@
 from .x509 import X509
 from .x509certchain import X509CertChain
 from .errors import *
+from .utils.tackwrapper import *
 
 
 class Checker:
@@ -22,6 +23,7 @@ class Checker:
 
     def __init__(self, 
                  x509Fingerprint=None,
+                 tackID=None,
                  checkResumedSession=False):
         """Create a new Checker instance.
 
@@ -40,7 +42,10 @@ class Checker:
         re-checking it.
         """
 
+        if tackID and not tackpyLoaded:
+            raise ValueError("TACKpy not loaded")
         self.x509Fingerprint = x509Fingerprint
+        self.tackID = tackID
         self.checkResumedSession = checkResumedSession
 
     def __call__(self, connection):
@@ -75,3 +80,16 @@ class Checker:
                     raise TLSAuthenticationTypeError()
                 else:
                     raise TLSNoAuthenticationError()
+        
+        if self.tackID:
+            if not connection.session.tack:
+                raise TLSTackMissingError()
+            
+            if self.tackID == connection.session.tack.getTACKID():
+                return
+        
+            if connection.session.tackBreakSigs:
+                if self.tackID in [bs.getTACKID() for bs in 
+                                    connection.session.tackBreakSigs]:
+                    raise TLSTackBroken()
+            raise TLSTackMismatchError()
