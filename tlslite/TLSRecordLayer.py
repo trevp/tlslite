@@ -13,9 +13,9 @@ from .messages import *
 from .mathtls import *
 from .constants import *
 from .utils.cryptomath import getRandomBytes
-from .utils import hmac
 from .fileobject import FileObject
 
+import hmac
 import socket
 import errno
 import traceback
