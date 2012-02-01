@@ -239,11 +239,11 @@ class ServerHello(HandshakeMsg):
                 extLength = p.get(2)
                 if extType == ExtensionType.cert_type:
                     self.certificate_type = p.get(1)
-                elif extType == ExtensionType.tack:
+                elif extType == ExtensionType.tack and tackpyLoaded:
                     tack = TACK()
                     tack.parse(p.getFixBytes(TACK.length))
                     self.tack = tack
-                elif extType == ExtensionType.break_sigs:
+                elif extType == ExtensionType.break_sigs and tackpyLoaded:
                     break_sigs = []
                     sigsLen = p.get(2)
                     if sigsLen % TACK_Break_Sig.length != 0:
@@ -277,12 +277,14 @@ class ServerHello(HandshakeMsg):
             w2.add(1, 2)
             w2.add(self.certificate_type, 1)
         if self.tack:
+            assert(tackpyLoaded)
             w2.add(ExtensionType.tack, 2)
             w2.add(TACK.length, 2)
             b = self.tack.write()
             assert(len(b) == TACK.length)
-            w2.bytes += self.tack.write()
+            w2.bytes += b
         if self.break_sigs:
+            assert(tackpyLoaded)
             w2.add(ExtensionType.break_sigs, 2)
             sigsLen = TACK_Break_Sig.length * len(self.break_sigs)
             w2.add(sigsLen+2, 2)

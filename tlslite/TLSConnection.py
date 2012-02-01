@@ -18,6 +18,7 @@ from .errors import *
 from .messages import *
 from .mathtls import *
 from .handshakesettings import HandshakeSettings
+from .utils.tackwrapper import *
 
 
 class TLSConnection(TLSRecordLayer):
@@ -257,6 +258,8 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed a certChain but no privateKey")
         if privateKey and not clientCertChain:
             raise ValueError("Caller passed a privateKey but no certChain")
+        if reqTack and not tackpyLoaded:
+            raise ValueError("TACKpy is not loaded")
         
         # Validates the settings and filters out any unsupported ciphers
         # or crypto libraries that were requested        
@@ -867,6 +870,8 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed reqCAs but not reqCert")            
         if certChain and not isinstance(certChain, X509CertChain):
             raise ValueError("Unrecognized certificate type")
+        if (tack or tackBreakSigs) and not tackpyLoaded:
+            raise ValueError("TACKpy is not loaded")
 
         if not settings:
             settings = HandshakeSettings()
