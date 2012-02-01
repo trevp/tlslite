@@ -15,12 +15,16 @@ s = open("./serverX509Key.pem", "rU").read()
 privateKey = parsePEMKey(s, private=True)
 
 try:
-    from TACKpy import TACK
+    from TACKpy import TACK, TACK_Break_Sig
     s = open("./TACK.pem", "rU").read()
     tack = TACK()
     tack.parsePem(s)
+    s = open("./TACK_Break_Sigs.pem", "rU").read()
+    tackBreakSigs = TACK_Break_Sig.parsePemList(s)
     tackStr = " (with TACK)"
 except ImportError:
+    tack = None
+    tackBreakSigs = None
     tackStr = " (with NO TACK)"
 
 sessionCache = SessionCache()
@@ -31,6 +35,7 @@ class MyHTTPServer(ThreadingMixIn, TLSSocketServerMixIn, HTTPServer):
             tlsConnection.handshakeServer(certChain=certChain,
                                           privateKey=privateKey,
                                           tack=tack,
+                                          tackBreakSigs=tackBreakSigs,
                                           sessionCache=sessionCache)
             tlsConnection.ignoreAbruptClose = True
             print("Handshaked!")
