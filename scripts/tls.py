@@ -94,9 +94,7 @@ def handleArgs(argv, argString, flagsList=[]):
             tack.parsePem(s)
         elif opt == "-b":
             s = open(arg, "rU").read()
-            tackBreakSig = TACK_Break_Sig()
-            tackBreakSig.parsePem(s)
-            tackBreakSigs = [tackBreakSig]
+            tackBreakSigs = TACK_Break_Sig.parsePemList(s)
         elif opt == "-v":
             verifierDB = VerifierDB(arg)
             verifierDB.open()
@@ -201,6 +199,12 @@ def clientCmd(argv):
     if connection.session.tack:
         print("  Server TACK:\n------------------\n%s------------------" % 
             connection.session.tack.writeText())    
+    if connection.session.tackBreakSigs:
+        print("  Break Signatures:\n------------------")
+        s = ""
+        for breakSig in connection.session.tackBreakSigs:
+            s += "  "+breakSig.writeText()
+        print(s)
     connection.close()
 
 
@@ -246,7 +250,12 @@ def serverCmd(argv):
             if connection.session.tack:
                 print("  Server TACK ID: %s" % 
                     connection.session.tack.getTACKID())                            
-
+            if connection.session.tackBreakSigs:
+                print("  Break Signatures:\n------------------")
+                s = ""
+                for breakSig in connection.session.tackBreakSigs:
+                    s += "  "+breakSig.writeText()
+                print(s)
             s = ""
             while 1:
                 newS = connection.read()

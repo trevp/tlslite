@@ -360,7 +360,7 @@ class TLSConnection(TLSRecordLayer):
         self.session = Session()
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
             srpUsername, clientCertChain, serverCertChain,
-            serverHello.tack, serverHello.tack_break_sigs)
+            serverHello.tack, serverHello.break_sigs)
         self._handshakeDone(resumed=False)
 
 
@@ -449,7 +449,7 @@ class TLSConnection(TLSRecordLayer):
                 AlertDescription.illegal_parameter,
                 "Server responded with unrequested TACK"):
                 yield result
-        if serverHello.tack_break_sigs and not clientHello.tack_break_sigs:
+        if serverHello.break_sigs and not clientHello.break_sigs:
             for result in self._sendError(\
                 AlertDescription.illegal_parameter,
                 "Server responded with unrequested TACK_Break_Sig list"):
@@ -891,11 +891,18 @@ class TLSConnection(TLSRecordLayer):
         if sessionCache:
             sessionID = getRandomBytes(32)
         else:
-            sessionID = createByteArraySequence([])            
-        if not clientHello.tack:
+            sessionID = createByteArraySequence([])
+        
+        # If not doing a certificate-based suite, discard the TACK stuff
+        if not cipherSuite in CipherSuite.certAllSuites:
             tack = None
-        if not clientHello.tack_break_sigs:
             tackBreakSigs = None
+        else:
+            # If the client didn't request TACK stuff, discard it
+            if not clientHello.tack:
+                tack = None
+            if not clientHello.break_sigs:
+                tackBreakSigs = None
         serverHello = ServerHello()
         serverHello.create(self.version, getRandomBytes(32), sessionID, \
                             cipherSuite, CertificateType.x509,

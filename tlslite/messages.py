@@ -108,11 +108,11 @@ class ClientHello(HandshakeMsg):
         self.compression_methods = []   # a list of 8-bit values
         self.srp_username = None        # a string
         self.tack = False
-        self.tack_break_sigs = False
+        self.break_sigs = False
 
     def create(self, version, random, session_id, cipher_suites,
                certificate_types=None, srp_username=None,
-               tack=False, tack_break_sigs=False):
+               tack=False, break_sigs=False):
         self.client_version = version
         self.random = random
         self.session_id = session_id
@@ -121,7 +121,7 @@ class ClientHello(HandshakeMsg):
         self.compression_methods = [0]
         self.srp_username = srp_username
         self.tack = tack
-        self.tack_break_sigs = tack_break_sigs
+        self.break_sigs = break_sigs
         return self
 
     def parse(self, p):
@@ -159,8 +159,8 @@ class ClientHello(HandshakeMsg):
                         self.certificate_types = p.getVarList(1, 1)
                     elif extType == ExtensionType.tack:
                         self.tack = True
-                    elif extType == ExtensionType.tack_break_sigs:
-                        self.tack_break_sigs = True
+                    elif extType == ExtensionType.break_sigs:
+                        self.break_sigs = True
                     else:
                         p.getFixBytes(extLength)
                     index2 = p.index
@@ -192,8 +192,8 @@ class ClientHello(HandshakeMsg):
         if self.tack:
             w2.add(ExtensionType.tack, 2)
             w2.add(0, 2)
-        if self.tack_break_sigs:
-            w2.add(ExtensionType.tack_break_sigs, 2)
+        if self.break_sigs:
+            w2.add(ExtensionType.break_sigs, 2)
             w2.add(0, 2)
         if len(w2.bytes):
             w.add(len(w2.bytes), 2)
@@ -210,10 +210,10 @@ class ServerHello(HandshakeMsg):
         self.certificate_type = CertificateType.x509
         self.compression_method = 0
         self.tack = None # class TACK from TACKpy
-        self.tack_break_sigs = None # list of TACK_Break_Sig from TACKPy
+        self.break_sigs = None # list of TACK_Break_Sig from TACKPy
 
     def create(self, version, random, session_id, cipher_suite,
-               certificate_type, tack=None, tack_break_sigs=None):
+               certificate_type, tack=None, break_sigs=None):
         self.server_version = version
         self.random = random
         self.session_id = session_id
@@ -221,7 +221,7 @@ class ServerHello(HandshakeMsg):
         self.certificate_type = certificate_type
         self.compression_method = 0
         self.tack = tack
-        self.tack_break_sigs = tack_break_sigs
+        self.break_sigs = break_sigs
         return self
 
     def parse(self, p):
@@ -243,7 +243,7 @@ class ServerHello(HandshakeMsg):
                     tack = TACK()
                     tack.parse(p.getFixBytes(TACK.length))
                     self.tack = tack
-                elif extType == ExtensionType.tack_break_sigs:
+                elif extType == ExtensionType.break_sigs:
                     break_sigs = []
                     sigsLen = p.get(2)
                     if sigsLen % TACK_Break_Sig.length != 0:
@@ -282,14 +282,14 @@ class ServerHello(HandshakeMsg):
             b = self.tack.write()
             assert(len(b) == TACK.length)
             w2.bytes += self.tack.write()
-        if self.tack_break_sigs:
-            w2.add(ExtensionType.tack_break_sigs, 2)
-            sigsLen = TACK_Break_Sig.length * len(self.tack_break_sigs)
+        if self.break_sigs:
+            w2.add(ExtensionType.break_sigs, 2)
+            sigsLen = TACK_Break_Sig.length * len(self.break_sigs)
             w2.add(sigsLen+2, 2)
             w2.add(sigsLen, 2)
-            for break_sig in self.tack_break_sigs:
+            for break_sig in self.break_sigs:
                 b = break_sig.write()
-                assert(b == TACK_Break_Sig.length)
+                assert(len(b) == TACK_Break_Sig.length)
                 w2.bytes += b                
         if len(w2.bytes):
             w.add(len(w2.bytes), 2)
