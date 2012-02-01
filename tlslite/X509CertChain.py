@@ -4,6 +4,7 @@
 """Class representing an X.509 certificate chain."""
 
 from .utils import cryptomath
+from .utils.tackwrapper import *
 
 class X509CertChain:
     """This class represents a chain of X.509 certificates.
@@ -52,3 +53,12 @@ class X509CertChain:
         if self.getNumCerts() == 0:
             raise AssertionError()
         return self.x509List[0].getFingerprint()
+        
+    def checkTack(self, tack):
+        for x509 in self.x509List:
+            ssl = TACKpy.SSL_Cert()
+            ssl.parse(x509.bytes)
+            if ssl.matches(tack):
+                return True
+        return False
+                

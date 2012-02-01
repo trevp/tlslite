@@ -16,7 +16,7 @@ privateKey = parsePEMKey(s, private=True)
 
 try:
     from TACKpy import TACK, TACK_Break_Sig
-    s = open("./TACK.pem", "rU").read()
+    s = open("./TACK1.pem", "rU").read()
     tack = TACK()
     tack.parsePem(s)
     s = open("./TACK_Break_Sigs.pem", "rU").read()

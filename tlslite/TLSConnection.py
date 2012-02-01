@@ -329,7 +329,7 @@ class TLSConnection(TLSRecordLayer):
             for result in self._clientSRPKeyExchange(\
                     settings, cipherSuite, serverHello.certificate_type, 
                     srpUsername, password,
-                    clientHello.random, serverHello.random):                
+                    clientHello.random, serverHello.random, serverHello.tack):                
                 if result in (0,1): yield result
                 else: break                
             (premasterSecret, serverCertChain) = result               
@@ -344,7 +344,8 @@ class TLSConnection(TLSRecordLayer):
             for result in self._clientRSAKeyExchange(settings, cipherSuite,
                                     clientCertChain, privateKey,
                                     serverHello.certificate_type,
-                                    clientHello.random, serverHello.random):
+                                    clientHello.random, serverHello.random,
+                                    serverHello.tack):
                 if result in (0,1): yield result
                 else: break
             (premasterSecret, serverCertChain, clientCertChain) = result
@@ -489,7 +490,7 @@ class TLSConnection(TLSRecordLayer):
             
     def _clientSRPKeyExchange(self, settings, cipherSuite, certificateType, 
             srpUsername, password,
-            clientRandom, serverRandom):
+            clientRandom, serverRandom, tack):
 
         #If the server chose an SRP+RSA suite...
         if cipherSuite in CipherSuite.srpCertSuites:
@@ -560,7 +561,7 @@ class TLSConnection(TLSRecordLayer):
 
             #Get server's public key from the Certificate message
             for result in self._clientGetKeyFromChain(serverCertificate,
-                                               settings):
+                                               settings, tack):
                 if result in (0,1): yield result
                 else: break
             publicKey, serverCertChain = result
@@ -603,7 +604,8 @@ class TLSConnection(TLSRecordLayer):
     def _clientRSAKeyExchange(self, settings, cipherSuite, 
                                 clientCertChain, privateKey,
                                 certificateType,
-                                clientRandom, serverRandom):
+                                clientRandom, serverRandom,
+                                tack):
 
         #Get Certificate[, CertificateRequest], ServerHelloDone
         for result in self._getMsg(ContentType.handshake,
@@ -612,6 +614,7 @@ class TLSConnection(TLSRecordLayer):
             else: break
         serverCertificate = result
 
+        # Get CertificateRequest or ServerHelloDone
         for result in self._getMsg(ContentType.handshake,
                 (HandshakeType.server_hello_done,
                 HandshakeType.certificate_request)):
@@ -621,6 +624,7 @@ class TLSConnection(TLSRecordLayer):
         certificateRequest = None
         if isinstance(msg, CertificateRequest):
             certificateRequest = msg
+            # We got CertificateRequest, so this must be ServerHelloDone
             for result in self._getMsg(ContentType.handshake,
                     HandshakeType.server_hello_done):
                 if result in (0,1): yield result
@@ -631,7 +635,7 @@ class TLSConnection(TLSRecordLayer):
 
         #Get server's public key from the Certificate message
         for result in self._clientGetKeyFromChain(serverCertificate,
-                                           settings):
+                                           settings, tack):
             if result in (0,1): yield result
             else: break
         publicKey, serverCertChain = result
@@ -722,7 +726,7 @@ class TLSConnection(TLSRecordLayer):
             yield result
         yield masterSecret
 
-    def _clientGetKeyFromChain(self, certificate, settings):
+    def _clientGetKeyFromChain(self, certificate, settings, tack=None):
         #Get and check cert chain from the Certificate message
         certChain = certificate.certChain
         if not certChain or certChain.getNumCerts() == 0:
@@ -741,6 +745,12 @@ class TLSConnection(TLSRecordLayer):
             for result in self._sendError(AlertDescription.handshake_failure,
                     "Other party's public key too large: %d" % len(publicKey)):
                 yield result
+        
+        if tack:
+            if not certChain.checkTack(tack):
+                for result in self._sendError(AlertDescription.handshake_failure,
+                        "Other party's TACK doesn't match their cert chain"):
+                    yield result
 
         yield publicKey, certChain
 
