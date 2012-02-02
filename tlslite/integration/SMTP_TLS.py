@@ -72,7 +72,6 @@ class SMTP_TLS(SMTP):
                      x509Fingerprint,
                      settings)
             conn = TLSConnection(self.sock)
-            conn.closeSocket = True
             helper._handshake(conn)
             self.sock = conn
             self.file = conn.makefile('rb')

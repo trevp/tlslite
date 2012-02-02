@@ -92,6 +92,5 @@ class IMAP4_TLS(IMAP4, ClientHelper):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((host, port))
         self.sock = TLSConnection(self.sock)
-        self.sock.closeSocket = True
         ClientHelper._handshake(self, self.sock)
         self.file = self.sock.makefile('rb')

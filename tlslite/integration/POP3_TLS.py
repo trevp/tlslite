@@ -97,7 +97,6 @@ class POP3_TLS(POP3, ClientHelper):
                  settings)
 
         self.sock = TLSConnection(self.sock)
-        self.sock.closeSocket = True
         ClientHelper._handshake(self, self.sock)
         ###
 

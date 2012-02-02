@@ -32,7 +32,6 @@ class HTTPBaseTLSConnection(httplib.HTTPConnection):
         self.sock = TLSConnection(sock)
 
         #When httplib closes this, close the socket
-        self.sock.closeSocket = True
         self._handshake(self.sock)
 
     def _handshake(self, tlsConnection):
