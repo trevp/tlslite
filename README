@@ -148,7 +148,13 @@ Below demonstrates a socket connection to Amazon's secure site.
 
 5 Step 2 - construct a TLSConnection
 -------------------------------------
+You can import tlslite object individually, such as:
   from tlslite import TLSConnection
+
+Or import the most useful objects through:
+  from tlslite.api import *
+
+Then do:
   connection = TLSConnection(sock)
 
 5 Step 3 - call a handshake function (client)
