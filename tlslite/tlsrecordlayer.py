@@ -13,7 +13,6 @@ from .messages import *
 from .mathtls import *
 from .constants import *
 from .utils.cryptomath import getRandomBytes
-from .fileobject import FileObject
 
 import socket
 import errno
