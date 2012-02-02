@@ -4,7 +4,10 @@ import sys
 from SocketServer import *
 from BaseHTTPServer import *
 from SimpleHTTPServer import *
-from tlslite import *
+from tlslite import X509, X509CertChain, parsePEMKey, TLSSocketServerMixIn
+from tlslite import SessionCache
+from tlslite import tackpyLoaded
+from tlslite import TLSError
 
 s = open("./serverX509Cert.pem", "rU").read()
 x509 = X509()
@@ -14,7 +17,7 @@ certChain = X509CertChain([x509])
 s = open("./serverX509Key.pem", "rU").read()
 privateKey = parsePEMKey(s, private=True)
 
-try:
+if tackpyLoaded:
     from TACKpy import TACK, TACK_Break_Sig
     s = open("./TACK1.pem", "rU").read()
     tack = TACK()
@@ -22,7 +25,7 @@ try:
     s = open("./TACK_Break_Sigs.pem", "rU").read()
     tackBreakSigs = TACK_Break_Sig.parsePemList(s)
     tackStr = " (with TACK)"
-except ImportError:
+else:
     tack = None
     tackBreakSigs = None
     tackStr = " (with NO TACK)"
