@@ -9,60 +9,18 @@ from tlslite.tlsconnection import TLSConnection
 from tlslite.integration.clienthelper import ClientHelper
 
 
-class HTTPBaseTLSConnection(httplib.HTTPConnection):
-    """This abstract class provides a framework for adding TLS support
-    to httplib."""
+class HTTPTLSConnection(httplib.HTTPConnection, ClientHelper):
+    """This class extends L{httplib.HTTPConnection} to support TLS."""
 
-    default_port = 443
-
-    def __init__(self, host, port=None, strict=None):
-        if strict == None:
-            #Python 2.2 doesn't support strict
-            httplib.HTTPConnection.__init__(self, host, port)
-        else:
-            httplib.HTTPConnection.__init__(self, host, port, strict)
-
-    def connect(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if hasattr(sock, 'settimeout'):
-            sock.settimeout(10)
-        sock.connect((self.host, self.port))
-
-        #Use a TLSConnection to emulate a socket
-        self.sock = TLSConnection(sock)
-
-        #When httplib closes this, close the socket
-        self._handshake(self.sock)
-
-    def _handshake(self, tlsConnection):
-        """Called to perform some sort of handshake.
-
-        This method must be overridden in a subclass to do some type of
-        handshake.  This method will be called after the socket has
-        been connected but before any data has been sent.  If this
-        method does not raise an exception, the TLS connection will be
-        considered valid.
-
-        This method may (or may not) be called every time an HTTP
-        request is performed, depending on whether the underlying HTTP
-        connection is persistent.
-
-        @type tlsConnection: L{tlslite.TLSConnection.TLSConnection}
-        @param tlsConnection: The connection to perform the handshake
-        on.
-        """
-        raise NotImplementedError()
-
-
-class HTTPTLSConnection(HTTPBaseTLSConnection, ClientHelper):
-    """This class extends L{HTTPBaseTLSConnection} to support the
-    common types of handshaking."""
-
-    def __init__(self, host, port=None,
-                 username=None, password=None,
-                 certChain=None, privateKey=None,
-                 x509Fingerprint=None,
-                 settings = None):
+    def __init__(self, host, port=None, strict=None, 
+                timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
+                source_address=None,
+                username=None, password=None,
+                certChain=None, privateKey=None,
+                x509Fingerprint=None,
+                tackID=None,
+                hardTack=None,
+                settings = None):
         """Create a new HTTPTLSConnection.
 
         For client authentication, use one of these argument
@@ -114,20 +72,29 @@ class HTTPTLSConnection(HTTPBaseTLSConnection, ClientHelper):
         @type x509Fingerprint: str
         @param x509Fingerprint: Hex-encoded X.509 fingerprint for
         server authentication.
+        
+        @type tackID: str
+        @param tackID: TACK ID for server authentication.
+
+        @type hardTack: bool
+        @param hardTack: Whether to raise TackBreakSigError on TACK Break.             
 
         @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
         the ciphersuites, certificate types, and SSL/TLS versions
         offered by the client.
         """
-
-        HTTPBaseTLSConnection.__init__(self, host, port)
-
+        httplib.HTTPConnection.__init__(self, host, port, strict,
+                                        timeout, source_address)
         ClientHelper.__init__(self,
                  username, password, 
                  certChain, privateKey,
                  x509Fingerprint,
+                 tackID,
+                 hardTack,
                  settings)
 
-    def _handshake(self, tlsConnection):
-        ClientHelper._handshake(self, tlsConnection)
+    def connect(self):
+         httplib.HTTPConnection.connect(self)
+         self.sock = TLSConnection(self.sock)
+         ClientHelper._handshake(self, self.sock)

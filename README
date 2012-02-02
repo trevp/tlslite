@@ -287,27 +287,27 @@ party's certificate chain isn't approved by the checker, a subclass of
 TLSAuthenticationError will be raised. For example, to perform a handshake
 with a server based on its TACK ID, do:
 
+  from tlslite import Checker, TLSAuthenticationError
+  ...
   try:
     connection.handshakeClientCert(reqTack=True, 
-        checker=Checker(tackID="B3ARS.EQ61B.F34EL.9KKLN.3WEW5"))
+     checker=Checker(tackID="B3ARS.EQ61B.F34EL.9KKLN.3WEW5", hardTack=False))
   except TLSAuthenticationError as e:
-    print "Authentication failure: " + str(e)
-  except TLSTackBroken:
-    print "TACK was broken - TACK ID should be discarded"
+    print("Authentication failure: " + str(e))
 
-If the handshake fails for any reason *except* a "broken TACK", an exception
-will be raised and the socket will be closed. TACK-breaking is a special case
-where the server informs the client, via a cryptographic signature, that an
-existing TACK has become invalid and should be discarded. A TLSTackBroken
-exception leaves the connection open - it is up to the caller to determine
-whether to proceed using the connection or not.
+The hardTack argument determines whether a TACK Break Signature for the
+passed-in TACK ID raises a TLSTackBreakSigError (hardTack=True) or is silently
+accepted (hardTack=False).
 
-If the socket timed out or was unexpectedly closed, a socket.error or
-TLSAbruptCloseError will be raised. Otherwise, either a TLSLocalAlert or
-TLSRemoteAlert will be raised, depending on whether the local or remote
-implementation signalled the error. The exception object has a 'description'
-member which identifies the error based on the codes in RFC 2246. A
-TLSLocalAlert also has a 'message' string that may have more details.
+If the handshake fails for any reason, including a Checker error, an exception
+will be raised and the socket will be closed. If the socket timed out or was
+unexpectedly closed, a socket.error or TLSAbruptCloseError will be raised.
+
+Otherwise, either a TLSLocalAlert or TLSRemoteAlert will be raised, depending
+on whether the local or remote implementation signalled the error. The
+exception object has a 'description' member which identifies the error based
+on the codes in RFC 2246. A TLSLocalAlert also has a 'message' string that may
+have more details.
 
 Example of handling a remote alert:
 

@@ -14,6 +14,8 @@ class SMTP_TLS(SMTP):
                  username=None, password=None,
                  certChain=None, privateKey=None,
                  x509Fingerprint=None,
+                 tackID=None,
+                 hardTack=None,
                  settings=None):
         """Puts the connection to the SMTP server into TLS mode.
 
@@ -59,6 +61,12 @@ class SMTP_TLS(SMTP):
         @param x509Fingerprint: Hex-encoded X.509 fingerprint for
         server authentication.
 
+        @type tackID: str
+        @param tackID: TACK ID for server authentication.
+
+        @type hardTack: bool
+        @param hardTack: Whether to raise TackBreakSigError on TACK Break.        
+
         @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
         the ciphersuites, certificate types, and SSL/TLS versions
@@ -70,6 +78,7 @@ class SMTP_TLS(SMTP):
                      username, password, 
                      certChain, privateKey,
                      x509Fingerprint,
+                     tackID, hardTack,
                      settings)
             conn = TLSConnection(self.sock)
             helper._handshake(conn)

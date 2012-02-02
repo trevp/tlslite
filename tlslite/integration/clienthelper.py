@@ -16,6 +16,8 @@ class ClientHelper:
               username=None, password=None,
               certChain=None, privateKey=None,
               x509Fingerprint=None,
+              tackID=None,
+              hardTack=None,
               settings = None):
         """
         For client authentication, use one of these argument
@@ -60,6 +62,12 @@ class ClientHelper:
         @param x509Fingerprint: Hex-encoded X.509 fingerprint for
         server authentication.
 
+        @type tackID: str
+        @param tackID: TACK ID for server authentication.
+
+        @type hardTack: bool
+        @param hardTack: Whether to raise TackBreakSigError on TACK Break.        
+
         @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
         the ciphersuites, certificate types, and SSL/TLS versions
@@ -91,8 +99,13 @@ class ClientHelper:
 
         else:
             raise ValueError("Bad parameters")
+            
+        if tackID:
+            self.reqTack = True
+        else:
+            self.reqTack = False
 
-        self.checker = Checker(x509Fingerprint)
+        self.checker = Checker(x509Fingerprint, tackID, hardTack)
         self.settings = settings
 
         self.tlsSession = None
@@ -101,12 +114,14 @@ class ClientHelper:
         if self.username and self.password:
             tlsConnection.handshakeClientSRP(username=self.username,
                                              password=self.password,
+                                             reqTack=self.reqTack,
                                              checker=self.checker,
                                              settings=self.settings,
                                              session=self.tlsSession)
         else:
             tlsConnection.handshakeClientCert(certChain=self.certChain,
                                               privateKey=self.privateKey,
+                                              reqTack=self.reqTack,
                                               checker=self.checker,
                                               settings=self.settings,
                                               session=self.tlsSession)

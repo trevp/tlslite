@@ -15,9 +15,12 @@ class POP3_TLS(POP3, ClientHelper):
     """This class extends L{poplib.POP3} with TLS support."""
 
     def __init__(self, host, port = POP3_TLS_PORT,
+                 timeout=socket._GLOBAL_DEFAULT_TIMEOUT
                  username=None, password=None,
                  certChain=None, privateKey=None,
                  x509Fingerprint=None,
+                 tackID=None,
+                 hardTack=None,
                  settings=None):
         """Create a new POP3_TLS.
 
@@ -65,6 +68,12 @@ class POP3_TLS(POP3, ClientHelper):
         @param x509Fingerprint: Hex-encoded X.509 fingerprint for
         server authentication.
 
+        @type tackID: str
+        @param tackID: TACK ID for server authentication.
+
+        @type hardTack: bool
+        @param hardTack: Whether to raise TackBreakSigError on TACK Break.        
+
         @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
         the ciphersuites, certificate types, and SSL/TLS versions
@@ -94,6 +103,7 @@ class POP3_TLS(POP3, ClientHelper):
                  username, password,
                  certChain, privateKey,
                  x509Fingerprint,
+                 tackID, hardTack,
                  settings)
 
         self.sock = TLSConnection(self.sock)

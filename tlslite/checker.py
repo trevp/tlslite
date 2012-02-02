@@ -24,6 +24,7 @@ class Checker:
     def __init__(self, 
                  x509Fingerprint=None,
                  tackID=None,
+                 hardTack=None,
                  checkResumedSession=False):
         """Create a new Checker instance.
 
@@ -35,6 +36,12 @@ class Checker:
         fingerprint which the other party's end-entity certificate must
         match.
 
+        @type tackID: str
+        @param tackID: TACK ID for server authentication.
+
+        @type hardTack: bool
+        @param hardTack: Whether to raise TackBreakSigError on TACK Break.        
+
         @type checkResumedSession: bool
         @param checkResumedSession: If resumed sessions should be
         checked.  This defaults to False, on the theory that if the
@@ -44,8 +51,11 @@ class Checker:
 
         if tackID and not tackpyLoaded:
             raise ValueError("TACKpy not loaded")
+        if tackID and hardTack == None:
+            raise ValueError("hardTack must be set with tackID")
         self.x509Fingerprint = x509Fingerprint
         self.tackID = tackID
+        self.hardTack = hardTack
         self.checkResumedSession = checkResumedSession
 
     def __call__(self, connection):
@@ -82,14 +92,24 @@ class Checker:
                     raise TLSNoAuthenticationError()
         
         if self.tackID:
+            # Missing TACK
             if not connection.session.tack:
                 raise TLSTackMissingError()
             
+            # Good TACK
             if self.tackID == connection.session.tack.getTACKID():
                 return
         
+            # Well, its a mismatch, is there a Break Sig?
             if connection.session.tackBreakSigs:
                 if self.tackID in [bs.getTACKID() for bs in 
                                     connection.session.tackBreakSigs]:
-                    raise TLSTackBroken()
+                    # If there's a Break Sig, either raise an Exception
+                    # or, if not 'hardTack', let it slide
+                    if self.hardTack:
+                        raise TLSTackBreakError()
+                    else:
+                        return
+            
+            # No Break Sig, so this TACK is bad!
             raise TLSTackMismatchError()
