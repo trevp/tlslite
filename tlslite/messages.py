@@ -245,18 +245,9 @@ class ServerHello(HandshakeMsg):
                     tack = TACK()
                     tack.parse(p.getFixBytes(TACK.length))
                     self.tack = tack
-                elif extType == ExtensionType.break_sigs and tackpyLoaded:                    
-                    break_sigs = []
-                    sigsLen = p.get(2)
-                    if sigsLen % TACK_Break_Sig.length != 0:
-                        raise SyntaxError("Bad length in TACK_Break_Sig")
-                    while sigsLen:
-                        b = p.getFixBytes(TACK_Break_Sig.length)
-                        break_sig = TACK_Break_Sig()
-                        break_sig.parse(b)
-                        break_sigs.append(break_sig)
-                        sigsLen -= TACK_Break_Sig.length
-                    self.break_sigs = break_sigs
+                elif extType == ExtensionType.break_sigs and tackpyLoaded:
+                    b = p.getFixBytes(extLength)
+                    self.break_sigs = TACK_Break_Sig.parseBinaryList(b)
                 else:
                     p.getFixBytes(extLength)
                 soFar += 4 + extLength
@@ -280,21 +271,17 @@ class ServerHello(HandshakeMsg):
             w2.add(self.certificate_type, 1)
         if self.tack:
             assert(tackpyLoaded)
+            b = self.tack.write()            
+            assert(len(b) == TACK.length)
             w2.add(ExtensionType.tack, 2)
             w2.add(TACK.length, 2)
-            b = self.tack.write()
-            assert(len(b) == TACK.length)
             w2.bytes += b
         if self.break_sigs:
             assert(tackpyLoaded)
+            breakSigsBytes = TACK_Break_Sig.writeBinaryList(self.break_sigs)
             w2.add(ExtensionType.break_sigs, 2)
-            sigsLen = TACK_Break_Sig.length * len(self.break_sigs)
-            w2.add(sigsLen+2, 2)
-            w2.add(sigsLen, 2)
-            for break_sig in self.break_sigs:
-                b = break_sig.write()
-                assert(len(b) == TACK_Break_Sig.length)
-                w2.bytes += b                
+            w2.add(len(breakSigsBytes), 2)
+            w2.bytes += breakSigsBytes                
         if len(w2.bytes):
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes        
