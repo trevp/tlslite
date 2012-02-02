@@ -13,14 +13,12 @@ Table of Contents
 4  Getting Started with the Command-Line Tools
 5  Getting Started with the Library
 6  Using TLS Lite with httplib
-7  Using TLS Lite with xmlrpclib
-8  Using TLS Lite with poplib or imaplib
-9  Using TLS Lite with smtplib
-10 Using TLS Lite with SocketServer
-11 Using TLS Lite with asyncore
-12 SECURITY CONSIDERATIONS
-13 History
-14 References
+7  Using TLS Lite with poplib or imaplib
+8  Using TLS Lite with smtplib
+9 Using TLS Lite with SocketServer
+10 Using TLS Lite with asyncore
+11 SECURITY CONSIDERATIONS
+12 History
 
 
 1 Introduction 
@@ -148,7 +146,7 @@ Below demonstrates a socket connection to Amazon's secure site.
 
 5 Step 2 - construct a TLSConnection
 -------------------------------------
-You can import tlslite object individually, such as:
+You can import tlslite objects individually, such as:
   from tlslite import TLSConnection
 
 Or import the most useful objects through:
@@ -229,17 +227,8 @@ To perform SRP authentication, you have to pass in a database of password
 verifiers.  The VerifierDB class manages an in-memory or on-disk verifier
 database.
 
-  #On-disk database (use no-arg constructor if you want an in-memory DB)
   verifierDB = VerifierDB("./test/verifierDB")
-
-  #Open the pre-existing database (can also 'create()' a new one)
   verifierDB.open()
-
-  #Add to the database
-  verifier = VerifierDB.makeVerifier("alice", "abra123cadabra", 2048)
-  verifierDB["alice"] = verifier
-
-  #Perform a handshake using the database
   connection.handshakeServer(verifierDB=verifierDB)
 
 To perform authentication with a certificate and private key, the server must
@@ -268,8 +257,8 @@ maintain a SessionCache, which will allow clients to use session resumption:
   sessionCache = SessionCache()
   connection.handshakeServer(verifierDB=verifierDB, sessionCache=sessionCache)
 
-It should be noted that the session cache, and the verifier and shared key
-databases, are all thread-safe.
+It should be noted that the session cache, and the verifier databases, are all
+thread-safe.
 
 5 Step 4 - check the results
 -----------------------------
@@ -291,9 +280,9 @@ TACK objects return the (validated) TACK ID via getTACKID().
 To save yourself the trouble of inspecting certificates and/or TACKs after the
 handshake, you can pass a Checker object into the handshake function. The
 checker will be called if the handshake completes successfully. If the other
-party's certificate chain isn't approved by the checker, a subclass of
-TLSAuthenticationError will be raised. For example, to perform a handshake
-with a server based on its TACK ID, do:
+party isn't approved by the checker, a subclass of TLSAuthenticationError will
+be raised. For example, to perform a handshake with a server based on its TACK
+ID, do:
 
   from tlslite import Checker, TLSAuthenticationError
   ...
@@ -371,17 +360,16 @@ When you're finished sending data, you should call close() to close the
 connection and socket. When the connection is closed properly, the session
 object can be used for session resumption.
 
-If an exception is raised (except TLSTackBroken), the connection will be
-automatically closed; you don't need to call close(). Furthermore, you will
-probably not be able to re-use the socket, the connection object, or the
-session object, and you shouldn't even try.
+If an exception is raised the connection will be automatically closed; you
+don't need to call close(). Furthermore, you will probably not be able to
+re-use the socket, the connection object, or the session object, and you
+shouldn't even try.
 
 By default, calling close() will close the underlying socket. If you set the
 connection's closeSocket flag to False, the socket will remain open after
-close, and can be used to send non-secure data, or another handshake function
-can be called on the TLSConnection. NOTE: some TLS implementations will
-not respond properly to the close_notify alert that close() generates, so the
-connection will hang if closeSocket is set to True.
+close. (NOTE: some TLS implementations will not respond properly to the
+close_notify alert that close() generates, so the connection will hang if
+closeSocket is set to True.)
 
 
 6 Using TLS Lite with httplib
@@ -396,9 +384,9 @@ different types of authentication.
   r = h.getresponse()
   [...]
 
-  #Authenticate server based on its X.509 fingerprint
-  h = HTTPTLSConnection("www.amazon.com", 443,
-          x509Fingerprint="e049ff930af76d43ff4c658b268786f4df1296f2")
+  #Authenticate server based on its TACK ID
+  h = HTTPTLSConnection("localhost", 4443,
+          tackID="B3ARS.EQ61B.F34EL.9KKLN.3WEW5", hardTack=False)
   [...]
 
   #Mutually authenticate with SRP
@@ -407,29 +395,7 @@ different types of authentication.
   [...]
 
 
-7 Using TLS Lite with xmlrpclib
-================================
-TLS Lite comes with an XMLRPCTransport class that extends xmlrpclib to work
-over SSL/TLS connections.  This class accepts the same parameters as
-HTTPTLSConnection (see previous section), and behaves similarly.  Depending on
-how you construct it, it will do different types of authentication.
-
-  from tlslite import XMLRPCTransport
-  from xmlrpclib import ServerProxy
-
-  #No authentication whatsoever
-  transport = XMLRPCTransport()
-  server = ServerProxy("https://localhost", transport)
-  server.someFunc(2, 3)
-  [...]
-
-  #Authenticate server based on its X.509 fingerprint
-  transport = XMLRPCTransport(\
-          x509Fingerprint="e049ff930af76d43ff4c658b268786f4df1296f2")  
-  [...]
-
-
-8 Using TLS Lite with poplib or imaplib
+7 Using TLS Lite with poplib or imaplib
 ========================================
 TLS Lite comes with POP3_TLS and IMAP4_TLS classes that extend poplib and
 imaplib to work over SSL/TLS connections.  These classes can be constructed
@@ -449,7 +415,7 @@ behave similarly.
   [...]  
   
 
-9 Using TLS Lite with smtplib
+8 Using TLS Lite with smtplib
 ==============================
 TLS Lite comes with an SMTP_TLS class that extends smtplib to work
 over SSL/TLS connections.  This class accepts the same parameters as
@@ -464,7 +430,7 @@ on how you call starttls(), it will do different types of authentication.
   [...]
 
 
-10 Using TLS Lite with SocketServer
+9 Using TLS Lite with SocketServer
 ====================================
 You can use TLS Lite to implement servers using Python's SocketServer
 framework.  TLS Lite comes with a TLSSocketServerMixIn class.  You can combine
@@ -475,20 +441,20 @@ argument.  If the handshake method returns True, the RequestHandler will be
 triggered.  See the test/httpssserver.py example.
 
 
-11 Using TLS Lite with asyncore
+10 Using TLS Lite with asyncore
 ================================
 TLS Lite can be used with subclasses of asyncore.dispatcher.  See the comments
 in TLSAsyncDispatcherMixIn.py for details.  This is still experimental, and
 may not work with all asyncore.dispatcher subclasses.
 
 
-12 Security Considerations
+11 Security Considerations
 ===========================
-TLS Lite is beta-quality code.  It hasn't received much security analysis.
-Use at your own risk.
+TLS Lite is beta-quality code. It hasn't received much security analysis. Use
+at your own risk.
 
 
-13 History
+12 History
 ===========
 0.3.8a - don't call it a comeback
 0.3.8 - 2/21/2005
