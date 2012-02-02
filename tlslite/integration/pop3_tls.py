@@ -4,18 +4,15 @@
 """TLS Lite + poplib."""
 
 import socket
-from poplib import POP3
+from poplib import POP3, POP3_SSL_PORT
 from tlslite.tlsconnection import TLSConnection
 from tlslite.integration.clienthelper import ClientHelper
-
-# POP TLS PORT
-POP3_TLS_PORT = 995
 
 class POP3_TLS(POP3, ClientHelper):
     """This class extends L{poplib.POP3} with TLS support."""
 
-    def __init__(self, host, port = POP3_TLS_PORT,
-                 timeout=socket._GLOBAL_DEFAULT_TIMEOUT
+    def __init__(self, host, port = POP3_SSL_PORT,
+                 timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                  username=None, password=None,
                  certChain=None, privateKey=None,
                  x509Fingerprint=None,
@@ -79,37 +76,18 @@ class POP3_TLS(POP3, ClientHelper):
         the ciphersuites, certificate types, and SSL/TLS versions
         offered by the client.
         """
-
         self.host = host
         self.port = port
-        msg = "getaddrinfo returns an empty list"
-        self.sock = None
-        for res in socket.getaddrinfo(self.host, self.port, 0, socket.SOCK_STREAM):
-            af, socktype, proto, canonname, sa = res
-            try:
-                self.sock = socket.socket(af, socktype, proto)
-                self.sock.connect(sa)
-            except socket.error, msg:
-                if self.sock:
-                    self.sock.close()
-                self.sock = None
-                continue
-            break
-        if not self.sock:
-            raise socket.error, msg
-
-        ### New code below (all else copied from poplib)
+        sock = socket.create_connection((host, port), timeout)
         ClientHelper.__init__(self,
                  username, password,
                  certChain, privateKey,
                  x509Fingerprint,
                  tackID, hardTack,
                  settings)
-
-        self.sock = TLSConnection(self.sock)
-        ClientHelper._handshake(self, self.sock)
-        ###
-
+        connection = TLSConnection(sock) 
+        ClientHelper._handshake(self, connection)
+        self.sock = connection
         self.file = self.sock.makefile('rb')
         self._debugging = 0
         self.welcome = self._getresp()
