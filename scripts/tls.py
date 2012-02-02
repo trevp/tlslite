@@ -27,7 +27,7 @@ from tlslite import TLSConnection, TLSFaultError, Fault, HandshakeSettings, \
 from tlslite.utils.cryptomath import prngName
 
 try:
-    from TACKpy import TACK, TACK_Break_Sig
+    from TACKpy import TACK, TACK_Break_Sig, writeTextTACKStructures
 except ImportError:
     pass
 
@@ -196,15 +196,10 @@ def clientCmd(argv):
     if connection.session.serverCertChain:
         print("  Server X.509 SHA1 fingerprint: %s" % 
             connection.session.serverCertChain.getFingerprint())
-    if connection.session.tack:
-        print("  Server TACK:\n------------------\n%s------------------" % 
-            connection.session.tack.writeText())    
-    if connection.session.tackBreakSigs:
-        print("  Break Signatures:\n------------------")
-        s = ""
-        for breakSig in connection.session.tackBreakSigs:
-            s += "  "+breakSig.writeText()
-        print(s)
+    if connection.session.tack or connection.session.tackBreakSigs:
+        print("  TACK:")
+        print(writeTextTACKStructures(connection.session.tack, 
+                                  connection.session.tackBreakSigs))
     connection.close()
 
 
@@ -247,15 +242,11 @@ def serverCmd(argv):
             if connection.session.serverCertChain:
                 print("  Server X.509 SHA1 fingerprint: %s" % 
                         connection.session.serverCertChain.getFingerprint())
-            if connection.session.tack:
-                print("  Server TACK ID: %s" % 
-                    connection.session.tack.getTACKID())                            
-            if connection.session.tackBreakSigs:
-                print("  Break Signatures:\n------------------")
-                s = ""
-                for breakSig in connection.session.tackBreakSigs:
-                    s += "  "+breakSig.writeText()
-                print(s)
+            if connection.session.tack or connection.session.tackBreakSigs:
+                print("  TACK:")
+                print(writeTextTACKStructures(connection.session.tack, 
+                                          connection.session.tackBreakSigs,
+                                          True))
             s = ""
             while 1:
                 newS = connection.read()
