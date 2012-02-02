@@ -1,7 +1,11 @@
 
 .PHONY : default
 default:
-	@echo To install tlslite run \"setup.py install\"
+	@echo To install tlslite run \"./setup.py install\" or \"make install\"
+
+.PHONY: install
+install:
+	./setup.py install
 
 .PHONY : clean
 clean:
