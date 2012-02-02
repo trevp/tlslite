@@ -420,7 +420,17 @@ class TLSRecordLayer:
         @rtype: L{tlslite.FileObject.FileObject}
         """
         self._refCount += 1
-        return FileObject(self, mode, bufsize)
+        # So, it is pretty fragile to be using Python internal objects
+        # like this, but it is probably the best/easiest way to provide
+        # matching behavior for socket emulation purposes.  The 'close'
+        # argument is nice, its apparently a recent addition to this
+        # class, so that when fileobject.close() gets called, it will
+        # close() us, causing the refcount to be decremented (decrefAsync).
+        #
+        # If this is the last close() on the outstanding fileobjects / 
+        # TLSConnection, then the "actual" close alerts will be sent,
+        # socket closed, etc.
+        return socket._fileobject(self, mode, bufsize, close=True)
 
     def getsockname(self):
         """Return the socket's own address (socket emulation)."""
@@ -447,6 +457,11 @@ class TLSRecordLayer:
     def shutdown(self, how):
         """Shutdown the underlying socket."""
     	return self.sock.shutdown(how)
+    	
+    def fileno(self):
+        """Not implement in TLS Lite."""
+        raise NotImplementedError()
+    	
 
      #*********************************************************
      # Public Functions END
