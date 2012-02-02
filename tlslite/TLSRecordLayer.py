@@ -15,7 +15,6 @@ from .constants import *
 from .utils.cryptomath import getRandomBytes
 from .fileobject import FileObject
 
-import hmac
 import socket
 import errno
 import traceback
@@ -1037,7 +1036,7 @@ class TLSRecordLayer:
         if self.version == (3,0):
             createMACFunc = createMAC_SSL
         elif self.version in ((3,1), (3,2)):
-            createMACFunc = hmac.HMAC
+            createMACFunc = createHMAC
 
         outputLength = (macLength*2) + (keyLength*2) + (ivLength*2)
 

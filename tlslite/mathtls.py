@@ -107,6 +107,8 @@ def makeU(N, A, B):
 def makeK(N, g):
   return stringToNumber(sha1(numberToString(N) + PAD(N, g)).digest())
 
+def createHMAC(k):
+    return hmac.new(k, digestmod=sha1)
 
 def createMAC_SSL(k):
     mac = MAC_SSL()
