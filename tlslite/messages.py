@@ -108,11 +108,10 @@ class ClientHello(HandshakeMsg):
         self.compression_methods = []   # a list of 8-bit values
         self.srp_username = None        # a string
         self.tack = False
-        self.break_sigs = False
 
     def create(self, version, random, session_id, cipher_suites,
                certificate_types=None, srp_username=None,
-               tack=False, break_sigs=False):
+               tack=False):
         self.client_version = version
         self.random = random
         self.session_id = session_id
@@ -121,7 +120,6 @@ class ClientHello(HandshakeMsg):
         self.compression_methods = [0]
         self.srp_username = srp_username
         self.tack = tack
-        self.break_sigs = break_sigs
         return self
 
     def parse(self, p):
@@ -159,8 +157,6 @@ class ClientHello(HandshakeMsg):
                         self.certificate_types = p.getVarList(1, 1)
                     elif extType == ExtensionType.tack:
                         self.tack = True
-                    elif extType == ExtensionType.break_sigs:
-                        self.break_sigs = True
                     else:
                         p.getFixBytes(extLength)
                     index2 = p.index
@@ -192,9 +188,6 @@ class ClientHello(HandshakeMsg):
         if self.tack:
             w2.add(ExtensionType.tack, 2)
             w2.add(0, 2)
-        if self.break_sigs:
-            w2.add(ExtensionType.break_sigs, 2)
-            w2.add(0, 2)
         if len(w2.bytes):
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes
@@ -209,19 +202,17 @@ class ServerHello(HandshakeMsg):
         self.cipher_suite = 0
         self.certificate_type = CertificateType.x509
         self.compression_method = 0
-        self.tack = None # class TACK from TACKpy
-        self.break_sigs = None # list of TACK_Break_Sig from TACKPy
+        self.tackExt = None 
 
     def create(self, version, random, session_id, cipher_suite,
-               certificate_type, tack=None, break_sigs=None):
+               certificate_type, tackExt):
         self.server_version = version
         self.random = random
         self.session_id = session_id
         self.cipher_suite = cipher_suite
         self.certificate_type = certificate_type
         self.compression_method = 0
-        self.tack = tack
-        self.break_sigs = break_sigs
+        self.tackExt = tackExt
         return self
 
     def parse(self, p):
@@ -238,16 +229,12 @@ class ServerHello(HandshakeMsg):
                 extType = p.get(2)
                 extLength = p.get(2)
                 if extType == ExtensionType.cert_type:
+                    if extLength != 1:
+                        raise SyntaxError()
                     self.certificate_type = p.get(1)
                 elif extType == ExtensionType.tack and tackpyLoaded:
-                    if self.cipher_suite not in CipherSuite.certAllSuites:
-                        raise SyntaxError()
-                    tack = TACK()
-                    tack.parse(p.getFixBytes(TACK.length))
-                    self.tack = tack
-                elif extType == ExtensionType.break_sigs and tackpyLoaded:
-                    b = p.getFixBytes(extLength)
-                    self.break_sigs = TACK_Break_Sig.parseBinaryList(b)
+                    self.tackExt = TACK_Extension()
+                    self.tackExt.parse(p.getFixBytes(extLength))
                 else:
                     p.getFixBytes(extLength)
                 soFar += 4 + extLength
@@ -269,19 +256,11 @@ class ServerHello(HandshakeMsg):
             w2.add(ExtensionType.cert_type, 2)
             w2.add(1, 2)
             w2.add(self.certificate_type, 1)
-        if self.tack:
-            assert(tackpyLoaded)
-            b = self.tack.write()            
-            assert(len(b) == TACK.length)
+        if self.tackExt:
+            b = self.tackExt.write()
             w2.add(ExtensionType.tack, 2)
-            w2.add(TACK.length, 2)
+            w2.add(len(b), 2)
             w2.bytes += b
-        if self.break_sigs:
-            assert(tackpyLoaded)
-            breakSigsBytes = TACK_Break_Sig.writeBinaryList(self.break_sigs)
-            w2.add(ExtensionType.break_sigs, 2)
-            w2.add(len(breakSigsBytes), 2)
-            w2.bytes += breakSigsBytes                
         if len(w2.bytes):
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes        

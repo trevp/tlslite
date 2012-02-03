@@ -329,10 +329,11 @@ class TLSConnection(TLSRecordLayer):
             for result in self._clientSRPKeyExchange(\
                     settings, cipherSuite, serverHello.certificate_type, 
                     srpUsername, password,
-                    clientHello.random, serverHello.random, serverHello.tack):                
+                    clientHello.random, serverHello.random, 
+                    serverHello.tackExt):                
                 if result in (0,1): yield result
                 else: break                
-            (premasterSecret, serverCertChain) = result               
+            (premasterSecret, serverCertChain, tackExt) = result               
                 
         #If the server selected a certificate-based RSA ciphersuite,
         #the client finishes reading the post-ServerHello messages. If 
@@ -345,10 +346,11 @@ class TLSConnection(TLSRecordLayer):
                                     clientCertChain, privateKey,
                                     serverHello.certificate_type,
                                     clientHello.random, serverHello.random,
-                                    serverHello.tack):
+                                    serverHello.tackExt):
                 if result in (0,1): yield result
                 else: break
-            (premasterSecret, serverCertChain, clientCertChain) = result
+            (premasterSecret, serverCertChain, clientCertChain, 
+             tackExt) = result
                         
         #After having previously sent a ClientKeyExchange, the client now
         #initiates an exchange of Finished messages.
@@ -364,7 +366,7 @@ class TLSConnection(TLSRecordLayer):
         self.session = Session()
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
             srpUsername, clientCertChain, serverCertChain,
-            serverHello.tack, serverHello.break_sigs)
+            tackExt)
         self._handshakeDone(resumed=False)
 
 
@@ -394,7 +396,7 @@ class TLSConnection(TLSRecordLayer):
                 clientHello.create(settings.maxVersion, getRandomBytes(32),
                                    session.sessionID, cipherSuites,
                                    certificateTypes, session.srpUsername,
-                                   reqTack, reqTack)
+                                   reqTack)
 
         #Or send ClientHello (without)
         else:
@@ -402,7 +404,7 @@ class TLSConnection(TLSRecordLayer):
             clientHello.create(settings.maxVersion, getRandomBytes(32),
                                createByteArraySequence([]), cipherSuites,
                                certificateTypes, srpUsername,
-                               reqTack, reqTack)
+                               reqTack)
         for result in self._sendMsg(clientHello):
             yield result
         yield clientHello
@@ -448,16 +450,11 @@ class TLSConnection(TLSRecordLayer):
                 AlertDescription.illegal_parameter,
                 "Server responded with incorrect compression method"):
                 yield result
-        if serverHello.tack and not clientHello.tack:
+        if serverHello.tackExt and not clientHello.tack:
             for result in self._sendError(\
                 AlertDescription.illegal_parameter,
-                "Server responded with unrequested TACK"):
+                "Server responded with unrequested TACK Extension"):
                 yield result
-        if serverHello.break_sigs and not clientHello.break_sigs:
-            for result in self._sendError(\
-                AlertDescription.illegal_parameter,
-                "Server responded with unrequested TACK_Break_Sig list"):
-                yield result            
         yield serverHello
  
     def _clientResume(self, session, serverHello, clientRandom, 
@@ -490,7 +487,7 @@ class TLSConnection(TLSRecordLayer):
             
     def _clientSRPKeyExchange(self, settings, cipherSuite, certificateType, 
             srpUsername, password,
-            clientRandom, serverRandom, tack):
+            clientRandom, serverRandom, tackExt):
 
         #If the server chose an SRP+RSA suite...
         if cipherSuite in CipherSuite.srpCertSuites:
@@ -559,12 +556,14 @@ class TLSConnection(TLSRecordLayer):
                         "message without a signature"):
                     yield result
 
-            #Get server's public key from the Certificate message
+            # Get server's public key from the Certificate message
+            # Also validate the chain against the ServerHello's TACKext (if any)
+            # If none, and a TACK cert is present, return its TACKext  
             for result in self._clientGetKeyFromChain(serverCertificate,
-                                               settings, tack):
+                                               settings, tackExt):
                 if result in (0,1): yield result
                 else: break
-            publicKey, serverCertChain = result
+            publicKey, serverCertChain, tackExt = result
 
             #Verify signature
             if not publicKey.verify(sigBytes, hashBytes):
@@ -598,14 +597,14 @@ class TLSConnection(TLSRecordLayer):
         for result in self._sendMsg(\
                 ClientKeyExchange(cipherSuite).createSRP(A)):
             yield result
-        yield (premasterSecret, serverCertChain)
+        yield (premasterSecret, serverCertChain, tackExt)
                    
 
     def _clientRSAKeyExchange(self, settings, cipherSuite, 
                                 clientCertChain, privateKey,
                                 certificateType,
                                 clientRandom, serverRandom,
-                                tack):
+                                tackExt):
 
         #Get Certificate[, CertificateRequest], ServerHelloDone
         for result in self._getMsg(ContentType.handshake,
@@ -633,12 +632,14 @@ class TLSConnection(TLSRecordLayer):
         elif isinstance(msg, ServerHelloDone):
             serverHelloDone = msg
 
-        #Get server's public key from the Certificate message
+        # Get server's public key from the Certificate message
+        # Also validate the chain against the ServerHello's TACKext (if any)
+        # If none, and a TACK cert is present, return its TACKext  
         for result in self._clientGetKeyFromChain(serverCertificate,
-                                           settings, tack):
+                                           settings, tackExt):
             if result in (0,1): yield result
             else: break
-        publicKey, serverCertChain = result
+        publicKey, serverCertChain, tackExt = result
 
         #Calculate premaster secret
         premasterSecret = getRandomBytes(48)
@@ -708,7 +709,7 @@ class TLSConnection(TLSRecordLayer):
             certificateVerify.create(signedBytes)
             for result in self._sendMsg(certificateVerify):
                 yield result
-        yield (premasterSecret, serverCertChain, clientCertChain)
+        yield (premasterSecret, serverCertChain, clientCertChain, tackExt)
 
     def _clientFinished(self, premasterSecret, clientRandom, serverRandom,
                         cipherSuite, cipherImplementations):
@@ -726,7 +727,7 @@ class TLSConnection(TLSRecordLayer):
             yield result
         yield masterSecret
 
-    def _clientGetKeyFromChain(self, certificate, settings, tack=None):
+    def _clientGetKeyFromChain(self, certificate, settings, tackExt=None):
         #Get and check cert chain from the Certificate message
         certChain = certificate.certChain
         if not certChain or certChain.getNumCerts() == 0:
@@ -746,13 +747,24 @@ class TLSConnection(TLSRecordLayer):
                     "Other party's public key too large: %d" % len(publicKey)):
                 yield result
         
-        if tack:
-            if not certChain.checkTack(tack):
-                for result in self._sendError(AlertDescription.handshake_failure,
-                        "Other party's TACK doesn't match their cert chain"):
+        # If there's a TLS Extension, there shouldn't be a TACK Cert Ext
+        # If there's no TLS Extension, there may be
+        if tackExt:
+                shouldntBeATackExt = certChain.getTackExt()
+                if shouldntBeATackExt:
+                    raise SyntaxError("TACK Extensions in TLS and TACK Cert")
+        else:
+            tackExt = certChain.getTackExt()
+         
+        # If there's a TACK (whether via TLS or TACK Cert), check that it
+        # matches the cert chain   
+        if tackExt and tackExt.tack and \
+                            not certChain.checkTack(tackExt.tack):
+            for result in self._sendError(AlertDescription.handshake_failure,
+                    "Other party's TACK doesn't match their cert chain"):
                     yield result
 
-        yield publicKey, certChain
+        yield publicKey, certChain, tackExt
 
 
     #*********************************************************
@@ -763,7 +775,7 @@ class TLSConnection(TLSRecordLayer):
     def handshakeServer(self, verifierDB=None,
                         certChain=None, privateKey=None, reqCert=False,
                         sessionCache=None, settings=None, checker=None,
-                        reqCAs = None, tack=None, tackBreakSigs=None):
+                        reqCAs = None, tack=None, breakSigs=None):
         """Perform a handshake in the role of server.
 
         This function performs an SSL or TLS handshake.  Depending on
@@ -836,14 +848,14 @@ class TLSConnection(TLSRecordLayer):
         """
         for result in self.handshakeServerAsync(verifierDB,
                 certChain, privateKey, reqCert, sessionCache, settings,
-                checker, reqCAs, tack=tack, tackBreakSigs=tackBreakSigs):
+                checker, reqCAs, tack=tack, breakSigs=breakSigs):
             pass
 
 
     def handshakeServerAsync(self, verifierDB=None,
                              certChain=None, privateKey=None, reqCert=False,
                              sessionCache=None, settings=None, checker=None,
-                             reqCAs=None, tack=None, tackBreakSigs=None):
+                             reqCAs=None, tack=None, breakSigs=None):
         """Start a server handshake operation on the TLS connection.
 
         This function returns a generator which behaves similarly to
@@ -859,14 +871,14 @@ class TLSConnection(TLSRecordLayer):
             verifierDB=verifierDB, certChain=certChain,
             privateKey=privateKey, reqCert=reqCert,
             sessionCache=sessionCache, settings=settings, 
-            reqCAs=reqCAs, tack=tack, tackBreakSigs=tackBreakSigs)
+            reqCAs=reqCAs, tack=tack, breakSigs=breakSigs)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
 
     def _handshakeServerAsyncHelper(self, verifierDB,
                              certChain, privateKey, reqCert, sessionCache,
-                             settings, reqCAs, tack, tackBreakSigs):
+                             settings, reqCAs, tack, breakSigs):
 
         self._handshakeStart(client=False)
 
@@ -880,7 +892,7 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed reqCAs but not reqCert")            
         if certChain and not isinstance(certChain, X509CertChain):
             raise ValueError("Unrecognized certificate type")
-        if (tack or tackBreakSigs) and not tackpyLoaded:
+        if (tack or breakSigs) and not tackpyLoaded:
             raise ValueError("TACKpy is not loaded")
 
         if not settings:
@@ -911,15 +923,16 @@ class TLSConnection(TLSRecordLayer):
         # If not doing a certificate-based suite, discard the TACK
         if not cipherSuite in CipherSuite.certAllSuites:
             tack = None
-        # If the client didn't request TACK stuff, discard it (if any)
-        if not clientHello.tack:
-            tack = None
-        if not clientHello.break_sigs:
-            tackBreakSigs = None
+
+        # Prepare a TACK Extension if requested
+        if clientHello.tack:
+            tackExt = TACK_Extension()
+            tackExt.create(tack, breakSigs)
+        else:
+            tackExt = None
         serverHello = ServerHello()
         serverHello.create(self.version, getRandomBytes(32), sessionID, \
-                            cipherSuite, CertificateType.x509,
-                            tack, tackBreakSigs)
+                            cipherSuite, CertificateType.x509, tackExt)
 
         # Perform the SRP key exchange
         clientCertChain = None
@@ -958,7 +971,7 @@ class TLSConnection(TLSRecordLayer):
             serverCertChain = None
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
             clientHello.srp_username, clientCertChain, serverCertChain,
-            tack, tackBreakSigs)
+            tackExt)
             
         #Add the session object to the session cache
         if sessionCache and sessionID:
@@ -1043,7 +1056,7 @@ class TLSConnection(TLSRecordLayer):
                 serverHello = ServerHello()
                 serverHello.create(self.version, getRandomBytes(32),
                                    session.sessionID, session.cipherSuite,
-                                   CertificateType.x509)
+                                   CertificateType.x509, None)
                 for result in self._sendMsg(serverHello):
                     yield result
 

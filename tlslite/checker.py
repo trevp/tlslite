@@ -101,9 +101,9 @@ class Checker:
                 return
         
             # Well, its a mismatch, is there a Break Sig?
-            if connection.session.tackBreakSigs:
+            if connection.session.breakSigs:
                 if self.tackID in [bs.getTACKID() for bs in 
-                                    connection.session.tackBreakSigs]:
+                                    connection.session.breakSigs]:
                     # If there's a Break Sig, either raise an Exception
                     # or, if not 'hardTack', let it slide
                     if self.hardTack:

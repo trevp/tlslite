@@ -407,15 +407,15 @@ def serverTestCmd(argv):
     tack2.parsePem(open("./TACK2.pem", "rU").read())
     tackUnrelated = TACK()
     tackUnrelated.parsePem(open("./TACKunrelated.pem", "rU").read())    
-    tackBreakSigs = TACK_Break_Sig.parsePemList(
+    breakSigs = TACK_Break_Sig.parsePemList(
         open("./TACK_Break_Sigs.pem").read())
-    tackBreakSigsActual = TACK_Break_Sig.parsePemList(
+    breakSigsActual = TACK_Break_Sig.parsePemList(
         open("./TACK_Break_Sigs_TACK1.pem").read())    
 
     print "Test 2.a - good X.509, good TACK"
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-        tack=tack1, tackBreakSigs=tackBreakSigs)
+        tack=tack1, breakSigs=breakSigs)
     testConnServer(connection)    
     connection.close()        
 
@@ -428,12 +428,12 @@ def serverTestCmd(argv):
     print "Test 2.c - good X.509, \"wrong\" TACK but break signature (hardTack)"
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-        tack=tack2, tackBreakSigs=tackBreakSigsActual)
+        tack=tack2, breakSigs=breakSigsActual)
 
     print "Test 2.d - good X.509, \"wrong\" TACK but break signature (not hardTack)"
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-        tack=tack2, tackBreakSigs=tackBreakSigsActual)
+        tack=tack2, breakSigs=breakSigsActual)
     testConnServer(connection)    
     connection.close()
 

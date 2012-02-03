@@ -66,7 +66,7 @@ def handleArgs(argv, argString, flagsList=[]):
     username = None
     password = None
     tack = None
-    tackBreakSigs = None
+    breakSigs = None
     verifierDB = None
     reqCert = False
     directory = None
@@ -90,7 +90,7 @@ def handleArgs(argv, argString, flagsList=[]):
             tack.parsePem(s)
         elif opt == "-b":
             s = open(arg, "rU").read()
-            tackBreakSigs = TACK_Break_Sig.parsePemList(s)
+            breakSigs = TACK_Break_Sig.parsePemList(s)
         elif opt == "-v":
             verifierDB = VerifierDB(arg)
             verifierDB.open()
@@ -125,7 +125,7 @@ def handleArgs(argv, argString, flagsList=[]):
     if "t" in argString:
         retList.append(tack)
     if "b" in argString:
-        retList.append(tackBreakSigs)
+        retList.append(breakSigs)
     if "v" in argString:
         retList.append(verifierDB)
     if "d" in argString:
@@ -195,15 +195,15 @@ def clientCmd(argv):
     if connection.session.serverCertChain:
         print("  Server X.509 SHA1 fingerprint: %s" % 
             connection.session.serverCertChain.getFingerprint())
-    if connection.session.tack or connection.session.tackBreakSigs:
+    if connection.session.tack or connection.session.breakSigs:
         print("  TACK:")
         print(writeTextTACKStructures(connection.session.tack, 
-                                  connection.session.tackBreakSigs))
+                                  connection.session.breakSigs))
     connection.close()
 
 
 def serverCmd(argv):
-    (address, privateKey, certChain, tack, tackBreakSigs, 
+    (address, privateKey, certChain, tack, breakSigs, 
         verifierDB, directory, reqCert) = handleArgs(argv, "kctbvd", ["reqcert"])
 
 
@@ -224,7 +224,7 @@ def serverCmd(argv):
         print("Using verifier DB...")
     if tack:
         print("Using TACK...")
-    if tackBreakSigs:
+    if breakSigs:
         print("Using TACK Break Sigs...")
         
     #############
@@ -236,7 +236,7 @@ def serverCmd(argv):
                 connection.handshakeServer(certChain=certChain,
                                               privateKey=privateKey,
                                               tack=tack,
-                                              tackBreakSigs=tackBreakSigs,
+                                              breakSigs=breakSigs,
                                               sessionCache=sessionCache)
                 connection.ignoreAbruptClose = True
                 print "Handshake success"
@@ -252,10 +252,10 @@ def serverCmd(argv):
                 if connection.session.serverCertChain:
                     print("  Server X.509 SHA1 fingerprint: %s" % 
                             connection.session.serverCertChain.getFingerprint())
-                if connection.session.tack or connection.session.tackBreakSigs:
+                if connection.session.tack or connection.session.breakSigs:
                     print("  TACK:")
                     print(writeTextTACKStructures(connection.session.tack, 
-                                              connection.session.tackBreakSigs,
+                                              connection.session.breakSigs,
                                               True))
                 return True
             except TLSError as error:

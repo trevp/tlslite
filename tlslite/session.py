@@ -43,20 +43,21 @@ class Session:
         self.clientCertChain = None
         self.serverCertChain = None
         self.tack = None
-        self.tackBreakSigs = None
+        self.breakSigs = None
         self.resumable = False
 
     def create(self, masterSecret, sessionID, cipherSuite,
             srpUsername, clientCertChain, serverCertChain, 
-            tack, tackBreakSigs, resumable=True):
+            tackExt, resumable=True):
         self.masterSecret = masterSecret
         self.sessionID = sessionID
         self.cipherSuite = cipherSuite
         self.srpUsername = srpUsername
         self.clientCertChain = clientCertChain
         self.serverCertChain = serverCertChain
-        self.tack = tack
-        self.tackBreakSigs = tackBreakSigs
+        if tackExt:
+            self.tack = tackExt.tack
+            self.breakSigs = tackExt.break_sigs
         self.resumable = resumable
 
     def _clone(self):
@@ -68,7 +69,7 @@ class Session:
         other.clientCertChain = self.clientCertChain
         other.serverCertChain = self.serverCertChain
         other.tack = self.tack
-        other.tackBreakSigs = self.tackBreakSigs
+        other.breakSigs = self.breakSigs
         other.resumable = self.resumable
         return other
 

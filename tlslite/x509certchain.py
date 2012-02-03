@@ -61,4 +61,17 @@ class X509CertChain:
             if ssl.matches(tack):
                 return True
         return False
+        
+    def getTackExt(self):
+        """Get the TACK and/or Break Sigs from a TACK Cert in the chain."""
+        tackExt = None
+        for x509 in self.x509List:
+            ssl = TACKpy.SSL_Cert()
+            ssl.parse(x509.bytes)
+            if ssl.tackExt:
+                if tackExt:
+                    raise SyntaxError("Multiple TACK Extensions")
+                else:
+                    tackExt = ssl.tackExt
+        return tackExt
                 

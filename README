@@ -80,8 +80,8 @@ tlslite installs two command-line scripts: 'tlsdb.py' and 'tls.py'.
 
 'tls.py' lets you run test clients and servers. It can be used for testing
 other TLS implementations, or as example code. Note that 'tls.py server' runs
-an HTTPS server which will serve files rooted at the current directory, so be
-careful.
+an HTTPS server which will serve files rooted at the current directory by
+default, so be careful.
 
 'tlsdb.py' lets you manage SRP verifier databases. These databases are used by
 a TLS server when authenticating clients with SRP.
@@ -119,9 +119,9 @@ Then try connecting to the server with:
 
 HTTPS
 ------
-To run a test HTTPS server with less typing, run ./tests/httpsserver.sh.
+To run an HTTPS server with less typing, run ./tests/httpsserver.sh.
 
-To run a test HTTPS client, run ./httpsclient.py.
+To run an HTTPS client, run ./tests/httpsclient.py.
 
 
 5 Getting Started with the Library
