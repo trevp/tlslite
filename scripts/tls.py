@@ -19,6 +19,7 @@ if __name__ != "__main__":
     raise "This must be run as a command, not used as a module!"
 
 from tlslite.api import *
+from tlslite import __version__
 
 try:
     from TACKpy import TACK, TACK_Break_Sig, writeTextTACKStructures
@@ -36,8 +37,8 @@ def printUsage(s=None):
 
 Commands:
   server  
-    [-k KEY] [-c CERT] [-t TACK] [-b BREAKSIGS] [-v VERIFIERDB] [--reqcert]
-    HOST:PORT
+    [-k KEY] [-c CERT] [-t TACK] [-b BREAKSIGS] [-v VERIFIERDB] [-d DIR]
+    [--reqcert] HOST:PORT
 
   client
     [-k KEY] [-c CERT] [-u USER] [-p PASS]
@@ -68,6 +69,7 @@ def handleArgs(argv, argString, flagsList=[]):
     tackBreakSigs = None
     verifierDB = None
     reqCert = False
+    directory = None
     
     for opt, arg in opts:
         if opt == "-k":
@@ -92,6 +94,8 @@ def handleArgs(argv, argString, flagsList=[]):
         elif opt == "-v":
             verifierDB = VerifierDB(arg)
             verifierDB.open()
+        elif opt == "-d":
+            directory = arg
         elif opt == "--reqcert":
             reqCert = True
         else:
@@ -124,9 +128,10 @@ def handleArgs(argv, argString, flagsList=[]):
         retList.append(tackBreakSigs)
     if "v" in argString:
         retList.append(verifierDB)
+    if "d" in argString:
+        retList.append(directory)
     if "reqcert" in flagsList:
         retList.append(reqCert)
-
     return retList
 
 
@@ -199,12 +204,19 @@ def clientCmd(argv):
 
 def serverCmd(argv):
     (address, privateKey, certChain, tack, tackBreakSigs, 
-        verifierDB, reqCert) = handleArgs(argv, "kctbv", ["reqcert"])
+        verifierDB, directory, reqCert) = handleArgs(argv, "kctbvd", ["reqcert"])
+
 
     if (certChain and not privateKey) or (not certChain and privateKey):
         raise SyntaxError("Must specify CERT and KEY together")
     if tack and not certChain:
         raise SyntaxError("Must specify CERT with TACK")
+    
+    print("I am an HTTPS test server, I will listen on %s:%d" % 
+            (address[0], address[1]))    
+    if directory:
+        os.chdir(directory)
+    print("Serving files from %s" % os.getcwd())
     
     if certChain and privateKey:
         print("Using certificate and private key...")
@@ -213,7 +225,7 @@ def serverCmd(argv):
     if tack:
         print("Using TACK...")
     if tackBreakSigs:
-        print("Usign TACK Break Sigs...")
+        print("Using TACK Break Sigs...")
         
     #############
     sessionCache = SessionCache()
@@ -249,8 +261,6 @@ def serverCmd(argv):
             except TLSError as error:
                 print "Handshake failure:", str(error)
                 return False
-    print("I am an HTTPS test server, I will listen on %s:%d" % 
-            (address[0], address[1]))
     httpd = MyHTTPServer(address, SimpleHTTPRequestHandler)
     httpd.serve_forever()
 
