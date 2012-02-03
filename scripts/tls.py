@@ -11,20 +11,14 @@ import thread
 import time
 import getopt
 import httplib
-import BaseHTTPServer
-import SimpleHTTPServer
+from SocketServer import *
+from BaseHTTPServer import *
+from SimpleHTTPServer import *
 
 if __name__ != "__main__":
     raise "This must be run as a command, not used as a module!"
 
-from tlslite import TLSConnection, TLSFaultError, Fault, HandshakeSettings, \
-    X509, X509CertChain, IMAP4_TLS, VerifierDB, Session, SessionCache, \
-    TLSLocalAlert, TLSRemoteAlert, TLSAbruptCloseError, parsePEMKey, \
-    AlertDescription, HTTPTLSConnection, TLSSocketServerMixIn, \
-    POP3_TLS, m2cryptoLoaded, pycryptoLoaded, gmpyLoaded, tackpyLoaded, \
-    __version__
-
-from tlslite.utils.cryptomath import prngName
+from tlslite.api import *
 
 try:
     from TACKpy import TACK, TACK_Break_Sig, writeTextTACKStructures
@@ -218,74 +212,47 @@ def serverCmd(argv):
         print("Using verifier DB...")
     if tack:
         print("Using TACK...")
+    if tackBreakSigs:
+        print("Usign TACK Break Sigs...")
+        
+    #############
+    sessionCache = SessionCache()
 
-    #Create handler function - performs handshake, then echos
-    def handler(sock):
-        try:
-            connection = TLSConnection(sock)
-            connection.handshakeServer(verifierDB=verifierDB,\
-                                       certChain=certChain, 
-                                       privateKey=privateKey,
-                                       reqCert=reqCert, 
-                                       tack=tack,
-                                       tackBreakSigs=tackBreakSigs)
-            print "Handshake success"
-            print "  Version: %s" % connection.getVersionName()
-            print "  Cipher: %s %s" % (connection.getCipherName(), 
-                            connection.getCipherImplementation())
-            if connection.session.srpUsername:
-                print("  Client SRP username: %s" % 
-                        connection.session.srpUsername)
-            if connection.session.clientCertChain:
-                print("  Client X.509 SHA1 fingerprint: %s" % 
-                        connection.session.clientCertChain.getFingerprint())
-            if connection.session.serverCertChain:
-                print("  Server X.509 SHA1 fingerprint: %s" % 
-                        connection.session.serverCertChain.getFingerprint())
-            if connection.session.tack or connection.session.tackBreakSigs:
-                print("  TACK:")
-                print(writeTextTACKStructures(connection.session.tack, 
-                                          connection.session.tackBreakSigs,
-                                          True))
-            s = ""
-            while 1:
-                newS = connection.read()
-                if not newS:
-                    break
-                s += newS
-                if s[-1]=='\n':
-                    connection.write(s)
-                    s = ""
-        except TLSLocalAlert, a:
-            if a.description == AlertDescription.unknown_psk_identity:
-                print "Unknown SRP username"
-            elif a.description == AlertDescription.bad_record_mac:
-                if verifierDB:
-                    print "Bad SRP password for:", connection.allegedSrpUsername
-                else:
-                    raise
-            elif a.description == AlertDescription.handshake_failure:
-                print "Unable to negotiate mutually acceptable parameters"
-            else:
-                raise
-        except TLSRemoteAlert, a:
-            if a.description == AlertDescription.user_canceled:
-                print "Handshake cancelled"
-            elif a.description == AlertDescription.handshake_failure:
-                print "Unable to negotiate mutually acceptable parameters"
-            elif a.description == AlertDescription.close_notify:
-                pass
-            else:
-                raise
-
-    #Run multi-threaded server
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.bind(address)
-    sock.listen(5)
-    while 1:
-        (newsock, cliAddress) = sock.accept()
-        thread.start_new_thread(handler, (newsock,))
-
+    class MyHTTPServer(ThreadingMixIn, TLSSocketServerMixIn, HTTPServer):
+        def handshake(self, connection):
+            try:
+                connection.handshakeServer(certChain=certChain,
+                                              privateKey=privateKey,
+                                              tack=tack,
+                                              tackBreakSigs=tackBreakSigs,
+                                              sessionCache=sessionCache)
+                connection.ignoreAbruptClose = True
+                print "Handshake success"
+                print "  Version: %s" % connection.getVersionName()
+                print "  Cipher: %s %s" % (connection.getCipherName(), 
+                                connection.getCipherImplementation())
+                if connection.session.srpUsername:
+                    print("  Client SRP username: %s" % 
+                            connection.session.srpUsername)
+                if connection.session.clientCertChain:
+                    print("  Client X.509 SHA1 fingerprint: %s" % 
+                            connection.session.clientCertChain.getFingerprint())
+                if connection.session.serverCertChain:
+                    print("  Server X.509 SHA1 fingerprint: %s" % 
+                            connection.session.serverCertChain.getFingerprint())
+                if connection.session.tack or connection.session.tackBreakSigs:
+                    print("  TACK:")
+                    print(writeTextTACKStructures(connection.session.tack, 
+                                              connection.session.tackBreakSigs,
+                                              True))
+                return True
+            except TLSError as error:
+                print "Handshake failure:", str(error)
+                return False
+    print("I am an HTTPS test server, I will listen on %s:%d" % 
+            (address[0], address[1]))
+    httpd = MyHTTPServer(address, SimpleHTTPRequestHandler)
+    httpd.serve_forever()
 
 
 if __name__ == '__main__':

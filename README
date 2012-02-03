@@ -403,13 +403,13 @@ with the same parameters as HTTPTLSConnection (see previous section), and
 behave similarly.
 
   #To connect to a POP3 server over SSL and display its fingerprint:
-  from tlslite import *
+  from tlslite.api import *
   p = POP3_TLS("---------.net", port=995)
   print p.sock.session.serverCertChain.getFingerprint()
   [...]
 
   #To connect to an IMAP server once you know its fingerprint:
-  from tlslite import *
+  from tlslite.api import *
   i = IMAP4_TLS("cyrus.andrew.cmu.edu",
           x509Fingerprint="00c14371227b3b677ddb9c4901e6f2aee18d3e45")
   [...]  
@@ -423,7 +423,7 @@ HTTPTLSConnection (see previous section), and behaves similarly.  Depending
 on how you call starttls(), it will do different types of authentication.
 
   #To connect to an SMTP server once you know its fingerprint:
-  from tlslite import *
+  from tlslite.api import *
   s = SMTP_TLS("----------.net", port=587)
   s.ehlo()
   s.starttls(x509Fingerprint="7e39be84a2e3a7ad071752e3001d931bf82c32dc")
