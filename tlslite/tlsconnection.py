@@ -747,13 +747,8 @@ class TLSConnection(TLSRecordLayer):
                     "Other party's public key too large: %d" % len(publicKey)):
                 yield result
         
-        # If there's a TLS Extension, there shouldn't be a TACK Cert Ext
-        # If there's no TLS Extension, there may be
-        if tackExt:
-                shouldntBeATackExt = certChain.getTackExt()
-                if shouldntBeATackExt:
-                    raise SyntaxError("TACK Extensions in TLS and TACK Cert")
-        else:
+        # If there's no TLS Extension, look for a TACK cert
+        if not tackExt:
             tackExt = certChain.getTackExt()
          
         # If there's a TACK (whether via TLS or TACK Cert), check that it
