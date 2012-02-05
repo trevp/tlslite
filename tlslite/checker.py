@@ -91,24 +91,25 @@ class Checker:
                 else:
                     raise TLSNoAuthenticationError()
         
-        if self.tackID:
+        if self.tackID:                
+            tackID = connection.session.getTACKID()
             # Missing TACK
-            if not connection.session.tack:
+            if not tackID:
                 raise TLSTackMissingError()
             
-            # Good TACK
-            if self.tackID == connection.session.tack.getTACKID():
+            if tackID == self.tackID:
                 return
         
             # Well, its a mismatch, is there a Break Sig?
-            if connection.session.breakSigs:
-                if self.tackID in [bs.getTACKID() for bs in 
-                                    connection.session.breakSigs]:
+            breakSigs = connection.session.getBreakSigs()
+            if breakSigs:
+                if self.tackID in [bs.getTACKID() for bs in breakSigs]:
                     # If there's a Break Sig, either raise an Exception
                     # or, if not 'hardTack', let it slide
                     if self.hardTack:
                         raise TLSTackBreakError()
                     else:
+                        # "Soft" TACK check, let it through...
                         return
             
             # No Break Sig, so this TACK is bad!

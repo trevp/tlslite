@@ -135,6 +135,28 @@ def handleArgs(argv, argString, flagsList=[]):
     return retList
 
 
+def printGoodConnection(connection, seconds):
+    print "  Handshake time: %.3f seconds" % seconds
+    print "  Version: %s" % connection.getVersionName()
+    print("  Cipher: %s %s" % (connection.getCipherName(), 
+        connection.getCipherImplementation()))
+    if connection.session.srpUsername:
+        print("  Client SRP username: %s" % connection.session.srpUsername)
+    if connection.session.clientCertChain:
+        print("  Client X.509 SHA1 fingerprint: %s" % 
+            connection.session.clientCertChain.getFingerprint())
+    if connection.session.serverCertChain:
+        print("  Server X.509 SHA1 fingerprint: %s" % 
+            connection.session.serverCertChain.getFingerprint())
+    if connection.session.tackExt:   
+        if connection.session.tackExt.isEmpty():
+            emptyStr = "<empty TLS Extension>"
+        else:
+            emptyStr = "" 
+        print("  TACK: %s" % emptyStr)
+        print(writeTextTACKStructures(connection.session.tackExt.tack, 
+                                  connection.session.tackExt.break_sigs))    
+    
 def clientCmd(argv):
     (address, privateKey, certChain, username, password) = \
         handleArgs(argv, "kcup")
@@ -182,23 +204,7 @@ def clientCmd(argv):
         else:
             raise
         sys.exit(-1)
-
-    print "  Handshake time: %.4f seconds" % (stop - start)
-    print "  Version: %s" % connection.getVersionName()
-    print("  Cipher: %s %s" % (connection.getCipherName(), 
-        connection.getCipherImplementation()))
-    if connection.session.srpUsername:
-        print("  Client SRP username: %s" % connection.session.srpUsername)
-    if connection.session.clientCertChain:
-        print("  Client X.509 SHA1 fingerprint: %s" % 
-            connection.session.clientCertChain.getFingerprint())
-    if connection.session.serverCertChain:
-        print("  Server X.509 SHA1 fingerprint: %s" % 
-            connection.session.serverCertChain.getFingerprint())
-    if connection.session.tack or connection.session.breakSigs:
-        print("  TACK:")
-        print(writeTextTACKStructures(connection.session.tack, 
-                                  connection.session.breakSigs))
+    printGoodConnection(connection, stop-start)
     connection.close()
 
 
@@ -234,12 +240,14 @@ def serverCmd(argv):
         def handshake(self, connection):
             print "About to handshake..."
             try:
+                start = time.clock()
                 connection.handshakeServer(certChain=certChain,
                                               privateKey=privateKey,
                                               verifierDB=verifierDB,
                                               tack=tack,
                                               breakSigs=breakSigs,
                                               sessionCache=sessionCache)
+                stop = time.clock()
             except TLSRemoteAlert as a:
                 if a.description == AlertDescription.user_canceled:
                     print str(a)
@@ -266,25 +274,9 @@ def serverCmd(argv):
                     raise
                 
             connection.ignoreAbruptClose = True
-            print "Handshake success"
-            print "  Version: %s" % connection.getVersionName()
-            print "  Cipher: %s %s" % (connection.getCipherName(), 
-                            connection.getCipherImplementation())
-            if connection.session.srpUsername:
-                print("  Client SRP username: %s" % 
-                        connection.session.srpUsername)
-            if connection.session.clientCertChain:
-                print("  Client X.509 SHA1 fingerprint: %s" % 
-                        connection.session.clientCertChain.getFingerprint())
-            if connection.session.serverCertChain:
-                print("  Server X.509 SHA1 fingerprint: %s" % 
-                        connection.session.serverCertChain.getFingerprint())
-            if connection.session.tack or connection.session.breakSigs:
-                print("  TACK:")
-                print(writeTextTACKStructures(connection.session.tack, 
-                                          connection.session.breakSigs,
-                                          True))
+            printGoodConnection(connection, stop-start)
             return True
+
     httpd = MyHTTPServer(address, SimpleHTTPRequestHandler)
     httpd.serve_forever()
 

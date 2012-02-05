@@ -1090,7 +1090,7 @@ class TLSConnection(TLSRecordLayer):
         else:
             for result in self._sendError(\
                     AlertDescription.handshake_failure,
-                    "No mutual ciphersuites"):
+                    "No mutual ciphersuite"):
                 yield result
 
         if cipherSuite in CipherSuite.srpAllSuites and \

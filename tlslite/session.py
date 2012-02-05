@@ -42,8 +42,7 @@ class Session:
         self.srpUsername = None
         self.clientCertChain = None
         self.serverCertChain = None
-        self.tack = None
-        self.breakSigs = None
+        self.tackExt = None
         self.resumable = False
 
     def create(self, masterSecret, sessionID, cipherSuite,
@@ -55,9 +54,7 @@ class Session:
         self.srpUsername = srpUsername
         self.clientCertChain = clientCertChain
         self.serverCertChain = serverCertChain
-        if tackExt:
-            self.tack = tackExt.tack
-            self.breakSigs = tackExt.break_sigs
+        self.tackExt = tackExt
         self.resumable = resumable
 
     def _clone(self):
@@ -68,8 +65,7 @@ class Session:
         other.srpUsername = self.srpUsername
         other.clientCertChain = self.clientCertChain
         other.serverCertChain = self.serverCertChain
-        other.tack = self.tack
-        other.breakSigs = self.breakSigs
+        other.tackExt = self.tackExt
         other.resumable = self.resumable
         return other
 
@@ -85,6 +81,18 @@ class Session:
         #Only let it be set to True if the sessionID is non-null
         if (not boolean) or (boolean and self.sessionID):
             self.resumable = boolean
+
+    def getTACKID(self):
+        if self.tackExt and self.tackExt.tack:
+            return self.tackExt.tack.getTACKID()
+        else:
+            return None
+        
+    def getBreakSigs(self):
+        if self.tackExt and self.tackExt.break_sigs:
+            return self.tackExt.break_sigs
+        else:
+            return None
 
     def getCipherName(self):
         """Get the name of the cipher used with this connection.

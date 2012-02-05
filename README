@@ -271,8 +271,7 @@ variables will be populated if applicable, or else set to None:
   connection.session.srpUsername       # string
   connection.session.clientCertChain   # X509CertChain
   connection.session.serverCertChain   # X509CertChain
-  connection.session.tack              # TACKpy.TACK
-  connection.session.tackBreakSigs     # List of TACKpy.TACK_Break_Sig
+  connection.session.tackExt           # TACKpy.TACK_Extension
 
 X.509 chain objects return the end-entity fingerprint via getFingerprint(),
 and ignore the other certificates.
