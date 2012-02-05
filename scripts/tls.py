@@ -232,35 +232,59 @@ def serverCmd(argv):
 
     class MyHTTPServer(ThreadingMixIn, TLSSocketServerMixIn, HTTPServer):
         def handshake(self, connection):
+            print "About to handshake..."
             try:
                 connection.handshakeServer(certChain=certChain,
                                               privateKey=privateKey,
+                                              verifierDB=verifierDB,
                                               tack=tack,
                                               breakSigs=breakSigs,
                                               sessionCache=sessionCache)
-                connection.ignoreAbruptClose = True
-                print "Handshake success"
-                print "  Version: %s" % connection.getVersionName()
-                print "  Cipher: %s %s" % (connection.getCipherName(), 
-                                connection.getCipherImplementation())
-                if connection.session.srpUsername:
-                    print("  Client SRP username: %s" % 
-                            connection.session.srpUsername)
-                if connection.session.clientCertChain:
-                    print("  Client X.509 SHA1 fingerprint: %s" % 
-                            connection.session.clientCertChain.getFingerprint())
-                if connection.session.serverCertChain:
-                    print("  Server X.509 SHA1 fingerprint: %s" % 
-                            connection.session.serverCertChain.getFingerprint())
-                if connection.session.tack or connection.session.breakSigs:
-                    print("  TACK:")
-                    print(writeTextTACKStructures(connection.session.tack, 
-                                              connection.session.breakSigs,
-                                              True))
-                return True
-            except TLSError as error:
-                print "Handshake failure:", str(error)
-                return False
+            except TLSRemoteAlert as a:
+                if a.description == AlertDescription.user_canceled:
+                    print str(a)
+                    return False
+                else:
+                    raise
+            except TLSLocalAlert as a:
+                if a.description == AlertDescription.unknown_psk_identity:
+                    if username:
+                        print "Unknown username"
+                        return False
+                    else:
+                        raise
+                elif a.description == AlertDescription.bad_record_mac:
+                    if username:
+                        print "Bad username or password"
+                        return False
+                    else:
+                        raise
+                elif a.description == AlertDescription.handshake_failure:
+                    print "Unable to negotiate mutually acceptable parameters"
+                    return False
+                else:
+                    raise
+                
+            connection.ignoreAbruptClose = True
+            print "Handshake success"
+            print "  Version: %s" % connection.getVersionName()
+            print "  Cipher: %s %s" % (connection.getCipherName(), 
+                            connection.getCipherImplementation())
+            if connection.session.srpUsername:
+                print("  Client SRP username: %s" % 
+                        connection.session.srpUsername)
+            if connection.session.clientCertChain:
+                print("  Client X.509 SHA1 fingerprint: %s" % 
+                        connection.session.clientCertChain.getFingerprint())
+            if connection.session.serverCertChain:
+                print("  Server X.509 SHA1 fingerprint: %s" % 
+                        connection.session.serverCertChain.getFingerprint())
+            if connection.session.tack or connection.session.breakSigs:
+                print("  TACK:")
+                print(writeTextTACKStructures(connection.session.tack, 
+                                          connection.session.breakSigs,
+                                          True))
+            return True
     httpd = MyHTTPServer(address, SimpleHTTPRequestHandler)
     httpd.serve_forever()
 

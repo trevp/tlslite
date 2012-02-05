@@ -65,7 +65,8 @@ class X509CertChain:
     def getTackExt(self):
         """Get the TACK and/or Break Sigs from a TACK Cert in the chain."""
         tackExt = None
-        for x509 in self.x509List:
+        # Search list in backwards order
+        for x509 in self.x509List[::-1]:
             ssl = TACKpy.SSL_Cert()
             ssl.parse(x509.bytes)
             if ssl.tackExt:
