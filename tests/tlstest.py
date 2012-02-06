@@ -98,7 +98,7 @@ def clientTestCmd(argv):
     print "Test 2.a - good X.509, good TACK"
     connection = connect()
     connection.handshakeClientCert(reqTack=True, 
-     checker=Checker(tackID="B3ARS.EQ61B.F34EL.9KKLN.3WEW5", hardTack=True))
+     checker=Checker(tackID="BHNHV.8Q3RM.Q74EA.4X8F1.FMQEQ", hardTack=True))
     testConnClient(connection)    
     connection.close()    
 
@@ -115,7 +115,7 @@ def clientTestCmd(argv):
     connection = connect()
     try:
         connection.handshakeClientCert(reqTack=True, 
-            checker=Checker(tackID="B3ARS.EQ61B.F34EL.9KKLN.3WEW5", hardTack=True))
+            checker=Checker(tackID="BHNHV.8Q3RM.Q74EA.4X8F1.FMQEQ", hardTack=True))
         assert(False)
     except TLSTackBreakError:
         pass
@@ -123,7 +123,7 @@ def clientTestCmd(argv):
     print "Test 2.d - good X.509, \"wrong\" TACK but break signature (not hardTack)"
     connection = connect()
     connection.handshakeClientCert(reqTack=True, 
-        checker=Checker(tackID="B3ARS.EQ61B.F34EL.9KKLN.3WEW5", hardTack=False))
+        checker=Checker(tackID="BHNHV.8Q3RM.Q74EA.4X8F1.FMQEQ", hardTack=False))
     testConnClient(connection)    
     connection.close()    
 
