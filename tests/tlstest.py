@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# Author: Trevor Perrin
+# See the LICENSE file for legal information regarding use of this file.
+
 import sys
 import os
 import os.path

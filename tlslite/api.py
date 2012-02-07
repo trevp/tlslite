@@ -1,3 +1,5 @@
+# Author: Trevor Perrin
+# See the LICENSE file for legal information regarding use of this file.
 
 __version__ = "0.3.8a"
 from .constants import AlertLevel, AlertDescription, Fault
