@@ -1,8 +1,7 @@
 # Author: Trevor Perrin
 # See the LICENSE file for legal information regarding use of this file.
 
-"""
-TLS Lite is a free python library that implements SSL and TLS. TLS Lite
+"""TLS Lite is a free python library that implements SSL and TLS. TLS Lite
 supports RSA and SRP ciphersuites. TLS Lite is pure python, however it can use
 other libraries for faster crypto operations. TLS Lite integrates with several
 stdlib neworking libraries.
@@ -22,7 +21,7 @@ If you want to import the most useful objects, the cleanest way is:
 Then use the L{tlslite.TLSConnection.TLSConnection} class with a socket.
 (Or, use one of the integration classes in L{tlslite.integration}).
 
-@version: 0.3.8a
+@version: 0.3.9x
 """
 
 from tlslite.api import *

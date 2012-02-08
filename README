@@ -1,5 +1,5 @@
 
-tlslite version 0.3.8a                                            Jan ? 2012
+tlslite version 0.3.9x                                            Feb 7 2012
 Trevor Perrin <trevp at trevp.net>
 http://trevp.net/tlslite/
 ============================================================================
@@ -457,7 +457,52 @@ at your own risk.
 
 12 History
 ===========
-0.3.8a - don't call it a comeback
+0.3.9.x - 2/7/2012
+
+Much code cleanup, in particular decomposing the handshake functions so 
+they are readable.  The main new feature is support for Convergence TACK,
+an experimental authentication method that provides a new way to pin 
+server certificates (See https://github.com/moxie0/Convergence/wiki/TACK ).
+
+Also:
+
+ - Security Fixes
+   - Sends SCSV ciphersuite as per RFC 5746, to signal non-renegotiated
+     Client Hello.  Does not support renegotiation (never has).
+   - Change from e=3 to e=65537 for generated RSA keys, not strictly 
+     necessary but mitigates risk of sloppy verifier.
+   - 1/(n-1) countermeasure for BEAST.
+
+ - Behavior changes:
+   - Split cmdline into tls.py and tlstest.py, improved options.
+   - Formalized LICENSE.
+   - Defaults to closing socket after sending close_notify, fixes hanging.
+     problem that would occur sometime when waiting for other party's    
+     close_notify.
+   - Update SRP to RFC 5054 compliance.
+   - Removed client handshake "callbacks", no longer support the SRP 
+     re-handshake idiom within a single handshake function.
+
+ - Bugfixes
+   - Added hashlib support, removes Deprecation Warning due to sha and md5.
+   - Handled GeneratorExit exceptions that are a new Python feature, and
+     interfere with the async code if not handled.
+ 
+ - Removed:
+   - Shared keys (it was based on an ancient I-D, not TLS-PSK).
+   - cryptlib support, it wasn't used much, we have enough other options.
+   - cryptoIDs (Convergence TACK is better).
+   - win32prng extension module, as os.urandom is now available.
+   - Twisted integration (unused?, slowed down loading).
+   - Jython code (ancient, didn't work).
+   - Compat support for python versions < 2.7.
+
+ - Additions
+   - Support for Convergence TACK via TACKpy.
+   - Support for CertificateRequest.certificate_authorities ("reqCAs")
+   - Added TLSConnection.shutdown() to better mimic socket.
+   - Enabled Session resumption for XMLRPCTransport.
+
 0.3.8 - 2/21/2005
  - Added support for poplib, imaplib, and smtplib
  - Added python 2.4 windows installer

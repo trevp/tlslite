@@ -17,6 +17,7 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
                  certChain=None, privateKey=None,
                  x509Fingerprint=None,
                  tackID=None,
+                 hardTack=None,                 
                  settings=None):
         """Create a new XMLRPCTransport.
 

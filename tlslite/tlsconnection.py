@@ -100,6 +100,10 @@ class TLSConnection(TLSRecordLayer):
         invoked to examine the other party's authentication
         credentials, if the handshake completes succesfully.
 
+        @type reqTack: bool
+        @param reqTack: Whether or not to send a "tack" TLS Extension, 
+        requesting the server return a TACK_Extension if it has one.
+
         @type async: bool
         @param async: If False, this function will block until the
         handshake is completed.  If True, this function will return a
@@ -181,6 +185,10 @@ class TLSConnection(TLSRecordLayer):
         @param checker: A Checker instance.  This instance will be
         invoked to examine the other party's authentication
         credentials, if the handshake completes succesfully.
+        
+        @type reqTack: bool
+        @param reqTack: Whether or not to send a "tack" TLS Extension, 
+        requesting the server return a TACK_Extension if it has one.        
 
         @type async: bool
         @param async: If False, this function will block until the
@@ -829,7 +837,7 @@ class TLSConnection(TLSRecordLayer):
         invoked to examine the other party's authentication
         credentials, if the handshake completes succesfully.
         
-        @type reqCAs: list of L{array.array} of unsigned bytes
+        @type reqCAs: list of L{bytearray} of unsigned bytes
         @param reqCAs: A collection of DER-encoded DistinguishedNames that
         will be sent along with a certificate request. This does not affect
         verification.        

@@ -6,7 +6,7 @@
 from distutils.core import setup
 
 setup(name="tlslite",
-      version="0.3.9",
+      version="0.3.9x",
       author="Trevor Perrin",
       author_email="tlslite@trevp.net",
       url="http://trevp.net/tlslite/",
