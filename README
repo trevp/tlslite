@@ -48,7 +48,7 @@ Thanks to Edward Loper for Epydoc, which generated the API docs.
 3 Installation
 ===============
 Requirements:
-  Python 2.7 or higher is required. Python 3 is not supported.
+  Python 2.6 or higher is required. Python 3 is not supported.
 
 Options:
   - If you have the M2Crypto interface to OpenSSL, this will be used for fast

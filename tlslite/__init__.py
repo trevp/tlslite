@@ -21,7 +21,7 @@ If you want to import the most useful objects, the cleanest way is:
 Then use the L{tlslite.TLSConnection.TLSConnection} class with a socket.
 (Or, use one of the integration classes in L{tlslite.integration}).
 
-@version: 0.3.9x
+@version: 0.3.9y
 """
 
 from tlslite.api import *

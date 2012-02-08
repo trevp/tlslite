@@ -84,8 +84,13 @@ class HTTPTLSConnection(httplib.HTTPConnection, ClientHelper):
         the ciphersuites, certificate types, and SSL/TLS versions
         offered by the client.
         """
-        httplib.HTTPConnection.__init__(self, host, port, strict,
-                                        timeout, source_address)
+        if source_address:
+            httplib.HTTPConnection.__init__(self, host, port, strict,
+                                            timeout, source_address)
+        if not source_address:
+            httplib.HTTPConnection.__init__(self, host, port, strict,
+                                            timeout)
+            
         ClientHelper.__init__(self,
                  username, password, 
                  certChain, privateKey,

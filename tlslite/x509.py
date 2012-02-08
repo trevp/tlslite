@@ -112,7 +112,7 @@ class X509:
         @rtype: str
         @return: A hex-encoded fingerprint.
         """
-        return sha1(self.bytes).hexdigest()
+        return sha1(bytesToString(self.bytes)).hexdigest()
 
     def writeBytes(self):
         return self.bytes
