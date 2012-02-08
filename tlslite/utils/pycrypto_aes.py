@@ -16,10 +16,14 @@ if pycryptoLoaded:
 
         def __init__(self, key, mode, IV):
             AES.__init__(self, key, mode, IV, "pycrypto")
+            key = bytesToString(key)
+            IV = bytesToString(IV)
             self.context = Crypto.Cipher.AES.new(key, mode, IV)
 
         def encrypt(self, plaintext):
-            return self.context.encrypt(plaintext)
+            plaintext = bytesToString(plaintext)
+            return stringToBytes(self.context.encrypt(plaintext))
 
         def decrypt(self, ciphertext):
-            return self.context.decrypt(ciphertext)
+            ciphertext = bytesToString(ciphertext)
+            return stringToBytes(self.context.decrypt(ciphertext))

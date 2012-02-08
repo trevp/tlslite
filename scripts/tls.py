@@ -29,13 +29,35 @@ except ImportError:
 def printUsage(s=None):
     if m2cryptoLoaded:
         crypto = "M2Crypto/OpenSSL"
+    elif pycryptoLoaded:
+        crypto = "Pycrypto"
     else:
-        crypto = "Python crypto"        
+        crypto = "Pure-python crypto"        
     if s:
         print("ERROR: %s" % s)
-    print("""\ntls.py version %s (using %s)  
 
-Commands:
+
+    print ""
+    print "Version: %s" % __version__
+    print ""
+    print "RNG: %s" % prngName
+    print ""
+    print "Modules:"
+    if m2cryptoLoaded:
+        print "  M2Crypto    : Loaded"
+    else:
+        print "  M2Crypto    : Not Loaded"
+    if pycryptoLoaded:
+        print "  pycrypto    : Loaded"
+    else:
+        print "  pycrypto    : Not Loaded"
+    if gmpyLoaded:
+        print "  GMPY        : Loaded"
+    else:
+        print "  GMPY        : Not Loaded"
+    print ""
+    print """Commands:
+
   server  
     [-k KEY] [-c CERT] [-t TACK] [-b BREAKSIGS] [-v VERIFIERDB] [-d DIR]
     [--reqcert] HOST:PORT
@@ -43,7 +65,7 @@ Commands:
   client
     [-k KEY] [-c CERT] [-u USER] [-p PASS]
     HOST:PORT
-""" % (__version__, crypto))
+"""
     sys.exit(-1)
 
 def printError(s):
