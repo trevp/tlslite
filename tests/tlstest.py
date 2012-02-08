@@ -98,55 +98,56 @@ def clientTestCmd(argv):
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()    
     
-    print "Test 2.a - good X.509, good TACK"
-    connection = connect()
-    connection.handshakeClientCert(reqTack=True, 
-     checker=Checker(tackID="BHNHV.8Q3RM.Q74EA.4X8F1.FMQEQ", hardTack=True))
-    testConnClient(connection)    
-    connection.close()    
-
-    try:
-        print "Test 2.b - good X.509, \"wrong\" TACK"
+    if tackpyLoaded:
+        print "Test 2.a - good X.509, good TACK"
         connection = connect()
         connection.handshakeClientCert(reqTack=True, 
-         checker=Checker(tackID="B4444.EQ61B.F34EL.9KKLN.3WEW5", hardTack=True))
-        assert(False)
-    except TLSTackMismatchError:
-        pass
+         checker=Checker(tackID="BHNHV.8Q3RM.Q74EA.4X8F1.FMQEQ", hardTack=True))
+        testConnClient(connection)    
+        connection.close()    
 
-    print "Test 2.c - good X.509, \"wrong\" TACK but break signature (hardTack)"
-    connection = connect()
-    try:
-        connection.handshakeClientCert(reqTack=True, 
-            checker=Checker(tackID="BHNHV.8Q3RM.Q74EA.4X8F1.FMQEQ", hardTack=True))
-        assert(False)
-    except TLSTackBreakError:
-        pass
+        try:
+            print "Test 2.b - good X.509, \"wrong\" TACK"
+            connection = connect()
+            connection.handshakeClientCert(reqTack=True, 
+             checker=Checker(tackID="B4444.EQ61B.F34EL.9KKLN.3WEW5", hardTack=True))
+            assert(False)
+        except TLSTackMismatchError:
+            pass
 
-    print "Test 2.d - good X.509, \"wrong\" TACK but break signature (not hardTack)"
-    connection = connect()
-    connection.handshakeClientCert(reqTack=True, 
-        checker=Checker(tackID="BHNHV.8Q3RM.Q74EA.4X8F1.FMQEQ", hardTack=False))
-    testConnClient(connection)    
-    connection.close()    
+        print "Test 2.c - good X.509, \"wrong\" TACK but break signature (hardTack)"
+        connection = connect()
+        try:
+            connection.handshakeClientCert(reqTack=True, 
+                checker=Checker(tackID="BHNHV.8Q3RM.Q74EA.4X8F1.FMQEQ", hardTack=True))
+            assert(False)
+        except TLSTackBreakError:
+            pass
 
-    print "Test 2.e - good X.509, TACK unrelated to cert chain"
-    connection = connect()
-    try:
-        connection.handshakeClientCert(reqTack=True)
-        assert(False)
-    except TLSLocalAlert as alert:
-        assert(alert.description == AlertDescription.handshake_failure)
-    connection.close()
-
-    try:
-        print "Test 2.f - good X.509, no TACK but expected"
+        print "Test 2.d - good X.509, \"wrong\" TACK but break signature (not hardTack)"
         connection = connect()
         connection.handshakeClientCert(reqTack=True, 
-            checker=Checker(tackID="B4444.EQ61B.F34EL.9KKLN.3WEW5", hardTack=False))
-        assert(False)
-    except TLSTackMissingError:
-        pass
+            checker=Checker(tackID="BHNHV.8Q3RM.Q74EA.4X8F1.FMQEQ", hardTack=False))
+        testConnClient(connection)    
+        connection.close()    
+
+        print "Test 2.e - good X.509, TACK unrelated to cert chain"
+        connection = connect()
+        try:
+            connection.handshakeClientCert(reqTack=True)
+            assert(False)
+        except TLSLocalAlert as alert:
+            assert(alert.description == AlertDescription.handshake_failure)
+        connection.close()
+
+        try:
+            print "Test 2.f - good X.509, no TACK but expected"
+            connection = connect()
+            connection.handshakeClientCert(reqTack=True, 
+                checker=Checker(tackID="B4444.EQ61B.F34EL.9KKLN.3WEW5", hardTack=False))
+            assert(False)
+        except TLSTackMissingError:
+            pass
 
     print "Test 3 - good SRP"
     connection = connect()
@@ -401,57 +402,58 @@ def serverTestCmd(argv):
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
     testConnServer(connection)
     connection.close()        
-        
-    # TACK1 and TACK2 are both "good" TACKs, one targetting, the key,
-    # one the hash
-    tack1 = TACK()
-    tack1.parsePem(open("./TACK1.pem", "rU").read())
-    tack2 = TACK()
-    tack2.parsePem(open("./TACK2.pem", "rU").read())
-    tackUnrelated = TACK()
-    tackUnrelated.parsePem(open("./TACKunrelated.pem", "rU").read())    
-    breakSigs = TACK_Break_Sig.parsePemList(
-        open("./TACK_Break_Sigs.pem").read())
-    breakSigsActual = TACK_Break_Sig.parsePemList(
-        open("./TACK_Break_Sigs_TACK1.pem").read())    
+    
+    if tackpyLoaded:
+        # TACK1 and TACK2 are both "good" TACKs, one targetting, the key,
+        # one the hash
+        tack1 = TACK()
+        tack1.parsePem(open("./TACK1.pem", "rU").read())
+        tack2 = TACK()
+        tack2.parsePem(open("./TACK2.pem", "rU").read())
+        tackUnrelated = TACK()
+        tackUnrelated.parsePem(open("./TACKunrelated.pem", "rU").read())    
+        breakSigs = TACK_Break_Sig.parsePemList(
+            open("./TACK_Break_Sigs.pem").read())
+        breakSigsActual = TACK_Break_Sig.parsePemList(
+            open("./TACK_Break_Sigs_TACK1.pem").read())    
 
-    print "Test 2.a - good X.509, good TACK"
-    connection = connect()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-        tack=tack1, breakSigs=breakSigs)
-    testConnServer(connection)    
-    connection.close()        
-
-    print "Test 2.b - good X.509, \"wrong\" TACK"
-    connection = connect()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-        tack=tack1)
-    connection.close()        
-
-    print "Test 2.c - good X.509, \"wrong\" TACK but break signature (hardTack)"
-    connection = connect()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-        tack=tack2, breakSigs=breakSigsActual)
-
-    print "Test 2.d - good X.509, \"wrong\" TACK but break signature (not hardTack)"
-    connection = connect()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-        tack=tack2, breakSigs=breakSigsActual)
-    testConnServer(connection)    
-    connection.close()
-
-    print "Test 2.e - good X.509, TACK unrelated to cert chain"
-    connection = connect()
-    try:
+        print "Test 2.a - good X.509, good TACK"
+        connection = connect()
         connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-            tack=tackUnrelated)
-    except TLSRemoteAlert as alert:
-        assert(alert.description == AlertDescription.handshake_failure)
+            tack=tack1, breakSigs=breakSigs)
+        testConnServer(connection)    
+        connection.close()        
 
-    print "Test 2.f - good X.509, no TACK but expected"
-    connection = connect()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
-    connection.close()        
+        print "Test 2.b - good X.509, \"wrong\" TACK"
+        connection = connect()
+        connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
+            tack=tack1)
+        connection.close()        
+
+        print "Test 2.c - good X.509, \"wrong\" TACK but break signature (hardTack)"
+        connection = connect()
+        connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
+            tack=tack2, breakSigs=breakSigsActual)
+
+        print "Test 2.d - good X.509, \"wrong\" TACK but break signature (not hardTack)"
+        connection = connect()
+        connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
+            tack=tack2, breakSigs=breakSigsActual)
+        testConnServer(connection)    
+        connection.close()
+
+        print "Test 2.e - good X.509, TACK unrelated to cert chain"
+        connection = connect()
+        try:
+            connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
+                tack=tackUnrelated)
+        except TLSRemoteAlert as alert:
+            assert(alert.description == AlertDescription.handshake_failure)
+
+        print "Test 2.f - good X.509, no TACK but expected"
+        connection = connect()
+        connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
+        connection.close()        
 
     print "Test 3 - good SRP"
     verifierDB = VerifierDB()

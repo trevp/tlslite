@@ -85,12 +85,14 @@ def handleArgs(argv, argString, flagsList=[]):
         elif opt == "-p":
             password = arg
         elif opt == "-t":
-            s = open(arg, "rU").read()
-            tack = TACK()
-            tack.parsePem(s)
+            if tackpyLoaded:
+                s = open(arg, "rU").read()
+                tack = TACK()
+                tack.parsePem(s)
         elif opt == "-b":
-            s = open(arg, "rU").read()
-            breakSigs = TACK_Break_Sig.parsePemList(s)
+            if tackpyLoaded:
+                s = open(arg, "rU").read()
+                breakSigs = TACK_Break_Sig.parsePemList(s)
         elif opt == "-v":
             verifierDB = VerifierDB(arg)
             verifierDB.open()
@@ -177,9 +179,9 @@ def clientCmd(argv):
     try:
         start = time.clock()
         if username and password:
-            connection.handshakeClientSRP(username, password, reqTack=True)
+            connection.handshakeClientSRP(username, password, reqTack=tackpyLoaded)
         else:
-            connection.handshakeClientCert(certChain, privateKey,reqTack=True)
+            connection.handshakeClientCert(certChain, privateKey,reqTack=tackpyLoaded)
         stop = time.clock()        
         print "Handshake success"        
     except TLSLocalAlert, a:

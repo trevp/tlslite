@@ -756,16 +756,17 @@ class TLSConnection(TLSRecordLayer):
                 yield result
         
         # If there's no TLS Extension, look for a TACK cert
-        if not tackExt:
-            tackExt = certChain.getTackExt()
+        if tackpyLoaded:
+            if not tackExt:
+                tackExt = certChain.getTackExt()
          
-        # If there's a TACK (whether via TLS or TACK Cert), check that it
-        # matches the cert chain   
-        if tackExt and tackExt.tack and \
-                            not certChain.checkTack(tackExt.tack):
-            for result in self._sendError(AlertDescription.handshake_failure,
-                    "Other party's TACK doesn't match their cert chain"):
-                    yield result
+            # If there's a TACK (whether via TLS or TACK Cert), check that it
+            # matches the cert chain   
+            if tackExt and tackExt.tack and \
+                                not certChain.checkTack(tackExt.tack):
+                for result in self._sendError(AlertDescription.handshake_failure,
+                        "Other party's TACK doesn't match their cert chain"):
+                        yield result
 
         yield publicKey, certChain, tackExt
 
