@@ -12,7 +12,7 @@ from tlslite.integration.clienthelper import ClientHelper
 class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
     """Handles an HTTPS transaction to an XML-RPC server."""
 
-    def __init__(self,
+    def __init__(self, use_datetime=0,
                  username=None, password=None,
                  certChain=None, privateKey=None,
                  x509Fingerprint=None,
@@ -85,6 +85,7 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
         offered by the client.
         """
 
+        xmlrpclib.Transport.__init__(self, use_datetime)
         ClientHelper.__init__(self,
                  username, password, 
                  certChain, privateKey,
@@ -105,10 +106,10 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
                                  self.username, self.password,
                                  self.certChain, self.privateKey,
                                  self.checker.x509Fingerprint,
-                                 self.checker.tack,
+                                 self.checker.tackID,
                                  self.checker.hardTack,
                                  self.settings)
-        self.http.tlsSession = tlsSession                                 
+        http.tlsSession = tlsSession                                 
         http2 = httplib.HTTP()
         http2._setup(http)
         return http2
