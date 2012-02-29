@@ -12,6 +12,11 @@ from tlslite.integration.clienthelper import ClientHelper
 class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
     """Handles an HTTPS transaction to an XML-RPC server."""
 
+    # Pre python 2.7, the make_connection returns a HTTP class
+    transport = xmlrpclib.Transport()
+    conn_class_is_http = not hasattr(transport, '_connection')
+    del(transport)
+
     def __init__(self, use_datetime=0,
                  username=None, password=None,
                  certChain=None, privateKey=None,
@@ -85,6 +90,9 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
         offered by the client.
         """
 
+        # self._connection is new in pythion 2.7, since we're using it here,
+        # we'll add this ourselves too, just in case we've pre-2.7
+        self._connection = (None, None)
         xmlrpclib.Transport.__init__(self, use_datetime)
         ClientHelper.__init__(self,
                  username, password, 
@@ -94,22 +102,26 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
                  hardTack,
                  settings)
 
-
     def make_connection(self, host):
-        # create a HTTPS connection object from a host descriptor
-        host, extra_headers, x509 = self.get_host_info(host)
-        if hasattr(self, "http") and self.http:
-            tlsSession = self.http.tlsSession
+        # return an existing connection if possible.  This allows
+        # HTTP/1.1 keep-alive.
+        if self._connection and host == self._connection[0]:
+            http = self._connection[1]
         else:
-            tlsSession = None        
-        http = HTTPTLSConnection(host, None,
-                                 self.username, self.password,
-                                 self.certChain, self.privateKey,
-                                 self.checker.x509Fingerprint,
-                                 self.checker.tackID,
-                                 self.checker.hardTack,
-                                 self.settings)
-        http.tlsSession = tlsSession                                 
+            # create a HTTPS connection object from a host descriptor
+            chost, extra_headers, x509 = self.get_host_info(host)
+
+            http = HTTPTLSConnection(chost, None,
+                                     self.username, self.password,
+                                     self.certChain, self.privateKey,
+                                     self.checker.x509Fingerprint,
+                                     self.checker.tackID,
+                                     self.checker.hardTack,
+                                     self.settings)
+            # store the host argument along with the connection object
+            self._connection = host, http
+        if not self.conn_class_is_http:
+            return http
         http2 = httplib.HTTP()
         http2._setup(http)
         return http2
