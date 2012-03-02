@@ -30,8 +30,8 @@ if pycryptoLoaded:
             byteLength = numBytes(self.n)
             if len(s)== byteLength:
                 pass
-            elif len(s) == byteLength-1:
-                s = '\0' + s
+            elif len(s) < byteLength:
+                s = '\0' * (byteLength - len(s)) + s
             else:
                 raise AssertionError()
             c = stringToNumber(self.rsa.decrypt((s,)))
@@ -42,8 +42,8 @@ if pycryptoLoaded:
             byteLength = numBytes(self.n)
             if len(s)== byteLength:
                 pass
-            elif len(s) == byteLength-1:
-                s = '\0' + s
+            elif len(s) < byteLength:
+                s = '\0' * (byteLength - len(s)) + s
             else:
                 raise AssertionError()
             m = stringToNumber(self.rsa.encrypt(s, None)[0])
