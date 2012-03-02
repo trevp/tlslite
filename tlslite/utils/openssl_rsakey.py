@@ -63,8 +63,8 @@ if m2cryptoLoaded:
             byteLength = numBytes(self.n)
             if len(s)== byteLength:
                 pass
-            elif len(s) == byteLength-1:
-                s = '\0' + s
+            elif len(s) < byteLength:
+                s = '\0' * (byteLength - len(s)) + s
             else:
                 raise AssertionError()
             c = stringToNumber(m2.rsa_private_encrypt(self.rsa, s,
@@ -76,8 +76,8 @@ if m2cryptoLoaded:
             byteLength = numBytes(self.n)
             if len(s)== byteLength:
                 pass
-            elif len(s) == byteLength-1:
-                s = '\0' + s
+            elif len(s) < byteLength:
+                s = '\0' * (byteLength - len(s)) + s
             else:
                 raise AssertionError()
             m = stringToNumber(m2.rsa_public_decrypt(self.rsa, s,
