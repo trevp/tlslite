@@ -104,8 +104,8 @@ def stringToNumber(s):
     bytes = stringToBytes(s)
     return bytesToNumber(bytes)
 
-def numberToString(s):
-    bytes = numberToBytes(s)
+def numberToString(s, howManyBytes=None):
+    bytes = numberToBytes(s, howManyBytes)
     return bytesToString(bytes)
 
 def base64ToString(s):

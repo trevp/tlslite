@@ -26,26 +26,12 @@ if pycryptoLoaded:
             return self.rsa.has_private()
 
         def _rawPrivateKeyOp(self, m):
-            s = numberToString(m)
-            byteLength = numBytes(self.n)
-            if len(s)== byteLength:
-                pass
-            elif len(s) == byteLength-1:
-                s = '\0' + s
-            else:
-                raise AssertionError()
+            s = numberToString(m, numBytes(self.n))
             c = stringToNumber(self.rsa.decrypt((s,)))
             return c
 
         def _rawPublicKeyOp(self, c):
-            s = numberToString(c)
-            byteLength = numBytes(self.n)
-            if len(s)== byteLength:
-                pass
-            elif len(s) == byteLength-1:
-                s = '\0' + s
-            else:
-                raise AssertionError()
+            s = numberToString(c, numBytes(self.n))
             m = stringToNumber(self.rsa.encrypt(s, None)[0])
             return m
 
