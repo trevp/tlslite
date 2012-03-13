@@ -7,6 +7,7 @@ import xmlrpclib
 import httplib
 from tlslite.integration.httptlsconnection import HTTPTLSConnection
 from tlslite.integration.clienthelper import ClientHelper
+import tlslite.errors
 
 
 class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
@@ -23,7 +24,8 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
                  x509Fingerprint=None,
                  tackID=None,
                  hardTack=None,                 
-                 settings=None):
+                 settings=None,
+                 ignoreAbruptClose=False):
         """Create a new XMLRPCTransport.
 
         An instance of this class can be passed to L{xmlrpclib.ServerProxy}
@@ -88,12 +90,15 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
         @param settings: Various settings which can be used to control
         the ciphersuites, certificate types, and SSL/TLS versions
         offered by the client.
+
+        ignoreAbruptClose
         """
 
         # self._connection is new in pythion 2.7, since we're using it here,
         # we'll add this ourselves too, just in case we've pre-2.7
         self._connection = (None, None)
         xmlrpclib.Transport.__init__(self, use_datetime)
+        self.ignoreAbruptClose = ignoreAbruptClose
         ClientHelper.__init__(self,
                  username, password, 
                  certChain, privateKey,
@@ -112,12 +117,13 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
             chost, extra_headers, x509 = self.get_host_info(host)
 
             http = HTTPTLSConnection(chost, None,
-                                     self.username, self.password,
-                                     self.certChain, self.privateKey,
-                                     self.checker.x509Fingerprint,
-                                     self.checker.tackID,
-                                     self.checker.hardTack,
-                                     self.settings)
+                                     username=self.username, password=self.password,
+                                     certChain=self.certChain, privateKey=self.privateKey,
+                                     x509Fingerprint=self.checker.x509Fingerprint,
+                                     tackID=self.checker.tackID,
+                                     hardTack=self.checker.hardTack,
+                                     settings=self.settings,
+                                     ignoreAbruptClose=self.ignoreAbruptClose)
             # store the host argument along with the connection object
             self._connection = host, http
         if not self.conn_class_is_http:
