@@ -91,7 +91,9 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
         the ciphersuites, certificate types, and SSL/TLS versions
         offered by the client.
 
-        ignoreAbruptClose
+        @type ignoreAbruptClose: bool
+        @param ignoreAbruptClose: ignore the TLSAbruptCloseError on 
+        unexpected hangup.
         """
 
         # self._connection is new in pythion 2.7, since we're using it here,
