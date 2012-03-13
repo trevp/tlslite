@@ -20,7 +20,8 @@ class HTTPTLSConnection(httplib.HTTPConnection, ClientHelper):
                 x509Fingerprint=None,
                 tackID=None,
                 hardTack=None,
-                settings = None):
+                settings=None,
+                ignoreAbruptClose=False):
         """Create a new HTTPTLSConnection.
 
         For client authentication, use one of these argument
@@ -83,6 +84,10 @@ class HTTPTLSConnection(httplib.HTTPConnection, ClientHelper):
         @param settings: Various settings which can be used to control
         the ciphersuites, certificate types, and SSL/TLS versions
         offered by the client.
+
+        @type ignoreAbruptClose: bool
+        @param ignoreAbruptClose: ignore the TLSAbruptCloseError on 
+        unexpected hangup.
         """
         if source_address:
             httplib.HTTPConnection.__init__(self, host, port, strict,
@@ -90,7 +95,7 @@ class HTTPTLSConnection(httplib.HTTPConnection, ClientHelper):
         if not source_address:
             httplib.HTTPConnection.__init__(self, host, port, strict,
                                             timeout)
-            
+        self.ignoreAbruptClose = ignoreAbruptClose
         ClientHelper.__init__(self,
                  username, password, 
                  certChain, privateKey,
@@ -102,4 +107,5 @@ class HTTPTLSConnection(httplib.HTTPConnection, ClientHelper):
     def connect(self):
          httplib.HTTPConnection.connect(self)
          self.sock = TLSConnection(self.sock)
+         self.sock.ignoreAbruptClose = self.ignoreAbruptClose
          ClientHelper._handshake(self, self.sock)

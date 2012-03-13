@@ -23,6 +23,8 @@ from tlslite import TLSConnection, Fault, HandshakeSettings, \
 
 from tlslite.errors import *
 from tlslite.utils.cryptomath import prngName
+import xmlrpclib
+from tlslite import *
 
 try:
     from TACKpy import TACK, TACK_Break_Sig
@@ -348,6 +350,23 @@ def clientTestCmd(argv):
     except socket.error, e:
         print "Non-critical error: socket error trying to reach internet server: ", e
 
+    address = address[0], address[1]+1
+    server = xmlrpclib.Server('https://%s:%s' % address)
+    assert server.add(1,2) == 3
+    assert server.pow(2,4) == 16
+    print 'Test 25 - good standard XMLRPC https client'
+
+    transport = XMLRPCTransport(ignoreAbruptClose=True)
+    server = xmlrpclib.Server('https://%s:%s' % address, transport)
+    assert server.add(1,2) == 3
+    assert server.pow(2,4) == 16
+    print 'Test 26 - good tlslite XMLRPC client'
+
+    server = xmlrpclib.Server('http://%s:%s' % address, transport)
+    assert server.add(1,2) == 3
+    assert server.pow(2,4) == 16
+    print 'Test 27 - good XMLRPC ignored protocol'
+
     if not badFault:
         print "Test succeeded"
     else:
@@ -636,6 +655,33 @@ def serverTestCmd(argv):
             connection.write(h)
             connection.close()
 
+    print "Test 24 - XMLRPXC server"
+    address = address[0], address[1]+1
+    class Server(TLSXMLRPCServer):
+
+        def handshake(self, tlsConnection):
+          try:
+              tlsConnection.handshakeServer(certChain=x509Chain,
+                                            privateKey=x509Key,
+                                            sessionCache=sessionCache)
+              tlsConnection.ignoreAbruptClose = True
+              return True
+          except TLSError, error:
+              print "Handshake failure:", str(error)
+              return False
+
+    class MyFuncs:
+        def pow(self, x, y): return pow(x, y)
+        def add(self, x, y): return x + y
+
+    server = Server(address)
+    server.register_instance(MyFuncs())
+    #sa = server.socket.getsockname()
+    #print "Serving HTTPS on", sa[0], "port", sa[1]
+    for i in range(6):
+        server.handle_request()
+
+
     print "Test succeeded"
 
 
@@ -648,4 +694,3 @@ if __name__ == '__main__':
         serverTestCmd(sys.argv[2:])
     else:
         printUsage("Unknown command: %s" % sys.argv[1])
-      
