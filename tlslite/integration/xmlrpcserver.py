@@ -1,3 +1,6 @@
+# Author: Kees Bos
+# See the LICENSE file for legal information regarding use of this file.
+
 """xmlrpcserver.py - simple XML RPC server supporting TLS"""
 
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler

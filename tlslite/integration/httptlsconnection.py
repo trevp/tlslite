@@ -1,4 +1,7 @@
-# Author: Trevor Perrin
+# Authors: 
+#   Trevor Perrin
+#   Kees Bos - Added ignoreAbruptClose parameter
+#
 # See the LICENSE file for legal information regarding use of this file.
 
 """TLS Lite + httplib."""

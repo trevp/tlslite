@@ -1,5 +1,9 @@
-# Author: Trevor Perrin
+# Authors: 
+#   Trevor Perrin
+#   Kees Bos - Fixes for compatibility with different Python versions
+#
 # See the LICENSE file for legal information regarding use of this file.
+
 
 """TLS Lite + xmlrpclib."""
 
@@ -96,8 +100,8 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
         unexpected hangup.
         """
 
-        # self._connection is new in pythion 2.7, since we're using it here,
-        # we'll add this ourselves too, just in case we've pre-2.7
+        # self._connection is new in python 2.7, since we're using it here,
+        # we'll add this ourselves too, just in case we're pre-2.7
         self._connection = (None, None)
         xmlrpclib.Transport.__init__(self, use_datetime)
         self.ignoreAbruptClose = ignoreAbruptClose

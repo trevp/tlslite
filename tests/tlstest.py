@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
-# Author: Trevor Perrin
+# Authors: 
+#   Trevor Perrin
+#   Kees Bos - Added tests for XML-RPC
+#
 # See the LICENSE file for legal information regarding use of this file.
 
 import sys
@@ -337,35 +340,35 @@ def clientTestCmd(argv):
 
             assert(h == "hello"*10000)
             connection.close()
-
-    print "Test 24 - Internet servers test"
-    try:
-        i = IMAP4_TLS("cyrus.andrew.cmu.edu")
-        i.login("anonymous", "anonymous@anonymous.net")
-        i.logout()
-        print "Test 24: IMAP4 good"
-        p = POP3_TLS("pop.gmail.com")
-        p.quit()
-        print "Test 24: POP3 good"
-    except socket.error, e:
-        print "Non-critical error: socket error trying to reach internet server: ", e
-
+            
+    print 'Test 24 - good standard XMLRPC https client'
     address = address[0], address[1]+1
     server = xmlrpclib.Server('https://%s:%s' % address)
     assert server.add(1,2) == 3
     assert server.pow(2,4) == 16
-    print 'Test 25 - good standard XMLRPC https client'
 
+    print 'Test 25 - good tlslite XMLRPC client'
     transport = XMLRPCTransport(ignoreAbruptClose=True)
     server = xmlrpclib.Server('https://%s:%s' % address, transport)
     assert server.add(1,2) == 3
     assert server.pow(2,4) == 16
-    print 'Test 26 - good tlslite XMLRPC client'
 
+    print 'Test 26 - good XMLRPC ignored protocol'
     server = xmlrpclib.Server('http://%s:%s' % address, transport)
     assert server.add(1,2) == 3
     assert server.pow(2,4) == 16
-    print 'Test 27 - good XMLRPC ignored protocol'
+
+    print "Test 27 - Internet servers test"
+    try:
+        i = IMAP4_TLS("cyrus.andrew.cmu.edu")
+        i.login("anonymous", "anonymous@anonymous.net")
+        i.logout()
+        print "Test 28: IMAP4 good"
+        p = POP3_TLS("pop.gmail.com")
+        p.quit()
+        print "Test 29: POP3 good"
+    except socket.error, e:
+        print "Non-critical error: socket error trying to reach internet server: ", e
 
     if not badFault:
         print "Test succeeded"
@@ -655,7 +658,7 @@ def serverTestCmd(argv):
             connection.write(h)
             connection.close()
 
-    print "Test 24 - XMLRPXC server"
+    print "Tests 24-26 - XMLRPXC server"
     address = address[0], address[1]+1
     class Server(TLSXMLRPCServer):
 

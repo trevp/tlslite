@@ -36,7 +36,7 @@ If you have questions or feedback, feel free to contact me.
 2 Licenses/Acknowledgements
 ============================
 TLS Lite is written (mostly) by Trevor Perrin. It includes code from Bram
-Cohen and Google.
+Cohen, Google, and Kees Bos.
 
 All code in TLS Lite has either been dedicated to the public domain by its
 authors, or placed under a BSD-style license. See the LICENSE file for
