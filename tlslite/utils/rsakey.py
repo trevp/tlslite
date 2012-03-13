@@ -105,7 +105,7 @@ class RSAKey:
         if m >= self.n:
             raise ValueError()
         c = self._rawPrivateKeyOp(m)
-        sigBytes = numberToBytes(c)
+        sigBytes = numberToBytes(c, numBytes(self.n))
         return sigBytes
 
     def verify(self, sigBytes, bytes):
@@ -122,12 +122,14 @@ class RSAKey:
         @rtype: bool
         @return: Whether the signature matches the passed-in data.
         """
+        if len(sigBytes) != numBytes(self.n):
+            return False
         paddedBytes = self._addPKCS1Padding(bytes, 1)
         c = bytesToNumber(sigBytes)
         if c >= self.n:
             return False
         m = self._rawPublicKeyOp(c)
-        checkBytes = numberToBytes(m)
+        checkBytes = numberToBytes(m, numBytes(self.n))
         return checkBytes == paddedBytes
 
     def encrypt(self, bytes):
@@ -146,7 +148,7 @@ class RSAKey:
         if m >= self.n:
             raise ValueError()
         c = self._rawPublicKeyOp(m)
-        encBytes = numberToBytes(c)
+        encBytes = numberToBytes(c, numBytes(self.n))
         return encBytes
 
     def decrypt(self, encBytes):
@@ -164,16 +166,16 @@ class RSAKey:
         """
         if not self.hasPrivateKey():
             raise AssertionError()
+        if len(encBytes) != numBytes(self.n):
+            return None
         c = bytesToNumber(encBytes)
         if c >= self.n:
             return None
         m = self._rawPrivateKeyOp(c)
-        decBytes = numberToBytes(m)
-        if (len(decBytes) != numBytes(self.n)-1): #Check first byte
+        decBytes = numberToBytes(m, numBytes(self.n))
+        if decBytes[0] != 0 or decBytes[1] != 2: #Check first two bytes
             return None
-        if decBytes[0] != 2: #Check second byte
-            return None
-        for x in range(len(decBytes)-1): #Scan through for zero separator
+        for x in range(1, len(decBytes)-1): #Scan through for zero separator
             if decBytes[x]== 0:
                 break
         else:
@@ -248,10 +250,6 @@ class RSAKey:
         else:
             raise AssertionError()
 
-        #NOTE: To be proper, we should add [0,blockType].  However,
-        #the zero is lost when the returned padding is converted
-        #to a number, so we don't even bother with it.  Also,
-        #adding it would cause a misalignment in verify()
-        padding = createByteArraySequence([blockType] + pad + [0])
+        padding = createByteArraySequence([0,blockType] + pad + [0])
         paddedBytes = padding + bytes
         return paddedBytes
