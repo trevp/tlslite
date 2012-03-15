@@ -1263,6 +1263,8 @@ class TLSConnection(TLSRecordLayer):
         premasterSecret = privateKey.decrypt(\
             clientKeyExchange.encryptedPreMasterSecret)
 
+        # On decryption failure randomize premaster secret to avoid
+        # Bleichenbacher's "million message" attack
         randomPreMasterSecret = getRandomBytes(48)
         versionCheck = (premasterSecret[0], premasterSecret[1])
         if not premasterSecret:
