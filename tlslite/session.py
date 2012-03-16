@@ -33,6 +33,12 @@ class Session:
 
     @type serverCertChain: L{tlslite.x509certchain.X509CertChain}
     @ivar serverCertChain: The server's certificate chain (or None).
+
+    @type tackExt: L{TACKpy.api.TACK_Extension}
+    @ivar tackExt: The server's TACK_Extension (or None).
+
+    @type tackInHelloExt: L{Boolean}
+    @ivar tackInHelloExt: True if a TACK was presented via TLS Extension.
     """
 
     def __init__(self):
@@ -43,11 +49,12 @@ class Session:
         self.clientCertChain = None
         self.serverCertChain = None
         self.tackExt = None
+        self.tackInHelloExt = False
         self.resumable = False
 
     def create(self, masterSecret, sessionID, cipherSuite,
             srpUsername, clientCertChain, serverCertChain, 
-            tackExt, resumable=True):
+            tackExt, tackInHelloExt, resumable=True):
         self.masterSecret = masterSecret
         self.sessionID = sessionID
         self.cipherSuite = cipherSuite
@@ -55,6 +62,7 @@ class Session:
         self.clientCertChain = clientCertChain
         self.serverCertChain = serverCertChain
         self.tackExt = tackExt
+        self.tackInHelloExt = tackInHelloExt  
         self.resumable = resumable
 
     def _clone(self):
@@ -66,6 +74,7 @@ class Session:
         other.clientCertChain = self.clientCertChain
         other.serverCertChain = self.serverCertChain
         other.tackExt = self.tackExt
+        other.tackInHelloExt = self.tackInHelloExt
         other.resumable = self.resumable
         return other
 

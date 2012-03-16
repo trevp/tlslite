@@ -176,7 +176,10 @@ def printGoodConnection(connection, seconds):
         if connection.session.tackExt.isEmpty():
             emptyStr = "<empty TLS Extension>"
         else:
-            emptyStr = "" 
+            if connection.session.tackInHelloExt:
+                emptyStr = "\n(via TLS Extension)"
+            else:
+                emptyStr = "\n(via TACK Certificate)" 
         print("  TACK: %s" % emptyStr)
         print(writeTextTACKStructures(connection.session.tackExt.tack, 
                                   connection.session.tackExt.break_sigs))    

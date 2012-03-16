@@ -98,8 +98,8 @@ Try connecting to the server with a web browser, or with:
 
 X.509 with TACK
 ----------------
-To run an X.509 server using a Convergence TACK, install TACKpy, then run the
-same server command as above with added arguments:
+To run an X.509 server using a TACK, install TACKpy, then run the same server
+command as above with added arguments:
 
  ... -t TACK1.pem -b TACK_Break_Sigs.pem localhost:4443
 

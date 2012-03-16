@@ -374,7 +374,7 @@ class TLSConnection(TLSRecordLayer):
         self.session = Session()
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
             srpUsername, clientCertChain, serverCertChain,
-            tackExt)
+            tackExt, serverHello.tackExt!=None)
         self._handshakeDone(resumed=False)
 
 
@@ -975,7 +975,7 @@ class TLSConnection(TLSRecordLayer):
             serverCertChain = None
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
             clientHello.srp_username, clientCertChain, serverCertChain,
-            tackExt)
+            tackExt, serverHello.tackExt!=None)
             
         #Add the session object to the session cache
         if sessionCache and sessionID:
