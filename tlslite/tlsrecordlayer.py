@@ -416,7 +416,7 @@ class TLSRecordLayer:
     def makefile(self, mode='r', bufsize=-1):
         """Create a file object for the TLS connection (socket emulation).
 
-        @rtype: L{tlslite.FileObject.FileObject}
+        @rtype: L{socket._fileobject}
         """
         self._refCount += 1
         # So, it is pretty fragile to be using Python internal objects

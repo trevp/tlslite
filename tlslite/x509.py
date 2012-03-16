@@ -20,7 +20,7 @@ class X509:
     @type publicKey: L{tlslite.utils.rsakey.RSAKey}
     @ivar publicKey: The subject public key from the certificate.
 
-    @type subject: L{array.array} of unsigned bytes
+    @type subject: L{bytearray} of unsigned bytes
     @ivar subject: The DER-encoded ASN.1 subject distinguished name.
     """
 

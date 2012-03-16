@@ -37,7 +37,7 @@ class Session:
     @type tackExt: L{TACKpy.api.TACK_Extension}
     @ivar tackExt: The server's TACK_Extension (or None).
 
-    @type tackInHelloExt: L{Boolean}
+    @type tackInHelloExt: L{bool}
     @ivar tackInHelloExt: True if a TACK was presented via TLS Extension.
     """
 
