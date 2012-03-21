@@ -24,7 +24,8 @@ class HTTPTLSConnection(httplib.HTTPConnection, ClientHelper):
                 tackID=None,
                 hardTack=None,
                 settings=None,
-                ignoreAbruptClose=False):
+                ignoreAbruptClose=False, 
+                anon=False):
         """Create a new HTTPTLSConnection.
 
         For client authentication, use one of these argument
@@ -105,7 +106,8 @@ class HTTPTLSConnection(httplib.HTTPConnection, ClientHelper):
                  x509Fingerprint,
                  tackID,
                  hardTack,
-                 settings)
+                 settings, 
+                 anon)
 
     def connect(self):
          httplib.HTTPConnection.connect(self)
