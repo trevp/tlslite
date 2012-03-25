@@ -313,14 +313,12 @@ class TLSConnection(TLSRecordLayer):
         # Allow only one of (srpParams, certParams, anonParams)
         if srpParams:
             assert(not certParams)
-            assert(not anonParams)
             srpUsername, password = srpParams
         if certParams:
             assert(not srpParams)
             assert(not anonParams)            
             clientCertChain, privateKey = certParams
         if anonParams:
-            assert(not certParams)
             assert(not srpParams)         
 
         #Validate parameters
@@ -460,10 +458,11 @@ class TLSConnection(TLSRecordLayer):
             cipherSuites += CipherSuite.getSrpAllSuites(settings.cipherNames)
         elif certParams:
             cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
-        elif anonParams:
-            cipherSuites += CipherSuite.getAnonSuites(settings.cipherNames)
         else:
             cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
+            
+        if anonParams:
+            cipherSuites += CipherSuite.getAnonSuites(settings.cipherNames)    
 
         #Initialize acceptable certificate types
         certificateTypes = settings._getCertificateTypes()
