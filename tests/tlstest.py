@@ -86,6 +86,12 @@ def clientTestCmd(argv):
 
     badFault = False
     
+    print "Test 0 - anonymous handshake"
+    connection = connect()
+    connection.handshakeClientAnonymous()
+    testConnClient(connection)
+    connection.close()
+        
     print "Test 1 - good X509"
     connection = connect()
     connection.handshakeClientCert()
@@ -368,7 +374,7 @@ def clientTestCmd(argv):
         p.quit()
         print "Test 29: POP3 good"
     except socket.error, e:
-        print "Non-critical error: socket error trying to reach internet server: ", e
+        print "Non-critical error: socket error trying to reach internet server: ", e   
 
     if not badFault:
         print "Test succeeded"
@@ -405,6 +411,12 @@ def serverTestCmd(argv):
     def connect():
         return TLSConnection(lsock.accept()[0])
 
+    print "Test 0 - Anonymous server handshake"
+    connection = connect()
+    connection.handshakeServer(anon=True)
+    testConnServer(connection)    
+    connection.close() 
+    
     print "Test 1 - good X.509"
     x509Cert = X509().parse(open(os.path.join(dir, "serverX509Cert.pem")).read())
     x509Chain = X509CertChain([x509Cert])

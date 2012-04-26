@@ -18,7 +18,8 @@ class ClientHelper:
               x509Fingerprint=None,
               tackID=None,
               hardTack=None,
-              settings = None):
+              settings = None, 
+              anon = False):
         """
         For client authentication, use one of these argument
         combinations:
@@ -79,6 +80,7 @@ class ClientHelper:
         self.certChain = None
         self.privateKey = None
         self.checker = None
+        self.anon = anon
 
         #SRP Authentication
         if username and password and not \
@@ -118,6 +120,8 @@ class ClientHelper:
                                              checker=self.checker,
                                              settings=self.settings,
                                              session=self.tlsSession)
+        elif self.anon:
+            tlsConnection.handshakeClientAnonymous()
         else:
             tlsConnection.handshakeClientCert(certChain=self.certChain,
                                               privateKey=self.privateKey,
