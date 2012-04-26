@@ -774,6 +774,8 @@ class TLSRecordLayer:
                                             self.version).parse(p)
                 elif subType == HandshakeType.finished:
                     yield Finished(self.version).parse(p)
+                elif subType == HandshakeType.next_protocol:
+                    yield NextProtocol().parse(p)
                 else:
                     raise AssertionError()
 
