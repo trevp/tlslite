@@ -1,4 +1,7 @@
-# Author: Trevor Perrin
+# Authors: 
+#   Trevor Perrin
+#   Google (adapted by Sam Rushing) - NPN support
+#
 # See the LICENSE file for legal information regarding use of this file.
 
 """Helper class for TLSConnection."""
