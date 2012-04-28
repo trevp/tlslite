@@ -108,10 +108,11 @@ class ClientHello(HandshakeMsg):
         self.compression_methods = []   # a list of 8-bit values
         self.srp_username = None        # a string
         self.tack = False
+        self.supports_npn = False
 
     def create(self, version, random, session_id, cipher_suites,
                certificate_types=None, srp_username=None,
-               tack=False):
+               tack=False, supports_npn=False):
         self.client_version = version
         self.random = random
         self.session_id = session_id
@@ -157,8 +158,10 @@ class ClientHello(HandshakeMsg):
                         self.certificate_types = p.getVarList(1, 1)
                     elif extType == ExtensionType.tack:
                         self.tack = True
+                    elif extType == ExtensionType.supports_npn:
+                        self.supports_npn = True
                     else:
-                        p.getFixBytes(extLength)
+                        x = p.getFixBytes(extLength)
                     index2 = p.index
                     if index2 - index1 != extLength:
                         raise SyntaxError("Bad length for extension_data")
@@ -193,6 +196,13 @@ class ClientHello(HandshakeMsg):
             w.bytes += w2.bytes
         return self.postWrite(w)
 
+class BadNextProtos(Exception):
+    def __init__(self, l):
+        self.length = l
+
+    def __str__(self):
+        return 'Cannot encode a list of next protocols because it contains an element with invalid length %d. Element lengths must be 0 < x < 256' % self.length
+
 class ServerHello(HandshakeMsg):
     def __init__(self):
         HandshakeMsg.__init__(self, HandshakeType.server_hello)
@@ -202,7 +212,8 @@ class ServerHello(HandshakeMsg):
         self.cipher_suite = 0
         self.certificate_type = CertificateType.x509
         self.compression_method = 0
-        self.tackExt = None 
+        self.tackExt = None
+        self.next_protos_advertised = None
 
     def create(self, version, random, session_id, cipher_suite,
                certificate_type, tackExt):
@@ -241,6 +252,16 @@ class ServerHello(HandshakeMsg):
         p.stopLengthCheck()
         return self
 
+    def __next_protos_encoded(self):
+        a = []
+        for e in self.next_protos_advertised:
+            if len(e) > 255 or len(e) == 0:
+                raise BadNextProtos(len(e))
+            a.append(chr(len(e)))
+            a.append(e)
+
+        return [ord(x) for x in ''.join(a)]
+
     def write(self):
         w = Writer()
         w.add(self.server_version[0], 1)
@@ -261,6 +282,11 @@ class ServerHello(HandshakeMsg):
             w2.add(ExtensionType.tack, 2)
             w2.add(len(b), 2)
             w2.bytes += b
+        if self.next_protos_advertised is not None:
+            encoded_next_protos_advertised = self.__next_protos_encoded()
+            w2.add(ExtensionType.supports_npn, 2)
+            w2.add(len(encoded_next_protos_advertised), 2)
+            w2.addFixSeq(encoded_next_protos_advertised, 1)
         if len(w2.bytes):
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes        
@@ -509,6 +535,27 @@ class ChangeCipherSpec:
         w.add(self.type,1)
         return w.bytes
 
+
+class NextProtocol(HandshakeMsg):
+    def __init__(self):
+        self.contentType = ContentType.handshake
+        self.next_proto = None
+
+    def create(self, next_proto):
+        self.next_proto = next_proto
+
+    def parse(self, p):
+        p.startLengthCheck(3)
+        self.next_proto = p.getVarBytes(1)
+        _ = p.getVarBytes(1)
+        p.stopLengthCheck()
+        return self
+
+    def write(self):
+        w = Writer()
+        w.addVarSeq(self.next_proto, 1, 1)
+        w.addVarSeq('\x00' * 32, 1, 32 - ((len(self.next_proto) + 2) % 32));
+        return self.postWrite(w)
 
 class Finished(HandshakeMsg):
     def __init__(self, version):

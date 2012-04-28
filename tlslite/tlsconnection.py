@@ -779,7 +779,8 @@ class TLSConnection(TLSRecordLayer):
     def handshakeServer(self, verifierDB=None,
                         certChain=None, privateKey=None, reqCert=False,
                         sessionCache=None, settings=None, checker=None,
-                        reqCAs = None, tack=None, breakSigs=None):
+                        reqCAs = None, tack=None, breakSigs=None,
+                        nextProtos=None):
         """Perform a handshake in the role of server.
 
         This function performs an SSL or TLS handshake.  Depending on
@@ -852,14 +853,16 @@ class TLSConnection(TLSRecordLayer):
         """
         for result in self.handshakeServerAsync(verifierDB,
                 certChain, privateKey, reqCert, sessionCache, settings,
-                checker, reqCAs, tack=tack, breakSigs=breakSigs):
+                checker, reqCAs, tack=tack, breakSigs=breakSigs, nextProtos=nextProtos):
             pass
 
 
     def handshakeServerAsync(self, verifierDB=None,
                              certChain=None, privateKey=None, reqCert=False,
                              sessionCache=None, settings=None, checker=None,
-                             reqCAs=None, tack=None, breakSigs=None):
+                             reqCAs=None, tack=None, breakSigs=None,
+                             nextProtos=None
+                             ):
         """Start a server handshake operation on the TLS connection.
 
         This function returns a generator which behaves similarly to
@@ -875,14 +878,14 @@ class TLSConnection(TLSRecordLayer):
             verifierDB=verifierDB, certChain=certChain,
             privateKey=privateKey, reqCert=reqCert,
             sessionCache=sessionCache, settings=settings, 
-            reqCAs=reqCAs, tack=tack, breakSigs=breakSigs)
+            reqCAs=reqCAs, tack=tack, breakSigs=breakSigs, nextProtos=nextProtos)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
 
     def _handshakeServerAsyncHelper(self, verifierDB,
                              certChain, privateKey, reqCert, sessionCache,
-                             settings, reqCAs, tack, breakSigs):
+                             settings, reqCAs, tack, breakSigs, nextProtos):
 
         self._handshakeStart(client=False)
 
@@ -924,6 +927,9 @@ class TLSConnection(TLSRecordLayer):
         else:
             sessionID = createByteArraySequence([])
         
+        if not clientHello.supports_npn:
+            nextProtos = None
+
         # If not doing a certificate-based suite, discard the TACK
         if not cipherSuite in CipherSuite.certAllSuites:
             tack = None
@@ -937,6 +943,7 @@ class TLSConnection(TLSRecordLayer):
         serverHello = ServerHello()
         serverHello.create(self.version, getRandomBytes(32), sessionID, \
                             cipherSuite, CertificateType.x509, tackExt)
+        serverHello.next_protos_advertised = nextProtos
 
         # Perform the SRP key exchange
         clientCertChain = None
@@ -962,7 +969,8 @@ class TLSConnection(TLSRecordLayer):
         # Exchange Finished messages
         for result in self._serverFinished(premasterSecret, 
                                 clientHello.random, serverHello.random,
-                                cipherSuite, settings.cipherImplementations):
+                                cipherSuite, settings.cipherImplementations,
+                                nextProtos):
                 if result in (0,1): yield result
                 else: break
         masterSecret = result
@@ -1151,6 +1159,7 @@ class TLSConnection(TLSRecordLayer):
         #Send ServerHello[, Certificate], ServerKeyExchange,
         #ServerHelloDone
         msgs = []
+        serverHello.next_protos_advertised = nextProtos
         msgs.append(serverHello)
         if cipherSuite in CipherSuite.srpCertSuites:
             certificateMsg = Certificate(CertificateType.x509)
@@ -1312,7 +1321,7 @@ class TLSConnection(TLSRecordLayer):
 
 
     def _serverFinished(self,  premasterSecret, clientRandom, serverRandom,
-                        cipherSuite, cipherImplementations):
+                        cipherSuite, cipherImplementations, nextProtos):
                         
         masterSecret = calcMasterSecret(self.version, premasterSecret,
                                       clientRandom, serverRandom)
@@ -1323,7 +1332,7 @@ class TLSConnection(TLSRecordLayer):
                                 cipherImplementations)
 
         #Exchange ChangeCipherSpec and Finished messages
-        for result in self._getFinished(masterSecret):
+        for result in self._getFinished(masterSecret, expect_next_protocol=nextProtos is not None):
             yield result
 
         for result in self._sendFinished(masterSecret):
@@ -1355,7 +1364,7 @@ class TLSConnection(TLSRecordLayer):
         for result in self._sendMsg(finished):
             yield result
 
-    def _getFinished(self, masterSecret):
+    def _getFinished(self, masterSecret, expect_next_protocol=False):
         #Get and check ChangeCipherSpec
         for result in self._getMsg(ContentType.change_cipher_spec):
             if result in (0,1):
@@ -1369,6 +1378,19 @@ class TLSConnection(TLSRecordLayer):
 
         #Switch to pending read state
         self._changeReadState()
+
+        if expect_next_protocol:
+            for result in self._getMsg(ContentType.handshake, HandshakeType.next_protocol):
+                if result in (0,1):
+                    yield result
+            if result is None:
+                for result in self._sendError(AlertDescription.unexpected_message,
+                                             "Didn't get NextProtocol message"):
+                    yield result
+
+            self.next_proto = result.next_proto
+        else:
+            self.next_proto = None
 
         #Calculate verification data
         verifyData = self._calcFinished(masterSecret, False)

@@ -27,6 +27,7 @@ class HandshakeType:
     certificate_verify = 15
     client_key_exchange = 16
     finished = 20
+    next_protocol = 67
 
 class ContentType:
     change_cipher_spec = 20
@@ -40,6 +41,7 @@ class ExtensionType:    # RFC 4366
     cert_type = 9       # RFC 6091
     tack = 0xF300
     break_sigs = 0xF301
+    supports_npn = 13172
 
 class AlertLevel:
     warning = 1
