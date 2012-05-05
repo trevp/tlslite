@@ -314,6 +314,7 @@ class TLSConnection(TLSRecordLayer):
         # Allow only one of (srpParams, certParams, anonParams)
         if srpParams:
             assert(not certParams)
+            assert(not anonParams)
             srpUsername, password = srpParams
         if certParams:
             assert(not srpParams)
@@ -321,6 +322,7 @@ class TLSConnection(TLSRecordLayer):
             clientCertChain, privateKey = certParams
         if anonParams:
             assert(not srpParams)         
+            assert(not certParams)
 
         #Validate parameters
         if srpUsername and not password:
@@ -459,11 +461,10 @@ class TLSConnection(TLSRecordLayer):
             cipherSuites += CipherSuite.getSrpAllSuites(settings.cipherNames)
         elif certParams:
             cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
+        elif anonParams:
+            cipherSuites += CipherSuite.getAnonSuites(settings.cipherNames)
         else:
-            cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
-            
-        if anonParams:
-            cipherSuites += CipherSuite.getAnonSuites(settings.cipherNames)    
+            assert(False)
 
         #Initialize acceptable certificate types
         certificateTypes = settings._getCertificateTypes()
@@ -1083,6 +1084,9 @@ class TLSConnection(TLSRecordLayer):
                 if result in (0,1): yield result
                 else: break
             premasterSecret = result
+        
+        else:
+            assert(False)
                         
         # Exchange Finished messages      
         for result in self._serverFinished(premasterSecret, 
@@ -1121,11 +1125,10 @@ class TLSConnection(TLSRecordLayer):
             cipherSuites += CipherSuite.getSrpSuites(settings.cipherNames)
         elif certChain:
             cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
-        elif not anon:
-            assert(False)
-        
-        if anon:
+        elif anon:
             cipherSuites += CipherSuite.getAnonSuites(settings.cipherNames)
+        else:
+            assert(False)
 
         #Tentatively set version to most-desirable version, so if an error
         #occurs parsing the ClientHello, this is what we'll use for the

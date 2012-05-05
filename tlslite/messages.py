@@ -394,11 +394,10 @@ class ServerKeyExchange(HandshakeMsg):
         self.srp_g = 0L
         self.srp_s = createByteArraySequence([])
         self.srp_B = 0L
+        # Anon DH params:
         self.dh_p = 0L
         self.dh_g = 0L
         self.dh_Ys = 0L
-        self.rsa_modulus = 0L
-        self.rsa_exponent = 0L        
         self.signature = createByteArraySequence([])
 
     def createSRP(self, srp_N, srp_g, srp_s, srp_B):
@@ -416,17 +415,13 @@ class ServerKeyExchange(HandshakeMsg):
 
     def parse(self, p):
         p.startLengthCheck(3)
-        if self.cipherSuite in CipherSuite.srpSuites + \
-                CipherSuite.srpCertSuites:
+        if self.cipherSuite in CipherSuite.srpAllSuites:
             self.srp_N = bytesToNumber(p.getVarBytes(2))
             self.srp_g = bytesToNumber(p.getVarBytes(2))
             self.srp_s = p.getVarBytes(1)
             self.srp_B = bytesToNumber(p.getVarBytes(2))
             if self.cipherSuite in CipherSuite.srpCertSuites:
                 self.signature = p.getVarBytes(2)
-        elif self.cipherSuite in CipherSuite.certSuites:
-            self.rsa_modulus = bytesToNumber(p.getVarBytes(2))
-            self.rsa_exponent = bytesToNumber(p.getVarBytes(2))
         elif self.cipherSuite in CipherSuite.anonSuites:
             self.dh_p = bytesToNumber(p.getVarBytes(2))
             self.dh_g = bytesToNumber(p.getVarBytes(2))
@@ -442,11 +437,6 @@ class ServerKeyExchange(HandshakeMsg):
             w.addVarSeq(self.srp_s, 1, 1)
             w.addVarSeq(numberToBytes(self.srp_B), 1, 2)
             if self.cipherSuite in CipherSuite.srpCertSuites:
-                w.addVarSeq(self.signature, 1, 2)
-        elif self.cipherSuite in CipherSuite.certSuites:
-            w.addVarSeq(numberToBytes(self.rsa_modulus), 1, 2)
-            w.addVarSeq(numberToBytes(self.rsa_exponent), 1, 2)
-            if self.cipherSuite in []: # TODO support for signed_params
                 w.addVarSeq(self.signature, 1, 2)
         elif self.cipherSuite in CipherSuite.anonSuites:
             w.addVarSeq(numberToBytes(self.dh_p), 1, 2)

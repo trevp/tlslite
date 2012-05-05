@@ -121,7 +121,9 @@ class ClientHelper:
                                              settings=self.settings,
                                              session=self.tlsSession)
         elif self.anon:
-            tlsConnection.handshakeClientAnonymous()
+            tlsConnection.handshakeClientAnonymous(session=self.tlsSession,
+                                                settings=self.settings,
+                                                checker=self.checker)
         else:
             tlsConnection.handshakeClientCert(certChain=self.certChain,
                                               privateKey=self.privateKey,
