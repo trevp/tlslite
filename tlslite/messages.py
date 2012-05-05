@@ -122,6 +122,7 @@ class ClientHello(HandshakeMsg):
         self.compression_methods = [0]
         self.srp_username = srp_username
         self.tack = tack
+        self.supports_npn = supports_npn
         return self
 
     def parse(self, p):
@@ -217,7 +218,7 @@ class ServerHello(HandshakeMsg):
         self.next_protos_advertised = None
 
     def create(self, version, random, session_id, cipher_suite,
-               certificate_type, tackExt):
+               certificate_type, tackExt, next_protos_advertised):
         self.server_version = version
         self.random = random
         self.session_id = session_id
@@ -225,6 +226,7 @@ class ServerHello(HandshakeMsg):
         self.certificate_type = certificate_type
         self.compression_method = 0
         self.tackExt = tackExt
+        self.next_protos_advertised = next_protos_advertised
         return self
 
     def parse(self, p):
