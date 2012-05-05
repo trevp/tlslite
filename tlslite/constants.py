@@ -124,6 +124,9 @@ class CipherSuite:
     TLS_RSA_WITH_AES_256_CBC_SHA = 0x0035
     TLS_RSA_WITH_RC4_128_SHA = 0x0005
 
+    TLS_DH_ANON_WITH_AES_128_CBC_SHA = 0x0034
+    TLS_DH_ANON_WITH_AES_256_CBC_SHA = 0x003A
+    
     srpSuites = []
     srpSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
@@ -185,6 +188,20 @@ class CipherSuite:
                 suites.append(CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA)
         return suites
 
+    anonSuites = []
+    anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
+    
+    @staticmethod
+    def getAnonSuites(ciphers):
+        suites = []
+        for cipher in ciphers:
+            if cipher == "aes128":
+                suites.append(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+            elif cipher == "aes256":
+                suites.append(CipherSuite.TLS_DH_ANON_WITH_AES_256_CBC_SHA)
+            return suites   
+    
     tripleDESSuites = []
     tripleDESSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
@@ -194,11 +211,13 @@ class CipherSuite:
     aes128Suites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
+    aes128Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
 
     aes256Suites = []
     aes256Suites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
+    aes256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
 
     rc4Suites = []
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)

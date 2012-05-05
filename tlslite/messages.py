@@ -394,6 +394,11 @@ class ServerKeyExchange(HandshakeMsg):
         self.srp_g = 0L
         self.srp_s = createByteArraySequence([])
         self.srp_B = 0L
+        self.dh_p = 0L
+        self.dh_g = 0L
+        self.dh_Ys = 0L
+        self.rsa_modulus = 0L
+        self.rsa_exponent = 0L        
         self.signature = createByteArraySequence([])
 
     def createSRP(self, srp_N, srp_g, srp_s, srp_B):
@@ -402,26 +407,53 @@ class ServerKeyExchange(HandshakeMsg):
         self.srp_s = srp_s
         self.srp_B = srp_B
         return self
+    
+    def createDH(self, dh_p, dh_g, dh_Ys):
+        self.dh_p = dh_p
+        self.dh_g = dh_g
+        self.dh_Ys = dh_Ys
+        return self
 
     def parse(self, p):
         p.startLengthCheck(3)
-        self.srp_N = bytesToNumber(p.getVarBytes(2))
-        self.srp_g = bytesToNumber(p.getVarBytes(2))
-        self.srp_s = p.getVarBytes(1)
-        self.srp_B = bytesToNumber(p.getVarBytes(2))
-        if self.cipherSuite in CipherSuite.srpCertSuites:
-            self.signature = p.getVarBytes(2)
+        if self.cipherSuite in CipherSuite.srpSuites + \
+                CipherSuite.srpCertSuites:
+            self.srp_N = bytesToNumber(p.getVarBytes(2))
+            self.srp_g = bytesToNumber(p.getVarBytes(2))
+            self.srp_s = p.getVarBytes(1)
+            self.srp_B = bytesToNumber(p.getVarBytes(2))
+            if self.cipherSuite in CipherSuite.srpCertSuites:
+                self.signature = p.getVarBytes(2)
+        elif self.cipherSuite in CipherSuite.certSuites:
+            self.rsa_modulus = bytesToNumber(p.getVarBytes(2))
+            self.rsa_exponent = bytesToNumber(p.getVarBytes(2))
+        elif self.cipherSuite in CipherSuite.anonSuites:
+            self.dh_p = bytesToNumber(p.getVarBytes(2))
+            self.dh_g = bytesToNumber(p.getVarBytes(2))
+            self.dh_Ys = bytesToNumber(p.getVarBytes(2))
         p.stopLengthCheck()
         return self
 
     def write(self):
         w = Writer()
-        w.addVarSeq(numberToBytes(self.srp_N), 1, 2)
-        w.addVarSeq(numberToBytes(self.srp_g), 1, 2)
-        w.addVarSeq(self.srp_s, 1, 1)
-        w.addVarSeq(numberToBytes(self.srp_B), 1, 2)
-        if self.cipherSuite in CipherSuite.srpCertSuites:
-            w.addVarSeq(self.signature, 1, 2)
+        if self.cipherSuite in CipherSuite.srpAllSuites:
+            w.addVarSeq(numberToBytes(self.srp_N), 1, 2)
+            w.addVarSeq(numberToBytes(self.srp_g), 1, 2)
+            w.addVarSeq(self.srp_s, 1, 1)
+            w.addVarSeq(numberToBytes(self.srp_B), 1, 2)
+            if self.cipherSuite in CipherSuite.srpCertSuites:
+                w.addVarSeq(self.signature, 1, 2)
+        elif self.cipherSuite in CipherSuite.certSuites:
+            w.addVarSeq(numberToBytes(self.rsa_modulus), 1, 2)
+            w.addVarSeq(numberToBytes(self.rsa_exponent), 1, 2)
+            if self.cipherSuite in []: # TODO support for signed_params
+                w.addVarSeq(self.signature, 1, 2)
+        elif self.cipherSuite in CipherSuite.anonSuites:
+            w.addVarSeq(numberToBytes(self.dh_p), 1, 2)
+            w.addVarSeq(numberToBytes(self.dh_g), 1, 2)
+            w.addVarSeq(numberToBytes(self.dh_Ys), 1, 2)
+            if self.cipherSuite in []: # TODO support for signed_params
+                w.addVarSeq(self.signature, 1, 2)
         return self.postWrite(w)
 
     def hash(self, clientRandom, serverRandom):
@@ -465,7 +497,11 @@ class ClientKeyExchange(HandshakeMsg):
     def createRSA(self, encryptedPreMasterSecret):
         self.encryptedPreMasterSecret = encryptedPreMasterSecret
         return self
-
+    
+    def createDH(self, dh_Yc):
+        self.dh_Yc = dh_Yc
+        return self
+    
     def parse(self, p):
         p.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
@@ -478,6 +514,8 @@ class ClientKeyExchange(HandshakeMsg):
                     p.getFixBytes(len(p.bytes)-p.index)
             else:
                 raise AssertionError()
+        elif self.cipherSuite in CipherSuite.anonSuites:
+            self.dh_Yc = bytesToNumber(p.getVarBytes(2))            
         else:
             raise AssertionError()
         p.stopLengthCheck()
@@ -494,6 +532,8 @@ class ClientKeyExchange(HandshakeMsg):
                 w.addFixSeq(self.encryptedPreMasterSecret, 1)
             else:
                 raise AssertionError()
+        elif self.cipherSuite in CipherSuite.anonSuites:
+            w.addVarSeq(numberToBytes(self.dh_Yc), 1, 2)            
         else:
             raise AssertionError()
         return self.postWrite(w)
