@@ -3,6 +3,7 @@
 # Authors: 
 #   Trevor Perrin
 #   Kees Bos - Added tests for XML-RPC
+#   Dimitris Moraitis - Anon ciphersuites
 #
 # See the LICENSE file for legal information regarding use of this file.
 

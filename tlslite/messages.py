@@ -2,6 +2,7 @@
 #   Trevor Perrin
 #   Google - handling CertificateRequest.certificate_types
 #   Google (adapted by Sam Rushing) - NPN support
+#   Dimitris Moraitis - Anon ciphersuites
 #
 # See the LICENSE file for legal information regarding use of this file.
 
