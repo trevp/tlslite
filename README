@@ -199,13 +199,16 @@ use the AES-256 cipher, and you only want to allow TLS (version 3.1), not SSL
   settings.minKeySize = 2048
   settings.cipherNames = ["aes256"]
   settings.minVersion = (3,1)
+  settings.useExperimentalTACKExtension = True  # Needed for TACK support
+
   connection.handshakeClientSRP("alice", "abra123cadabra", settings=settings)
 
-If you want to check the server's certificate using Convergence TACK, you
-should set the "reqTack" argument to True in the handshake function, which
-requests the server to send you a TACK (and/or any TACK Break Signatures):
-
-  connection.handshakeClientCert(reqTack=True, ...
+If you want to check the server's certificate using TACK, you should set the
+"useExperiementalTACKExtension" value in HandshakeSettings. (Eventually, TACK
+support will be enabled by default, but for now it is an experimental feature
+which relies on a temporary TLS Extension number, and should not be used for
+production software.) This will cause the client to request the server to send
+you a TACK (and/or any TACK Break Signatures):
 
 Finally, every TLSConnection has a session object. You can try to resume a
 previous session by passing in the session object from the old session. If the
@@ -244,17 +247,21 @@ from the client.
 You can pass in a verifier database and/or a certificate chain+private key.
 The client will use one or both to authenticate the server.
 
+You can also pass in a HandshakeSettings object, as described in the last
+section, for finer control over handshaking details.
+
 If you are passing in a certificate chain+private key, you may additionally
-provide a Convergence TACK to assist the client in authenticating your
-certificate chain. This requires the TACKpy library. Load a TACKpy.TACK
-object, then do:
+provide a TACK to assist the client in authenticating your certificate chain.
+This requires the TACKpy library. Load a TACKpy.TACK object, then do:
+
+  settings = HandshakeSettings()
+  settings.useExperimentalTACKExtension = True  # Needed for TACK support
 
   connection.handshakeServer(certChain=certChain, privateKey=privateKey,
-                             tack=tack)
+                             tack=tack, settings=settings)
 
-You can also pass in a HandshakeSettings object, as described in the last
-section, for finer control over handshaking details.  Finally, the server can
-maintain a SessionCache, which will allow clients to use session resumption:
+Finally, the server can maintain a SessionCache, which will allow clients to
+use session resumption:
 
   sessionCache = SessionCache()
   connection.handshakeServer(verifierDB=verifierDB, sessionCache=sessionCache)
@@ -282,20 +289,7 @@ To save yourself the trouble of inspecting certificates and/or TACKs after the
 handshake, you can pass a Checker object into the handshake function. The
 checker will be called if the handshake completes successfully. If the other
 party isn't approved by the checker, a subclass of TLSAuthenticationError will
-be raised. For example, to perform a handshake with a server based on its TACK
-ID, do:
-
-  from tlslite import Checker, TLSAuthenticationError
-  ...
-  try:
-    connection.handshakeClientCert(reqTack=True, 
-     checker=Checker(tackID="B3ARS.EQ61B.F34EL.9KKLN.3WEW5", hardTack=False))
-  except TLSAuthenticationError as e:
-    print("Authentication failure: " + str(e))
-
-The hardTack argument determines whether a TACK Break Signature for the
-passed-in TACK ID raises a TLSTackBreakSigError (hardTack=True) or is silently
-accepted (hardTack=False).
+be raised.
 
 If the handshake fails for any reason, including a Checker error, an exception
 will be raised and the socket will be closed. If the socket timed out or was
@@ -459,6 +453,7 @@ at your own risk.
 ===========
 0.4.1 - ?
  - Fixed RSA padding bugs (w/help from John Randolph)
+ - Updated TACK
  - Added SNI
  - Added NPN (Sam Rushing/Google)
  - Added AnonDH (Dimitris Moraitis)
@@ -470,10 +465,10 @@ at your own risk.
  
 0.3.9.x - 2/7/2012
 
-Much code cleanup, in particular decomposing the handshake functions so 
-they are readable.  The main new feature is support for Convergence TACK,
-an experimental authentication method that provides a new way to pin 
-server certificates (See https://github.com/moxie0/Convergence/wiki/TACK ).
+Much code cleanup, in particular decomposing the handshake functions so they
+are readable. The main new feature is support for TACK, an experimental
+authentication method that provides a new way to pin server certificates (See
+https://github.com/moxie0/Convergence/wiki/TACK ).
 
 Also:
 
@@ -502,14 +497,14 @@ Also:
  - Removed:
    - Shared keys (it was based on an ancient I-D, not TLS-PSK).
    - cryptlib support, it wasn't used much, we have enough other options.
-   - cryptoIDs (Convergence TACK is better).
+   - cryptoIDs (TACK is better).
    - win32prng extension module, as os.urandom is now available.
    - Twisted integration (unused?, slowed down loading).
    - Jython code (ancient, didn't work).
    - Compat support for python versions < 2.7.
 
  - Additions
-   - Support for Convergence TACK via TACKpy.
+   - Support for TACK via TACKpy.
    - Support for CertificateRequest.certificate_authorities ("reqCAs")
    - Added TLSConnection.shutdown() to better mimic socket.
    - Enabled Session resumption for XMLRPCTransport.
