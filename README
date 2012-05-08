@@ -457,6 +457,13 @@ at your own risk.
 
 12 History
 ===========
+0.4.1 - ?
+ - Fixed RSA padding bugs (w/help from John Randolph)
+ - Added SNI
+ - Added NPN (Sam Rushing/Google)
+ - Added AnonDH (Dimitris Moraitis)
+ - Improved XML-RPC (Kees Bos)
+
 0.4.0 - 2/11/2012
  - Fixed pycrypto support
  - Fixed python 2.6 problems
