@@ -553,11 +553,17 @@ class TLSConnection(TLSRecordLayer):
                 AlertDescription.illegal_parameter,
                 "Server responded with incorrect compression method"):
                 yield result
-        if serverHello.tackExt and not clientHello.tack:
-            for result in self._sendError(\
-                AlertDescription.illegal_parameter,
-                "Server responded with unrequested TACK Extension"):
-                yield result
+        if serverHello.tackExt:            
+            if not clientHello.tack:
+                for result in self._sendError(\
+                    AlertDescription.illegal_parameter,
+                    "Server responded with unrequested TACK Extension"):
+                    yield result
+            if not serverHello.tackExt.verifySignatures():
+                for result in self._sendError(\
+                    AlertDescription.decrypt_error,
+                    "TACK Extensions contains an invalid signature"):
+                    yield result
         yield serverHello
  
     def _clientResume(self, session, serverHello, clientRandom, 
@@ -888,10 +894,11 @@ class TLSConnection(TLSRecordLayer):
          
             # If there's a TACK (whether via TLS or TACK Cert), check that it
             # matches the cert chain   
-            if tackExt and tackExt.tack and \
-                                not certChain.checkTack(tackExt.tack):
-                for result in self._sendError(AlertDescription.handshake_failure,
-                        "Other party's TACK doesn't match their cert chain"):
+            if tackExt and (tackExt.tack and 
+                            not certChain.checkTack(tackExt.tack)):
+                for result in self._sendError(
+                        AlertDescription.illegal_parameter,
+                        "Other party's TACK doesn't match their public key"):
                         yield result
 
         yield publicKey, certChain, tackExt
@@ -905,7 +912,8 @@ class TLSConnection(TLSRecordLayer):
     def handshakeServer(self, verifierDB=None,
                         certChain=None, privateKey=None, reqCert=False,
                         sessionCache=None, settings=None, checker=None,
-                        reqCAs = None, tack=None, breakSigs=None,
+                        reqCAs = None, 
+                        tack=None, breakSigs=None, pinActivation=False,
                         nextProtos=None, anon=False):
         """Perform a handshake in the role of server.
 
@@ -979,7 +987,8 @@ class TLSConnection(TLSRecordLayer):
         """
         for result in self.handshakeServerAsync(verifierDB,
                 certChain, privateKey, reqCert, sessionCache, settings,
-                checker, reqCAs, tack=tack, breakSigs=breakSigs, 
+                checker, reqCAs, 
+                tack=tack, breakSigs=breakSigs, pinActivation=pinActivation, 
                 nextProtos=nextProtos, anon=anon):
             pass
 
@@ -987,7 +996,8 @@ class TLSConnection(TLSRecordLayer):
     def handshakeServerAsync(self, verifierDB=None,
                              certChain=None, privateKey=None, reqCert=False,
                              sessionCache=None, settings=None, checker=None,
-                             reqCAs=None, tack=None, breakSigs=None,
+                             reqCAs=None, 
+                             tack=None, breakSigs=None, pinActivation=False,
                              nextProtos=None, anon=False
                              ):
         """Start a server handshake operation on the TLS connection.
@@ -1005,7 +1015,8 @@ class TLSConnection(TLSRecordLayer):
             verifierDB=verifierDB, certChain=certChain,
             privateKey=privateKey, reqCert=reqCert,
             sessionCache=sessionCache, settings=settings, 
-            reqCAs=reqCAs, tack=tack, breakSigs=breakSigs, 
+            reqCAs=reqCAs, 
+            tack=tack, breakSigs=breakSigs, pinActivation=pinActivation, 
             nextProtos=nextProtos, anon=anon)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
@@ -1013,8 +1024,9 @@ class TLSConnection(TLSRecordLayer):
 
     def _handshakeServerAsyncHelper(self, verifierDB,
                              certChain, privateKey, reqCert, sessionCache,
-                             settings, reqCAs, tack, breakSigs, nextProtos,
-                             anon):
+                             settings, reqCAs, 
+                             tack, breakSigs, pinActivation, 
+                             nextProtos, anon):
 
         self._handshakeStart(client=False)
 
@@ -1067,7 +1079,7 @@ class TLSConnection(TLSRecordLayer):
         # Prepare a TACK Extension if requested
         if clientHello.tack:
             tackExt = TACK_Extension()
-            tackExt.create(tack, breakSigs)
+            tackExt.create(tack, breakSigs, pinActivation)
         else:
             tackExt = None
         serverHello = ServerHello()

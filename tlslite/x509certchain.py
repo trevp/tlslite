@@ -55,9 +55,9 @@ class X509CertChain:
         return self.x509List[0].getFingerprint()
         
     def checkTack(self, tack):
-        for x509 in self.x509List:
+        if self.x509List:
             ssl = TACKpy.SSL_Cert()
-            ssl.parse(x509.bytes)
+            ssl.parse(self.x509List[0].bytes)
             if ssl.matches(tack):
                 return True
         return False
