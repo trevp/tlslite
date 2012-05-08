@@ -27,15 +27,8 @@ except ImportError:
     pass
 
 def printUsage(s=None):
-    if m2cryptoLoaded:
-        crypto = "M2Crypto/OpenSSL"
-    elif pycryptoLoaded:
-        crypto = "Pycrypto"
-    else:
-        crypto = "Pure-python crypto"        
     if s:
         print("ERROR: %s" % s)
-
 
     print ""
     print "Version: %s" % __version__
@@ -43,6 +36,10 @@ def printUsage(s=None):
     print "RNG: %s" % prngName
     print ""
     print "Modules:"
+    if tackpyLoaded:
+        print "  TACKpy      : Loaded"
+    else:
+        print "  TACKpy      : Not Loaded"            
     if m2cryptoLoaded:
         print "  M2Crypto    : Loaded"
     else:
@@ -55,6 +52,7 @@ def printUsage(s=None):
         print "  GMPY        : Loaded"
     else:
         print "  GMPY        : Not Loaded"
+    
     print ""
     print """Commands:
 
