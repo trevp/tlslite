@@ -112,9 +112,13 @@ def clientTestCmd(argv):
     connection.close()    
     
     if tackpyLoaded:
+                    
+        settings = HandshakeSettings()
+        settings.useExperimentalTACKExtension = True
+        
         print "Test 2.a - good X.509, TACK and Break Sigs"
         connection = connect()
-        connection.handshakeClientCert(reqTack=True)
+        connection.handshakeClientCert(settings=settings)
         assert(connection.session.tackExt.tack.getTACKID() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
         assert(connection.session.tackExt.break_sigs[0].getTACKID() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
         assert(connection.session.tackExt.break_sigs[1].getTACKID() == "y37w2.nnx3y.qsv2p.geoas.tccaa")
@@ -124,7 +128,7 @@ def clientTestCmd(argv):
 
         print "Test 2.b - good X.509, TACK without Break Sigs"
         connection = connect()
-        connection.handshakeClientCert(reqTack=True)
+        connection.handshakeClientCert(settings=settings)
         assert(connection.session.tackExt.tack.getTACKID() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
         assert(not connection.session.tackExt.break_sigs)
         assert(connection.session.tackExt.pin_activation == True)        
@@ -133,7 +137,7 @@ def clientTestCmd(argv):
 
         print "Test 2.c - good X.509, Break Sigs without TACK"
         connection = connect()
-        connection.handshakeClientCert(reqTack=True)
+        connection.handshakeClientCert(settings=settings)
         assert(connection.session.tackExt.tack == None)
         assert(connection.session.tackExt.break_sigs[0].getTACKID() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
         assert(connection.session.tackExt.break_sigs[1].getTACKID() == "y37w2.nnx3y.qsv2p.geoas.tccaa")
@@ -144,7 +148,7 @@ def clientTestCmd(argv):
         print "Test 2.d - good X.509, TACK unrelated to cert chain"
         connection = connect()
         try:
-            connection.handshakeClientCert(reqTack=True)
+            connection.handshakeClientCert(settings=settings)
         except TLSLocalAlert, alert:
             if alert.description != AlertDescription.illegal_parameter:
                 raise        
@@ -270,8 +274,9 @@ def clientTestCmd(argv):
             htmlBody = open(os.path.join(dir, "index.html")).read()
             fingerprint = None
             for y in range(2):
+                checker =Checker(x509Fingerprint=fingerprint)
                 h = HTTPTLSConnection(\
-                        address[0], address[1], x509Fingerprint=fingerprint)
+                        address[0], address[1], checker=checker)
                 for x in range(3):
                     h.request("GET", "/index.html")
                     r = h.getresponse()
@@ -437,25 +442,28 @@ def serverTestCmd(argv):
         tackUnrelated.parsePem(open("./TACKunrelated.pem", "rU").read())    
         breakSigs = TACK_Break_Sig.parsePemList(
             open("./TACK_Break_Sigs.pem").read())
+            
+        settings = HandshakeSettings()
+        settings.useExperimentalTACKExtension = True
 
         print "Test 2.a - good X.509, TACK and Break Sigs"
         connection = connect()
         connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-            tack=tack, breakSigs=breakSigs)
+            tack=tack, breakSigs=breakSigs, settings=settings)
         testConnServer(connection)    
         connection.close()        
 
         print "Test 2.b - good X.509, TACK without Break Sigs"
         connection = connect()
         connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-            tack=tack, pinActivation=True)
+            tack=tack, pinActivation=True, settings=settings)
         testConnServer(connection)    
         connection.close()        
 
         print "Test 2.c - good X.509, Break Sigs without TACK"
         connection = connect()
         connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-            breakSigs=breakSigs, pinActivation=True)
+            breakSigs=breakSigs, pinActivation=True, settings=settings)
         testConnServer(connection)    
         connection.close()        
 
@@ -463,7 +471,7 @@ def serverTestCmd(argv):
         connection = connect()
         try:
             connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-                tack=tackUnrelated, breakSigs=breakSigs)
+                tack=tackUnrelated, breakSigs=breakSigs, settings=settings)
             assert(False)
         except TLSRemoteAlert, alert:
             if alert.description != AlertDescription.illegal_parameter:

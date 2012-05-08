@@ -15,9 +15,7 @@ class POP3_TLS(POP3, ClientHelper):
                  timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                  username=None, password=None,
                  certChain=None, privateKey=None,
-                 x509Fingerprint=None,
-                 tackID=None,
-                 hardTack=None,
+                 checker=None,
                  settings=None):
         """Create a new POP3_TLS.
 
@@ -61,15 +59,9 @@ class POP3_TLS(POP3, ClientHelper):
         @param privateKey: Private key for client authentication.
         Requires the 'certChain' argument.  Excludes the SRP argument.
 
-        @type x509Fingerprint: str
-        @param x509Fingerprint: Hex-encoded X.509 fingerprint for
-        server authentication.
-
-        @type tackID: str
-        @param tackID: TACK ID for server authentication.
-
-        @type hardTack: bool
-        @param hardTack: Whether to raise TackBreakSigError on TACK Break.        
+        @type checker: L{tlslite.checker.Checker}
+        @param checker: Callable object called after handshaking to 
+        evaluate the connection and raise an Exception if necessary.
 
         @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
@@ -82,8 +74,7 @@ class POP3_TLS(POP3, ClientHelper):
         ClientHelper.__init__(self,
                  username, password,
                  certChain, privateKey,
-                 x509Fingerprint,
-                 tackID, hardTack,
+                 checker,
                  settings)
         connection = TLSConnection(sock) 
         ClientHelper._handshake(self, connection)

@@ -13,9 +13,7 @@ class SMTP_TLS(SMTP):
     def starttls(self,
                  username=None, password=None,
                  certChain=None, privateKey=None,
-                 x509Fingerprint=None,
-                 tackID=None,
-                 hardTack=None,
+                 checker=None,
                  settings=None):
         """Puts the connection to the SMTP server into TLS mode.
 
@@ -57,15 +55,9 @@ class SMTP_TLS(SMTP):
         @param privateKey: Private key for client authentication.
         Requires the 'certChain' argument.  Excludes the SRP arguments.
 
-        @type x509Fingerprint: str
-        @param x509Fingerprint: Hex-encoded X.509 fingerprint for
-        server authentication.
-
-        @type tackID: str
-        @param tackID: TACK ID for server authentication.
-
-        @type hardTack: bool
-        @param hardTack: Whether to raise TackBreakSigError on TACK Break.        
+        @type checker: L{tlslite.checker.Checker}
+        @param checker: Callable object called after handshaking to 
+        evaluate the connection and raise an Exception if necessary.
 
         @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
@@ -77,8 +69,7 @@ class SMTP_TLS(SMTP):
             helper = ClientHelper(
                      username, password, 
                      certChain, privateKey,
-                     x509Fingerprint,
-                     tackID, hardTack,
+                     checker,
                      settings)
             conn = TLSConnection(self.sock)
             helper._handshake(conn)

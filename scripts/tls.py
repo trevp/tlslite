@@ -179,12 +179,11 @@ def printGoodConnection(connection, seconds):
             emptyStr = "<empty TLS Extension>"
         else:
             if connection.session.tackInHelloExt:
-                emptyStr = "\n(via TLS Extension)"
+                emptyStr = "\n  (via TLS Extension)"
             else:
-                emptyStr = "\n(via TACK Certificate)" 
+                emptyStr = "\n  (via TACK Certificate)" 
         print("  TACK: %s" % emptyStr)
-        print(writeTextTACKStructures(connection.session.tackExt.tack, 
-                                  connection.session.tackExt.break_sigs))    
+        print(connection.session.tackExt.writeText())    
     
 def clientCmd(argv):
     (address, privateKey, certChain, username, password) = \
@@ -203,14 +202,17 @@ def clientCmd(argv):
     sock.connect(address)
     connection = TLSConnection(sock)
     
+    settings = HandshakeSettings()
+    settings.useExperimentalTACKExtension = True
+    
     try:
         start = time.clock()
         if username and password:
             connection.handshakeClientSRP(username, password, 
-                reqTack=tackpyLoaded, serverName=address[0])
+                settings=settings, serverName=address[0])
         else:
             connection.handshakeClientCert(certChain, privateKey,
-                reqTack=tackpyLoaded, serverName=address[0])
+                settings=settings, serverName=address[0])
         stop = time.clock()        
         print "Handshake success"        
     except TLSLocalAlert, a:
@@ -272,12 +274,16 @@ def serverCmd(argv):
             print "About to handshake..."
             try:
                 start = time.clock()
+                settings = HandshakeSettings()
+                settings.useExperimentalTACKExtension=True
                 connection.handshakeServer(certChain=certChain,
                                               privateKey=privateKey,
                                               verifierDB=verifierDB,
                                               tack=tack,
                                               breakSigs=breakSigs,
-                                              sessionCache=sessionCache)
+                                              pinActivation=tack, #on if TACK
+                                              sessionCache=sessionCache,
+                                              settings=settings)
                 stop = time.clock()
             except TLSRemoteAlert as a:
                 if a.description == AlertDescription.user_canceled:

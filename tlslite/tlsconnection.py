@@ -129,7 +129,7 @@ class TLSConnection(TLSRecordLayer):
 
     def handshakeClientSRP(self, username, password, session=None,
                            settings=None, checker=None, 
-                           reqTack=False, serverName="",
+                           reqTack=True, serverName="",
                            async=False):
         """Perform an SRP handshake in the role of client.
 
@@ -211,7 +211,7 @@ class TLSConnection(TLSRecordLayer):
 
     def handshakeClientCert(self, certChain=None, privateKey=None,
                             session=None, settings=None, checker=None,
-                            reqTack=False, serverName="", async=False):
+                            reqTack=True, serverName="", async=False):
         """Perform a certificate-based handshake in the role of client.
 
         This function performs an SSL or TLS handshake.  The server
@@ -302,7 +302,7 @@ class TLSConnection(TLSRecordLayer):
 
     def _handshakeClientAsync(self, srpParams=(), certParams=(), anonParams=(),
                              session=None, settings=None, checker=None,
-                             serverName="", reqTack=False):
+                             serverName="", reqTack=True):
 
         handshaker = self._handshakeClientAsyncHelper(srpParams=srpParams,
                 certParams=certParams,
@@ -348,8 +348,11 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed a certChain but no privateKey")
         if privateKey and not clientCertChain:
             raise ValueError("Caller passed a privateKey but no certChain")
-        if reqTack and not tackpyLoaded:
-            raise ValueError("TACKpy is not loaded")
+        if reqTack:
+            if not tackpyLoaded:
+                reqTack = False
+            if not settings or not settings.useExperimentalTACKExtension:
+                reqTack = False
         
         # Validates the settings and filters out any unsupported ciphers
         # or crypto libraries that were requested        
@@ -1040,8 +1043,11 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed reqCAs but not reqCert")            
         if certChain and not isinstance(certChain, X509CertChain):
             raise ValueError("Unrecognized certificate type")
-        if (tack or breakSigs) and not tackpyLoaded:
-            raise ValueError("TACKpy is not loaded")
+        if (tack or breakSigs or pinActivation):
+            if not tackpyLoaded:
+                raise ValueError("TACKpy is not loaded")
+            if not settings or not settings.useExperimentalTACKExtension:
+                raise ValueError("useExperimentalTACKExtension not enabled")
 
         if not settings:
             settings = HandshakeSettings()

@@ -25,9 +25,7 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
     def __init__(self, use_datetime=0,
                  username=None, password=None,
                  certChain=None, privateKey=None,
-                 x509Fingerprint=None,
-                 tackID=None,
-                 hardTack=None,                 
+                 checker=None,
                  settings=None,
                  ignoreAbruptClose=False):
         """Create a new XMLRPCTransport.
@@ -80,15 +78,9 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
         @param privateKey: Private key for client authentication.
         Requires the 'certChain' argument.  Excludes the SRP arguments.
 
-        @type x509Fingerprint: str
-        @param x509Fingerprint: Hex-encoded X.509 fingerprint for
-        server authentication.
-
-        @type tackID: str
-        @param tackID: TACK ID for server authentication.
-
-        @type hardTack: bool
-        @param hardTack: Whether to raise TackBreakSigError on TACK Break.
+        @type checker: L{tlslite.checker.Checker}
+        @param checker: Callable object called after handshaking to 
+        evaluate the connection and raise an Exception if necessary.
 
         @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
@@ -108,9 +100,7 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
         ClientHelper.__init__(self,
                  username, password, 
                  certChain, privateKey,
-                 x509Fingerprint,
-                 tackID,
-                 hardTack,
+                 checker,
                  settings)
 
     def make_connection(self, host):
@@ -125,9 +115,7 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
             http = HTTPTLSConnection(chost, None,
                                      username=self.username, password=self.password,
                                      certChain=self.certChain, privateKey=self.privateKey,
-                                     x509Fingerprint=self.checker.x509Fingerprint,
-                                     tackID=self.checker.tackID,
-                                     hardTack=self.checker.hardTack,
+                                     checker=self.checker,
                                      settings=self.settings,
                                      ignoreAbruptClose=self.ignoreAbruptClose)
             # store the host argument along with the connection object

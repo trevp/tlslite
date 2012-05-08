@@ -17,9 +17,7 @@ class IMAP4_TLS(IMAP4, ClientHelper):
     def __init__(self, host = '', port = IMAP4_TLS_PORT,
                  username=None, password=None,
                  certChain=None, privateKey=None,
-                 x509Fingerprint=None,
-                 tackID=None,
-                 hardTack=None,
+                 checker=None,
                  settings=None):
         """Create a new IMAP4_TLS.
 
@@ -63,16 +61,10 @@ class IMAP4_TLS(IMAP4, ClientHelper):
         @type privateKey: L{tlslite.utils.rsakey.RSAKey}
         @param privateKey: Private key for client authentication.
         Requires the 'certChain' argument.  Excludes the SRP arguments.
-
-        @type x509Fingerprint: str
-        @param x509Fingerprint: Hex-encoded X.509 fingerprint for
-        server authentication.
-
-        @type tackID: str
-        @param tackID: TACK ID for server authentication.
-
-        @type hardTack: bool
-        @param hardTack: Whether to raise TackBreakSigError on TACK Break.
+        
+        @type checker: L{tlslite.checker.Checker}
+        @param checker: Callable object called after handshaking to 
+        evaluate the connection and raise an Exception if necessary.
 
         @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
@@ -83,9 +75,7 @@ class IMAP4_TLS(IMAP4, ClientHelper):
         ClientHelper.__init__(self,
                  username, password,
                  certChain, privateKey,
-                 x509Fingerprint,
-                 tackID,
-                 hardTack,
+                 checker,
                  settings)
 
         IMAP4.__init__(self, host, port)

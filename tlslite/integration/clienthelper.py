@@ -18,9 +18,7 @@ class ClientHelper:
     def __init__(self,
               username=None, password=None,
               certChain=None, privateKey=None,
-              x509Fingerprint=None,
-              tackID=None,
-              hardTack=None,
+              checker=None,
               settings = None, 
               anon = False):
         """
@@ -62,15 +60,9 @@ class ClientHelper:
         @param privateKey: Private key for client authentication.
         Requires the 'certChain' argument.  Excludes the SRP arguments.
 
-        @type x509Fingerprint: str
-        @param x509Fingerprint: Hex-encoded X.509 fingerprint for
-        server authentication.
-
-        @type tackID: str
-        @param tackID: TACK ID for server authentication.
-
-        @type hardTack: bool
-        @param hardTack: Whether to raise TackBreakSigError on TACK Break.        
+        @type checker: L{tlslite.checker.Checker}
+        @param checker: Callable object called after handshaking to 
+        evaluate the connection and raise an Exception if necessary.
 
         @type settings: L{tlslite.handshakesettings.HandshakeSettings}
         @param settings: Various settings which can be used to control
@@ -104,13 +96,8 @@ class ClientHelper:
 
         else:
             raise ValueError("Bad parameters")
-            
-        if tackID:
-            self.reqTack = True
-        else:
-            self.reqTack = False
 
-        self.checker = Checker(x509Fingerprint, tackID, hardTack)
+        self.checker = checker
         self.settings = settings
 
         self.tlsSession = None
@@ -119,7 +106,6 @@ class ClientHelper:
         if self.username and self.password:
             tlsConnection.handshakeClientSRP(username=self.username,
                                              password=self.password,
-                                             reqTack=self.reqTack,
                                              checker=self.checker,
                                              settings=self.settings,
                                              session=self.tlsSession)
@@ -130,7 +116,6 @@ class ClientHelper:
         else:
             tlsConnection.handshakeClientCert(certChain=self.certChain,
                                               privateKey=self.privateKey,
-                                              reqTack=self.reqTack,
                                               checker=self.checker,
                                               settings=self.settings,
                                               session=self.tlsSession)
