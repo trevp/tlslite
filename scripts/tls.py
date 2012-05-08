@@ -172,6 +172,8 @@ def printGoodConnection(connection, seconds):
     if connection.session.serverCertChain:
         print("  Server X.509 SHA1 fingerprint: %s" % 
             connection.session.serverCertChain.getFingerprint())
+    if connection.session.serverName:
+        print("  SNI: %s" % connection.session.serverName)
     if connection.session.tackExt:   
         if connection.session.tackExt.isEmpty():
             emptyStr = "<empty TLS Extension>"
@@ -204,9 +206,11 @@ def clientCmd(argv):
     try:
         start = time.clock()
         if username and password:
-            connection.handshakeClientSRP(username, password, reqTack=tackpyLoaded)
+            connection.handshakeClientSRP(username, password, 
+                reqTack=tackpyLoaded, serverName=address[0])
         else:
-            connection.handshakeClientCert(certChain, privateKey,reqTack=tackpyLoaded)
+            connection.handshakeClientCert(certChain, privateKey,
+                reqTack=tackpyLoaded, serverName=address[0])
         stop = time.clock()        
         print "Handshake success"        
     except TLSLocalAlert, a:

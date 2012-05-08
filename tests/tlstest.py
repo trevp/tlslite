@@ -93,11 +93,12 @@ def clientTestCmd(argv):
     testConnClient(connection)
     connection.close()
         
-    print "Test 1 - good X509"
+    print "Test 1 - good X509 (plus SNI)"
     connection = connect()
-    connection.handshakeClientCert()
+    connection.handshakeClientCert(serverName=address[0])
     testConnClient(connection)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(connection.session.serverName == address[0])
     connection.close()
 
     print "Test 1.a - good X509, SSLv3"
@@ -243,24 +244,26 @@ def clientTestCmd(argv):
             print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
             badFault = True
 
-    print "Test 18 - good SRP, prepare to resume..."
+    print "Test 18 - good SRP, prepare to resume... (plus SNI)"
     connection = connect()
-    connection.handshakeClientSRP("test", "password")
+    connection.handshakeClientSRP("test", "password", serverName=address[0])
     testConnClient(connection)
     connection.close()
     session = connection.session
 
-    print "Test 19 - resumption"
+    print "Test 19 - resumption (plus SNI)"
     connection = connect()
-    connection.handshakeClientSRP("test", "garbage", session=session)
+    connection.handshakeClientSRP("test", "garbage", serverName=address[0], 
+                                    session=session)
     testConnClient(connection)
     #Don't close! -- see below
 
-    print "Test 20 - invalidated resumption"
+    print "Test 20 - invalidated resumption (plus SNI)"
     connection.sock.close() #Close the socket without a close_notify!
     connection = connect()
     try:
-        connection.handshakeClientSRP("test", "garbage", session=session)
+        connection.handshakeClientSRP("test", "garbage", 
+                        serverName=address[0], session=session)
         assert(False)
     except TLSRemoteAlert, alert:
         if alert.description != AlertDescription.bad_record_mac:
@@ -426,6 +429,7 @@ def serverTestCmd(argv):
 
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
+    assert(connection.session.serverName == address[0])    
     testConnServer(connection)    
     connection.close()
 
@@ -574,12 +578,14 @@ def serverTestCmd(argv):
     sessionCache = SessionCache()
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB, sessionCache=sessionCache)
+    assert(connection.session.serverName == address[0])    
     testConnServer(connection)
     connection.close()
 
     print "Test 19 - resumption"
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB, sessionCache=sessionCache)
+    assert(connection.session.serverName == address[0])
     testConnServer(connection)    
     #Don't close! -- see next test
 

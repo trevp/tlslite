@@ -62,8 +62,9 @@ class TLSConnection(TLSRecordLayer):
     # Client Handshake Functions
     #*********************************************************
 
-    def handshakeClientAnonymous(self, session=None, settings=None, checker=None,
-                               async=False):
+    def handshakeClientAnonymous(self, session=None, settings=None, 
+                                checker=None, serverName="",
+                                async=False):
         """Perform an anonymous handshake in the role of client.
 
         This function performs an SSL or TLS handshake using an
@@ -93,6 +94,9 @@ class TLSConnection(TLSRecordLayer):
         @param checker: A Checker instance.  This instance will be
         invoked to examine the other party's authentication
         credentials, if the handshake completes succesfully.
+        
+        @type serverName: string
+        @param serverName: The ServerNameIndication TLS Extension.
 
         @type async: bool
         @param async: If False, this function will block until the
@@ -116,7 +120,8 @@ class TLSConnection(TLSRecordLayer):
         handshaker = self._handshakeClientAsync(anonParams=(True),
                                                 session=session,
                                                 settings=settings,
-                                                checker=checker)
+                                                checker=checker,
+                                                serverName=serverName)
         if async:
             return handshaker
         for result in handshaker:
@@ -124,7 +129,8 @@ class TLSConnection(TLSRecordLayer):
 
     def handshakeClientSRP(self, username, password, session=None,
                            settings=None, checker=None, 
-                           reqTack=False, async=False):
+                           reqTack=False, serverName="",
+                           async=False):
         """Perform an SRP handshake in the role of client.
 
         This function performs a TLS/SRP handshake.  SRP mutually
@@ -166,6 +172,9 @@ class TLSConnection(TLSRecordLayer):
         @param reqTack: Whether or not to send a "tack" TLS Extension, 
         requesting the server return a TACK_Extension if it has one.
 
+        @type serverName: string
+        @param serverName: The ServerNameIndication TLS Extension.
+
         @type async: bool
         @param async: If False, this function will block until the
         handshake is completed.  If True, this function will return a
@@ -187,7 +196,7 @@ class TLSConnection(TLSRecordLayer):
         """
         handshaker = self._handshakeClientAsync(srpParams=(username, password),
                         session=session, settings=settings, checker=checker,
-                        reqTack=reqTack)
+                        reqTack=reqTack, serverName=serverName)
         # The handshaker is a Python Generator which executes the handshake.
         # It allows the handshake to be run in a "piecewise", asynchronous
         # fashion, returning 1 when it is waiting to able to write, 0 when
@@ -202,7 +211,7 @@ class TLSConnection(TLSRecordLayer):
 
     def handshakeClientCert(self, certChain=None, privateKey=None,
                             session=None, settings=None, checker=None,
-                            reqTack=False, async=False):
+                            reqTack=False, serverName="", async=False):
         """Perform a certificate-based handshake in the role of client.
 
         This function performs an SSL or TLS handshake.  The server
@@ -252,6 +261,9 @@ class TLSConnection(TLSRecordLayer):
         @param reqTack: Whether or not to send a "tack" TLS Extension, 
         requesting the server return a TACK_Extension if it has one.        
 
+        @type serverName: string
+        @param serverName: The ServerNameIndication TLS Extension.
+
         @type async: bool
         @param async: If False, this function will block until the
         handshake is completed.  If True, this function will return a
@@ -273,7 +285,8 @@ class TLSConnection(TLSRecordLayer):
         """
         handshaker = self._handshakeClientAsync(certParams=(certChain,
                         privateKey), session=session, settings=settings,
-                        checker=checker, reqTack=reqTack)
+                        checker=checker, serverName=serverName, 
+                        reqTack=reqTack)
         # The handshaker is a Python Generator which executes the handshake.
         # It allows the handshake to be run in a "piecewise", asynchronous
         # fashion, returning 1 when it is waiting to able to write, 0 when
@@ -289,20 +302,21 @@ class TLSConnection(TLSRecordLayer):
 
     def _handshakeClientAsync(self, srpParams=(), certParams=(), anonParams=(),
                              session=None, settings=None, checker=None,
-                             reqTack=False):
+                             serverName="", reqTack=False):
 
         handshaker = self._handshakeClientAsyncHelper(srpParams=srpParams,
                 certParams=certParams,
                 anonParams=anonParams,
                 session=session,
                 settings=settings,
+                serverName=serverName,
                 reqTack=reqTack)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
 
     def _handshakeClientAsyncHelper(self, srpParams, certParams, anonParams,
-                               session, settings, reqTack):
+                               session, settings, serverName, reqTack):
         
         self._handshakeStart(client=True)
 
@@ -355,9 +369,11 @@ class TLSConnection(TLSRecordLayer):
             # non-empty sessionID
             if not session.valid():
                 session = None #ignore non-resumable sessions...
-            elif session.resumable and \
-                    (session.srpUsername != srpUsername):
-                raise ValueError("Session username doesn't match")
+            elif session.resumable: 
+                if session.srpUsername != srpUsername:
+                    raise ValueError("Session username doesn't match")
+                if session.serverName != serverName:
+                    raise ValueError("Session servername doesn't match")
 
         #Add Faults to parameters
         if srpUsername and self.fault == Fault.badUsername:
@@ -376,7 +392,7 @@ class TLSConnection(TLSRecordLayer):
         # Send the ClientHello.
         for result in self._clientSendClientHello(settings, session, 
                                         srpUsername, srpParams, certParams,
-                                        anonParams, reqTack):
+                                        anonParams, serverName, reqTack):
             if result in (0,1): yield result
             else: break
         clientHello = result
@@ -450,12 +466,13 @@ class TLSConnection(TLSRecordLayer):
         self.session = Session()
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
             srpUsername, clientCertChain, serverCertChain,
-            tackExt, serverHello.tackExt!=None)
+            tackExt, serverHello.tackExt!=None, clientHello.server_name)
         self._handshakeDone(resumed=False)
 
 
     def _clientSendClientHello(self, settings, session, srpUsername,
-                                srpParams, certParams, anonParams, reqTack):
+                                srpParams, certParams, anonParams, 
+                                serverName, reqTack):
         #Initialize acceptable ciphersuites
         cipherSuites = [CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
         if srpParams:
@@ -482,7 +499,7 @@ class TLSConnection(TLSRecordLayer):
                 clientHello.create(settings.maxVersion, getRandomBytes(32),
                                    session.sessionID, cipherSuites,
                                    certificateTypes, session.srpUsername,
-                                   reqTack)
+                                   reqTack, False, session.serverName)
 
         #Or send ClientHello (without)
         else:
@@ -490,7 +507,7 @@ class TLSConnection(TLSRecordLayer):
             clientHello.create(settings.maxVersion, getRandomBytes(32),
                                createByteArraySequence([]), cipherSuites,
                                certificateTypes, srpUsername,
-                               reqTack)
+                               reqTack, False, serverName)
         for result in self._sendMsg(clientHello):
             yield result
         yield clientHello
@@ -1106,7 +1123,7 @@ class TLSConnection(TLSRecordLayer):
             serverCertChain = None
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
             clientHello.srp_username, clientCertChain, serverCertChain,
-            tackExt, serverHello.tackExt!=None)
+            tackExt, serverHello.tackExt!=None, clientHello.server_name)
             
         #Add the session object to the session cache
         if sessionCache and sessionID:
@@ -1184,6 +1201,11 @@ class TLSConnection(TLSRecordLayer):
                             for result in self._sendError(\
                                     AlertDescription.handshake_failure):
                                 yield result
+                    if clientHello.server_name:
+                        if clientHello.server_name != session.serverName:
+                            for result in self._sendError(\
+                                    AlertDescription.handshake_failure):
+                                yield result                    
                 except KeyError:
                     pass
 

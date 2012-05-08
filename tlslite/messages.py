@@ -111,10 +111,11 @@ class ClientHello(HandshakeMsg):
         self.srp_username = None        # a string
         self.tack = False
         self.supports_npn = False
+        self.server_name = ""
 
     def create(self, version, random, session_id, cipher_suites,
                certificate_types=None, srp_username=None,
-               tack=False, supports_npn=False):
+               tack=False, supports_npn=False, server_name=""):
         self.client_version = version
         self.random = random
         self.session_id = session_id
@@ -124,6 +125,7 @@ class ClientHello(HandshakeMsg):
         self.srp_username = srp_username
         self.tack = tack
         self.supports_npn = supports_npn
+        self.server_name = server_name
         return self
 
     def parse(self, p):
@@ -163,8 +165,20 @@ class ClientHello(HandshakeMsg):
                         self.tack = True
                     elif extType == ExtensionType.supports_npn:
                         self.supports_npn = True
+                    elif extType == ExtensionType.server_name:
+                        serverNameListBytes = p.getFixBytes(extLength)
+                        p2 = Parser(serverNameListBytes)
+                        p2.startLengthCheck(2)
+                        while 1:
+                            if p2.atLengthCheck():
+                                break # no host_name, oh well
+                            name_type = p2.get(1)
+                            hostNameBytes = p2.getVarBytes(2)
+                            if name_type == NameType.host_name:
+                                self.server_name = bytesToString(hostNameBytes)
+                                break
                     else:
-                        x = p.getFixBytes(extLength)
+                        _ = p.getFixBytes(extLength)
                     index2 = p.index
                     if index2 - index1 != extLength:
                         raise SyntaxError("Bad length for extension_data")
@@ -191,6 +205,12 @@ class ClientHello(HandshakeMsg):
             w2.add(ExtensionType.srp, 2)
             w2.add(len(self.srp_username)+1, 2)
             w2.addVarSeq(stringToBytes(self.srp_username), 1, 1)
+        if self.server_name:
+            w2.add(ExtensionType.server_name, 2)
+            w2.add(len(self.server_name)+5, 2)
+            w2.add(len(self.server_name)+3, 2)            
+            w2.add(NameType.host_name, 1)
+            w2.addVarSeq(stringToBytes(self.server_name), 1, 2) 
         if self.tack:
             w2.add(ExtensionType.tack, 2)
             w2.add(0, 2)

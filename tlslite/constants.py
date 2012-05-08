@@ -38,12 +38,16 @@ class ContentType:
     application_data = 23
     all = (20,21,22,23)
 
-class ExtensionType:    # RFC 4366
+class ExtensionType:    # RFC 6066 / 4366
+    server_name = 0     # RFC 6066 / 4366
     srp = 12            # RFC 5054  
     cert_type = 9       # RFC 6091
     tack = 0xF300
     break_sigs = 0xF301
     supports_npn = 13172
+    
+class NameType:
+    host_name = 0
 
 class AlertLevel:
     warning = 1
