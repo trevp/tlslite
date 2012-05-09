@@ -5,6 +5,8 @@
 
 from .utils import cryptomath
 from .utils.tackwrapper import *
+from .utils.pem import *
+from .x509 import X509
 
 class X509CertChain:
     """This class represents a chain of X.509 certificates.
@@ -27,6 +29,19 @@ class X509CertChain:
             self.x509List = x509List
         else:
             self.x509List = []
+
+    def parsePemList(self, s):
+        """Parse a string containing a sequence of PEM certs.
+
+        Raise a SyntaxError if input is malformed.
+        """
+        x509List = []
+        bList = dePemList(s, "CERTIFICATE")
+        for b in bList:
+            x509 = X509()
+            x509.parseBinary(b)
+            x509List.append(x509)
+        self.x509List = x509List
 
     def getNumCerts(self):
         """Get the number of certificates in this chain.

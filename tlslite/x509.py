@@ -9,6 +9,7 @@
 from .utils.asn1parser import ASN1Parser
 from .utils.cryptomath import *
 from .utils.keyfactory import _createPublicRSAKey
+from .utils.pem import *
 
 
 class X509:
@@ -38,15 +39,7 @@ class X509:
         "-----END CERTIFICATE-----" tags).
         """
 
-        start = s.find("-----BEGIN CERTIFICATE-----")
-        end = s.find("-----END CERTIFICATE-----")
-        if start == -1:
-            raise SyntaxError("Missing PEM prefix")
-        if end == -1:
-            raise SyntaxError("Missing PEM postfix")
-        s = s[start+len("-----BEGIN CERTIFICATE-----") : end]
-
-        bytes = base64ToBytes(s)
+        bytes = dePem(s, "CERTIFICATE")
         self.parseBinary(bytes)
         return self
 

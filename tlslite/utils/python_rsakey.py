@@ -6,6 +6,7 @@
 from .cryptomath import *
 from .asn1parser import ASN1Parser
 from .rsakey import *
+from .pem import *
 
 class Python_RSAKey(RSAKey):
     def __init__(self, n=0, e=0, d=0, p=0, q=0, dP=0, dQ=0, qInv=0):
@@ -86,24 +87,14 @@ class Python_RSAKey(RSAKey):
         """Parse a string containing a <privateKey> or <publicKey>, or
         PEM-encoded key."""
 
-        start = s.find("-----BEGIN PRIVATE KEY-----")
-        if start != -1:
-            end = s.find("-----END PRIVATE KEY-----")
-            if end == -1:
-                raise SyntaxError("Missing PEM Postfix")
-            s = s[start+len("-----BEGIN PRIVATE KEY -----") : end]
-            bytes = base64ToBytes(s)
+        if pemSniff(s, "PRIVATE KEY"):
+            bytes = dePem(s, "PRIVATE KEY")
             return Python_RSAKey._parsePKCS8(bytes)
+        elif pemSniff(s, "RSA PRIVATE KEY"):
+            bytes = dePem(s, "RSA PRIVATE KEY")
+            return Python_RSAKey._parseSSLeay(bytes)
         else:
-            start = s.find("-----BEGIN RSA PRIVATE KEY-----")
-            if start != -1:
-                end = s.find("-----END RSA PRIVATE KEY-----")
-                if end == -1:
-                    raise SyntaxError("Missing PEM Postfix")
-                s = s[start+len("-----BEGIN RSA PRIVATE KEY -----") : end]
-                bytes = base64ToBytes(s)
-                return Python_RSAKey._parseSSLeay(bytes)
-        raise SyntaxError("Missing PEM Prefix")
+            raise SyntaxError("Not a PEM private key file")
     parsePEM = staticmethod(parsePEM)
 
     def _parsePKCS8(bytes):
