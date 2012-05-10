@@ -457,6 +457,7 @@ at your own risk.
  - Added SNI
  - Added NPN (Sam Rushing/Google)
  - Added AnonDH (Dimitris Moraitis)
+ - Added X509CertChain.parsePemList
  - Improved XML-RPC (Kees Bos)
 
 0.4.0 - 2/11/2012
