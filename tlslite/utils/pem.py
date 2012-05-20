@@ -4,8 +4,9 @@
 from .cryptomath import base64ToBytes
 import binascii
 
-#This code is shared with TACKpy, so I'd rather make minimal changes, and
-#preserve the use of a2b_base64 throughout.
+#This code is shared with tackpy (somewhat), so I'd rather make minimal
+#changes, and preserve the use of a2b_base64 throughout.
+
 def a2b_base64(s):
     return base64ToBytes(s)
     

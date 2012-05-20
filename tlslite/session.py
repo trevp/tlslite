@@ -34,8 +34,8 @@ class Session:
     @type serverCertChain: L{tlslite.x509certchain.X509CertChain}
     @ivar serverCertChain: The server's certificate chain (or None).
 
-    @type tackExt: L{TACKpy.api.TACK_Extension}
-    @ivar tackExt: The server's TACK_Extension (or None).
+    @type tackExt: L{tack.structures.TackExtension.TackExtension}
+    @ivar tackExt: The server's TackExtension (or None).
 
     @type tackInHelloExt: L{bool}
     @ivar tackInHelloExt: True if a TACK was presented via TLS Extension.
@@ -94,9 +94,9 @@ class Session:
         if (not boolean) or (boolean and self.sessionID):
             self.resumable = boolean
 
-    def getTACKID(self):
+    def getTackId(self):
         if self.tackExt and self.tackExt.tack:
-            return self.tackExt.tack.getTACKID()
+            return self.tackExt.tack.getTackId()
         else:
             return None
         

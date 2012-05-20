@@ -71,9 +71,8 @@ class X509CertChain:
         
     def checkTack(self, tack):
         if self.x509List:
-            ssl = TACKpy.SSL_Cert()
-            ssl.parse(self.x509List[0].bytes)
-            if ssl.matches(tack):
+            tlsCert = TlsCertificate(self.x509List[0].bytes)
+            if tlsCert.matches(tack):
                 return True
         return False
         
@@ -82,12 +81,11 @@ class X509CertChain:
         tackExt = None
         # Search list in backwards order
         for x509 in self.x509List[::-1]:
-            ssl = TACKpy.SSL_Cert()
-            ssl.parse(x509.bytes)
-            if ssl.tackExt:
+            tlsCert = TlsCertificate(x509.bytes)
+            if tlsCert.tackExt:
                 if tackExt:
                     raise SyntaxError("Multiple TACK Extensions")
                 else:
-                    tackExt = ssl.tackExt
+                    tackExt = tlsCert.tackExt
         return tackExt
                 

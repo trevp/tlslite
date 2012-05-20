@@ -72,8 +72,8 @@ class HandshakeSettings:
     reject clients which offer support for TLS 1.1.  In this case,
     try lowering maxVersion to (3,1)).
     
-    @type useExperimentalTACKExtension: bool
-    @ivar useExperimentalTACKExtension: Whether to enabled TACK support.
+    @type useExperimentalTackExtension: bool
+    @ivar useExperimentalTackExtension: Whether to enabled TACK support.
     
     Note that TACK support is not standardized by IETF and uses a temporary
     TLS Extension number, so should NOT be used in production software.
@@ -86,7 +86,7 @@ class HandshakeSettings:
         self.certificateTypes = ["x509"]
         self.minVersion = (3,0)
         self.maxVersion = (3,2)
-        self.useExperimentalTACKExtension = False
+        self.useExperimentalTackExtension = False
 
     # Validates the min/max fields, and certificateTypes
     # Filters out unsupported cipherNames and cipherImplementations

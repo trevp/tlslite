@@ -170,7 +170,7 @@ class TLSConnection(TLSRecordLayer):
 
         @type reqTack: bool
         @param reqTack: Whether or not to send a "tack" TLS Extension, 
-        requesting the server return a TACK_Extension if it has one.
+        requesting the server return a TackExtension if it has one.
 
         @type serverName: string
         @param serverName: The ServerNameIndication TLS Extension.
@@ -259,7 +259,7 @@ class TLSConnection(TLSRecordLayer):
         
         @type reqTack: bool
         @param reqTack: Whether or not to send a "tack" TLS Extension, 
-        requesting the server return a TACK_Extension if it has one.        
+        requesting the server return a TackExtension if it has one.        
 
         @type serverName: string
         @param serverName: The ServerNameIndication TLS Extension.
@@ -351,7 +351,7 @@ class TLSConnection(TLSRecordLayer):
         if reqTack:
             if not tackpyLoaded:
                 reqTack = False
-            if not settings or not settings.useExperimentalTACKExtension:
+            if not settings or not settings.useExperimentalTackExtension:
                 reqTack = False
         
         # Validates the settings and filters out any unsupported ciphers
@@ -560,12 +560,12 @@ class TLSConnection(TLSRecordLayer):
             if not clientHello.tack:
                 for result in self._sendError(\
                     AlertDescription.illegal_parameter,
-                    "Server responded with unrequested TACK Extension"):
+                    "Server responded with unrequested Tack Extension"):
                     yield result
             if not serverHello.tackExt.verifySignatures():
                 for result in self._sendError(\
                     AlertDescription.decrypt_error,
-                    "TACK Extensions contains an invalid signature"):
+                    "TackExtension contains an invalid signature"):
                     yield result
         yield serverHello
  
@@ -1045,9 +1045,9 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Unrecognized certificate type")
         if (tack or breakSigs or pinActivation):
             if not tackpyLoaded:
-                raise ValueError("TACKpy is not loaded")
-            if not settings or not settings.useExperimentalTACKExtension:
-                raise ValueError("useExperimentalTACKExtension not enabled")
+                raise ValueError("tackpy is not loaded")
+            if not settings or not settings.useExperimentalTackExtension:
+                raise ValueError("useExperimentalTackExtension not enabled")
 
         if not settings:
             settings = HandshakeSettings()
@@ -1084,8 +1084,7 @@ class TLSConnection(TLSRecordLayer):
 
         # Prepare a TACK Extension if requested
         if clientHello.tack:
-            tackExt = TACK_Extension()
-            tackExt.create(tack, breakSigs, pinActivation)
+            tackExt = TackExtension.create(tack, breakSigs, pinActivation)
         else:
             tackExt = None
         serverHello = ServerHello()

@@ -22,7 +22,9 @@ from tlslite.api import *
 from tlslite import __version__
 
 try:
-    from TACKpy import TACK, TACK_Break_Sig, writeTextTACKStructures
+    from tack.structures.Tack import Tack
+    from tack.structures.TackBreakSig import TackBreakSig    
+
 except ImportError:
     pass
 
@@ -37,9 +39,9 @@ def printUsage(s=None):
     print ""
     print "Modules:"
     if tackpyLoaded:
-        print "  TACKpy      : Loaded"
+        print "  tackpy      : Loaded"
     else:
-        print "  TACKpy      : Not Loaded"            
+        print "  tackpy      : Not Loaded"            
     if m2cryptoLoaded:
         print "  M2Crypto    : Loaded"
     else:
@@ -107,12 +109,11 @@ def handleArgs(argv, argString, flagsList=[]):
         elif opt == "-t":
             if tackpyLoaded:
                 s = open(arg, "rU").read()
-                tack = TACK()
-                tack.parsePem(s)
+                tack = Tack.createFromPem(s)
         elif opt == "-b":
             if tackpyLoaded:
                 s = open(arg, "rU").read()
-                breakSigs = TACK_Break_Sig.parsePemList(s)
+                breakSigs = TackBreakSig.createFromPemList(s)
         elif opt == "-v":
             verifierDB = VerifierDB(arg)
             verifierDB.open()
@@ -201,7 +202,7 @@ def clientCmd(argv):
     connection = TLSConnection(sock)
     
     settings = HandshakeSettings()
-    settings.useExperimentalTACKExtension = True
+    settings.useExperimentalTackExtension = True
     
     try:
         start = time.clock()
@@ -273,7 +274,7 @@ def serverCmd(argv):
             try:
                 start = time.clock()
                 settings = HandshakeSettings()
-                settings.useExperimentalTACKExtension=True
+                settings.useExperimentalTackExtension=True
                 connection.handshakeServer(certChain=certChain,
                                               privateKey=privateKey,
                                               verifierDB=verifierDB,

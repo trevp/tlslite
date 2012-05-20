@@ -31,7 +31,9 @@ import xmlrpclib
 from tlslite import *
 
 try:
-    from TACKpy import TACK, TACK_Break_Sig
+    from tack.structures.Tack import Tack
+    from tack.structures.TackBreakSig import TackBreakSig
+    
 except ImportError:
     pass
 
@@ -114,14 +116,14 @@ def clientTestCmd(argv):
     if tackpyLoaded:
                     
         settings = HandshakeSettings()
-        settings.useExperimentalTACKExtension = True
+        settings.useExperimentalTackExtension = True
         
         print "Test 2.a - good X.509, TACK and Break Sigs"
         connection = connect()
         connection.handshakeClientCert(settings=settings)
-        assert(connection.session.tackExt.tack.getTACKID() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
-        assert(connection.session.tackExt.break_sigs[0].getTACKID() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
-        assert(connection.session.tackExt.break_sigs[1].getTACKID() == "y37w2.nnx3y.qsv2p.geoas.tccaa")
+        assert(connection.session.tackExt.tack.getTackId() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
+        assert(connection.session.tackExt.break_sigs[0].getTackId() == "nxt3o.zoovj.xq5qk.mue76.wmx6t")
+        assert(connection.session.tackExt.break_sigs[1].getTackId() == "neuda.jg26x.ixmom.wzdry.qxdii")
         assert(connection.session.tackExt.pin_activation == False)
         testConnClient(connection)    
         connection.close()    
@@ -129,7 +131,7 @@ def clientTestCmd(argv):
         print "Test 2.b - good X.509, TACK without Break Sigs"
         connection = connect()
         connection.handshakeClientCert(settings=settings)
-        assert(connection.session.tackExt.tack.getTACKID() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
+        assert(connection.session.tackExt.tack.getTackId() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
         assert(not connection.session.tackExt.break_sigs)
         assert(connection.session.tackExt.pin_activation == True)        
         testConnClient(connection)    
@@ -139,8 +141,8 @@ def clientTestCmd(argv):
         connection = connect()
         connection.handshakeClientCert(settings=settings)
         assert(connection.session.tackExt.tack == None)
-        assert(connection.session.tackExt.break_sigs[0].getTACKID() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
-        assert(connection.session.tackExt.break_sigs[1].getTACKID() == "y37w2.nnx3y.qsv2p.geoas.tccaa")
+        assert(connection.session.tackExt.break_sigs[0].getTackId() == "nxt3o.zoovj.xq5qk.mue76.wmx6t")
+        assert(connection.session.tackExt.break_sigs[1].getTackId() == "neuda.jg26x.ixmom.wzdry.qxdii")
         assert(connection.session.tackExt.pin_activation == True)
         testConnClient(connection)    
         connection.close()    
@@ -149,6 +151,7 @@ def clientTestCmd(argv):
         connection = connect()
         try:
             connection.handshakeClientCert(settings=settings)
+            assert(False)
         except TLSLocalAlert, alert:
             if alert.description != AlertDescription.illegal_parameter:
                 raise        
@@ -436,15 +439,13 @@ def serverTestCmd(argv):
     connection.close()        
     
     if tackpyLoaded:
-        tack = TACK()
-        tack.parsePem(open("./TACK1.pem", "rU").read())
-        tackUnrelated = TACK()
-        tackUnrelated.parsePem(open("./TACKunrelated.pem", "rU").read())    
-        breakSigs = TACK_Break_Sig.parsePemList(
+        tack = Tack.createFromPem(open("./TACK1.pem", "rU").read())
+        tackUnrelated = Tack.createFromPem(open("./TACKunrelated.pem", "rU").read())    
+        breakSigs = TackBreakSig.createFromPemList(
             open("./TACK_Break_Sigs.pem").read())
             
         settings = HandshakeSettings()
-        settings.useExperimentalTACKExtension = True
+        settings.useExperimentalTackExtension = True
 
         print "Test 2.a - good X.509, TACK and Break Sigs"
         connection = connect()

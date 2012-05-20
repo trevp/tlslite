@@ -268,8 +268,7 @@ class ServerHello(HandshakeMsg):
                         raise SyntaxError()
                     self.certificate_type = p.get(1)
                 elif extType == ExtensionType.tack and tackpyLoaded:
-                    self.tackExt = TACK_Extension()
-                    self.tackExt.parse(p.getFixBytes(extLength))
+                    self.tackExt = TackExtension(p.getFixBytes(extLength))
                 else:
                     p.getFixBytes(extLength)
                 soFar += 4 + extLength
@@ -302,7 +301,7 @@ class ServerHello(HandshakeMsg):
             w2.add(1, 2)
             w2.add(self.certificate_type, 1)
         if self.tackExt:
-            b = self.tackExt.write()
+            b = self.tackExt.serialize()
             w2.add(ExtensionType.tack, 2)
             w2.add(len(b), 2)
             w2.bytes += b

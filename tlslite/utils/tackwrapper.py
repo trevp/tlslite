@@ -2,8 +2,11 @@
 # See the LICENSE file for legal information regarding use of this file.
 
 try:
-    import TACKpy # for accessing, say, SSL_Cert
-    from TACKpy import TACK, TACK_Break_Sig, TACK_Extension
+    from tack.structures.Tack import Tack
+    from tack.structures.TackBreakSig import TackBreakSig
+    from tack.structures.TackExtension import TackExtension
+    from tack.tls.TlsCertificate import TlsCertificate
+    
     tackpyLoaded = True
 except ImportError:
     tackpyLoaded = False
