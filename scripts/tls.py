@@ -182,7 +182,7 @@ def printGoodConnection(connection, seconds):
             else:
                 emptyStr = "\n  (via TACK Certificate)" 
         print("  TACK: %s" % emptyStr)
-        print(connection.session.tackExt.writeText())    
+        print(str(connection.session.tackExt))    
     
 def clientCmd(argv):
     (address, privateKey, certChain, username, password) = \
