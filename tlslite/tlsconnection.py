@@ -417,7 +417,6 @@ class TLSConnection(TLSRecordLayer):
                     nextProto = p
             else:
                 nextProto = nextProtos[0]
-        print 'nextProto', nextProto, serverHello.next_protos
 
         #If the server elected to resume the session, it is handled here.
         for result in self._clientResume(session, serverHello,

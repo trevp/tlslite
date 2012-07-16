@@ -182,8 +182,10 @@ def printGoodConnection(connection, seconds):
             else:
                 emptyStr = "\n  (via TACK Certificate)" 
         print("  TACK: %s" % emptyStr)
-        print(str(connection.session.tackExt))    
+        print(str(connection.session.tackExt))
+    print "  Next-Protocol Negotiated: %s" % connection.next_proto 
     
+
 def clientCmd(argv):
     (address, privateKey, certChain, username, password) = \
         handleArgs(argv, "kcup")
@@ -282,7 +284,10 @@ def serverCmd(argv):
                                               breakSigs=breakSigs,
                                               pinActivation=tack, #on if TACK
                                               sessionCache=sessionCache,
-                                              settings=settings)
+                                              settings=settings,
+                                              nextProtos=["http/1.1"])
+                                              # As an example (does not work here):
+                                              #nextProtos=["spdy/2", "http/1.1"])
                 stop = time.clock()
             except TLSRemoteAlert as a:
                 if a.description == AlertDescription.user_canceled:
