@@ -43,7 +43,6 @@ class ExtensionType:    # RFC 6066 / 4366
     srp = 12            # RFC 5054  
     cert_type = 9       # RFC 6091
     tack = 0xF300
-    break_sigs = 0xF301
     supports_npn = 13172
     
 class NameType:
