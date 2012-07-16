@@ -1268,10 +1268,9 @@ class TLSConnection(TLSRecordLayer):
                                         settings.cipherImplementations)
 
                 #Exchange ChangeCipherSpec and Finished messages
-                for result in self._sendFinished(session.masterSecret, nextProto):
+                for result in self._sendFinished(session.masterSecret):
                     yield result
-                for result in self._getFinished(session.masterSecret,
-                                                expect_next_protocol=nextProtos is not None):
+                for result in self._getFinished(session.masterSecret):
                     yield result
 
                 #Set the session
