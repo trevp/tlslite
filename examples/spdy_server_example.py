@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
+
 # https://groups.google.com/d/msg/spdy-dev/gY66X7Ew0aA/HA9iblM0zGAJ
+# Very basic example of Server TLS-NPN Negotiation posted in the SPDY-dev group
 
 import os, socket, struct, sys, tlslite;
 spdy_port = 4443;
