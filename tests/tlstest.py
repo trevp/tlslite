@@ -121,29 +121,29 @@ def clientTestCmd(argv):
         print "Test 2.a - good X.509, TACK and Break Sigs"
         connection = connect()
         connection.handshakeClientCert(settings=settings)
-        assert(connection.session.tackExt.tack.getTackId() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
+        assert(connection.session.tackExt.tacks[0].getTackId() == "rrted.ptvt8.d2uiq.ox2xe.w4ss3")
         assert(connection.session.tackExt.break_sigs[0].getTackId() == "nxt3o.zoovj.xq5qk.mue76.wmx6t")
         assert(connection.session.tackExt.break_sigs[1].getTackId() == "neuda.jg26x.ixmom.wzdry.qxdii")
-        assert(connection.session.tackExt.activation_flag == False)
+        assert(connection.session.tackExt.activation_flags == 0)
         testConnClient(connection)    
         connection.close()    
 
         print "Test 2.b - good X.509, TACK without Break Sigs"
         connection = connect()
         connection.handshakeClientCert(settings=settings)
-        assert(connection.session.tackExt.tack.getTackId() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
+        assert(connection.session.tackExt.tacks[0].getTackId() == "rrted.ptvt8.d2uiq.ox2xe.w4ss3")
         assert(not connection.session.tackExt.break_sigs)
-        assert(connection.session.tackExt.activation_flag == True)        
+        assert(connection.session.tackExt.activation_flags == 1)        
         testConnClient(connection)    
         connection.close()    
 
         print "Test 2.c - good X.509, Break Sigs without TACK"
         connection = connect()
         connection.handshakeClientCert(settings=settings)
-        assert(connection.session.tackExt.tack == None)
+        assert(not connection.session.tackExt.tacks)
         assert(connection.session.tackExt.break_sigs[0].getTackId() == "nxt3o.zoovj.xq5qk.mue76.wmx6t")
         assert(connection.session.tackExt.break_sigs[1].getTackId() == "neuda.jg26x.ixmom.wzdry.qxdii")
-        assert(connection.session.tackExt.activation_flag == True)
+        assert(connection.session.tackExt.activation_flags == 1)
         testConnClient(connection)    
         connection.close()    
 
@@ -450,21 +450,21 @@ def serverTestCmd(argv):
         print "Test 2.a - good X.509, TACK and Break Sigs"
         connection = connect()
         connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-            tack=tack, breakSigs=breakSigs, settings=settings)
+            tacks=[tack], breakSigs=breakSigs, settings=settings)
         testConnServer(connection)    
         connection.close()        
 
         print "Test 2.b - good X.509, TACK without Break Sigs"
         connection = connect()
         connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-            tack=tack, pinActivation=True, settings=settings)
+            tacks=[tack], activationFlags=1, settings=settings)
         testConnServer(connection)    
         connection.close()        
 
         print "Test 2.c - good X.509, Break Sigs without TACK"
         connection = connect()
         connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-            breakSigs=breakSigs, pinActivation=True, settings=settings)
+            breakSigs=breakSigs, activationFlags=1, settings=settings)
         testConnServer(connection)    
         connection.close()        
 
@@ -472,7 +472,7 @@ def serverTestCmd(argv):
         connection = connect()
         try:
             connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
-                tack=tackUnrelated, breakSigs=breakSigs, settings=settings)
+                tacks=[tackUnrelated], breakSigs=breakSigs, settings=settings)
             assert(False)
         except TLSRemoteAlert, alert:
             if alert.description != AlertDescription.illegal_parameter:

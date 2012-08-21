@@ -87,7 +87,7 @@ def handleArgs(argv, argString, flagsList=[]):
     certChain = None
     username = None
     password = None
-    tack = None
+    tacks = None
     breakSigs = None
     verifierDB = None
     reqCert = False
@@ -109,7 +109,7 @@ def handleArgs(argv, argString, flagsList=[]):
         elif opt == "-t":
             if tackpyLoaded:
                 s = open(arg, "rU").read()
-                tack = Tack.createFromPem(s)
+                tacks = Tack.createFromPemList(s)
         elif opt == "-b":
             if tackpyLoaded:
                 s = open(arg, "rU").read()
@@ -146,7 +146,7 @@ def handleArgs(argv, argString, flagsList=[]):
     if "p" in argString:
         retList.append(password)
     if "t" in argString:
-        retList.append(tack)
+        retList.append(tacks)
     if "b" in argString:
         retList.append(breakSigs)
     if "v" in argString:
@@ -241,14 +241,14 @@ def clientCmd(argv):
 
 
 def serverCmd(argv):
-    (address, privateKey, certChain, tack, breakSigs, 
+    (address, privateKey, certChain, tacks, breakSigs, 
         verifierDB, directory, reqCert) = handleArgs(argv, "kctbvd", ["reqcert"])
 
 
     if (certChain and not privateKey) or (not certChain and privateKey):
         raise SyntaxError("Must specify CERT and KEY together")
-    if tack and not certChain:
-        raise SyntaxError("Must specify CERT with TACK")
+    if tacks and not certChain:
+        raise SyntaxError("Must specify CERT with Tacks")
     
     print("I am an HTTPS test server, I will listen on %s:%d" % 
             (address[0], address[1]))    
@@ -260,8 +260,8 @@ def serverCmd(argv):
         print("Using certificate and private key...")
     if verifierDB:
         print("Using verifier DB...")
-    if tack:
-        print("Using TACK...")
+    if tacks:
+        print("Using Tacks...")
     if breakSigs:
         print("Using TACK Break Sigs...")
         
@@ -271,6 +271,12 @@ def serverCmd(argv):
     class MyHTTPServer(ThreadingMixIn, TLSSocketServerMixIn, HTTPServer):
         def handshake(self, connection):
             print "About to handshake..."
+            activationFlags = 0
+            if len(tacks) == 1:
+                activationFlags = 1
+            elif len(tacks) == 2:
+                activationFlags = 3
+
             try:
                 start = time.clock()
                 settings = HandshakeSettings()
@@ -278,9 +284,9 @@ def serverCmd(argv):
                 connection.handshakeServer(certChain=certChain,
                                               privateKey=privateKey,
                                               verifierDB=verifierDB,
-                                              tack=tack,
+                                              tacks=tacks,
                                               breakSigs=breakSigs,
-                                              pinActivation=tack, #on if TACK
+                                              activationFlags=activationFlags,
                                               sessionCache=sessionCache,
                                               settings=settings)
                 stop = time.clock()

@@ -897,12 +897,13 @@ class TLSConnection(TLSRecordLayer):
          
             # If there's a TACK (whether via TLS or TACK Cert), check that it
             # matches the cert chain   
-            if tackExt and (tackExt.tack and 
-                            not certChain.checkTack(tackExt.tack)):
-                for result in self._sendError(
-                        AlertDescription.illegal_parameter,
-                        "Other party's TACK doesn't match their public key"):
-                        yield result
+            if tackExt and tackExt.tacks:
+                for tack in tackExt.tacks: 
+                    if not certChain.checkTack(tack):
+                        for result in self._sendError(  
+                                AlertDescription.illegal_parameter,
+                                "Other party's TACK doesn't match their public key"):
+                                yield result
 
         yield publicKey, certChain, tackExt
 
@@ -916,7 +917,7 @@ class TLSConnection(TLSRecordLayer):
                         certChain=None, privateKey=None, reqCert=False,
                         sessionCache=None, settings=None, checker=None,
                         reqCAs = None, 
-                        tack=None, breakSigs=None, pinActivation=False,
+                        tacks=None, breakSigs=None, activationFlags=0,
                         nextProtos=None, anon=False):
         """Perform a handshake in the role of server.
 
@@ -991,7 +992,7 @@ class TLSConnection(TLSRecordLayer):
         for result in self.handshakeServerAsync(verifierDB,
                 certChain, privateKey, reqCert, sessionCache, settings,
                 checker, reqCAs, 
-                tack=tack, breakSigs=breakSigs, pinActivation=pinActivation, 
+                tacks=tacks, breakSigs=breakSigs, activationFlags=activationFlags, 
                 nextProtos=nextProtos, anon=anon):
             pass
 
@@ -1000,7 +1001,7 @@ class TLSConnection(TLSRecordLayer):
                              certChain=None, privateKey=None, reqCert=False,
                              sessionCache=None, settings=None, checker=None,
                              reqCAs=None, 
-                             tack=None, breakSigs=None, pinActivation=False,
+                             tacks=None, breakSigs=None, activationFlags=0,
                              nextProtos=None, anon=False
                              ):
         """Start a server handshake operation on the TLS connection.
@@ -1019,7 +1020,7 @@ class TLSConnection(TLSRecordLayer):
             privateKey=privateKey, reqCert=reqCert,
             sessionCache=sessionCache, settings=settings, 
             reqCAs=reqCAs, 
-            tack=tack, breakSigs=breakSigs, pinActivation=pinActivation, 
+            tacks=tacks, breakSigs=breakSigs, activationFlags=activationFlags, 
             nextProtos=nextProtos, anon=anon)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
@@ -1028,7 +1029,7 @@ class TLSConnection(TLSRecordLayer):
     def _handshakeServerAsyncHelper(self, verifierDB,
                              certChain, privateKey, reqCert, sessionCache,
                              settings, reqCAs, 
-                             tack, breakSigs, pinActivation, 
+                             tacks, breakSigs, activationFlags, 
                              nextProtos, anon):
 
         self._handshakeStart(client=False)
@@ -1043,7 +1044,7 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed reqCAs but not reqCert")            
         if certChain and not isinstance(certChain, X509CertChain):
             raise ValueError("Unrecognized certificate type")
-        if (tack or breakSigs or pinActivation):
+        if (tacks or breakSigs or activationFlags):
             if not tackpyLoaded:
                 raise ValueError("tackpy is not loaded")
             if not settings or not settings.useExperimentalTackExtension:
@@ -1080,11 +1081,11 @@ class TLSConnection(TLSRecordLayer):
 
         # If not doing a certificate-based suite, discard the TACK
         if not cipherSuite in CipherSuite.certAllSuites:
-            tack = None
+            tacks = None
 
         # Prepare a TACK Extension if requested
         if clientHello.tack:
-            tackExt = TackExtension.create(tack, breakSigs, pinActivation)
+            tackExt = TackExtension.create(tacks, breakSigs, activationFlags)
         else:
             tackExt = None
         serverHello = ServerHello()
