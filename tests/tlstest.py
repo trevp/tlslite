@@ -121,7 +121,7 @@ def clientTestCmd(argv):
         print "Test 2.a - good X.509, TACK and Break Sigs"
         connection = connect()
         connection.handshakeClientCert(settings=settings)
-        assert(connection.session.tackExt.tacks[0].getTackId() == "rrted.ptvt8.d2uiq.ox2xe.w4ss3")
+        assert(connection.session.tackExt.tacks[0].getTackId() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
         assert(connection.session.tackExt.break_sigs[0].getTackId() == "nxt3o.zoovj.xq5qk.mue76.wmx6t")
         assert(connection.session.tackExt.break_sigs[1].getTackId() == "neuda.jg26x.ixmom.wzdry.qxdii")
         assert(connection.session.tackExt.activation_flags == 0)
@@ -131,7 +131,7 @@ def clientTestCmd(argv):
         print "Test 2.b - good X.509, TACK without Break Sigs"
         connection = connect()
         connection.handshakeClientCert(settings=settings)
-        assert(connection.session.tackExt.tacks[0].getTackId() == "rrted.ptvt8.d2uiq.ox2xe.w4ss3")
+        assert(connection.session.tackExt.tacks[0].getTackId() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
         assert(not connection.session.tackExt.break_sigs)
         assert(connection.session.tackExt.activation_flags == 1)        
         testConnClient(connection)    
