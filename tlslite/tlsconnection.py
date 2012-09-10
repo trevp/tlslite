@@ -917,7 +917,7 @@ class TLSConnection(TLSRecordLayer):
                         certChain=None, privateKey=None, reqCert=False,
                         sessionCache=None, settings=None, checker=None,
                         reqCAs = None, 
-                        tacks=None, breakSigs=None, activationFlags=0,
+                        tacks=None, activationFlags=0,
                         nextProtos=None, anon=False):
         """Perform a handshake in the role of server.
 
@@ -992,7 +992,7 @@ class TLSConnection(TLSRecordLayer):
         for result in self.handshakeServerAsync(verifierDB,
                 certChain, privateKey, reqCert, sessionCache, settings,
                 checker, reqCAs, 
-                tacks=tacks, breakSigs=breakSigs, activationFlags=activationFlags, 
+                tacks=tacks, activationFlags=activationFlags, 
                 nextProtos=nextProtos, anon=anon):
             pass
 
@@ -1001,7 +1001,7 @@ class TLSConnection(TLSRecordLayer):
                              certChain=None, privateKey=None, reqCert=False,
                              sessionCache=None, settings=None, checker=None,
                              reqCAs=None, 
-                             tacks=None, breakSigs=None, activationFlags=0,
+                             tacks=None, activationFlags=0,
                              nextProtos=None, anon=False
                              ):
         """Start a server handshake operation on the TLS connection.
@@ -1020,7 +1020,7 @@ class TLSConnection(TLSRecordLayer):
             privateKey=privateKey, reqCert=reqCert,
             sessionCache=sessionCache, settings=settings, 
             reqCAs=reqCAs, 
-            tacks=tacks, breakSigs=breakSigs, activationFlags=activationFlags, 
+            tacks=tacks, activationFlags=activationFlags, 
             nextProtos=nextProtos, anon=anon)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
@@ -1029,7 +1029,7 @@ class TLSConnection(TLSRecordLayer):
     def _handshakeServerAsyncHelper(self, verifierDB,
                              certChain, privateKey, reqCert, sessionCache,
                              settings, reqCAs, 
-                             tacks, breakSigs, activationFlags, 
+                             tacks, activationFlags, 
                              nextProtos, anon):
 
         self._handshakeStart(client=False)
@@ -1044,7 +1044,7 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed reqCAs but not reqCert")            
         if certChain and not isinstance(certChain, X509CertChain):
             raise ValueError("Unrecognized certificate type")
-        if (tacks or breakSigs or activationFlags):
+        if (tacks or activationFlags):
             if not tackpyLoaded:
                 raise ValueError("tackpy is not loaded")
             if not settings or not settings.useExperimentalTackExtension:
@@ -1085,7 +1085,7 @@ class TLSConnection(TLSRecordLayer):
 
         # Prepare a TACK Extension if requested
         if clientHello.tack:
-            tackExt = TackExtension.create(tacks, breakSigs, activationFlags)
+            tackExt = TackExtension.create(tacks, activationFlags)
         else:
             tackExt = None
         serverHello = ServerHello()

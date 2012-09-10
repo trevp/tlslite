@@ -23,7 +23,6 @@ from tlslite import __version__
 
 try:
     from tack.structures.Tack import Tack
-    from tack.structures.TackBreakSig import TackBreakSig    
 
 except ImportError:
     pass
@@ -59,7 +58,7 @@ def printUsage(s=None):
     print """Commands:
 
   server  
-    [-k KEY] [-c CERT] [-t TACK] [-b BREAKSIGS] [-v VERIFIERDB] [-d DIR]
+    [-k KEY] [-c CERT] [-t TACK] [-v VERIFIERDB] [-d DIR]
     [--reqcert] HOST:PORT
 
   client
@@ -88,7 +87,6 @@ def handleArgs(argv, argString, flagsList=[]):
     username = None
     password = None
     tacks = None
-    breakSigs = None
     verifierDB = None
     reqCert = False
     directory = None
@@ -110,10 +108,6 @@ def handleArgs(argv, argString, flagsList=[]):
             if tackpyLoaded:
                 s = open(arg, "rU").read()
                 tacks = Tack.createFromPemList(s)
-        elif opt == "-b":
-            if tackpyLoaded:
-                s = open(arg, "rU").read()
-                breakSigs = TackBreakSig.createFromPemList(s)
         elif opt == "-v":
             verifierDB = VerifierDB(arg)
             verifierDB.open()
@@ -147,8 +141,6 @@ def handleArgs(argv, argString, flagsList=[]):
         retList.append(password)
     if "t" in argString:
         retList.append(tacks)
-    if "b" in argString:
-        retList.append(breakSigs)
     if "v" in argString:
         retList.append(verifierDB)
     if "d" in argString:
@@ -174,13 +166,10 @@ def printGoodConnection(connection, seconds):
     if connection.session.serverName:
         print("  SNI: %s" % connection.session.serverName)
     if connection.session.tackExt:   
-        if connection.session.tackExt.isEmpty():
-            emptyStr = "<empty TLS Extension>"
+        if connection.session.tackInHelloExt:
+            emptyStr = "\n  (via TLS Extension)"
         else:
-            if connection.session.tackInHelloExt:
-                emptyStr = "\n  (via TLS Extension)"
-            else:
-                emptyStr = "\n  (via TACK Certificate)" 
+            emptyStr = "\n  (via TACK Certificate)" 
         print("  TACK: %s" % emptyStr)
         print(str(connection.session.tackExt))    
     
@@ -241,7 +230,7 @@ def clientCmd(argv):
 
 
 def serverCmd(argv):
-    (address, privateKey, certChain, tacks, breakSigs, 
+    (address, privateKey, certChain, tacks, 
         verifierDB, directory, reqCert) = handleArgs(argv, "kctbvd", ["reqcert"])
 
 
@@ -262,8 +251,6 @@ def serverCmd(argv):
         print("Using verifier DB...")
     if tacks:
         print("Using Tacks...")
-    if breakSigs:
-        print("Using TACK Break Sigs...")
         
     #############
     sessionCache = SessionCache()
@@ -285,7 +272,6 @@ def serverCmd(argv):
                                               privateKey=privateKey,
                                               verifierDB=verifierDB,
                                               tacks=tacks,
-                                              breakSigs=breakSigs,
                                               activationFlags=activationFlags,
                                               sessionCache=sessionCache,
                                               settings=settings)
