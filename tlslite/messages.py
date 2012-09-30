@@ -1,4 +1,4 @@
-# Authors:
+# Authors: 
 #   Trevor Perrin
 #   Google - handling CertificateRequest.certificate_types
 #   Google (adapted by Sam Rushing) - NPN support
@@ -91,7 +91,7 @@ class HandshakeMsg:
     def __init__(self, handshakeType):
         self.contentType = ContentType.handshake
         self.handshakeType = handshakeType
-
+    
     def postWrite(self, w):
         headerWriter = Writer()
         headerWriter.add(self.handshakeType, 1)
@@ -211,9 +211,9 @@ class ClientHello(HandshakeMsg):
         if self.server_name:
             w2.add(ExtensionType.server_name, 2)
             w2.add(len(self.server_name)+5, 2)
-            w2.add(len(self.server_name)+3, 2)
+            w2.add(len(self.server_name)+3, 2)            
             w2.add(NameType.host_name, 1)
-            w2.addVarSeq(stringToBytes(self.server_name), 1, 2)
+            w2.addVarSeq(stringToBytes(self.server_name), 1, 2) 
         if self.tack:
             w2.add(ExtensionType.tack, 2)
             w2.add(0, 2)
@@ -282,19 +282,17 @@ class ServerHello(HandshakeMsg):
         return self
 
     def __parse_next_protos(self, b):
-      protos = []
-
-      while True:
-          if len(b) == 0:
-              break
-          l = b[0]
-          b = b[1:]
-          if len(b) < l:
-              raise BadNextProtos(len(e))
-          protos.append(b[:l])
-          b = b[l:]
-
-      return protos
+        protos = []
+        while True:
+            if len(b) == 0:
+                break
+            l = b[0]
+            b = b[1:]
+            if len(b) < l:
+                raise BadNextProtos(len(b))
+            protos.append(b[:l])
+            b = b[l:]
+        return protos
 
     def __next_protos_encoded(self):
         a = []
@@ -333,7 +331,7 @@ class ServerHello(HandshakeMsg):
             w2.addFixSeq(encoded_next_protos_advertised, 1)
         if len(w2.bytes):
             w.add(len(w2.bytes), 2)
-            w.bytes += w2.bytes
+            w.bytes += w2.bytes        
         return self.postWrite(w)
 
 
@@ -447,7 +445,7 @@ class ServerKeyExchange(HandshakeMsg):
         self.srp_s = srp_s
         self.srp_B = srp_B
         return self
-
+    
     def createDH(self, dh_p, dh_g, dh_Ys):
         self.dh_p = dh_p
         self.dh_g = dh_g
@@ -528,11 +526,11 @@ class ClientKeyExchange(HandshakeMsg):
     def createRSA(self, encryptedPreMasterSecret):
         self.encryptedPreMasterSecret = encryptedPreMasterSecret
         return self
-
+    
     def createDH(self, dh_Yc):
         self.dh_Yc = dh_Yc
         return self
-
+    
     def parse(self, p):
         p.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
@@ -546,7 +544,7 @@ class ClientKeyExchange(HandshakeMsg):
             else:
                 raise AssertionError()
         elif self.cipherSuite in CipherSuite.anonSuites:
-            self.dh_Yc = bytesToNumber(p.getVarBytes(2))
+            self.dh_Yc = bytesToNumber(p.getVarBytes(2))            
         else:
             raise AssertionError()
         p.stopLengthCheck()
@@ -564,7 +562,7 @@ class ClientKeyExchange(HandshakeMsg):
             else:
                 raise AssertionError()
         elif self.cipherSuite in CipherSuite.anonSuites:
-            w.addVarSeq(numberToBytes(self.dh_Yc), 1, 2)
+            w.addVarSeq(numberToBytes(self.dh_Yc), 1, 2)            
         else:
             raise AssertionError()
         return self.postWrite(w)
@@ -609,6 +607,7 @@ class ChangeCipherSpec:
         w.add(self.type,1)
         return w.bytes
 
+
 class NextProtocol(HandshakeMsg):
     def __init__(self):
         HandshakeMsg.__init__(self, HandshakeType.next_protocol)
@@ -631,27 +630,6 @@ class NextProtocol(HandshakeMsg):
         paddingLen = 32 - ((len(self.next_proto) + 2) % 32)
         w.addVarSeq(stringToBytes('\x00' * paddingLen), 1, 1)
         return self.postWrite(w)
-
-#class NextProtocol(HandshakeMsg): # Upstream version -- Doesn't seem to work
-#    def __init__(self):
-#        self.contentType = ContentType.handshake
-#        self.next_proto = None
-#
-#    def create(self, next_proto):
-#        self.next_proto = next_proto
-#
-#    def parse(self, p):
-#        p.startLengthCheck(3)
-#        self.next_proto = p.getVarBytes(1)
-#        _ = p.getVarBytes(1)
-#        p.stopLengthCheck()
-#        return self
-#
-#    def write(self):
-#        w = Writer()
-#        w.addVarSeq(self.next_proto, 1, 1)
-#        w.addVarSeq('\x00' * 32, 1, 32 - ((len(self.next_proto) + 2) % 32))
-#        return self.postWrite(w)
 
 class Finished(HandshakeMsg):
     def __init__(self, version):
@@ -687,7 +665,7 @@ class ApplicationData:
     def create(self, bytes):
         self.bytes = bytes
         return self
-
+        
     def splitFirstByte(self):
         newMsg = ApplicationData().create(self.bytes[:1])
         self.bytes = self.bytes[1:]
