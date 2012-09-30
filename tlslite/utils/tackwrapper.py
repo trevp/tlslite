@@ -3,7 +3,6 @@
 
 try:
     from tack.structures.Tack import Tack
-    from tack.structures.TackBreakSig import TackBreakSig
     from tack.structures.TackExtension import TackExtension
     from tack.tls.TlsCertificate import TlsCertificate
     

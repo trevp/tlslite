@@ -23,7 +23,6 @@ from tlslite import __version__
 
 try:
     from tack.structures.Tack import Tack
-    from tack.structures.TackBreakSig import TackBreakSig    
 
 except ImportError:
     pass
@@ -59,7 +58,7 @@ def printUsage(s=None):
     print """Commands:
 
   server  
-    [-k KEY] [-c CERT] [-t TACK] [-b BREAKSIGS] [-v VERIFIERDB] [-d DIR]
+    [-k KEY] [-c CERT] [-t TACK] [-v VERIFIERDB] [-d DIR]
     [--reqcert] HOST:PORT
 
   client
@@ -87,8 +86,7 @@ def handleArgs(argv, argString, flagsList=[]):
     certChain = None
     username = None
     password = None
-    tack = None
-    breakSigs = None
+    tacks = None
     verifierDB = None
     reqCert = False
     directory = None
@@ -109,11 +107,7 @@ def handleArgs(argv, argString, flagsList=[]):
         elif opt == "-t":
             if tackpyLoaded:
                 s = open(arg, "rU").read()
-                tack = Tack.createFromPem(s)
-        elif opt == "-b":
-            if tackpyLoaded:
-                s = open(arg, "rU").read()
-                breakSigs = TackBreakSig.createFromPemList(s)
+                tacks = Tack.createFromPemList(s)
         elif opt == "-v":
             verifierDB = VerifierDB(arg)
             verifierDB.open()
@@ -146,9 +140,7 @@ def handleArgs(argv, argString, flagsList=[]):
     if "p" in argString:
         retList.append(password)
     if "t" in argString:
-        retList.append(tack)
-    if "b" in argString:
-        retList.append(breakSigs)
+        retList.append(tacks)
     if "v" in argString:
         retList.append(verifierDB)
     if "d" in argString:
@@ -174,13 +166,10 @@ def printGoodConnection(connection, seconds):
     if connection.session.serverName:
         print("  SNI: %s" % connection.session.serverName)
     if connection.session.tackExt:   
-        if connection.session.tackExt.isEmpty():
-            emptyStr = "<empty TLS Extension>"
+        if connection.session.tackInHelloExt:
+            emptyStr = "\n  (via TLS Extension)"
         else:
-            if connection.session.tackInHelloExt:
-                emptyStr = "\n  (via TLS Extension)"
-            else:
-                emptyStr = "\n  (via TACK Certificate)" 
+            emptyStr = "\n  (via TACK Certificate)" 
         print("  TACK: %s" % emptyStr)
         print(str(connection.session.tackExt))
     print "  Next-Protocol Negotiated: %s" % connection.next_proto 
@@ -243,14 +232,14 @@ def clientCmd(argv):
 
 
 def serverCmd(argv):
-    (address, privateKey, certChain, tack, breakSigs, 
+    (address, privateKey, certChain, tacks, 
         verifierDB, directory, reqCert) = handleArgs(argv, "kctbvd", ["reqcert"])
 
 
     if (certChain and not privateKey) or (not certChain and privateKey):
         raise SyntaxError("Must specify CERT and KEY together")
-    if tack and not certChain:
-        raise SyntaxError("Must specify CERT with TACK")
+    if tacks and not certChain:
+        raise SyntaxError("Must specify CERT with Tacks")
     
     print("I am an HTTPS test server, I will listen on %s:%d" % 
             (address[0], address[1]))    
@@ -262,10 +251,8 @@ def serverCmd(argv):
         print("Using certificate and private key...")
     if verifierDB:
         print("Using verifier DB...")
-    if tack:
-        print("Using TACK...")
-    if breakSigs:
-        print("Using TACK Break Sigs...")
+    if tacks:
+        print("Using Tacks...")
         
     #############
     sessionCache = SessionCache()
@@ -273,6 +260,12 @@ def serverCmd(argv):
     class MyHTTPServer(ThreadingMixIn, TLSSocketServerMixIn, HTTPServer):
         def handshake(self, connection):
             print "About to handshake..."
+            activationFlags = 0
+            if len(tacks) == 1:
+                activationFlags = 1
+            elif len(tacks) == 2:
+                activationFlags = 3
+
             try:
                 start = time.clock()
                 settings = HandshakeSettings()
@@ -280,9 +273,8 @@ def serverCmd(argv):
                 connection.handshakeServer(certChain=certChain,
                                               privateKey=privateKey,
                                               verifierDB=verifierDB,
-                                              tack=tack,
-                                              breakSigs=breakSigs,
-                                              pinActivation=tack, #on if TACK
+                                              tacks=tacks,
+                                              activationFlags=activationFlags,
                                               sessionCache=sessionCache,
                                               settings=settings,
                                               nextProtos=["http/1.1"])

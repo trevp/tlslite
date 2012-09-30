@@ -1,5 +1,5 @@
 
-tlslite version 0.4.1                                            May 22 2012
+tlslite version 0.4.3                                            Sep 25 2012
 Trevor Perrin <tlslite at trevp.net>
 http://trevp.net/tlslite/
 ============================================================================
@@ -451,6 +451,10 @@ at your own risk.
 
 12 History
 ===========
+0.4.3 - 9/27/2012
+ - Minor bugfix (0.4.2 doesn't load tackpy)
+0.4.2 - 9/25/2012
+ - Updated TACK (compatible with tackpy 0.9.9)
 0.4.1 - 5/22/2012
  - Fixed RSA padding bugs (w/help from John Randolph)
  - Updated TACK (compatible with tackpy 0.9.7)

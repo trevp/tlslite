@@ -3,7 +3,7 @@
 from tlslite import HTTPTLSConnection, HandshakeSettings
 
 settings = HandshakeSettings()
-settings.useExperimentalTACKExtension = True
+settings.useExperimentalTackExtension = True
 
 h = HTTPTLSConnection("localhost", 4443, settings=settings)    
 h.request("GET", "/index.html")
