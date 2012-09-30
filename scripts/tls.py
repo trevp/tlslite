@@ -261,10 +261,11 @@ def serverCmd(argv):
         def handshake(self, connection):
             print "About to handshake..."
             activationFlags = 0
-            if len(tacks) == 1:
-                activationFlags = 1
-            elif len(tacks) == 2:
-                activationFlags = 3
+            if tacks:
+                if len(tacks) == 1:
+                    activationFlags = 1
+                elif len(tacks) == 2:
+                    activationFlags = 3
 
             try:
                 start = time.clock()
@@ -279,7 +280,7 @@ def serverCmd(argv):
                                               settings=settings,
                                               nextProtos=["http/1.1"])
                                               # As an example (does not work here):
-                                              #nextProtos=["spdy/2", "http/1.1"])
+                                              #nextProtos=["spdy/3", "spdy/2", "http/1.1"])
                 stop = time.clock()
             except TLSRemoteAlert as a:
                 if a.description == AlertDescription.user_canceled:
