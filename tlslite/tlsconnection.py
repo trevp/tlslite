@@ -1064,7 +1064,9 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed reqCAs but not reqCert")            
         if certChain and not isinstance(certChain, X509CertChain):
             raise ValueError("Unrecognized certificate type")
-        if (tacks or activationFlags):
+        if activationFlags and not tacks:
+            raise ValueError("Nonzero activationFlags requires tacks")
+        if tacks:
             if not tackpyLoaded:
                 raise ValueError("tackpy is not loaded")
             if not settings or not settings.useExperimentalTackExtension:

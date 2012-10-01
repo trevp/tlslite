@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
-# Author: Trevor Perrin
+# Authors: 
+#   Trevor Perrin
+#   Marcelo Fernandez - bugfix
+#
 # See the LICENSE file for legal information regarding use of this file.
 
 import sys
