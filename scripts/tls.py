@@ -2,7 +2,7 @@
 
 # Authors: 
 #   Trevor Perrin
-#   Marcelo Fernandez - bugfix
+#   Marcelo Fernandez - bugfix and NPN support
 #
 # See the LICENSE file for legal information regarding use of this file.
 

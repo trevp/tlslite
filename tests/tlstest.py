@@ -4,6 +4,7 @@
 #   Trevor Perrin
 #   Kees Bos - Added tests for XML-RPC
 #   Dimitris Moraitis - Anon ciphersuites
+#   Marcelo Fernandez - Added test for NPN
 #
 # See the LICENSE file for legal information regarding use of this file.
 

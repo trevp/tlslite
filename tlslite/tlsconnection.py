@@ -1,7 +1,7 @@
 # Authors: 
 #   Trevor Perrin
 #   Google - added reqCAs parameter
-#   Google (adapted by Sam Rushing) - NPN support
+#   Google (adapted by Sam Rushing and Marcelo Fernandez) - NPN support
 #   Dimitris Moraitis - Anon ciphersuites
 #
 # See the LICENSE file for legal information regarding use of this file.
@@ -260,6 +260,10 @@ class TLSConnection(TLSRecordLayer):
         
         @type reqTack: bool
         @param reqTack: Whether or not to send a "tack" TLS Extension, 
+        requesting the server return a TackExtension if it has one.        
+
+        @type nextProtos: list of strings
+        @param nextProtos: Whether or not to send a "tack" TLS Extension, 
         requesting the server return a TackExtension if it has one.        
 
         @type serverName: string
