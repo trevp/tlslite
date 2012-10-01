@@ -886,7 +886,7 @@ class TLSConnection(TLSRecordLayer):
         #Exchange ChangeCipherSpec and Finished messages
         for result in self._sendFinished(masterSecret, nextProto):
             yield result
-        for result in self._getFinished(masterSecret):
+        for result in self._getFinished(masterSecret, nextProto=nextProto):
             yield result
         yield masterSecret
 
@@ -1599,7 +1599,7 @@ class TLSConnection(TLSRecordLayer):
         for result in self._sendMsg(finished):
             yield result
 
-    def _getFinished(self, masterSecret, expect_next_protocol=False):
+    def _getFinished(self, masterSecret, expect_next_protocol=False, nextProto=None):
         #Get and check ChangeCipherSpec
         for result in self._getMsg(ContentType.change_cipher_spec):
             if result in (0,1):
@@ -1614,6 +1614,7 @@ class TLSConnection(TLSRecordLayer):
         #Switch to pending read state
         self._changeReadState()
 
+        #Server Finish - Are we waiting for a next protocol echo? 
         if expect_next_protocol:
             for result in self._getMsg(ContentType.handshake, HandshakeType.next_protocol):
                 if result in (0,1):
@@ -1626,6 +1627,10 @@ class TLSConnection(TLSRecordLayer):
             self.next_proto = result.next_proto
         else:
             self.next_proto = None
+
+        #Client Finish - Only set the next_protocol selected in the connection
+        if nextProto:
+            self.next_proto = nextProto
 
         #Calculate verification data
         verifyData = self._calcFinished(masterSecret, False)
