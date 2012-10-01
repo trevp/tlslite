@@ -205,6 +205,9 @@ class ClientHello(HandshakeMsg):
             w2.add(ExtensionType.srp, 2)
             w2.add(len(self.srp_username)+1, 2)
             w2.addVarSeq(stringToBytes(self.srp_username), 1, 1)
+        if self.supports_npn:
+            w2.add(ExtensionType.supports_npn, 2)
+            w2.add(0, 2)
         if self.server_name:
             w2.add(ExtensionType.server_name, 2)
             w2.add(len(self.server_name)+5, 2)
@@ -237,6 +240,7 @@ class ServerHello(HandshakeMsg):
         self.compression_method = 0
         self.tackExt = None
         self.next_protos_advertised = None
+        self.next_protos = None
 
     def create(self, version, random, session_id, cipher_suite,
                certificate_type, tackExt, next_protos_advertised):
@@ -269,11 +273,26 @@ class ServerHello(HandshakeMsg):
                     self.certificate_type = p.get(1)
                 elif extType == ExtensionType.tack and tackpyLoaded:
                     self.tackExt = TackExtension(p.getFixBytes(extLength))
+                elif extType == ExtensionType.supports_npn:
+                    self.next_protos = self.__parse_next_protos(p.getFixBytes(extLength))
                 else:
                     p.getFixBytes(extLength)
                 soFar += 4 + extLength
         p.stopLengthCheck()
         return self
+
+    def __parse_next_protos(self, b):
+        protos = []
+        while True:
+            if len(b) == 0:
+                break
+            l = b[0]
+            b = b[1:]
+            if len(b) < l:
+                raise BadNextProtos(len(b))
+            protos.append(b[:l])
+            b = b[l:]
+        return protos
 
     def __next_protos_encoded(self):
         a = []
@@ -591,11 +610,12 @@ class ChangeCipherSpec:
 
 class NextProtocol(HandshakeMsg):
     def __init__(self):
-        self.contentType = ContentType.handshake
+        HandshakeMsg.__init__(self, HandshakeType.next_protocol)
         self.next_proto = None
 
     def create(self, next_proto):
         self.next_proto = next_proto
+        return self
 
     def parse(self, p):
         p.startLengthCheck(3)
@@ -604,10 +624,11 @@ class NextProtocol(HandshakeMsg):
         p.stopLengthCheck()
         return self
 
-    def write(self):
+    def write(self, trial=False):
         w = Writer()
-        w.addVarSeq(self.next_proto, 1, 1)
-        w.addVarSeq('\x00' * 32, 1, 32 - ((len(self.next_proto) + 2) % 32));
+        w.addVarSeq(stringToBytes(self.next_proto), 1, 1)
+        paddingLen = 32 - ((len(self.next_proto) + 2) % 32)
+        w.addVarSeq(stringToBytes('\x00' * paddingLen), 1, 1)
         return self.postWrite(w)
 
 class Finished(HandshakeMsg):
