@@ -211,7 +211,8 @@ class TLSConnection(TLSRecordLayer):
 
     def handshakeClientCert(self, certChain=None, privateKey=None,
                             session=None, settings=None, checker=None,
-                            reqTack=True, serverName="", async=False):
+                            nextProtos=None, reqTack=True, serverName="",
+                            async=False):
         """Perform a certificate-based handshake in the role of client.
 
         This function performs an SSL or TLS handshake.  The server
@@ -286,7 +287,7 @@ class TLSConnection(TLSRecordLayer):
         handshaker = self._handshakeClientAsync(certParams=(certChain,
                         privateKey), session=session, settings=settings,
                         checker=checker, serverName=serverName, 
-                        reqTack=reqTack)
+                        nextProtos=nextProtos, reqTack=reqTack)
         # The handshaker is a Python Generator which executes the handshake.
         # It allows the handshake to be run in a "piecewise", asynchronous
         # fashion, returning 1 when it is waiting to able to write, 0 when
@@ -302,7 +303,7 @@ class TLSConnection(TLSRecordLayer):
 
     def _handshakeClientAsync(self, srpParams=(), certParams=(), anonParams=(),
                              session=None, settings=None, checker=None,
-                             serverName="", reqTack=True):
+                             nextProtos=None, serverName="", reqTack=True):
 
         handshaker = self._handshakeClientAsyncHelper(srpParams=srpParams,
                 certParams=certParams,
@@ -310,13 +311,14 @@ class TLSConnection(TLSRecordLayer):
                 session=session,
                 settings=settings,
                 serverName=serverName,
+                nextProtos=nextProtos,
                 reqTack=reqTack)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
 
     def _handshakeClientAsyncHelper(self, srpParams, certParams, anonParams,
-                               session, settings, serverName, reqTack):
+                               session, settings, serverName, nextProtos, reqTack):
         
         self._handshakeStart(client=True)
 
@@ -395,7 +397,8 @@ class TLSConnection(TLSRecordLayer):
         # Send the ClientHello.
         for result in self._clientSendClientHello(settings, session, 
                                         srpUsername, srpParams, certParams,
-                                        anonParams, serverName, reqTack):
+                                        anonParams, serverName, nextProtos,
+                                        reqTack):
             if result in (0,1): yield result
             else: break
         clientHello = result
@@ -407,10 +410,19 @@ class TLSConnection(TLSRecordLayer):
         serverHello = result
         cipherSuite = serverHello.cipher_suite
         
+        nextProto = None
+        if serverHello.next_protos is not None:
+            for p in nextProtos:
+                if p in serverHello.next_protos:
+                    nextProto = p
+            else:
+                nextProto = nextProtos[0]
+
         #If the server elected to resume the session, it is handled here.
         for result in self._clientResume(session, serverHello, 
                         clientHello.random, 
-                        settings.cipherImplementations):
+                        settings.cipherImplementations,
+                        nextProto):
             if result in (0,1): yield result
             else: break
         if result == "resumed_and_finished":
@@ -460,7 +472,8 @@ class TLSConnection(TLSRecordLayer):
         for result in self._clientFinished(premasterSecret,
                             clientHello.random, 
                             serverHello.random,
-                            cipherSuite, settings.cipherImplementations):
+                            cipherSuite, settings.cipherImplementations,
+                            nextProto):
                 if result in (0,1): yield result
                 else: break
         masterSecret = result
@@ -475,7 +488,7 @@ class TLSConnection(TLSRecordLayer):
 
     def _clientSendClientHello(self, settings, session, srpUsername,
                                 srpParams, certParams, anonParams, 
-                                serverName, reqTack):
+                                serverName, nextProtos, reqTack):
         #Initialize acceptable ciphersuites
         cipherSuites = [CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
         if srpParams:
@@ -502,7 +515,8 @@ class TLSConnection(TLSRecordLayer):
                 clientHello.create(settings.maxVersion, getRandomBytes(32),
                                    session.sessionID, cipherSuites,
                                    certificateTypes, session.srpUsername,
-                                   reqTack, False, session.serverName)
+                                   reqTack, nextProtos is not None,
+                                   session.serverName)
 
         #Or send ClientHello (without)
         else:
@@ -510,7 +524,7 @@ class TLSConnection(TLSRecordLayer):
             clientHello.create(settings.maxVersion, getRandomBytes(32),
                                createByteArraySequence([]), cipherSuites,
                                certificateTypes, srpUsername,
-                               reqTack, False, serverName)
+                               reqTack, nextProtos is not None, serverName)
         for result in self._sendMsg(clientHello):
             yield result
         yield clientHello
@@ -562,6 +576,11 @@ class TLSConnection(TLSRecordLayer):
                     AlertDescription.illegal_parameter,
                     "Server responded with unrequested Tack Extension"):
                     yield result
+        if serverHello.next_protos and not clientHello.supports_npn:
+            for result in self._sendError(\
+                AlertDescription.illegal_parameter,
+                "Server responded with unrequested NPN Extension"):
+                yield result
             if not serverHello.tackExt.verifySignatures():
                 for result in self._sendError(\
                     AlertDescription.decrypt_error,
@@ -570,7 +589,7 @@ class TLSConnection(TLSRecordLayer):
         yield serverHello
  
     def _clientResume(self, session, serverHello, clientRandom, 
-                        cipherImplementations):
+                      cipherImplementations, nextProto):
         #If the server agrees to resume
         if session and session.sessionID and \
             serverHello.session_id == session.sessionID:
@@ -590,7 +609,7 @@ class TLSConnection(TLSRecordLayer):
             #Exchange ChangeCipherSpec and Finished messages
             for result in self._getFinished(session.masterSecret):
                 yield result
-            for result in self._sendFinished(session.masterSecret):
+            for result in self._sendFinished(session.masterSecret, nextProto):
                 yield result
 
             #Set the session for this connection
@@ -856,7 +875,8 @@ class TLSConnection(TLSRecordLayer):
         yield (premasterSecret, None, None)
         
     def _clientFinished(self, premasterSecret, clientRandom, serverRandom,
-                        cipherSuite, cipherImplementations):                   
+                        cipherSuite, cipherImplementations, nextProto):
+
         masterSecret = calcMasterSecret(self.version, premasterSecret,
                             clientRandom, serverRandom)
         self._calcPendingStates(cipherSuite, masterSecret, 
@@ -864,7 +884,7 @@ class TLSConnection(TLSRecordLayer):
                                 cipherImplementations)
 
         #Exchange ChangeCipherSpec and Finished messages
-        for result in self._sendFinished(masterSecret):
+        for result in self._sendFinished(masterSecret, nextProto):
             yield result
         for result in self._getFinished(masterSecret):
             yield result
@@ -1556,13 +1576,18 @@ class TLSConnection(TLSRecordLayer):
     #*********************************************************
 
 
-    def _sendFinished(self, masterSecret):
+    def _sendFinished(self, masterSecret, nextProto=None):
         #Send ChangeCipherSpec
         for result in self._sendMsg(ChangeCipherSpec()):
             yield result
 
         #Switch to pending write state
         self._changeWriteState()
+
+        if nextProto is not None:
+            nextProtoMsg = NextProtocol().create(nextProto)
+            for result in self._sendMsg(nextProtoMsg):
+                yield result
 
         #Calculate verification data
         verifyData = self._calcFinished(masterSecret, True)

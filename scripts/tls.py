@@ -171,8 +171,10 @@ def printGoodConnection(connection, seconds):
         else:
             emptyStr = "\n  (via TACK Certificate)" 
         print("  TACK: %s" % emptyStr)
-        print(str(connection.session.tackExt))    
+        print(str(connection.session.tackExt))
+    print "  Next-Protocol Negotiated: %s" % connection.next_proto 
     
+
 def clientCmd(argv):
     (address, privateKey, certChain, username, password) = \
         handleArgs(argv, "kcup")
@@ -259,10 +261,11 @@ def serverCmd(argv):
         def handshake(self, connection):
             print "About to handshake..."
             activationFlags = 0
-            if len(tacks) == 1:
-                activationFlags = 1
-            elif len(tacks) == 2:
-                activationFlags = 3
+            if tacks:
+                if len(tacks) == 1:
+                    activationFlags = 1
+                elif len(tacks) == 2:
+                    activationFlags = 3
 
             try:
                 start = time.clock()
@@ -274,7 +277,10 @@ def serverCmd(argv):
                                               tacks=tacks,
                                               activationFlags=activationFlags,
                                               sessionCache=sessionCache,
-                                              settings=settings)
+                                              settings=settings,
+                                              nextProtos=["http/1.1"])
+                                              # As an example (does not work here):
+                                              #nextProtos=["spdy/3", "spdy/2", "http/1.1"])
                 stop = time.clock()
             except TLSRemoteAlert as a:
                 if a.description == AlertDescription.user_canceled:

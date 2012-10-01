@@ -354,6 +354,13 @@ def clientTestCmd(argv):
     except socket.error, e:
         print "Non-critical error: socket error trying to reach internet server: ", e   
 
+    print "Test 28 - Next-Protocol Client Negotiation"
+    connection = connect()
+    connection.handshakeClientCert(nextProtos=["http/1.1"])
+    print "  Next-Protocol Negotiated: %s" % connection.next_proto 
+    assert(connection.next_proto == 'http/1.1')
+    connection.close()
+
     if not badFault:
         print "Test succeeded"
     else:
