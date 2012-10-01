@@ -111,7 +111,14 @@ def clientTestCmd(argv):
     testConnClient(connection)    
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()    
-    
+
+    print "Test 1.b - Next-Protocol Client Negotiation"
+    connection = connect()
+    connection.handshakeClientCert(nextProtos=["http/1.1"])
+    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    assert(connection.next_proto == 'http/1.1')
+    connection.close()
+
     if tackpyLoaded:
                     
         settings = HandshakeSettings()
@@ -354,13 +361,6 @@ def clientTestCmd(argv):
     except socket.error, e:
         print "Non-critical error: socket error trying to reach internet server: ", e   
 
-    print "Test 28 - Next-Protocol Client Negotiation"
-    connection = connect()
-    connection.handshakeClientCert(nextProtos=["http/1.1"])
-    print "  Next-Protocol Negotiated: %s" % connection.next_proto 
-    assert(connection.next_proto == 'http/1.1')
-    connection.close()
-
     if not badFault:
         print "Test succeeded"
     else:
@@ -420,6 +420,15 @@ def serverTestCmd(argv):
     settings.minVersion = (3,0)
     settings.maxVersion = (3,0)
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
+    testConnServer(connection)
+    connection.close()        
+    
+    print "Test 1.b - Next-Protocol Server Negotiation"
+    connection = connect()
+    settings = HandshakeSettings()
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+                               settings=settings, nextProtos=["http/1.1"])
+    print "  Next-Protocol Negotiated: %s" % connection.next_proto
     testConnServer(connection)
     connection.close()        
     
@@ -582,9 +591,6 @@ def serverTestCmd(argv):
     address = address[0], address[1]+1
     lsock.bind(address)
     lsock.listen(5)
-
-    def connect():
-        return TLSConnection(lsock.accept()[0])
 
     implementations = []
     if m2cryptoLoaded:
