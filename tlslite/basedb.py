@@ -4,7 +4,7 @@
 """Base class for SharedKeyDB and VerifierDB."""
 
 import anydbm
-import thread
+import threading
 
 class BaseDB:
     def __init__(self, filename, type):
@@ -14,7 +14,7 @@ class BaseDB:
             self.db = None
         else:
             self.db = {}
-        self.lock = thread.allocate_lock()
+        self.lock = threading.Lock()
 
     def create(self):
         """Create a new on-disk database.
