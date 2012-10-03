@@ -258,6 +258,10 @@ class TLSConnection(TLSRecordLayer):
         invoked to examine the other party's authentication
         credentials, if the handshake completes succesfully.
         
+        @type nextProtos: list of strings.
+        @param nextProtos: A list of upper layer protocols ordered by
+        preference, to use in the Next-Protocol Negotiation Extension.
+        
         @type reqTack: bool
         @param reqTack: Whether or not to send a "tack" TLS Extension, 
         requesting the server return a TackExtension if it has one.        
@@ -414,12 +418,17 @@ class TLSConnection(TLSRecordLayer):
         serverHello = result
         cipherSuite = serverHello.cipher_suite
         
+        # Choose a matching Next Protocol from server list against ours
         nextProto = None
-        if serverHello.next_protos is not None:
+        if serverHello.next_protos is not None: # NPN is taking place
             for p in nextProtos:
                 if p in serverHello.next_protos:
                     nextProto = p
+                    break
             else:
+                # If the client doesn't support any of server's protocols,
+                # or the server doesn't advertise any (next_protos == [])
+                # it SHOULD select the first protocol that it supports.
                 nextProto = nextProtos[0]
 
         #If the server elected to resume the session, it is handled here.
@@ -1005,6 +1014,11 @@ class TLSConnection(TLSRecordLayer):
         @param reqCAs: A collection of DER-encoded DistinguishedNames that
         will be sent along with a certificate request. This does not affect
         verification.        
+
+        @type nextProtos: list of strings.
+        @param nextProtos: A list of upper layer protocols to expose to the
+        clients through the Next-Protocol Negotiation Extension, 
+        if they support it.
 
         @raise socket.error: If a socket error occurs.
         @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
