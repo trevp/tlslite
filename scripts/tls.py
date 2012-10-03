@@ -12,10 +12,16 @@ import os.path
 import socket
 import time
 import getopt
-import httplib
-from SocketServer import *
-from BaseHTTPServer import *
-from SimpleHTTPServer import *
+try:
+    import httplib
+    from SocketServer import *
+    from BaseHTTPServer import *
+    from SimpleHTTPServer import *
+except ImportError:
+    # Python 3.x
+    from http import client as httplib
+    from socketserver import *
+    from http.server import *
 
 if __name__ != "__main__":
     raise "This must be run as a command, not used as a module!"

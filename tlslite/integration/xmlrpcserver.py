@@ -2,8 +2,11 @@
 # See the LICENSE file for legal information regarding use of this file.
 
 """xmlrpcserver.py - simple XML RPC server supporting TLS"""
-
-from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
+try:
+    from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
+except ImportError:
+    # Python 3
+    from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from tlssocketservermixin import TLSSocketServerMixIn
 
 

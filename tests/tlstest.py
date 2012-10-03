@@ -14,9 +14,11 @@ import os.path
 import socket
 import time
 import getopt
-import httplib
-import BaseHTTPServer
-import SimpleHTTPServer
+try:
+    from BaseHTTPServer import HTTPServer
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
+except ImportError:
+    from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 from tlslite import TLSConnection, Fault, HandshakeSettings, \
     X509, X509CertChain, IMAP4_TLS, VerifierDB, Session, SessionCache, \
@@ -27,7 +29,11 @@ from tlslite import TLSConnection, Fault, HandshakeSettings, \
 
 from tlslite.errors import *
 from tlslite.utils.cryptomath import prngName
-import xmlrpclib
+try:
+    import xmlrpclib
+except ImportError:
+    # Python 3
+    from xmlrpc import client as xmlrpclib
 from tlslite import *
 
 try:
@@ -605,14 +611,14 @@ def serverTestCmd(argv):
 
     #Create and run an HTTP Server using TLSSocketServerMixIn
     class MyHTTPServer(TLSSocketServerMixIn,
-                       BaseHTTPServer.HTTPServer):
+                       HTTPServer):
         def handshake(self, tlsConnection):
                 tlsConnection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
                 return True
     cd = os.getcwd()
     os.chdir(dir)
     address = address[0], address[1]+1
-    httpd = MyHTTPServer(address, SimpleHTTPServer.SimpleHTTPRequestHandler)
+    httpd = MyHTTPServer(address, SimpleHTTPRequestHandler)
     for x in range(6):
         httpd.handle_request()
     httpd.server_close()
