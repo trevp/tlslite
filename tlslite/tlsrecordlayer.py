@@ -198,7 +198,7 @@ class TLSRecordLayer:
                             yield result
                     applicationData = result
                     self._readBuffer += bytesToString(applicationData.write())
-                except TLSRemoteAlert, alert:
+                except TLSRemoteAlert as alert:
                     if alert.description != AlertDescription.close_notify:
                         raise
                 except TLSAbruptCloseError:
@@ -588,7 +588,7 @@ class TLSRecordLayer:
         while 1:
             try:
                 bytesSent = self.sock.send(s) #Might raise socket.error
-            except socket.error, why:
+            except socket.error as why:
                 if why[0] == errno.EWOULDBLOCK:
                     yield 1
                     continue
@@ -783,7 +783,7 @@ class TLSRecordLayer:
                     raise AssertionError()
 
         #If an exception was raised by a Parser or Message instance:
-        except SyntaxError, e:
+        except SyntaxError as e:
             for result in self._sendError(AlertDescription.decode_error,
                                          formatExceptionTrace(e)):
                 yield result
@@ -807,7 +807,7 @@ class TLSRecordLayer:
         while 1:
             try:
                 s = self.sock.recv(recordHeaderLength-len(bytes))
-            except socket.error, why:
+            except socket.error as why:
                 if why[0] == errno.EWOULDBLOCK:
                     yield 0
                     continue
@@ -847,7 +847,7 @@ class TLSRecordLayer:
         while 1:
             try:
                 s = self.sock.recv(r.length - len(bytes))
-            except socket.error, why:
+            except socket.error as why:
                 if why[0] == errno.EWOULDBLOCK:
                     yield 0
                     continue

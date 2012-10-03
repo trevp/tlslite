@@ -1692,7 +1692,7 @@ class TLSConnection(TLSRecordLayer):
                         raise
             except GeneratorExit:
                 raise
-            except TLSAlert, alert:
+            except TLSAlert as alert:
                 if not self.fault:
                     raise
                 if alert.description not in Fault.faultAlerts[self.fault]:

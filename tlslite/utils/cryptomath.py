@@ -111,9 +111,9 @@ def numberToString(s, howManyBytes=None):
 def base64ToString(s):
     try:
         return base64.decodestring(s)
-    except binascii.Error, e:
+    except binascii.Error as e:
         raise SyntaxError(e)
-    except binascii.Incomplete, e:
+    except binascii.Incomplete as e:
         raise SyntaxError(e)
 
 def stringToBase64(s):
