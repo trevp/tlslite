@@ -143,7 +143,7 @@ def clientTestCmd(argv):
 
     print("Test 3 - good SRP")
     connection = connect()
-    connection.handshakeClientSRP("test", "password")
+    connection.handshakeClientSRP(b"test", b"password")
     testConnClient(connection)
     connection.close()
 
@@ -152,7 +152,7 @@ def clientTestCmd(argv):
         connection = connect()
         connection.fault = fault
         try:
-            connection.handshakeClientSRP("test", "password")
+            connection.handshakeClientSRP(b"test", b"password")
             print("  Good Fault %s" % (Fault.faultNames[fault]))
         except TLSFaultError as e:
             print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
@@ -163,7 +163,7 @@ def clientTestCmd(argv):
     settings.minVersion = (3,1)
     settings.maxVersion = (3,1)    
     connection = connect()
-    connection.handshakeClientSRP("test", "password", settings=settings)
+    connection.handshakeClientSRP(b"test", b"password", settings=settings)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     testConnClient(connection)
     connection.close()
@@ -173,7 +173,7 @@ def clientTestCmd(argv):
         connection = connect()
         connection.fault = fault
         try:
-            connection.handshakeClientSRP("test", "password")
+            connection.handshakeClientSRP(b"test", b"password")
             print("  Good Fault %s" % (Fault.faultNames[fault]))
         except TLSFaultError as e:
             print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
@@ -225,14 +225,14 @@ def clientTestCmd(argv):
 
     print("Test 18 - good SRP, prepare to resume... (plus SNI)")
     connection = connect()
-    connection.handshakeClientSRP("test", "password", serverName=address[0])
+    connection.handshakeClientSRP(b"test", b"password", serverName=address[0])
     testConnClient(connection)
     connection.close()
     session = connection.session
 
     print("Test 19 - resumption (plus SNI)")
     connection = connect()
-    connection.handshakeClientSRP("test", "garbage", serverName=address[0], 
+    connection.handshakeClientSRP(b"test", b"garbage", serverName=address[0], 
                                     session=session)
     testConnClient(connection)
     #Don't close! -- see below
@@ -241,7 +241,7 @@ def clientTestCmd(argv):
     connection.sock.close() #Close the socket without a close_notify!
     connection = connect()
     try:
-        connection.handshakeClientSRP("test", "garbage", 
+        connection.handshakeClientSRP(b"test", b"garbage", 
                         serverName=address[0], session=session)
         assert(False)
     except TLSRemoteAlert as alert:
@@ -320,7 +320,7 @@ def clientTestCmd(argv):
             print("%s %s:" % (connection.getCipherName(), connection.getCipherImplementation()), end=' ')
 
             startTime = time.clock()
-            connection.write("hello"*10000)
+            connection.write(b"hello"*10000)
             h = connection.read(min=50000, max=50000)
             stopTime = time.clock()
             if stopTime-startTime:
@@ -328,7 +328,7 @@ def clientTestCmd(argv):
             else:
                 print("100K exchanged very fast")
 
-            assert(h == "hello"*10000)
+            assert(h == b"hello"*10000)
             connection.close()
     
     print("Test 24.a - Next-Protocol Client Negotiation")
@@ -498,8 +498,8 @@ def serverTestCmd(argv):
     print("Test 3 - good SRP")
     verifierDB = VerifierDB()
     verifierDB.create()
-    entry = VerifierDB.makeVerifier("test", "password", 1536)
-    verifierDB["test"] = entry
+    entry = VerifierDB.makeVerifier(b"test", b"password", 1536)
+    verifierDB[b"test"] = entry
 
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB)
@@ -671,7 +671,7 @@ def serverTestCmd(argv):
                                         settings=settings)
             print(connection.getCipherName(), connection.getCipherImplementation())
             h = connection.read(min=50000, max=50000)
-            assert(h == "hello"*10000)
+            assert(h == b"hello"*10000)
             connection.write(h)
             connection.close()
 

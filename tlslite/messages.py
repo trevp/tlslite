@@ -302,7 +302,7 @@ class ServerHello(HandshakeMsg):
             a.append(chr(len(e)))
             a.append(e)
 
-        return [ord(x) for x in ''.join(a)]
+        return [ord(x) for x in b''.join(a)]
 
     def write(self):
         w = Writer()
@@ -628,7 +628,7 @@ class NextProtocol(HandshakeMsg):
         w = Writer()
         w.addVarSeq(stringToBytes(self.next_proto), 1, 1)
         paddingLen = 32 - ((len(self.next_proto) + 2) % 32)
-        w.addVarSeq(stringToBytes('\x00' * paddingLen), 1, 1)
+        w.addVarSeq(stringToBytes(b'\x00' * paddingLen), 1, 1)
         return self.postWrite(w)
 
 class Finished(HandshakeMsg):

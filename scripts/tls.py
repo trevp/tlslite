@@ -286,9 +286,9 @@ def serverCmd(argv):
                                               activationFlags=activationFlags,
                                               sessionCache=sessionCache,
                                               settings=settings,
-                                              nextProtos=["http/1.1"])
+                                              nextProtos=[b"http/1.1"])
                                               # As an example (does not work here):
-                                              #nextProtos=["spdy/3", "spdy/2", "http/1.1"])
+                                              #nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
                 stop = time.clock()
             except TLSRemoteAlert as a:
                 if a.description == AlertDescription.user_canceled:

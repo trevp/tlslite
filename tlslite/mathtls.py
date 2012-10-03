@@ -70,7 +70,7 @@ def calcMasterSecret(version, premasterSecret, clientRandom, serverRandom):
         masterSecret = PRF_SSL(premasterSecret,
                             clientRandom + serverRandom, 48)
     elif version in ((3,1), (3,2)):
-        masterSecret = PRF(premasterSecret, "master secret",
+        masterSecret = PRF(premasterSecret, b"master secret",
                             clientRandom + serverRandom, 48)
     else:
         raise AssertionError()
@@ -82,7 +82,7 @@ def makeX(salt, username, password):
         raise ValueError("username too long")
     if len(salt)>=256:
         raise ValueError("salt too long")
-    return stringToNumber(sha1(salt + sha1(username + ":" + password)\
+    return stringToNumber(sha1(salt + sha1(username + b":" + password)\
            .digest()).digest())
 
 #This function is used by VerifierDB.makeVerifier
@@ -98,7 +98,7 @@ def PAD(n, x):
     nLength = len(numberToString(n))
     s = numberToString(x)
     if len(s) < nLength:
-        s = ("\0" * (nLength-len(s))) + s
+        s = (b"\0" * (nLength-len(s))) + s
     return s
 
 def makeU(N, A, B):
@@ -120,8 +120,8 @@ class MAC_SSL:
         self.digest_size = 20
         
     def create(self, k):
-        self.ohash = sha1(k + ("\x5C" * 40))
-        self.ihash = sha1(k + ("\x36" * 40))
+        self.ohash = sha1(k + (b"\x5C" * 40))
+        self.ihash = sha1(k + (b"\x36" * 40))
 
     def update(self, m):
         self.ihash.update(m)

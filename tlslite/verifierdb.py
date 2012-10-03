@@ -29,7 +29,7 @@ class VerifierDB(BaseDB):
         BaseDB.__init__(self, filename, "verifier")
 
     def _getItem(self, username, valueStr):
-        (N, g, salt, verifier) = valueStr.split(" ")
+        (N, g, salt, verifier) = valueStr.split(b" ")
         N = base64ToNumber(N)
         g = base64ToNumber(g)
         salt = base64ToString(salt)
@@ -60,7 +60,7 @@ class VerifierDB(BaseDB):
         g = numberToBase64(g)
         salt = stringToBase64(salt)
         verifier = numberToBase64(verifier)
-        valueStr = " ".join( (N, g, salt, verifier)  )
+        valueStr = b" ".join( (N, g, salt, verifier)  )
         return valueStr
 
     def _checkItem(self, value, username, param):
