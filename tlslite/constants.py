@@ -8,6 +8,8 @@
 
 """Constants used in various places."""
 
+from .utils.compat import range_list
+
 class CertificateType:
     x509 = 0
     openpgp = 1
@@ -234,22 +236,22 @@ class Fault:
     badUsername = 101
     badPassword = 102
     badA = 103
-    clientSrpFaults = range(101,104)
+    clientSrpFaults = range_list(101,104)
 
     badVerifyMessage = 601
-    clientCertFaults = range(601,602)
+    clientCertFaults = range_list(601,602)
 
     badPremasterPadding = 501
     shortPremasterSecret = 502
-    clientNoAuthFaults = range(501,503)
+    clientNoAuthFaults = range_list(501,503)
 
     badB = 201
-    serverFaults = range(201,202)
+    serverFaults = range_list(201,202)
 
     badFinished = 300
     badMAC = 301
     badPadding = 302
-    genericFaults = range(300,303)
+    genericFaults = range_list(300,303)
 
     faultAlerts = {\
         badUsername: (AlertDescription.unknown_psk_identity, \

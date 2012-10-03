@@ -42,6 +42,9 @@ def formatExceptionTrace(e):
 
 try:
     long_ = long
+    range_list = range
 except NameError:
     # Python 3
     long_ = int
+    def range_list(*args):
+        return list(range(*args))
