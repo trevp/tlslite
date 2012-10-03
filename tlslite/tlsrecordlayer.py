@@ -589,7 +589,7 @@ class TLSRecordLayer:
             try:
                 bytesSent = self.sock.send(s) #Might raise socket.error
             except socket.error as why:
-                if why[0] == errno.EWOULDBLOCK:
+                if why.args[0] == errno.EWOULDBLOCK:
                     yield 1
                     continue
                 else:
@@ -808,7 +808,7 @@ class TLSRecordLayer:
             try:
                 s = self.sock.recv(recordHeaderLength-len(bytes))
             except socket.error as why:
-                if why[0] == errno.EWOULDBLOCK:
+                if why.args[0] == errno.EWOULDBLOCK:
                     yield 0
                     continue
                 else:
@@ -848,7 +848,7 @@ class TLSRecordLayer:
             try:
                 s = self.sock.recv(r.length - len(bytes))
             except socket.error as why:
-                if why[0] == errno.EWOULDBLOCK:
+                if why.args[0] == errno.EWOULDBLOCK:
                     yield 0
                     continue
                 else:
