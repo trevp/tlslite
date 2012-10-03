@@ -109,7 +109,7 @@ class TLSRecordLayer:
 
         #Buffers for processing messages
         self._handshakeBuffer = []
-        self._readBuffer = ""
+        self._readBuffer = b""
 
         #Handshake digests
         self._handshake_md5 = md5()
@@ -1066,7 +1066,7 @@ class TLSRecordLayer:
                                outputLength)
         elif self.version in ((3,1), (3,2)):
             keyBlock = PRF(masterSecret,
-                           "key expansion",
+                           b"key expansion",
                            serverRandom + clientRandom,
                            outputLength)
         else:
@@ -1119,12 +1119,12 @@ class TLSRecordLayer:
         imac_md5 = self._handshake_md5.copy()
         imac_sha = self._handshake_sha.copy()
 
-        imac_md5.update(label + masterSecretStr + '\x36'*48)
-        imac_sha.update(label + masterSecretStr + '\x36'*40)
+        imac_md5.update(label + masterSecretStr + b'\x36'*48)
+        imac_sha.update(label + masterSecretStr + b'\x36'*40)
 
-        md5Str = md5(masterSecretStr + ('\x5c'*48) + \
+        md5Str = md5(masterSecretStr + (b'\x5c'*48) + \
                          imac_md5.digest()).digest()
-        shaStr = sha1(masterSecretStr + ('\x5c'*40) + \
+        shaStr = sha1(masterSecretStr + (b'\x5c'*40) + \
                          imac_sha.digest()).digest()
 
         return stringToBytes(md5Str + shaStr)
