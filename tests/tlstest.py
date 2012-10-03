@@ -12,7 +12,6 @@ import sys
 import os
 import os.path
 import socket
-import thread
 import time
 import getopt
 import httplib
