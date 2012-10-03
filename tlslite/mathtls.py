@@ -29,7 +29,7 @@ def P_hash(hashModule, secret, seed, length):
         for c in output:
             if index >= length:
                 return bytes
-            bytes[index] = ord(c)
+            bytes[index] = b_ord(c)
             index += 1
     return bytes
 
@@ -55,13 +55,13 @@ def PRF_SSL(secret, seed, length):
     bytes = createByteArrayZeros(length)
     index = 0
     for x in range(26):
-        A = chr(ord('A')+x) * (x+1) # 'A', 'BB', 'CCC', etc..
+        A = b_chr(ord('A')+x) * (x+1) # 'A', 'BB', 'CCC', etc..
         input = secretStr + sha1(A + secretStr + seedStr).digest()
         output = md5(input).digest()
         for c in output:
             if index >= length:
                 return bytes
-            bytes[index] = ord(c)
+            bytes[index] = b_ord(c)
             index += 1
     return bytes
 

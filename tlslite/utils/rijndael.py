@@ -36,7 +36,17 @@ If any strings are of the wrong length a ValueError is thrown
 import copy
 import string
 
-
+try:
+    xrange
+    b_ord = ord
+    b_chr = chr
+except NameError:
+    # Python 3
+    xrange = range
+    def b_ord(b):
+        return b
+    def b_chr(b):
+        return bytes((b,))
 
 shifts = [[[0, 0], [1, 3], [2, 2], [3, 1]],
           [[0, 0], [1, 5], [2, 4], [3, 3]],
@@ -224,8 +234,8 @@ class rijndael:
         # copy user material bytes into temporary ints
         tk = []
         for i in xrange(0, KC):
-            tk.append((ord(key[i * 4]) << 24) | (ord(key[i * 4 + 1]) << 16) |
-                (ord(key[i * 4 + 2]) << 8) | ord(key[i * 4 + 3]))
+            tk.append((b_ord(key[i * 4]) << 24) | (b_ord(key[i * 4 + 1]) << 16) |
+                (b_ord(key[i * 4 + 2]) << 8) | b_ord(key[i * 4 + 3]))
 
         # copy values into round key arrays
         t = 0
@@ -298,10 +308,10 @@ class rijndael:
         t = []
         # plaintext to ints + key
         for i in xrange(BC):
-            t.append((ord(plaintext[i * 4    ]) << 24 |
-                      ord(plaintext[i * 4 + 1]) << 16 |
-                      ord(plaintext[i * 4 + 2]) <<  8 |
-                      ord(plaintext[i * 4 + 3])        ) ^ Ke[0][i])
+            t.append((b_ord(plaintext[i * 4    ]) << 24 |
+                      b_ord(plaintext[i * 4 + 1]) << 16 |
+                      b_ord(plaintext[i * 4 + 2]) <<  8 |
+                      b_ord(plaintext[i * 4 + 3])        ) ^ Ke[0][i])
         # apply round transforms
         for r in xrange(1, ROUNDS):
             for i in xrange(BC):
@@ -318,7 +328,7 @@ class rijndael:
             result.append((S[(t[(i + s1) % BC] >> 16) & 0xFF] ^ (tt >> 16)) & 0xFF)
             result.append((S[(t[(i + s2) % BC] >>  8) & 0xFF] ^ (tt >>  8)) & 0xFF)
             result.append((S[ t[(i + s3) % BC]        & 0xFF] ^  tt       ) & 0xFF)
-        return b''.join(map(chr, result))
+        return b''.join(map(b_chr, result))
 
     def decrypt(self, ciphertext):
         if len(ciphertext) != self.block_size:
@@ -341,10 +351,10 @@ class rijndael:
         t = [0] * BC
         # ciphertext to ints + key
         for i in xrange(BC):
-            t[i] = (ord(ciphertext[i * 4    ]) << 24 |
-                    ord(ciphertext[i * 4 + 1]) << 16 |
-                    ord(ciphertext[i * 4 + 2]) <<  8 |
-                    ord(ciphertext[i * 4 + 3])        ) ^ Kd[0][i]
+            t[i] = (b_ord(ciphertext[i * 4    ]) << 24 |
+                    b_ord(ciphertext[i * 4 + 1]) << 16 |
+                    b_ord(ciphertext[i * 4 + 2]) <<  8 |
+                    b_ord(ciphertext[i * 4 + 3])        ) ^ Kd[0][i]
         # apply round transforms
         for r in xrange(1, ROUNDS):
             for i in xrange(BC):
@@ -361,7 +371,7 @@ class rijndael:
             result.append((Si[(t[(i + s1) % BC] >> 16) & 0xFF] ^ (tt >> 16)) & 0xFF)
             result.append((Si[(t[(i + s2) % BC] >>  8) & 0xFF] ^ (tt >>  8)) & 0xFF)
             result.append((Si[ t[(i + s3) % BC]        & 0xFF] ^  tt       ) & 0xFF)
-        return b''.join(map(chr, result))
+        return b''.join(map(b_chr, result))
 
 def encrypt(key, block):
     return rijndael(key, len(block)).encrypt(block)

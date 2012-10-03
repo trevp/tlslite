@@ -11,17 +11,34 @@ import math
 from hashlib import md5
 from hashlib import sha1 
 
-# Requires Python 2.6, will need to be changed for Python 3
 def createByteArraySequence(seq):
     return bytearray(seq)
 def createByteArrayZeros(howMany):
     return bytearray(howMany)
 
-def bytesToString(bytes):
-    return str(bytes)
-def stringToBytes(s):
-    bytes = bytearray(s)
-    return bytes
+if sys.version_info < (3,):
+    # b_chr creates a byte string of length 1
+    # b_ord takes an element of a byte string (which is a length-1 byte string)
+    # and returns the ordinal
+    b_chr = chr
+    b_ord = ord
+
+    # Terminology: "bytes" means the mutable bytearray type; elements are ints
+    
+    # "str" means the immutable byte string type: str in 2.x and bytes in 3.x
+    # elements are length-1 strings in 2.x and ints in 3.x
+    
+    # True character strings never appear in any cryptographic API
+    
+    bytesToString = str
+    stringToBytes = bytearray
+else:
+    def b_chr(b):
+        return bytes((b,))
+    def b_ord(b):
+        return b
+    bytesToString = bytes
+    stringToBytes = bytearray
 
 def numBits(n):
     if n==0:

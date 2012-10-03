@@ -299,10 +299,10 @@ class ServerHello(HandshakeMsg):
         for e in self.next_protos_advertised:
             if len(e) > 255 or len(e) == 0:
                 raise BadNextProtos(len(e))
-            a.append(chr(len(e)))
+            a.append(b_chr(len(e)))
             a.append(e)
 
-        return [ord(x) for x in b''.join(a)]
+        return [b_ord(x) for x in b''.join(a)]
 
     def write(self):
         w = Writer()
