@@ -61,8 +61,8 @@ prngName = "os.urandom"
 # **************************************************************************
 
 def bytesToNumber(bytes):
-    total = 0L
-    multiplier = 1L
+    total = long_(0)
+    multiplier = long_(1)
     for count in range(len(bytes)-1, -1, -1):
         byte = bytes[count]
         total += multiplier * byte
@@ -111,6 +111,12 @@ def numberToString(s, howManyBytes=None):
 def base64ToString(s):
     try:
         return base64.decodestring(s)
+    except TypeError:
+        # 3.x: argument must be a bytes object
+        if isinstance(s, str):
+            return base64ToString(s.encode('ascii'))
+        # other type error: reraise
+        raise
     except binascii.Error as e:
         raise SyntaxError(e)
     except binascii.Incomplete as e:
@@ -260,8 +266,8 @@ def getRandomPrime(bits, display=False):
     #
     #Since 30 is lcm(2,3,5), we'll set our test numbers to
     #29 % 30 and keep them there
-    low = ((2L ** (bits-1)) * 3) // 2
-    high = 2L ** bits - 30
+    low = ((long_(2) ** (bits-1)) * 3) // 2
+    high = long_(2) ** bits - 30
     p = getRandomNumber(low, high)
     p += 29 - (p % 30)
     while 1:

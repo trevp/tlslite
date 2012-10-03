@@ -40,3 +40,8 @@ def formatExceptionTrace(e):
     newStr = "".join(traceback.format_exception(sys.exc_type, sys.exc_value, sys.exc_traceback))
     return newStr
 
+try:
+    long_ = long
+except NameError:
+    # Python 3
+    long_ = int
