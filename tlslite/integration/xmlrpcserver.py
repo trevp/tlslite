@@ -7,7 +7,7 @@ try:
 except ImportError:
     # Python 3
     from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
-from tlssocketservermixin import TLSSocketServerMixIn
+from .tlssocketservermixin import TLSSocketServerMixIn
 
 
 class TLSXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
