@@ -266,10 +266,6 @@ class TLSConnection(TLSRecordLayer):
         @param reqTack: Whether or not to send a "tack" TLS Extension, 
         requesting the server return a TackExtension if it has one.        
 
-        @type nextProtos: list of strings
-        @param nextProtos: Whether or not to send a "tack" TLS Extension, 
-        requesting the server return a TackExtension if it has one.        
-
         @type serverName: string
         @param serverName: The ServerNameIndication TLS Extension.
 
@@ -363,6 +359,9 @@ class TLSConnection(TLSRecordLayer):
                 reqTack = False
             if not settings or not settings.useExperimentalTackExtension:
                 reqTack = False
+        if nextProtos is not None:
+            if len(nextProtos) == 0:
+                raise ValueError("Caller passed no nextProtos")
         
         # Validates the settings and filters out any unsupported ciphers
         # or crypto libraries that were requested        
@@ -419,17 +418,8 @@ class TLSConnection(TLSRecordLayer):
         cipherSuite = serverHello.cipher_suite
         
         # Choose a matching Next Protocol from server list against ours
-        nextProto = None
-        if serverHello.next_protos is not None: # NPN is taking place
-            for p in nextProtos:
-                if p in serverHello.next_protos:
-                    nextProto = p
-                    break
-            else:
-                # If the client doesn't support any of server's protocols,
-                # or the server doesn't advertise any (next_protos == [])
-                # it SHOULD select the first protocol that it supports.
-                nextProto = nextProtos[0]
+        # (string or None)
+        nextProto = self._clientSelectNextProto(nextProtos, serverHello)
 
         #If the server elected to resume the session, it is handled here.
         for result in self._clientResume(session, serverHello, 
@@ -600,6 +590,20 @@ class TLSConnection(TLSRecordLayer):
                     "TackExtension contains an invalid signature"):
                     yield result
         yield serverHello
+
+    def _clientSelectNextProto(self, nextProtos, serverHello):
+        # nextProtos is None or non-empty list of strings
+        # serverHello.next_protos is None or possibly-empty list of strings
+        if nextProtos is not None and serverHello.next_protos is not None:
+            for p in nextProtos:
+                if p in serverHello.next_protos:
+                    return p
+            else:
+                # If the client doesn't support any of server's protocols,
+                # or the server doesn't advertise any (next_protos == [])
+                # the client SHOULD select the first protocol it supports.
+                return nextProtos[0]
+        return None
  
     def _clientResume(self, session, serverHello, clientRandom, 
                       cipherImplementations, nextProto):
