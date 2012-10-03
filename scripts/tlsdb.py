@@ -2,7 +2,7 @@
 
 # Author: Trevor Perrin
 # See the LICENSE file for legal information regarding use of this file.
-
+from __future__ import print_function
 import sys
 import os
 import socket
@@ -17,33 +17,33 @@ from tlslite import *
 from tlslite import __version__
 
 if len(sys.argv) == 1 or (len(sys.argv)==2 and sys.argv[1].lower().endswith("help")):
-    print ""
-    print "Version: %s" % __version__
-    print ""
-    print "RNG: %s" % prngName
-    print ""
-    print "Modules:"
+    print("")
+    print("Version: %s" % __version__)
+    print("")
+    print("RNG: %s" % prngName)
+    print("")
+    print("Modules:")
     if m2cryptoLoaded:
-        print "  M2Crypto    : Loaded"
+        print("  M2Crypto    : Loaded")
     else:
-        print "  M2Crypto    : Not Loaded"
+        print("  M2Crypto    : Not Loaded")
     if pycryptoLoaded:
-        print "  pycrypto    : Loaded"
+        print("  pycrypto    : Loaded")
     else:
-        print "  pycrypto    : Not Loaded"
+        print("  pycrypto    : Not Loaded")
     if gmpyLoaded:
-        print "  GMPY        : Loaded"
+        print("  GMPY        : Loaded")
     else:
-        print "  GMPY        : Not Loaded"
-    print ""
-    print "Commands:"
-    print ""
-    print "  createsrp       <db>"
-    print ""
-    print "  add    <db> <user> <pass> [<bits>]"
-    print "  del    <db> <user>"
-    print "  check  <db> <user> [<pass>]"
-    print "  list   <db>"
+        print("  GMPY        : Not Loaded")
+    print("")
+    print("Commands:")
+    print("")
+    print("  createsrp       <db>")
+    print("")
+    print("  add    <db> <user> <pass> [<bits>]")
+    print("  del    <db> <user>")
+    print("  check  <db> <user> [<pass>]")
+    print("  list   <db>")
     sys.exit()
 
 cmd = sys.argv[1].lower()
@@ -73,9 +73,9 @@ try:
     if cmd == "help":
         command = args.getLast(2).lower()
         if command == "valid":
-            print ""
+            print("")
         else:
-            print "Bad command: '%s'" % command
+            print("Bad command: '%s'" % command)
 
     elif cmd == "createsrp":
         dbName = args.get(2)
@@ -91,7 +91,7 @@ try:
         db = VerifierDB(dbName)
         db.open()
         if username in db:
-            print "User already in database!"
+            print("User already in database!")
             sys.exit()
         bits = int(args.getLast(5))
         N, g, salt, verifier = VerifierDB.makeVerifier(username, password, bits)
@@ -117,15 +117,15 @@ try:
 
         try:
             db[username]
-            print "Username exists"
+            print("Username exists")
 
             if password:
                 if db.check(username, password):
-                    print "Password is correct"
+                    print("Password is correct")
                 else:
-                    print "Password is wrong"
+                    print("Password is wrong")
         except KeyError:
-            print "Username does not exist"
+            print("Username does not exist")
             sys.exit()
 
     elif cmd == "list":
@@ -133,15 +133,15 @@ try:
         db = VerifierDB(dbName)
         db.open()
 
-        print "Verifier Database"
+        print("Verifier Database")
         def numBits(n):
             if n==0:
                 return 0
             return int(math.floor(math.log(n, 2))+1)
         for username in db.keys():
             N, g, s, v = db[username]
-            print numBits(N), username
+            print(numBits(N), username)
     else:
-        print "Bad command: '%s'" % cmd
+        print("Bad command: '%s'" % cmd)
 except:
     raise

@@ -7,7 +7,7 @@
 #   Marcelo Fernandez - Added test for NPN
 #
 # See the LICENSE file for legal information regarding use of this file.
-
+from __future__ import print_function
 import sys
 import os
 import os.path
@@ -89,13 +89,13 @@ def clientTestCmd(argv):
 
     badFault = False
     
-    print "Test 0 - anonymous handshake"
+    print("Test 0 - anonymous handshake")
     connection = connect()
     connection.handshakeClientAnonymous()
     testConnClient(connection)
     connection.close()
         
-    print "Test 1 - good X509 (plus SNI)"
+    print("Test 1 - good X509 (plus SNI)")
     connection = connect()
     connection.handshakeClientCert(serverName=address[0])
     testConnClient(connection)
@@ -103,7 +103,7 @@ def clientTestCmd(argv):
     assert(connection.session.serverName == address[0])
     connection.close()
 
-    print "Test 1.a - good X509, SSLv3"
+    print("Test 1.a - good X509, SSLv3")
     connection = connect()
     settings = HandshakeSettings()
     settings.minVersion = (3,0)
@@ -118,7 +118,7 @@ def clientTestCmd(argv):
         settings = HandshakeSettings()
         settings.useExperimentalTackExtension = True
 
-        print "Test 2.a - good X.509, TACK"
+        print("Test 2.a - good X.509, TACK")
         connection = connect()
         connection.handshakeClientCert(settings=settings)
         assert(connection.session.tackExt.tacks[0].getTackId() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
@@ -126,7 +126,7 @@ def clientTestCmd(argv):
         testConnClient(connection)    
         connection.close()    
 
-        print "Test 2.b - good X.509, TACK unrelated to cert chain"
+        print("Test 2.b - good X.509, TACK unrelated to cert chain")
         connection = connect()
         try:
             connection.handshakeClientCert(settings=settings)
@@ -136,24 +136,24 @@ def clientTestCmd(argv):
                 raise        
         connection.close()
 
-    print "Test 3 - good SRP"
+    print("Test 3 - good SRP")
     connection = connect()
     connection.handshakeClientSRP("test", "password")
     testConnClient(connection)
     connection.close()
 
-    print "Test 4 - SRP faults"
+    print("Test 4 - SRP faults")
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
         connection = connect()
         connection.fault = fault
         try:
             connection.handshakeClientSRP("test", "password")
-            print "  Good Fault %s" % (Fault.faultNames[fault])
+            print("  Good Fault %s" % (Fault.faultNames[fault]))
         except TLSFaultError as e:
-            print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
+            print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
             badFault = True
 
-    print "Test 6 - good SRP: with X.509 certificate, TLSv1.0"
+    print("Test 6 - good SRP: with X.509 certificate, TLSv1.0")
     settings = HandshakeSettings()
     settings.minVersion = (3,1)
     settings.maxVersion = (3,1)    
@@ -163,29 +163,29 @@ def clientTestCmd(argv):
     testConnClient(connection)
     connection.close()
 
-    print "Test 7 - X.509 with SRP faults"
+    print("Test 7 - X.509 with SRP faults")
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
         connection = connect()
         connection.fault = fault
         try:
             connection.handshakeClientSRP("test", "password")
-            print "  Good Fault %s" % (Fault.faultNames[fault])
+            print("  Good Fault %s" % (Fault.faultNames[fault]))
         except TLSFaultError as e:
-            print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
+            print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
             badFault = True
 
-    print "Test 11 - X.509 faults"
+    print("Test 11 - X.509 faults")
     for fault in Fault.clientNoAuthFaults + Fault.genericFaults:
         connection = connect()
         connection.fault = fault
         try:
             connection.handshakeClientCert()
-            print "  Good Fault %s" % (Fault.faultNames[fault])
+            print("  Good Fault %s" % (Fault.faultNames[fault]))
         except TLSFaultError as e:
-            print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
+            print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
             badFault = True
 
-    print "Test 14 - good mutual X509"
+    print("Test 14 - good mutual X509")
     x509Cert = X509().parse(open(os.path.join(dir, "clientX509Cert.pem")).read())
     x509Chain = X509CertChain([x509Cert])
     s = open(os.path.join(dir, "clientX509Key.pem")).read()
@@ -197,7 +197,7 @@ def clientTestCmd(argv):
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
 
-    print "Test 14.a - good mutual X509, SSLv3"
+    print("Test 14.a - good mutual X509, SSLv3")
     connection = connect()
     settings = HandshakeSettings()
     settings.minVersion = (3,0)
@@ -207,32 +207,32 @@ def clientTestCmd(argv):
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
 
-    print "Test 15 - mutual X.509 faults"
+    print("Test 15 - mutual X.509 faults")
     for fault in Fault.clientCertFaults + Fault.genericFaults:
         connection = connect()
         connection.fault = fault
         try:
             connection.handshakeClientCert(x509Chain, x509Key)
-            print "  Good Fault %s" % (Fault.faultNames[fault])
+            print("  Good Fault %s" % (Fault.faultNames[fault]))
         except TLSFaultError as e:
-            print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
+            print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
             badFault = True
 
-    print "Test 18 - good SRP, prepare to resume... (plus SNI)"
+    print("Test 18 - good SRP, prepare to resume... (plus SNI)")
     connection = connect()
     connection.handshakeClientSRP("test", "password", serverName=address[0])
     testConnClient(connection)
     connection.close()
     session = connection.session
 
-    print "Test 19 - resumption (plus SNI)"
+    print("Test 19 - resumption (plus SNI)")
     connection = connect()
     connection.handshakeClientSRP("test", "garbage", serverName=address[0], 
                                     session=session)
     testConnClient(connection)
     #Don't close! -- see below
 
-    print "Test 20 - invalidated resumption (plus SNI)"
+    print("Test 20 - invalidated resumption (plus SNI)")
     connection.sock.close() #Close the socket without a close_notify!
     connection = connect()
     try:
@@ -244,7 +244,7 @@ def clientTestCmd(argv):
             raise
     connection.close()
 
-    print "Test 21 - HTTPS test X.509"
+    print("Test 21 - HTTPS test X.509")
     address = address[0], address[1]+1
     if hasattr(socket, "timeout"):
         timeoutEx = socket.timeout
@@ -270,7 +270,7 @@ def clientTestCmd(argv):
             time.sleep(2)
             break
         except timeoutEx:
-            print "timeout, retrying..."
+            print("timeout, retrying...")
             pass
 
     address = address[0], address[1]+1
@@ -282,11 +282,11 @@ def clientTestCmd(argv):
         implementations.append("pycrypto")
     implementations.append("python")
 
-    print "Test 22 - different ciphers, TLSv1.0"
+    print("Test 22 - different ciphers, TLSv1.0")
     for implementation in implementations:
         for cipher in ["aes128", "aes256", "rc4"]:
 
-            print "Test 22:",
+            print("Test 22:", end=' ')
             connection = connect()
 
             settings = HandshakeSettings()
@@ -296,118 +296,118 @@ def clientTestCmd(argv):
             settings.maxVersion = (3,1)            
             connection.handshakeClientCert(settings=settings)
             testConnClient(connection)
-            print ("%s %s" % (connection.getCipherName(), connection.getCipherImplementation()))
+            print("%s %s" % (connection.getCipherName(), connection.getCipherImplementation()))
             connection.close()
 
-    print "Test 23 - throughput test"
+    print("Test 23 - throughput test")
     for implementation in implementations:
         for cipher in ["aes128", "aes256", "3des", "rc4"]:
             if cipher == "3des" and implementation not in ("openssl", "pycrypto"):
                 continue
 
-            print "Test 23:",
+            print("Test 23:", end=' ')
             connection = connect()
 
             settings = HandshakeSettings()
             settings.cipherNames = [cipher]
             settings.cipherImplementations = [implementation, "python"]
             connection.handshakeClientCert(settings=settings)
-            print ("%s %s:" % (connection.getCipherName(), connection.getCipherImplementation())),
+            print("%s %s:" % (connection.getCipherName(), connection.getCipherImplementation()), end=' ')
 
             startTime = time.clock()
             connection.write("hello"*10000)
             h = connection.read(min=50000, max=50000)
             stopTime = time.clock()
             if stopTime-startTime:
-                print "100K exchanged at rate of %d bytes/sec" % int(100000/(stopTime-startTime))
+                print("100K exchanged at rate of %d bytes/sec" % int(100000/(stopTime-startTime)))
             else:
-                print "100K exchanged very fast"
+                print("100K exchanged very fast")
 
             assert(h == "hello"*10000)
             connection.close()
     
-    print "Test 24.a - Next-Protocol Client Negotiation"
+    print("Test 24.a - Next-Protocol Client Negotiation")
     connection = connect()
     connection.handshakeClientCert(nextProtos=["http/1.1"])
-    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    print("  Next-Protocol Negotiated: %s" % connection.next_proto)
     assert(connection.next_proto == 'http/1.1')
     connection.close()
 
-    print "Test 24.b - Next-Protocol Client Negotiation"
+    print("Test 24.b - Next-Protocol Client Negotiation")
     connection = connect()
     connection.handshakeClientCert(nextProtos=["spdy/2", "http/1.1"])
-    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    print("  Next-Protocol Negotiated: %s" % connection.next_proto)
     assert(connection.next_proto == 'spdy/2')
     connection.close()
     
-    print "Test 24.c - Next-Protocol Client Negotiation"
+    print("Test 24.c - Next-Protocol Client Negotiation")
     connection = connect()
     connection.handshakeClientCert(nextProtos=["spdy/2", "http/1.1"])
-    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    print("  Next-Protocol Negotiated: %s" % connection.next_proto)
     assert(connection.next_proto == 'spdy/2')
     connection.close()
     
-    print "Test 24.d - Next-Protocol Client Negotiation"
+    print("Test 24.d - Next-Protocol Client Negotiation")
     connection = connect()
     connection.handshakeClientCert(nextProtos=["spdy/3", "spdy/2", "http/1.1"])
-    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    print("  Next-Protocol Negotiated: %s" % connection.next_proto)
     assert(connection.next_proto == 'spdy/2')
     connection.close()
     
-    print "Test 24.e - Next-Protocol Client Negotiation"
+    print("Test 24.e - Next-Protocol Client Negotiation")
     connection = connect()
     connection.handshakeClientCert(nextProtos=["spdy/3", "spdy/2", "http/1.1"])
-    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    print("  Next-Protocol Negotiated: %s" % connection.next_proto)
     assert(connection.next_proto == 'spdy/3')
     connection.close()
 
-    print "Test 24.f - Next-Protocol Client Negotiation"
+    print("Test 24.f - Next-Protocol Client Negotiation")
     connection = connect()
     connection.handshakeClientCert(nextProtos=["http/1.1"])
-    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    print("  Next-Protocol Negotiated: %s" % connection.next_proto)
     assert(connection.next_proto == 'http/1.1')
     connection.close()
 
-    print "Test 24.g - Next-Protocol Client Negotiation"
+    print("Test 24.g - Next-Protocol Client Negotiation")
     connection = connect()
     connection.handshakeClientCert(nextProtos=["spdy/2", "http/1.1"])
-    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    print("  Next-Protocol Negotiated: %s" % connection.next_proto)
     assert(connection.next_proto == 'spdy/2')
     connection.close()
     
-    print 'Test 25 - good standard XMLRPC https client'
+    print('Test 25 - good standard XMLRPC https client')
     address = address[0], address[1]+1
     server = xmlrpclib.Server('https://%s:%s' % address)
     assert server.add(1,2) == 3
     assert server.pow(2,4) == 16
 
-    print 'Test 26 - good tlslite XMLRPC client'
+    print('Test 26 - good tlslite XMLRPC client')
     transport = XMLRPCTransport(ignoreAbruptClose=True)
     server = xmlrpclib.Server('https://%s:%s' % address, transport)
     assert server.add(1,2) == 3
     assert server.pow(2,4) == 16
 
-    print 'Test 27 - good XMLRPC ignored protocol'
+    print('Test 27 - good XMLRPC ignored protocol')
     server = xmlrpclib.Server('http://%s:%s' % address, transport)
     assert server.add(1,2) == 3
     assert server.pow(2,4) == 16
         
-    print "Test 28 - Internet servers test"
+    print("Test 28 - Internet servers test")
     try:
         i = IMAP4_TLS("cyrus.andrew.cmu.edu")
         i.login("anonymous", "anonymous@anonymous.net")
         i.logout()
-        print "Test 28: IMAP4 good"
+        print("Test 28: IMAP4 good")
         p = POP3_TLS("pop.gmail.com")
         p.quit()
-        print "Test 29: POP3 good"
+        print("Test 29: POP3 good")
     except socket.error as e:
-        print "Non-critical error: socket error trying to reach internet server: ", e   
+        print("Non-critical error: socket error trying to reach internet server: ", e)   
 
     if not badFault:
-        print "Test succeeded"
+        print("Test succeeded")
     else:
-        print "Test failed"
+        print("Test failed")
 
 
 
@@ -439,13 +439,13 @@ def serverTestCmd(argv):
     def connect():
         return TLSConnection(lsock.accept()[0])
 
-    print "Test 0 - Anonymous server handshake"
+    print("Test 0 - Anonymous server handshake")
     connection = connect()
     connection.handshakeServer(anon=True)
     testConnServer(connection)    
     connection.close() 
     
-    print "Test 1 - good X.509"
+    print("Test 1 - good X.509")
     x509Cert = X509().parse(open(os.path.join(dir, "serverX509Cert.pem")).read())
     x509Chain = X509CertChain([x509Cert])
     s = open(os.path.join(dir, "serverX509Key.pem")).read()
@@ -457,7 +457,7 @@ def serverTestCmd(argv):
     testConnServer(connection)    
     connection.close()
 
-    print "Test 1.a - good X.509, SSL v3"
+    print("Test 1.a - good X.509, SSL v3")
     connection = connect()
     settings = HandshakeSettings()
     settings.minVersion = (3,0)
@@ -473,14 +473,14 @@ def serverTestCmd(argv):
         settings = HandshakeSettings()
         settings.useExperimentalTackExtension = True
 
-        print "Test 2.a - good X.509, TACK"
+        print("Test 2.a - good X.509, TACK")
         connection = connect()
         connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
             tacks=[tack], activationFlags=1, settings=settings)
         testConnServer(connection)    
         connection.close()        
 
-        print "Test 2.b - good X.509, TACK unrelated to cert chain"
+        print("Test 2.b - good X.509, TACK unrelated to cert chain")
         connection = connect()
         try:
             connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
@@ -490,7 +490,7 @@ def serverTestCmd(argv):
             if alert.description != AlertDescription.illegal_parameter:
                 raise        
     
-    print "Test 3 - good SRP"
+    print("Test 3 - good SRP")
     verifierDB = VerifierDB()
     verifierDB.create()
     entry = VerifierDB.makeVerifier("test", "password", 1536)
@@ -501,7 +501,7 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print "Test 4 - SRP faults"
+    print("Test 4 - SRP faults")
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
         connection = connect()
         connection.fault = fault
@@ -512,14 +512,14 @@ def serverTestCmd(argv):
             pass
         connection.close()
 
-    print "Test 6 - good SRP: with X.509 cert"
+    print("Test 6 - good SRP: with X.509 cert")
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB, \
                                certChain=x509Chain, privateKey=x509Key)
     testConnServer(connection)    
     connection.close()
 
-    print "Test 7 - X.509 with SRP faults"
+    print("Test 7 - X.509 with SRP faults")
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
         connection = connect()
         connection.fault = fault
@@ -531,7 +531,7 @@ def serverTestCmd(argv):
             pass
         connection.close()
 
-    print "Test 11 - X.509 faults"
+    print("Test 11 - X.509 faults")
     for fault in Fault.clientNoAuthFaults + Fault.genericFaults:
         connection = connect()
         connection.fault = fault
@@ -542,14 +542,14 @@ def serverTestCmd(argv):
             pass
         connection.close()
 
-    print "Test 14 - good mutual X.509"
+    print("Test 14 - good mutual X.509")
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True)
     testConnServer(connection)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
 
-    print "Test 14a - good mutual X.509, SSLv3"
+    print("Test 14a - good mutual X.509, SSLv3")
     connection = connect()
     settings = HandshakeSettings()
     settings.minVersion = (3,0)
@@ -559,7 +559,7 @@ def serverTestCmd(argv):
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
 
-    print "Test 15 - mutual X.509 faults"
+    print("Test 15 - mutual X.509 faults")
     for fault in Fault.clientCertFaults + Fault.genericFaults:
         connection = connect()
         connection.fault = fault
@@ -570,7 +570,7 @@ def serverTestCmd(argv):
             pass
         connection.close()
 
-    print "Test 18 - good SRP, prepare to resume"
+    print("Test 18 - good SRP, prepare to resume")
     sessionCache = SessionCache()
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB, sessionCache=sessionCache)
@@ -578,14 +578,14 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print "Test 19 - resumption"
+    print("Test 19 - resumption")
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB, sessionCache=sessionCache)
     assert(connection.session.serverName == address[0])
     testConnServer(connection)    
     #Don't close! -- see next test
 
-    print "Test 20 - invalidated resumption"
+    print("Test 20 - invalidated resumption")
     try:
         connection.read(min=1, max=1)
         assert() #Client is going to close the socket without a close_notify
@@ -599,7 +599,7 @@ def serverTestCmd(argv):
             raise
     connection.close()
 
-    print "Test 21 - HTTPS test X.509"
+    print("Test 21 - HTTPS test X.509")
 
     #Close the current listening socket
     lsock.close()
@@ -632,11 +632,11 @@ def serverTestCmd(argv):
         implementations.append("pycrypto")
     implementations.append("python")
 
-    print "Test 22 - different ciphers"
+    print("Test 22 - different ciphers")
     for implementation in ["python"] * len(implementations):
         for cipher in ["aes128", "aes256", "rc4"]:
 
-            print "Test 22:",
+            print("Test 22:", end=' ')
             connection = connect()
 
             settings = HandshakeSettings()
@@ -645,17 +645,17 @@ def serverTestCmd(argv):
 
             connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
                                         settings=settings)
-            print connection.getCipherName(), connection.getCipherImplementation()
+            print(connection.getCipherName(), connection.getCipherImplementation())
             testConnServer(connection)
             connection.close()
 
-    print "Test 23 - throughput test"
+    print("Test 23 - throughput test")
     for implementation in implementations:
         for cipher in ["aes128", "aes256", "3des", "rc4"]:
             if cipher == "3des" and implementation not in ("openssl", "pycrypto"):
                 continue
 
-            print "Test 23:",
+            print("Test 23:", end=' ')
             connection = connect()
 
             settings = HandshakeSettings()
@@ -664,13 +664,13 @@ def serverTestCmd(argv):
 
             connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
                                         settings=settings)
-            print connection.getCipherName(), connection.getCipherImplementation()
+            print(connection.getCipherName(), connection.getCipherImplementation())
             h = connection.read(min=50000, max=50000)
             assert(h == "hello"*10000)
             connection.write(h)
             connection.close()
 
-    print "Test 24.a - Next-Protocol Server Negotiation"
+    print("Test 24.a - Next-Protocol Server Negotiation")
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
@@ -678,7 +678,7 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print "Test 24.b - Next-Protocol Server Negotiation"
+    print("Test 24.b - Next-Protocol Server Negotiation")
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
@@ -686,7 +686,7 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
     
-    print "Test 24.c - Next-Protocol Server Negotiation"
+    print("Test 24.c - Next-Protocol Server Negotiation")
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
@@ -694,7 +694,7 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print "Test 24.d - Next-Protocol Server Negotiation"
+    print("Test 24.d - Next-Protocol Server Negotiation")
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
@@ -702,7 +702,7 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
     
-    print "Test 24.e - Next-Protocol Server Negotiation"
+    print("Test 24.e - Next-Protocol Server Negotiation")
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
@@ -710,7 +710,7 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
     
-    print "Test 24.f - Next-Protocol Server Negotiation"
+    print("Test 24.f - Next-Protocol Server Negotiation")
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
@@ -718,7 +718,7 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
     
-    print "Test 24.g - Next-Protocol Server Negotiation"
+    print("Test 24.g - Next-Protocol Server Negotiation")
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
@@ -726,7 +726,7 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print "Tests 25-27 - XMLRPXC server"
+    print("Tests 25-27 - XMLRPXC server")
     address = address[0], address[1]+1
     class Server(TLSXMLRPCServer):
 
@@ -738,7 +738,7 @@ def serverTestCmd(argv):
               tlsConnection.ignoreAbruptClose = True
               return True
           except TLSError as error:
-              print "Handshake failure:", str(error)
+              print("Handshake failure:", str(error))
               return False
 
     class MyFuncs:
@@ -752,7 +752,7 @@ def serverTestCmd(argv):
     for i in range(6):
         server.handle_request()
 
-    print "Test succeeded"
+    print("Test succeeded")
 
 
 if __name__ == '__main__':
