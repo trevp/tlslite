@@ -470,7 +470,6 @@ def serverTestCmd(argv):
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
                                settings=settings, nextProtos=["http/1.1"])
-    print "Next-Protocol Negotiated: %s" % connection.next_proto
     testConnServer(connection)
     connection.close()
 
@@ -479,7 +478,6 @@ def serverTestCmd(argv):
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
                                settings=settings, nextProtos=["spdy/2", "http/1.1"])
-    print "Next-Protocol Negotiated: %s" % connection.next_proto
     testConnServer(connection)
     connection.close()
     
@@ -488,7 +486,6 @@ def serverTestCmd(argv):
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
                                settings=settings, nextProtos=["http/1.1", "spdy/2"])
-    print "Next-Protocol Negotiated: %s" % connection.next_proto
     testConnServer(connection)
     connection.close()
 
@@ -497,7 +494,6 @@ def serverTestCmd(argv):
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
                                settings=settings, nextProtos=["spdy/2", "http/1.1"])
-    print "Next-Protocol Negotiated: %s" % connection.next_proto
     testConnServer(connection)
     connection.close()
     
@@ -506,7 +502,6 @@ def serverTestCmd(argv):
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
                                settings=settings, nextProtos=["http/1.1", "spdy/2", "spdy/3"])
-    print "Next-Protocol Negotiated: %s" % connection.next_proto
     testConnServer(connection)
     connection.close()
     
@@ -515,7 +510,6 @@ def serverTestCmd(argv):
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
                                settings=settings, nextProtos=["spdy/3", "spdy/2"])
-    print "Next-Protocol Negotiated: %s" % connection.next_proto
     testConnServer(connection)
     connection.close()
     
@@ -524,7 +518,6 @@ def serverTestCmd(argv):
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
                                settings=settings, nextProtos=[])
-    print "Next-Protocol Negotiated: %s" % connection.next_proto
     testConnServer(connection)
     connection.close()
     
