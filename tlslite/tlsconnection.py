@@ -258,6 +258,10 @@ class TLSConnection(TLSRecordLayer):
         invoked to examine the other party's authentication
         credentials, if the handshake completes succesfully.
         
+        @type nextProtos: list of strings.
+        @param nextProtos: A list of upper layer protocols ordered by
+        preference, to use in the Next-Protocol Negotiation Extension.
+        
         @type reqTack: bool
         @param reqTack: Whether or not to send a "tack" TLS Extension, 
         requesting the server return a TackExtension if it has one.        
@@ -1006,6 +1010,11 @@ class TLSConnection(TLSRecordLayer):
         @param reqCAs: A collection of DER-encoded DistinguishedNames that
         will be sent along with a certificate request. This does not affect
         verification.        
+
+        @type nextProtos: list of strings.
+        @param nextProtos: A list of upper layer protocols to expose to the
+        clients through the Next-Protocol Negotiation Extension, 
+        if they support it.
 
         @raise socket.error: If a socket error occurs.
         @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
