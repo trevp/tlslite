@@ -80,7 +80,14 @@ def clientTestCmd(argv):
 
     #Split address into hostname/port tuple
     address = address.split(":")
+    # address: byte string, integer
+    # host: character string
     address = ( address[0], int(address[1]) )
+    host = address[0]
+
+    if sys.version_info >= (3,):
+        # command line arguments are Unicode strings in 3.x
+        address = address[0].encode('utf-8'), address[1]
 
     def connect():
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -265,12 +272,12 @@ def clientTestCmd(argv):
     while 1:
         try:
             time.sleep(2)
-            htmlBody = open(os.path.join(dir, "index.html")).read()
+            htmlBody = open(os.path.join(dir, "index.html"), 'rb').read()
             fingerprint = None
             for y in range(2):
                 checker =Checker(x509Fingerprint=fingerprint)
                 h = HTTPTLSConnection(\
-                        address[0], address[1], checker=checker)
+                        host, address[1], checker=checker)
                 for x in range(3):
                     h.request("GET", "/index.html")
                     r = h.getresponse()
@@ -340,18 +347,18 @@ def clientTestCmd(argv):
             
     print('Test 24 - good standard XMLRPC https client')
     address = address[0], address[1]+1
-    server = xmlrpclib.Server('https://%s:%s' % address)
+    server = xmlrpclib.Server('https://%s:%s' % (host, address[1]))
     assert server.add(1,2) == 3
     assert server.pow(2,4) == 16
 
     print('Test 25 - good tlslite XMLRPC client')
     transport = XMLRPCTransport(ignoreAbruptClose=True)
-    server = xmlrpclib.Server('https://%s:%s' % address, transport)
+    server = xmlrpclib.Server('https://%s:%s' % (host, address[1]), transport)
     assert server.add(1,2) == 3
     assert server.pow(2,4) == 16
 
     print('Test 26 - good XMLRPC ignored protocol')
-    server = xmlrpclib.Server('http://%s:%s' % address, transport)
+    server = xmlrpclib.Server('http://%s:%s' % (host, address[1]), transport)
     assert server.add(1,2) == 3
     assert server.pow(2,4) == 16
 
@@ -393,6 +400,9 @@ def serverTestCmd(argv):
     #Split address into hostname/port tuple
     address = address.split(":")
     address = ( address[0], int(address[1]) )
+    host = address[0]
+    if sys.version_info >= (3,):
+        address = address[0].encode('ascii'), address[1]
 
     #Connect to server
     lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
