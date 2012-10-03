@@ -112,11 +112,53 @@ def clientTestCmd(argv):
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()    
 
-    print "Test 1.b - Next-Protocol Client Negotiation"
+    print "Test 1.b.1 - Next-Protocol Client Negotiation. Test 1"
     connection = connect()
     connection.handshakeClientCert(nextProtos=["http/1.1"])
     print "  Next-Protocol Negotiated: %s" % connection.next_proto
     assert(connection.next_proto == 'http/1.1')
+    connection.close()
+
+    print "Test 1.b.2 - Next-Protocol Client Negotiation. Test 2"
+    connection = connect()
+    connection.handshakeClientCert(nextProtos=["spdy/2", "http/1.1"])
+    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    assert(connection.next_proto == 'spdy/2')
+    connection.close()
+    
+    print "Test 1.b.3 - Next-Protocol Client Negotiation. Test 3"
+    connection = connect()
+    connection.handshakeClientCert(nextProtos=["spdy/2", "http/1.1"])
+    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    assert(connection.next_proto == 'spdy/2')
+    connection.close()
+    
+    print "Test 1.b.4 - Next-Protocol Client Negotiation. Test 4"
+    connection = connect()
+    connection.handshakeClientCert(nextProtos=["spdy/3", "spdy/2", "http/1.1"])
+    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    assert(connection.next_proto == 'spdy/2')
+    connection.close()
+    
+    print "Test 1.b.5 - Next-Protocol Client Negotiation. Test 5"
+    connection = connect()
+    connection.handshakeClientCert(nextProtos=["spdy/3", "spdy/2", "http/1.1"])
+    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    assert(connection.next_proto == 'spdy/3')
+    connection.close()
+
+    print "Test 1.b.6 - Next-Protocol Client Negotiation. Test 6"
+    connection = connect()
+    connection.handshakeClientCert(nextProtos=["http/1.1"])
+    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    assert(connection.next_proto == 'http/1.1')
+    connection.close()
+
+    print "Test 1.b.7 - Next-Protocol Client Negotiation. Test 7"
+    connection = connect()
+    connection.handshakeClientCert(nextProtos=["spdy/2", "http/1.1"])
+    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    assert(connection.next_proto == 'spdy/2')
     connection.close()
 
     if tackpyLoaded:
@@ -423,14 +465,68 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()        
     
-    print "Test 1.b - Next-Protocol Server Negotiation"
+    print "Test 1.b.1 - Next-Protocol Server Negotiation. Test 1"
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
                                settings=settings, nextProtos=["http/1.1"])
-    print "  Next-Protocol Negotiated: %s" % connection.next_proto
+    print "Next-Protocol Negotiated: %s" % connection.next_proto
     testConnServer(connection)
-    connection.close()        
+    connection.close()
+
+    print "Test 1.b.2 - Next-Protocol Server Negotiation. Test 2"
+    connection = connect()
+    settings = HandshakeSettings()
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+                               settings=settings, nextProtos=["spdy/2", "http/1.1"])
+    print "Next-Protocol Negotiated: %s" % connection.next_proto
+    testConnServer(connection)
+    connection.close()
+    
+    print "Test 1.b.3 - Next-Protocol Server Negotiation. Test 3"
+    connection = connect()
+    settings = HandshakeSettings()
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+                               settings=settings, nextProtos=["http/1.1", "spdy/2"])
+    print "Next-Protocol Negotiated: %s" % connection.next_proto
+    testConnServer(connection)
+    connection.close()
+
+    print "Test 1.b.4 - Next-Protocol Server Negotiation. Test 4"
+    connection = connect()
+    settings = HandshakeSettings()
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+                               settings=settings, nextProtos=["spdy/2", "http/1.1"])
+    print "Next-Protocol Negotiated: %s" % connection.next_proto
+    testConnServer(connection)
+    connection.close()
+    
+    print "Test 1.b.5 - Next-Protocol Server Negotiation. Test 5"
+    connection = connect()
+    settings = HandshakeSettings()
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+                               settings=settings, nextProtos=["http/1.1", "spdy/2", "spdy/3"])
+    print "Next-Protocol Negotiated: %s" % connection.next_proto
+    testConnServer(connection)
+    connection.close()
+    
+    print "Test 1.b.6 - Next-Protocol Server Negotiation. Test 6"
+    connection = connect()
+    settings = HandshakeSettings()
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+                               settings=settings, nextProtos=["spdy/3", "spdy/2"])
+    print "Next-Protocol Negotiated: %s" % connection.next_proto
+    testConnServer(connection)
+    connection.close()
+    
+    print "Test 1.b.7 - Next-Protocol Server Negotiation. Test 7"
+    connection = connect()
+    settings = HandshakeSettings()
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+                               settings=settings, nextProtos=[])
+    print "Next-Protocol Negotiated: %s" % connection.next_proto
+    testConnServer(connection)
+    connection.close()
     
     if tackpyLoaded:
         tack = Tack.createFromPem(open("./TACK1.pem", "rU").read())

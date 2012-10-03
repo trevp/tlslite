@@ -410,12 +410,17 @@ class TLSConnection(TLSRecordLayer):
         serverHello = result
         cipherSuite = serverHello.cipher_suite
         
+        # Choose a matching Next Protocol from server list against ours
         nextProto = None
-        if serverHello.next_protos is not None:
+        if serverHello.next_protos is not None: # NPN is taking place
             for p in nextProtos:
                 if p in serverHello.next_protos:
                     nextProto = p
+                    break
             else:
+                # If the client doesn't support any of server's protocols,
+                # or the server doesn't advertise any (next_protos == [])
+                # it SHOULD select the first protocol that it supports.
                 nextProto = nextProtos[0]
 
         #If the server elected to resume the session, it is handled here.
