@@ -3,7 +3,11 @@
 
 """Base class for SharedKeyDB and VerifierDB."""
 
-import anydbm
+try:
+    import anydbm
+except ImportError:
+    # Python 3
+    import dbm as anydbm
 import threading
 
 class BaseDB:

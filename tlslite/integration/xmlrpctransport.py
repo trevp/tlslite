@@ -7,8 +7,13 @@
 
 """TLS Lite + xmlrpclib."""
 
-import xmlrpclib
-import httplib
+try:
+    import xmlrpclib
+    import httplib
+except ImportError:
+    # Python 3
+    from xmlrpc import client as xmlrpclib
+    from http import client as httplib
 from tlslite.integration.httptlsconnection import HTTPTLSConnection
 from tlslite.integration.clienthelper import ClientHelper
 import tlslite.errors
