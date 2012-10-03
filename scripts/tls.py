@@ -208,13 +208,13 @@ def clientCmd(argv):
                 settings=settings, serverName=address[0])
         stop = time.clock()        
         print "Handshake success"        
-    except TLSLocalAlert, a:
+    except TLSLocalAlert as a:
         if a.description == AlertDescription.user_canceled:
             print str(a)
         else:
             raise
         sys.exit(-1)
-    except TLSRemoteAlert, a:
+    except TLSRemoteAlert as a:
         if a.description == AlertDescription.unknown_psk_identity:
             if username:
                 print "Unknown username"

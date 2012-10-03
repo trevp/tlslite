@@ -131,7 +131,7 @@ def clientTestCmd(argv):
         try:
             connection.handshakeClientCert(settings=settings)
             assert(False)
-        except TLSLocalAlert, alert:
+        except TLSLocalAlert as alert:
             if alert.description != AlertDescription.illegal_parameter:
                 raise        
         connection.close()
@@ -149,7 +149,7 @@ def clientTestCmd(argv):
         try:
             connection.handshakeClientSRP("test", "password")
             print "  Good Fault %s" % (Fault.faultNames[fault])
-        except TLSFaultError, e:
+        except TLSFaultError as e:
             print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
             badFault = True
 
@@ -170,7 +170,7 @@ def clientTestCmd(argv):
         try:
             connection.handshakeClientSRP("test", "password")
             print "  Good Fault %s" % (Fault.faultNames[fault])
-        except TLSFaultError, e:
+        except TLSFaultError as e:
             print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
             badFault = True
 
@@ -181,7 +181,7 @@ def clientTestCmd(argv):
         try:
             connection.handshakeClientCert()
             print "  Good Fault %s" % (Fault.faultNames[fault])
-        except TLSFaultError, e:
+        except TLSFaultError as e:
             print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
             badFault = True
 
@@ -214,7 +214,7 @@ def clientTestCmd(argv):
         try:
             connection.handshakeClientCert(x509Chain, x509Key)
             print "  Good Fault %s" % (Fault.faultNames[fault])
-        except TLSFaultError, e:
+        except TLSFaultError as e:
             print "  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e))
             badFault = True
 
@@ -239,7 +239,7 @@ def clientTestCmd(argv):
         connection.handshakeClientSRP("test", "garbage", 
                         serverName=address[0], session=session)
         assert(False)
-    except TLSRemoteAlert, alert:
+    except TLSRemoteAlert as alert:
         if alert.description != AlertDescription.bad_record_mac:
             raise
     connection.close()
@@ -401,7 +401,7 @@ def clientTestCmd(argv):
         p = POP3_TLS("pop.gmail.com")
         p.quit()
         print "Test 29: POP3 good"
-    except socket.error, e:
+    except socket.error as e:
         print "Non-critical error: socket error trying to reach internet server: ", e   
 
     if not badFault:
@@ -486,7 +486,7 @@ def serverTestCmd(argv):
             connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
                 tacks=[tackUnrelated], settings=settings)
             assert(False)
-        except TLSRemoteAlert, alert:
+        except TLSRemoteAlert as alert:
             if alert.description != AlertDescription.illegal_parameter:
                 raise        
     
@@ -589,12 +589,12 @@ def serverTestCmd(argv):
     try:
         connection.read(min=1, max=1)
         assert() #Client is going to close the socket without a close_notify
-    except TLSAbruptCloseError, e:
+    except TLSAbruptCloseError as e:
         pass
     connection = connect()
     try:
         connection.handshakeServer(verifierDB=verifierDB, sessionCache=sessionCache)
-    except TLSLocalAlert, alert:
+    except TLSLocalAlert as alert:
         if alert.description != AlertDescription.bad_record_mac:
             raise
     connection.close()
@@ -737,7 +737,7 @@ def serverTestCmd(argv):
                                             sessionCache=sessionCache)
               tlsConnection.ignoreAbruptClose = True
               return True
-          except TLSError, error:
+          except TLSError as error:
               print "Handshake failure:", str(error)
               return False
 
