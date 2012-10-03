@@ -298,6 +298,9 @@ class TLSRecordLayer:
             for result in self._decrefAsync():
                 pass
 
+    # Python 3 callback
+    _decref_socketios = close
+
     def closeAsync(self):
         """Start a close operation on the TLS connection.
 
@@ -416,6 +419,14 @@ class TLSRecordLayer:
         """
         return self.read(bufsize)
 
+    def recv_into(self, b):
+        # XXX doc string
+        data = self.read(len(b))
+        if not data:
+            return None
+        b[:len(data)] = data
+        return len(data)
+
     def makefile(self, mode='r', bufsize=-1):
         """Create a file object for the TLS connection (socket emulation).
 
@@ -432,7 +443,11 @@ class TLSRecordLayer:
         # If this is the last close() on the outstanding fileobjects / 
         # TLSConnection, then the "actual" close alerts will be sent,
         # socket closed, etc.
-        return socket._fileobject(self, mode, bufsize, close=True)
+        if sys.version_info < (3,):
+            return socket._fileobject(self, mode, bufsize, close=True)
+        else:
+            # XXX need to wrap this further if buffering is requested
+            return socket.SocketIO(self, mode)
 
     def getsockname(self):
         """Return the socket's own address (socket emulation)."""
