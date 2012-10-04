@@ -5,18 +5,23 @@
 #   Marcelo Fernandez - bugfix and NPN support
 #
 # See the LICENSE file for legal information regarding use of this file.
-
+from __future__ import print_function
 import sys
 import os
 import os.path
 import socket
-import thread
 import time
 import getopt
-import httplib
-from SocketServer import *
-from BaseHTTPServer import *
-from SimpleHTTPServer import *
+try:
+    import httplib
+    from SocketServer import *
+    from BaseHTTPServer import *
+    from SimpleHTTPServer import *
+except ImportError:
+    # Python 3.x
+    from http import client as httplib
+    from socketserver import *
+    from http.server import *
 
 if __name__ != "__main__":
     raise "This must be run as a command, not used as a module!"
@@ -34,31 +39,31 @@ def printUsage(s=None):
     if s:
         print("ERROR: %s" % s)
 
-    print ""
-    print "Version: %s" % __version__
-    print ""
-    print "RNG: %s" % prngName
-    print ""
-    print "Modules:"
+    print("")
+    print("Version: %s" % __version__)
+    print("")
+    print("RNG: %s" % prngName)
+    print("")
+    print("Modules:")
     if tackpyLoaded:
-        print "  tackpy      : Loaded"
+        print("  tackpy      : Loaded")
     else:
-        print "  tackpy      : Not Loaded"            
+        print("  tackpy      : Not Loaded")            
     if m2cryptoLoaded:
-        print "  M2Crypto    : Loaded"
+        print("  M2Crypto    : Loaded")
     else:
-        print "  M2Crypto    : Not Loaded"
+        print("  M2Crypto    : Not Loaded")
     if pycryptoLoaded:
-        print "  pycrypto    : Loaded"
+        print("  pycrypto    : Loaded")
     else:
-        print "  pycrypto    : Not Loaded"
+        print("  pycrypto    : Not Loaded")
     if gmpyLoaded:
-        print "  GMPY        : Loaded"
+        print("  GMPY        : Loaded")
     else:
-        print "  GMPY        : Not Loaded"
+        print("  GMPY        : Not Loaded")
     
-    print ""
-    print """Commands:
+    print("")
+    print("""Commands:
 
   server  
     [-k KEY] [-c CERT] [-t TACK] [-v VERIFIERDB] [-d DIR]
@@ -67,7 +72,7 @@ def printUsage(s=None):
   client
     [-k KEY] [-c CERT] [-u USER] [-p PASS]
     HOST:PORT
-"""
+""")
     sys.exit(-1)
 
 def printError(s):
@@ -154,8 +159,8 @@ def handleArgs(argv, argString, flagsList=[]):
 
 
 def printGoodConnection(connection, seconds):
-    print "  Handshake time: %.3f seconds" % seconds
-    print "  Version: %s" % connection.getVersionName()
+    print("  Handshake time: %.3f seconds" % seconds)
+    print("  Version: %s" % connection.getVersionName())
     print("  Cipher: %s %s" % (connection.getCipherName(), 
         connection.getCipherImplementation()))
     if connection.session.srpUsername:
@@ -175,7 +180,7 @@ def printGoodConnection(connection, seconds):
             emptyStr = "\n  (via TACK Certificate)" 
         print("  TACK: %s" % emptyStr)
         print(str(connection.session.tackExt))
-    print "  Next-Protocol Negotiated: %s" % connection.next_proto 
+    print("  Next-Protocol Negotiated: %s" % connection.next_proto) 
     
 
 def clientCmd(argv):
@@ -207,26 +212,26 @@ def clientCmd(argv):
             connection.handshakeClientCert(certChain, privateKey,
                 settings=settings, serverName=address[0])
         stop = time.clock()        
-        print "Handshake success"        
-    except TLSLocalAlert, a:
+        print("Handshake success")        
+    except TLSLocalAlert as a:
         if a.description == AlertDescription.user_canceled:
-            print str(a)
+            print(str(a))
         else:
             raise
         sys.exit(-1)
-    except TLSRemoteAlert, a:
+    except TLSRemoteAlert as a:
         if a.description == AlertDescription.unknown_psk_identity:
             if username:
-                print "Unknown username"
+                print("Unknown username")
             else:
                 raise
         elif a.description == AlertDescription.bad_record_mac:
             if username:
-                print "Bad username or password"
+                print("Bad username or password")
             else:
                 raise
         elif a.description == AlertDescription.handshake_failure:
-            print "Unable to negotiate mutually acceptable parameters"
+            print("Unable to negotiate mutually acceptable parameters")
         else:
             raise
         sys.exit(-1)
@@ -262,7 +267,7 @@ def serverCmd(argv):
 
     class MyHTTPServer(ThreadingMixIn, TLSSocketServerMixIn, HTTPServer):
         def handshake(self, connection):
-            print "About to handshake..."
+            print("About to handshake...")
             activationFlags = 0
             if tacks:
                 if len(tacks) == 1:
@@ -281,31 +286,31 @@ def serverCmd(argv):
                                               activationFlags=activationFlags,
                                               sessionCache=sessionCache,
                                               settings=settings,
-                                              nextProtos=["http/1.1"])
+                                              nextProtos=[b"http/1.1"])
                                               # As an example (does not work here):
-                                              #nextProtos=["spdy/3", "spdy/2", "http/1.1"])
+                                              #nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
                 stop = time.clock()
             except TLSRemoteAlert as a:
                 if a.description == AlertDescription.user_canceled:
-                    print str(a)
+                    print(str(a))
                     return False
                 else:
                     raise
             except TLSLocalAlert as a:
                 if a.description == AlertDescription.unknown_psk_identity:
                     if username:
-                        print "Unknown username"
+                        print("Unknown username")
                         return False
                     else:
                         raise
                 elif a.description == AlertDescription.bad_record_mac:
                     if username:
-                        print "Bad username or password"
+                        print("Bad username or password")
                         return False
                     else:
                         raise
                 elif a.description == AlertDescription.handshake_failure:
-                    print "Unable to negotiate mutually acceptable parameters"
+                    print("Unable to negotiate mutually acceptable parameters")
                     return False
                 else:
                     raise
