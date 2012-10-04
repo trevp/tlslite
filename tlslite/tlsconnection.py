@@ -845,7 +845,7 @@ class TLSConnection(TLSRecordLayer):
                                          premasterSecret,
                                          clientRandom,
                                          serverRandom)
-                verifyBytes = self._calcSSLHandshakeHash(masterSecret, "")
+                verifyBytes = self._calcSSLHandshakeHash(masterSecret, b"")
             elif self.version in ((3,1), (3,2)):
                 verifyBytes = stringToBytes(\
                     self._handshake_md5.digest() + \
@@ -1496,7 +1496,7 @@ class TLSConnection(TLSRecordLayer):
             if self.version == (3,0):
                 masterSecret = calcMasterSecret(self.version, premasterSecret,
                                          clientHello.random, serverHello.random)
-                verifyBytes = self._calcSSLHandshakeHash(masterSecret, "")
+                verifyBytes = self._calcSSLHandshakeHash(masterSecret, b"")
             elif self.version in ((3,1), (3,2)):
                 verifyBytes = stringToBytes(self._handshake_md5.digest() +\
                                             self._handshake_sha.digest())
@@ -1673,18 +1673,18 @@ class TLSConnection(TLSRecordLayer):
     def _calcFinished(self, masterSecret, send=True):
         if self.version == (3,0):
             if (self._client and send) or (not self._client and not send):
-                senderStr = "\x43\x4C\x4E\x54"
+                senderStr = b"\x43\x4C\x4E\x54"
             else:
-                senderStr = "\x53\x52\x56\x52"
+                senderStr = b"\x53\x52\x56\x52"
 
             verifyData = self._calcSSLHandshakeHash(masterSecret, senderStr)
             return verifyData
 
         elif self.version in ((3,1), (3,2)):
             if (self._client and send) or (not self._client and not send):
-                label = "client finished"
+                label = b"client finished"
             else:
-                label = "server finished"
+                label = b"server finished"
 
             handshakeHashes = stringToBytes(self._handshake_md5.digest() + \
                                             self._handshake_sha.digest())
@@ -1710,7 +1710,7 @@ class TLSConnection(TLSRecordLayer):
                         raise
             except GeneratorExit:
                 raise
-            except TLSAlert, alert:
+            except TLSAlert as alert:
                 if not self.fault:
                     raise
                 if alert.description not in Fault.faultAlerts[self.fault]:

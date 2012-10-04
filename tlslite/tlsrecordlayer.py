@@ -109,7 +109,7 @@ class TLSRecordLayer:
 
         #Buffers for processing messages
         self._handshakeBuffer = []
-        self._readBuffer = ""
+        self._readBuffer = b""
 
         #Handshake digests
         self._handshake_md5 = md5()
@@ -198,7 +198,7 @@ class TLSRecordLayer:
                             yield result
                     applicationData = result
                     self._readBuffer += bytesToString(applicationData.write())
-                except TLSRemoteAlert, alert:
+                except TLSRemoteAlert as alert:
                     if alert.description != AlertDescription.close_notify:
                         raise
                 except TLSAbruptCloseError:
@@ -297,6 +297,9 @@ class TLSRecordLayer:
         if not self.closed:
             for result in self._decrefAsync():
                 pass
+
+    # Python 3 callback
+    _decref_socketios = close
 
     def closeAsync(self):
         """Start a close operation on the TLS connection.
@@ -416,6 +419,14 @@ class TLSRecordLayer:
         """
         return self.read(bufsize)
 
+    def recv_into(self, b):
+        # XXX doc string
+        data = self.read(len(b))
+        if not data:
+            return None
+        b[:len(data)] = data
+        return len(data)
+
     def makefile(self, mode='r', bufsize=-1):
         """Create a file object for the TLS connection (socket emulation).
 
@@ -432,7 +443,11 @@ class TLSRecordLayer:
         # If this is the last close() on the outstanding fileobjects / 
         # TLSConnection, then the "actual" close alerts will be sent,
         # socket closed, etc.
-        return socket._fileobject(self, mode, bufsize, close=True)
+        if sys.version_info < (3,):
+            return socket._fileobject(self, mode, bufsize, close=True)
+        else:
+            # XXX need to wrap this further if buffering is requested
+            return socket.SocketIO(self, mode)
 
     def getsockname(self):
         """Return the socket's own address (socket emulation)."""
@@ -458,7 +473,7 @@ class TLSRecordLayer:
 
     def shutdown(self, how):
         """Shutdown the underlying socket."""
-    	return self.sock.shutdown(how)
+        return self.sock.shutdown(how)
     	
     def fileno(self):
         """Not implement in TLS Lite."""
@@ -588,8 +603,8 @@ class TLSRecordLayer:
         while 1:
             try:
                 bytesSent = self.sock.send(s) #Might raise socket.error
-            except socket.error, why:
-                if why[0] == errno.EWOULDBLOCK:
+            except socket.error as why:
+                if why.args[0] == errno.EWOULDBLOCK:
                     yield 1
                     continue
                 else:
@@ -783,7 +798,7 @@ class TLSRecordLayer:
                     raise AssertionError()
 
         #If an exception was raised by a Parser or Message instance:
-        except SyntaxError, e:
+        except SyntaxError as e:
             for result in self._sendError(AlertDescription.decode_error,
                                          formatExceptionTrace(e)):
                 yield result
@@ -807,8 +822,8 @@ class TLSRecordLayer:
         while 1:
             try:
                 s = self.sock.recv(recordHeaderLength-len(bytes))
-            except socket.error, why:
-                if why[0] == errno.EWOULDBLOCK:
+            except socket.error as why:
+                if why.args[0] == errno.EWOULDBLOCK:
                     yield 0
                     continue
                 else:
@@ -847,8 +862,8 @@ class TLSRecordLayer:
         while 1:
             try:
                 s = self.sock.recv(r.length - len(bytes))
-            except socket.error, why:
-                if why[0] == errno.EWOULDBLOCK:
+            except socket.error as why:
+                if why.args[0] == errno.EWOULDBLOCK:
                     yield 0
                     continue
                 else:
@@ -1066,7 +1081,7 @@ class TLSRecordLayer:
                                outputLength)
         elif self.version in ((3,1), (3,2)):
             keyBlock = PRF(masterSecret,
-                           "key expansion",
+                           b"key expansion",
                            serverRandom + clientRandom,
                            outputLength)
         else:
@@ -1119,12 +1134,12 @@ class TLSRecordLayer:
         imac_md5 = self._handshake_md5.copy()
         imac_sha = self._handshake_sha.copy()
 
-        imac_md5.update(label + masterSecretStr + '\x36'*48)
-        imac_sha.update(label + masterSecretStr + '\x36'*40)
+        imac_md5.update(label + masterSecretStr + b'\x36'*48)
+        imac_sha.update(label + masterSecretStr + b'\x36'*40)
 
-        md5Str = md5(masterSecretStr + ('\x5c'*48) + \
+        md5Str = md5(masterSecretStr + (b'\x5c'*48) + \
                          imac_md5.digest()).digest()
-        shaStr = sha1(masterSecretStr + ('\x5c'*40) + \
+        shaStr = sha1(masterSecretStr + (b'\x5c'*40) + \
                          imac_sha.digest()).digest()
 
         return stringToBytes(md5Str + shaStr)

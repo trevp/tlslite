@@ -4,7 +4,7 @@
 """cryptomath module
 
 This module has basic math/crypto code."""
-
+from __future__ import print_function
 import os
 import math
 import base64
@@ -111,13 +111,13 @@ def numberToString(s, howManyBytes=None):
 def base64ToString(s):
     try:
         return base64.decodestring(s)
-    except binascii.Error, e:
+    except binascii.Error as e:
         raise SyntaxError(e)
-    except binascii.Incomplete, e:
+    except binascii.Incomplete as e:
         raise SyntaxError(e)
 
 def stringToBase64(s):
-    return base64.encodestring(s).replace("\n", "")
+    return base64.encodestring(s).replace(b"\n", b"")
 
 def mpiToNumber(mpi): #mpi is an openssl-format bignum string
     if (ord(mpi[4]) & 0x80) !=0: #Make sure this is a positive number
@@ -233,7 +233,7 @@ def isPrime(n, iterations=5, display=False):
     #Passed trial division, proceed to Rabin-Miller
     #Rabin-Miller implemented per Ferguson & Schneier
     #Compute s, t for Rabin-Miller
-    if display: print "*",
+    if display: print("*", end=' ')
     s, t = n-1, 0
     while s % 2 == 0:
         s, t = s//2, t+1
@@ -265,7 +265,7 @@ def getRandomPrime(bits, display=False):
     p = getRandomNumber(low, high)
     p += 29 - (p % 30)
     while 1:
-        if display: print ".",
+        if display: print(".", end=' ')
         p += 30
         if p >= high:
             p = getRandomNumber(low, high)
@@ -287,7 +287,7 @@ def getRandomSafePrime(bits, display=False):
     q = getRandomNumber(low, high)
     q += 29 - (q % 30)
     while 1:
-        if display: print ".",
+        if display: print(".", end=' ')
         q += 30
         if (q >= high):
             q = getRandomNumber(low, high)

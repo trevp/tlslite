@@ -8,7 +8,11 @@
 """TLS Lite + httplib."""
 
 import socket
-import httplib
+try:
+    import httplib
+except ImportError:
+    # Python 3
+    from http import client as httplib
 from tlslite.tlsconnection import TLSConnection
 from tlslite.integration.clienthelper import ClientHelper
 
