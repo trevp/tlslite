@@ -36,21 +36,6 @@ If any strings are of the wrong length a ValueError is thrown
 import copy
 import string
 
-
-
-#-----------------------
-#TREV - ADDED BECAUSE THERE'S WARNINGS ABOUT INT OVERFLOW BEHAVIOR CHANGING IN
-#2.4.....
-import os
-if os.name != "java":
-    import exceptions
-    if hasattr(exceptions, "FutureWarning"):
-        import warnings
-        warnings.filterwarnings("ignore", category=FutureWarning, append=1)
-#-----------------------
-
-
-
 shifts = [[[0, 0], [1, 3], [2, 2], [3, 1]],
           [[0, 0], [1, 5], [2, 4], [3, 3]],
           [[0, 0], [1, 7], [3, 5], [4, 4]]]
