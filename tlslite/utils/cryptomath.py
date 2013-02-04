@@ -61,8 +61,8 @@ prngName = "os.urandom"
 # **************************************************************************
 
 def bytesToNumber(bytes):
-    total = 0L
-    multiplier = 1L
+    total = 0
+    multiplier = 1
     for count in range(len(bytes)-1, -1, -1):
         byte = bytes[count]
         total += multiplier * byte
@@ -260,8 +260,8 @@ def getRandomPrime(bits, display=False):
     #
     #Since 30 is lcm(2,3,5), we'll set our test numbers to
     #29 % 30 and keep them there
-    low = ((2L ** (bits-1)) * 3) // 2
-    high = 2L ** bits - 30
+    low = ((2 ** (bits-1)) * 3) // 2
+    high = 2 ** bits - 30
     p = getRandomNumber(low, high)
     p += 29 - (p % 30)
     while 1:

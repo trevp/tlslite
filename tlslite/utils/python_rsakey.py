@@ -73,7 +73,7 @@ class Python_RSAKey(RSAKey):
         q = getRandomPrime(bits//2, False)
         t = lcm(p-1, q-1)
         key.n = p * q
-        key.e = 65537L  #Needed to be long, for Java
+        key.e = 65537
         key.d = invMod(key.e, t)
         key.p = p
         key.q = q

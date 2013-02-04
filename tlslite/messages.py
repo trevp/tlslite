@@ -429,14 +429,14 @@ class ServerKeyExchange(HandshakeMsg):
     def __init__(self, cipherSuite):
         HandshakeMsg.__init__(self, HandshakeType.server_key_exchange)
         self.cipherSuite = cipherSuite
-        self.srp_N = 0L
-        self.srp_g = 0L
+        self.srp_N = 0
+        self.srp_g = 0
         self.srp_s = createByteArraySequence([])
-        self.srp_B = 0L
+        self.srp_B = 0
         # Anon DH params:
-        self.dh_p = 0L
-        self.dh_g = 0L
-        self.dh_Ys = 0L
+        self.dh_p = 0
+        self.dh_g = 0
+        self.dh_Ys = 0
         self.signature = createByteArraySequence([])
 
     def createSRP(self, srp_N, srp_g, srp_s, srp_B):
