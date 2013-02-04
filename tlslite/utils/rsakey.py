@@ -218,13 +218,12 @@ class RSAKey:
     # Helper Functions for RSA Keys
     # **************************************************************************
 
-    def _addPKCS1SHA1Prefix(self, bytes, withNULL=False):
+    def _addPKCS1SHA1Prefix(self, bytes, withNULL=True):
         # There is a long history of confusion over whether the SHA1 
         # algorithmIdentifier should be encoded with a NULL parameter or 
         # with the parameter omitted.  While the original intention was 
         # apparently to omit it, many toolkits went the other way.  TLS 1.2
-        # specifies the NULL should be omitted, so maybe the pendulum is 
-        # swinging back towards the original intention.  Anyways, verification
+        # specifies the NULL should be included.  Anyways, verification
         # code should accept both, so the above hashAndVerify() is not
         # yet correct.  However, nothing uses this code yet - an eventual
         # TLS 1.2 implementation will have to fix that.
