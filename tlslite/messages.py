@@ -471,16 +471,16 @@ class ServerKeyExchange(HandshakeMsg):
     def write(self):
         w = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
-            w.addVarSeq(numberToBytes(self.srp_N), 1, 2)
-            w.addVarSeq(numberToBytes(self.srp_g), 1, 2)
+            w.addVarSeq(numberToByteArray(self.srp_N), 1, 2)
+            w.addVarSeq(numberToByteArray(self.srp_g), 1, 2)
             w.addVarSeq(self.srp_s, 1, 1)
-            w.addVarSeq(numberToBytes(self.srp_B), 1, 2)
+            w.addVarSeq(numberToByteArray(self.srp_B), 1, 2)
             if self.cipherSuite in CipherSuite.srpCertSuites:
                 w.addVarSeq(self.signature, 1, 2)
         elif self.cipherSuite in CipherSuite.anonSuites:
-            w.addVarSeq(numberToBytes(self.dh_p), 1, 2)
-            w.addVarSeq(numberToBytes(self.dh_g), 1, 2)
-            w.addVarSeq(numberToBytes(self.dh_Ys), 1, 2)
+            w.addVarSeq(numberToByteArray(self.dh_p), 1, 2)
+            w.addVarSeq(numberToByteArray(self.dh_g), 1, 2)
+            w.addVarSeq(numberToByteArray(self.dh_Ys), 1, 2)
             if self.cipherSuite in []: # TODO support for signed_params
                 w.addVarSeq(self.signature, 1, 2)
         return self.postWrite(w)
@@ -552,7 +552,7 @@ class ClientKeyExchange(HandshakeMsg):
     def write(self):
         w = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
-            w.addVarSeq(numberToBytes(self.srp_A), 1, 2)
+            w.addVarSeq(numberToByteArray(self.srp_A), 1, 2)
         elif self.cipherSuite in CipherSuite.certSuites:
             if self.version in ((3,1), (3,2)):
                 w.addVarSeq(self.encryptedPreMasterSecret, 1, 2)
@@ -561,7 +561,7 @@ class ClientKeyExchange(HandshakeMsg):
             else:
                 raise AssertionError()
         elif self.cipherSuite in CipherSuite.anonSuites:
-            w.addVarSeq(numberToBytes(self.dh_Yc), 1, 2)            
+            w.addVarSeq(numberToByteArray(self.dh_Yc), 1, 2)            
         else:
             raise AssertionError()
         return self.postWrite(w)

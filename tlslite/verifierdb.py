@@ -56,10 +56,10 @@ class VerifierDB(BaseDB):
         if len(username)>=256:
             raise ValueError("username too long")
         N, g, salt, verifier = value
-        N = b2a_base64(numberToBytes(N))
-        g = b2a_base64(numberToBytes(g))
+        N = b2a_base64(numberToByteArray(N))
+        g = b2a_base64(numberToByteArray(g))
         salt = b2a_base64(salt)
-        verifier = b2a_base64(numberToBytes(verifier))
+        verifier = b2a_base64(numberToByteArray(verifier))
         valueStr = " ".join( (N, g, salt, verifier)  )
         return valueStr
 

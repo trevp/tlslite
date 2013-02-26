@@ -101,7 +101,7 @@ class RSAKey:
         if m >= self.n:
             raise ValueError()
         c = self._rawPrivateKeyOp(m)
-        sigBytes = numberToBytes(c, numBytes(self.n))
+        sigBytes = numberToByteArray(c, numBytes(self.n))
         return sigBytes
 
     def verify(self, sigBytes, bytes):
@@ -125,7 +125,7 @@ class RSAKey:
         if c >= self.n:
             return False
         m = self._rawPublicKeyOp(c)
-        checkBytes = numberToBytes(m, numBytes(self.n))
+        checkBytes = numberToByteArray(m, numBytes(self.n))
         return checkBytes == paddedBytes
 
     def encrypt(self, bytes):
@@ -144,7 +144,7 @@ class RSAKey:
         if m >= self.n:
             raise ValueError()
         c = self._rawPublicKeyOp(m)
-        encBytes = numberToBytes(c, numBytes(self.n))
+        encBytes = numberToByteArray(c, numBytes(self.n))
         return encBytes
 
     def decrypt(self, encBytes):
@@ -168,7 +168,7 @@ class RSAKey:
         if c >= self.n:
             return None
         m = self._rawPrivateKeyOp(c)
-        decBytes = numberToBytes(m, numBytes(self.n))
+        decBytes = numberToByteArray(m, numBytes(self.n))
         if decBytes[0] != 0 or decBytes[1] != 2: #Check first two bytes
             return None
         for x in range(1, len(decBytes)-1): #Scan through for zero separator

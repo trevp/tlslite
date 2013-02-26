@@ -92,8 +92,8 @@ def makeVerifier(username, password, bits):
     return N, g, salt, verifier
 
 def PAD(n, x):
-    nLength = len(numberToBytes(n))
-    b = numberToBytes(x)
+    nLength = len(numberToByteArray(n))
+    b = numberToByteArray(x)
     if len(b) < nLength:
         b = (b"\0" * (nLength-len(b))) + b
     return b
@@ -102,7 +102,7 @@ def makeU(N, A, B):
   return bytesToNumber(SHA1(PAD(N, A) + PAD(N, B)))
 
 def makeK(N, g):
-  return bytesToNumber(SHA1(numberToBytes(N) + PAD(N, g)))
+  return bytesToNumber(SHA1(numberToByteArray(N) + PAD(N, g)))
 
 def createHMAC(k):
     return hmac.HMAC(k, digestmod=hashlib.sha1)

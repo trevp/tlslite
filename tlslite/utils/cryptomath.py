@@ -84,16 +84,16 @@ def HMAC_SHA1(k, b):
 # Converter Functions
 # **************************************************************************
 
-def bytesToNumber(bytes):
+def bytesToNumber(b):
     total = 0
     multiplier = 1
-    for count in range(len(bytes)-1, -1, -1):
-        byte = bytes[count]
+    for count in range(len(b)-1, -1, -1):
+        byte = b[count]
         total += multiplier * byte
         multiplier *= 256
     return total
 
-def numberToBytes(n, howManyBytes=None):
+def numberToByteArray(n, howManyBytes=None):
     """Convert an integer into a bytearray, zero-pad to howManyBytes.
 
     The returned bytearray may be smaller than howManyBytes, but will
@@ -102,33 +102,32 @@ def numberToBytes(n, howManyBytes=None):
     """    
     if howManyBytes == None:
         howManyBytes = numBytes(n)
-    bytes = bytearray(howManyBytes)
+    b = bytearray(howManyBytes)
     for count in range(howManyBytes-1, -1, -1):
-        bytes[count] = int(n % 256)
+        b[count] = int(n % 256)
         n >>= 8
-    return bytes    
+    return b
 
 def mpiToNumber(mpi): #mpi is an openssl-format bignum string
     if (ord(mpi[4]) & 0x80) !=0: #Make sure this is a positive number
         raise AssertionError()
-    bytes = stringToBytes(mpi[4:])
-    return bytesToNumber(bytes)
+    b = bytearray(mpi[4:])
+    return bytesToNumber(b)
 
 def numberToMPI(n):
-    bytes = numberToBytes(n)
+    b = numberToByteArray(n)
     ext = 0
     #If the high-order bit is going to be set,
     #add an extra byte of zeros
     if (numBits(n) & 0x7)==0:
         ext = 1
     length = numBytes(n) + ext
-    bytes = bytearray(4+ext) + bytes
-    bytes[0] = (length >> 24) & 0xFF
-    bytes[1] = (length >> 16) & 0xFF
-    bytes[2] = (length >> 8) & 0xFF
-    bytes[3] = length & 0xFF
-    return bytesToString(bytes)
-
+    b = bytearray(4+ext) + b
+    b[0] = (length >> 24) & 0xFF
+    b[1] = (length >> 16) & 0xFF
+    b[2] = (length >> 8) & 0xFF
+    b[3] = length & 0xFF
+    return bytes(b)
 
 
 # **************************************************************************

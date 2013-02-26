@@ -749,7 +749,7 @@ class TLSConnection(TLSRecordLayer):
             A = N
             S = 0
             
-        premasterSecret = numberToBytes(S)
+        premasterSecret = numberToByteArray(S)
 
         #Send ClientKeyExchange
         for result in self._sendMsg(\
@@ -896,7 +896,7 @@ class TLSConnection(TLSRecordLayer):
             
         #Calculate premaster secret
         S = powMod(dh_Ys, dh_Xc, dh_p)
-        premasterSecret = numberToBytes(S)
+        premasterSecret = numberToByteArray(S)
                      
         yield (premasterSecret, None, None)
         
@@ -1416,7 +1416,7 @@ class TLSConnection(TLSRecordLayer):
 
         #Calculate premaster secret
         S = powMod((A * powMod(v,u,N)) % N, b, N)
-        premasterSecret = numberToBytes(S)
+        premasterSecret = numberToByteArray(S)
         
         yield premasterSecret
 
@@ -1586,7 +1586,7 @@ class TLSConnection(TLSRecordLayer):
 
         #Calculate premaster secre
         S = powMod(dh_Yc,dh_Xs,dh_p)
-        premasterSecret = numberToBytes(S)
+        premasterSecret = numberToByteArray(S)
         
         yield premasterSecret
 
