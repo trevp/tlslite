@@ -78,7 +78,7 @@ def makeX(salt, username, password):
         raise ValueError("username too long")
     if len(salt)>=256:
         raise ValueError("salt too long")
-    innerHashResult = SHA1(username + b":" + password)
+    innerHashResult = SHA1(username + bytearray(b":") + password)
     outerHashResult = SHA1(salt + innerHashResult)
     return bytesToNumber(outerHashResult)
 

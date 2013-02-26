@@ -734,7 +734,8 @@ class TLSConnection(TLSRecordLayer):
         A = powMod(g, a, N)
 
         #Calculate client's static DH values (x, v)
-        x = makeX(s, bytearray(srpUsername, "utf-8"), password)
+        x = makeX(s, bytearray(srpUsername, "utf-8"),
+                    bytearray(password, "utf-8"))
         v = powMod(g, x, N)
 
         #Calculate u

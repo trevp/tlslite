@@ -211,7 +211,7 @@ class TLSRecordLayer:
 
             returnBytes = self._readBuffer[:max]
             self._readBuffer = self._readBuffer[max:]
-            yield str(returnBytes)
+            yield bytes(returnBytes)
         except GeneratorExit:
             raise
         except:
@@ -544,19 +544,19 @@ class TLSRecordLayer:
         if self._writeState.macContext:
             seqnumBytes = self._writeState.getSeqNumBytes()
             mac = self._writeState.macContext.copy()
-            mac.update(compat26Str(seqnumBytes))
-            mac.update(compat26Str(bytearray([contentType])))
+            mac.update(compatHMAC(seqnumBytes))
+            mac.update(compatHMAC(bytearray([contentType])))
             if self.version == (3,0):
-                mac.update( compat26Str( bytearray([len(b)//256] )))
-                mac.update( compat26Str( bytearray([len(b)%256] )))
+                mac.update( compatHMAC( bytearray([len(b)//256] )))
+                mac.update( compatHMAC( bytearray([len(b)%256] )))
             elif self.version in ((3,1), (3,2)):
-                mac.update(compat26Str( bytearray([self.version[0]] )))
-                mac.update(compat26Str( bytearray([self.version[1]] )))
-                mac.update( compat26Str( bytearray([len(b)//256] )))
-                mac.update( compat26Str( bytearray([len(b)%256] )))
+                mac.update(compatHMAC( bytearray([self.version[0]] )))
+                mac.update(compatHMAC( bytearray([self.version[1]] )))
+                mac.update( compatHMAC( bytearray([len(b)//256] )))
+                mac.update( compatHMAC( bytearray([len(b)%256] )))
             else:
                 raise AssertionError()
-            mac.update(compat26Str(b))
+            mac.update(compatHMAC(b))
             macBytes = bytearray(mac.digest())
             if self.fault == Fault.badMAC:
                 macBytes[0] = (macBytes[0]+1) % 256
@@ -986,19 +986,19 @@ class TLSRecordLayer:
                 seqnumBytes = self._readState.getSeqNumBytes()
                 b = b[:-endLength]
                 mac = self._readState.macContext.copy()
-                mac.update(compat26Str(seqnumBytes))
-                mac.update(compat26Str(bytearray([recordType])))
+                mac.update(compatHMAC(seqnumBytes))
+                mac.update(compatHMAC(bytearray([recordType])))
                 if self.version == (3,0):
-                    mac.update( compat26Str(bytearray( [len(b)//256] ) ))
-                    mac.update( compat26Str(bytearray( [len(b)%256] ) ))
+                    mac.update( compatHMAC(bytearray( [len(b)//256] ) ))
+                    mac.update( compatHMAC(bytearray( [len(b)%256] ) ))
                 elif self.version in ((3,1), (3,2)):
-                    mac.update(compat26Str(bytearray( [self.version[0]] ) ))
-                    mac.update(compat26Str(bytearray( [self.version[1]] ) ))
-                    mac.update(compat26Str(bytearray( [len(b)//256] ) ))
-                    mac.update(compat26Str(bytearray( [len(b)%256] ) ))
+                    mac.update(compatHMAC(bytearray( [self.version[0]] ) ))
+                    mac.update(compatHMAC(bytearray( [self.version[1]] ) ))
+                    mac.update(compatHMAC(bytearray( [len(b)//256] ) ))
+                    mac.update(compatHMAC(bytearray( [len(b)%256] ) ))
                 else:
                     raise AssertionError()
-                mac.update(compat26Str(b))
+                mac.update(compatHMAC(b))
                 macBytes = bytearray(mac.digest())
 
                 #Compare MACs
@@ -1081,8 +1081,8 @@ class TLSRecordLayer:
         serverKeyBlock = p.getFixBytes(keyLength)
         clientIVBlock  = p.getFixBytes(ivLength)
         serverIVBlock  = p.getFixBytes(ivLength)
-        clientPendingState.macContext = createMACFunc(compat26Str(clientMACBlock))
-        serverPendingState.macContext = createMACFunc(compat26Str(serverMACBlock))
+        clientPendingState.macContext = createMACFunc(compatHMAC(clientMACBlock))
+        serverPendingState.macContext = createMACFunc(compatHMAC(serverMACBlock))
         clientPendingState.encContext = createCipherFunc(clientKeyBlock,
                                                          clientIVBlock,
                                                          implementations)
@@ -1116,8 +1116,8 @@ class TLSRecordLayer:
         imac_md5 = self._handshake_md5.copy()
         imac_sha = self._handshake_sha.copy()
 
-        imac_md5.update(compat26Str(label + masterSecret + bytearray([0x36]*48)))
-        imac_sha.update(compat26Str(label + masterSecret + bytearray([0x36]*40)))
+        imac_md5.update(compatHMAC(label + masterSecret + bytearray([0x36]*48)))
+        imac_sha.update(compatHMAC(label + masterSecret + bytearray([0x36]*40)))
 
         md5Bytes = MD5(masterSecret + bytearray([0x5c]*48) + \
                          bytearray(imac_md5.digest()))

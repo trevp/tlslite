@@ -29,7 +29,7 @@ class VerifierDB(BaseDB):
         BaseDB.__init__(self, filename, "verifier")
 
     def _getItem(self, username, valueStr):
-        (N, g, salt, verifier) = valueStr.split(b" ")
+        (N, g, salt, verifier) = valueStr.split(" ")
         N = bytesToNumber(a2b_base64(N))
         g = bytesToNumber(a2b_base64(g))
         salt = a2b_base64(salt)
@@ -60,7 +60,7 @@ class VerifierDB(BaseDB):
         g = b2a_base64(numberToBytes(g))
         salt = b2a_base64(salt)
         verifier = b2a_base64(numberToBytes(verifier))
-        valueStr = b" ".join( (N, g, salt, verifier)  )
+        valueStr = " ".join( (N, g, salt, verifier)  )
         return valueStr
 
     def _checkItem(self, value, username, param):
@@ -89,5 +89,7 @@ class VerifierDB(BaseDB):
         @rtype: tuple
         @return: A tuple which may be stored in a VerifierDB.
         """
-        return mathtls.makeVerifier(username, password, bits)
+        usernameBytes = bytearray(username, "utf-8")
+        passwordBytes = bytearray(password, "utf-8")
+        return mathtls.makeVerifier(usernameBytes, passwordBytes, bits)
     makeVerifier = staticmethod(makeVerifier)

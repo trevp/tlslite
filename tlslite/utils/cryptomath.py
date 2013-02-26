@@ -70,10 +70,14 @@ def SHA1(b):
     return bytearray(hashlib.sha1(compat26Str(b)).digest())
 
 def HMAC_MD5(k, b):
-    return bytearray(hmac.new(compat26Str(k), compat26Str(b), hashlib.md5).digest())
+    k = compatHMAC(k)
+    b = compatHMAC(b)
+    return bytearray(hmac.new(k, b, hashlib.md5).digest())
 
 def HMAC_SHA1(k, b):
-    return bytearray(hmac.new(compat26Str(k), compat26Str(b), hashlib.sha1).digest())
+    k = compatHMAC(k)
+    b = compatHMAC(b)
+    return bytearray(hmac.new(k, b, hashlib.sha1).digest())
 
 
 # **************************************************************************

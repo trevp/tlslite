@@ -9,6 +9,15 @@ import math
 import binascii
 
 if sys.version_info >= (3,0):
+
+    def compat26Str(x): return x
+    
+    # Python 3 requires bytes instead of bytearrays for HMAC   
+    
+    # So, python 2.6 requires strings, python 3 requires 'bytes',
+    # and python 2.7 can handle bytearrays...     
+    def compatHMAC(x): return bytes(x)
+    
     def raw_input(s):
         return input(s)
     
@@ -45,8 +54,6 @@ if sys.version_info >= (3,0):
         
     def readStdinBinary():
         return sys.stdin.buffer.read()        
-    
-    def compat26Str(x): return x
 
 else:
     # Python 2.6 requires strings instead of bytearrays in a couple places,
@@ -56,6 +63,9 @@ else:
     else:
         def compat26Str(x): return x
 
+    # So, python 2.6 requires strings, python 3 requires 'bytes',
+    # and python 2.7 can handle bytearrays...     
+    def compatHMAC(x): return compat26Str(x)
 
     def a2b_hex(s):
         try:

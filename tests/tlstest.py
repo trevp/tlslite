@@ -143,7 +143,7 @@ def clientTestCmd(argv):
 
     print("Test 3 - good SRP")
     connection = connect()
-    connection.handshakeClientSRP(b"test", b"password")
+    connection.handshakeClientSRP("test", "password")
     testConnClient(connection)
     connection.close()
 
@@ -152,7 +152,7 @@ def clientTestCmd(argv):
         connection = connect()
         connection.fault = fault
         try:
-            connection.handshakeClientSRP(b"test", b"password")
+            connection.handshakeClientSRP("test", "password")
             print("  Good Fault %s" % (Fault.faultNames[fault]))
         except TLSFaultError as e:
             print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
@@ -163,7 +163,7 @@ def clientTestCmd(argv):
     settings.minVersion = (3,1)
     settings.maxVersion = (3,1)    
     connection = connect()
-    connection.handshakeClientSRP(b"test", b"password", settings=settings)
+    connection.handshakeClientSRP("test", "password", settings=settings)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     testConnClient(connection)
     connection.close()
@@ -173,7 +173,7 @@ def clientTestCmd(argv):
         connection = connect()
         connection.fault = fault
         try:
-            connection.handshakeClientSRP(b"test", b"password")
+            connection.handshakeClientSRP("test", "password")
             print("  Good Fault %s" % (Fault.faultNames[fault]))
         except TLSFaultError as e:
             print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
@@ -225,14 +225,14 @@ def clientTestCmd(argv):
 
     print("Test 18 - good SRP, prepare to resume... (plus SNI)")
     connection = connect()
-    connection.handshakeClientSRP(b"test", b"password", serverName=address[0])
+    connection.handshakeClientSRP("test", "password", serverName=address[0])
     testConnClient(connection)
     connection.close()
     session = connection.session
 
     print("Test 19 - resumption (plus SNI)")
     connection = connect()
-    connection.handshakeClientSRP(b"test", b"garbage", serverName=address[0], 
+    connection.handshakeClientSRP("test", "garbage", serverName=address[0], 
                                     session=session)
     testConnClient(connection)
     #Don't close! -- see below
@@ -241,7 +241,7 @@ def clientTestCmd(argv):
     connection.sock.close() #Close the socket without a close_notify!
     connection = connect()
     try:
-        connection.handshakeClientSRP(b"test", b"garbage", 
+        connection.handshakeClientSRP("test", "garbage", 
                         serverName=address[0], session=session)
         assert(False)
     except TLSRemoteAlert as alert:
@@ -258,7 +258,7 @@ def clientTestCmd(argv):
     while 1:
         try:
             time.sleep(2)
-            htmlBody = open(os.path.join(dir, "index.html")).read()
+            htmlBody = bytearray(open(os.path.join(dir, "index.html")).read(), "utf-8")
             fingerprint = None
             for y in range(2):
                 checker =Checker(x509Fingerprint=fingerprint)
@@ -268,8 +268,8 @@ def clientTestCmd(argv):
                     h.request("GET", "/index.html")
                     r = h.getresponse()
                     assert(r.status == 200)
-                    s = r.read()
-                    assert(s == htmlBody)
+                    b = bytearray(r.read())
+                    assert(b == htmlBody)
                 fingerprint = h.tlsSession.serverCertChain.getFingerprint()
                 assert(fingerprint)
             time.sleep(2)
@@ -499,8 +499,8 @@ def serverTestCmd(argv):
     print("Test 3 - good SRP")
     verifierDB = VerifierDB()
     verifierDB.create()
-    entry = VerifierDB.makeVerifier(b"test", b"password", 1536)
-    verifierDB[b"test"] = entry
+    entry = VerifierDB.makeVerifier("test", "password", 1536)
+    verifierDB["test"] = entry
 
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB)
