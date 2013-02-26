@@ -43,7 +43,7 @@ class HandshakeSettings:
     add-on library that supports 3DES, then '3des' will be silently
     removed.
 
-    The default value is ['aes256', 'aes128', '3des', 'rc4'].
+    The default value is ['rc4', 'aes256', 'aes128', '3des'].
 
     @type certificateTypes: list
     @ivar certificateTypes: The allowed certificate types, in order of
@@ -81,7 +81,7 @@ class HandshakeSettings:
     def __init__(self):
         self.minKeySize = 1023
         self.maxKeySize = 8193
-        self.cipherNames = ["aes256", "aes128", "3des", "rc4"]
+        self.cipherNames = ["rc4", "aes256", "aes128", "3des"]
         self.cipherImplementations = ["openssl", "pycrypto","python"]
         self.certificateTypes = ["x509"]
         self.minVersion = (3,0)
@@ -125,7 +125,7 @@ class HandshakeSettings:
         if other.maxKeySize>16384:
             raise ValueError("maxKeySize too large")
         for s in other.cipherNames:
-            if s not in ("aes256", "aes128", "rc4", "3des"):
+            if s not in ("rc4", "aes256", "aes128", "3des"):
                 raise ValueError("Unknown cipher name: '%s'" % s)
         for s in other.cipherImplementations:
             if s not in ("openssl", "python", "pycrypto"):

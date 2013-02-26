@@ -204,7 +204,7 @@ class CipherSuite:
                 suites.append(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA)
             elif cipher == "aes256":
                 suites.append(CipherSuite.TLS_DH_ANON_WITH_AES_256_CBC_SHA)
-            return suites   
+        return suites   
     
     tripleDESSuites = []
     tripleDESSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)

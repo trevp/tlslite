@@ -455,6 +455,9 @@ at your own risk.
 0.4.4 - 
  - Added Python 3 support (Martin von Loewis)
  - Added NPN client support (Marcelo Fernandez)
+ - Switched to RC4 as preferred cipher
+   - faster in Python, avoids "Lucky 13" timing attacks
+ - Fixed bug when specifying ciphers for anon ciphersuites
 0.4.3 - 9/27/2012
  - Minor bugfix (0.4.2 doesn't load tackpy)
 0.4.2 - 9/25/2012
