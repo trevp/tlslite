@@ -36,8 +36,8 @@ If you have questions or feedback, feel free to contact me.
 2 Licenses/Acknowledgements
 ============================
 TLS Lite is written (mostly) by Trevor Perrin. It includes code from Bram
-Cohen, Google, Kees Bos, Sam Rushing, Dimitris Moraitis, and Marcelo
-Fernandez.
+Cohen, Google, Kees Bos, Sam Rushing, Dimitris Moraitis, Marcelo Fernandez,
+and Martin von Loewis.
 
 All code in TLS Lite has either been dedicated to the public domain by its
 authors, or placed under a BSD-style license. See the LICENSE file for
@@ -49,7 +49,7 @@ Thanks to Edward Loper for Epydoc, which generated the API docs.
 3 Installation
 ===============
 Requirements:
-  Python 2.6 or higher is required. Python 3 is not supported.
+  Python 2.6 or higher is required. Python 3 is supported.
 
 Options:
   - If you have the M2Crypto interface to OpenSSL, this will be used for fast
@@ -452,6 +452,9 @@ at your own risk.
 
 12 History
 ===========
+0.4.4 - 
+ - Added Python 3 support (Martin von Loewis)
+ - Added NPN client support (Marcelo Fernandez)
 0.4.3 - 9/27/2012
  - Minor bugfix (0.4.2 doesn't load tackpy)
 0.4.2 - 9/25/2012
