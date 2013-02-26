@@ -10,9 +10,8 @@ def new(key):
     return Python_RC4(key)
 
 class Python_RC4(RC4):
-    def __init__(self, key):
-        RC4.__init__(self, key, "python")
-        keyBytes = stringToBytes(key)
+    def __init__(self, keyBytes):
+        RC4.__init__(self, keyBytes, "python")
         S = [i for i in range(256)]
         j = 0
         for i in range(256):
@@ -23,20 +22,20 @@ class Python_RC4(RC4):
         self.i = 0
         self.j = 0
 
-    def encrypt(self, plaintext):
-        plaintextBytes = stringToBytes(plaintext)
+    def encrypt(self, plaintextBytes):
+        ciphertextBytes = plaintextBytes[:]
         S = self.S
         i = self.i
         j = self.j
-        for x in range(len(plaintextBytes)):
+        for x in range(len(ciphertextBytes)):
             i = (i + 1) % 256
             j = (j + S[i]) % 256
             S[i], S[j] = S[j], S[i]
             t = (S[i] + S[j]) % 256
-            plaintextBytes[x] ^= S[t]
+            ciphertextBytes[x] ^= S[t]
         self.i = i
         self.j = j
-        return bytesToString(plaintextBytes)
+        return ciphertextBytes
 
     def decrypt(self, ciphertext):
         return self.encrypt(ciphertext)

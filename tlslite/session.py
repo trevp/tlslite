@@ -42,10 +42,10 @@ class Session:
     """
 
     def __init__(self):
-        self.masterSecret = createByteArraySequence([])
-        self.sessionID = createByteArraySequence([])
+        self.masterSecret = bytearray(0)
+        self.sessionID = bytearray(0)
         self.cipherSuite = 0
-        self.srpUsername = None
+        self.srpUsername = ""
         self.clientCertChain = None
         self.serverCertChain = None
         self.tackExt = None

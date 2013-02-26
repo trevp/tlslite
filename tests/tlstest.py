@@ -333,51 +333,51 @@ def clientTestCmd(argv):
     
     print("Test 24.a - Next-Protocol Client Negotiation")
     connection = connect()
-    connection.handshakeClientCert(nextProtos=["http/1.1"])
+    connection.handshakeClientCert(nextProtos=[b"http/1.1"])
     #print("  Next-Protocol Negotiated: %s" % connection.next_proto)
-    assert(connection.next_proto == 'http/1.1')
+    assert(connection.next_proto == b'http/1.1')
     connection.close()
 
     print("Test 24.b - Next-Protocol Client Negotiation")
     connection = connect()
-    connection.handshakeClientCert(nextProtos=["spdy/2", "http/1.1"])
+    connection.handshakeClientCert(nextProtos=[b"spdy/2", b"http/1.1"])
     #print("  Next-Protocol Negotiated: %s" % connection.next_proto)
-    assert(connection.next_proto == 'spdy/2')
+    assert(connection.next_proto == b'spdy/2')
     connection.close()
     
     print("Test 24.c - Next-Protocol Client Negotiation")
     connection = connect()
-    connection.handshakeClientCert(nextProtos=["spdy/2", "http/1.1"])
+    connection.handshakeClientCert(nextProtos=[b"spdy/2", b"http/1.1"])
     #print("  Next-Protocol Negotiated: %s" % connection.next_proto)
-    assert(connection.next_proto == 'spdy/2')
+    assert(connection.next_proto == b'spdy/2')
     connection.close()
     
     print("Test 24.d - Next-Protocol Client Negotiation")
     connection = connect()
-    connection.handshakeClientCert(nextProtos=["spdy/3", "spdy/2", "http/1.1"])
+    connection.handshakeClientCert(nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
     #print("  Next-Protocol Negotiated: %s" % connection.next_proto)
-    assert(connection.next_proto == 'spdy/2')
+    assert(connection.next_proto == b'spdy/2')
     connection.close()
     
     print("Test 24.e - Next-Protocol Client Negotiation")
     connection = connect()
-    connection.handshakeClientCert(nextProtos=["spdy/3", "spdy/2", "http/1.1"])
+    connection.handshakeClientCert(nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
     #print("  Next-Protocol Negotiated: %s" % connection.next_proto)
-    assert(connection.next_proto == 'spdy/3')
+    assert(connection.next_proto == b'spdy/3')
     connection.close()
 
     print("Test 24.f - Next-Protocol Client Negotiation")
     connection = connect()
-    connection.handshakeClientCert(nextProtos=["http/1.1"])
+    connection.handshakeClientCert(nextProtos=[b"http/1.1"])
     #print("  Next-Protocol Negotiated: %s" % connection.next_proto)
-    assert(connection.next_proto == 'http/1.1')
+    assert(connection.next_proto == b'http/1.1')
     connection.close()
 
     print("Test 24.g - Next-Protocol Client Negotiation")
     connection = connect()
-    connection.handshakeClientCert(nextProtos=["spdy/2", "http/1.1"])
+    connection.handshakeClientCert(nextProtos=[b"spdy/2", b"http/1.1"])
     #print("  Next-Protocol Negotiated: %s" % connection.next_proto)
-    assert(connection.next_proto == 'spdy/2')
+    assert(connection.next_proto == b'spdy/2')
     connection.close()
     
     print('Test 25 - good standard XMLRPC https client')
@@ -680,7 +680,7 @@ def serverTestCmd(argv):
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
-                               settings=settings, nextProtos=["http/1.1"])
+                               settings=settings, nextProtos=[b"http/1.1"])
     testConnServer(connection)
     connection.close()
 
@@ -688,7 +688,7 @@ def serverTestCmd(argv):
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
-                               settings=settings, nextProtos=["spdy/2", "http/1.1"])
+                               settings=settings, nextProtos=[b"spdy/2", b"http/1.1"])
     testConnServer(connection)
     connection.close()
     
@@ -696,7 +696,7 @@ def serverTestCmd(argv):
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
-                               settings=settings, nextProtos=["http/1.1", "spdy/2"])
+                               settings=settings, nextProtos=[b"http/1.1", b"spdy/2"])
     testConnServer(connection)
     connection.close()
 
@@ -704,7 +704,7 @@ def serverTestCmd(argv):
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
-                               settings=settings, nextProtos=["spdy/2", "http/1.1"])
+                               settings=settings, nextProtos=[b"spdy/2", b"http/1.1"])
     testConnServer(connection)
     connection.close()
     
@@ -712,7 +712,7 @@ def serverTestCmd(argv):
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
-                               settings=settings, nextProtos=["http/1.1", "spdy/2", "spdy/3"])
+                               settings=settings, nextProtos=[b"http/1.1", b"spdy/2", b"spdy/3"])
     testConnServer(connection)
     connection.close()
     
@@ -720,7 +720,7 @@ def serverTestCmd(argv):
     connection = connect()
     settings = HandshakeSettings()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
-                               settings=settings, nextProtos=["spdy/3", "spdy/2"])
+                               settings=settings, nextProtos=[b"spdy/3", b"spdy/2"])
     testConnServer(connection)
     connection.close()
     

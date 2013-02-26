@@ -59,9 +59,7 @@ class RSAKey:
         @rtype: L{bytearray} of unsigned bytes.
         @return: A PKCS1-SHA1 signature on the passed-in data.
         """
-        if not isinstance(bytes, type("")):
-            bytes = bytesToString(bytes)
-        hashBytes = stringToBytes(sha1(bytes).digest())
+        hashBytes = SHA1(bytearray(bytes))
         prefixedHashBytes = self._addPKCS1SHA1Prefix(hashBytes)
         sigBytes = self.sign(prefixedHashBytes)
         return sigBytes
@@ -80,9 +78,7 @@ class RSAKey:
         @rtype: bool
         @return: Whether the signature matches the passed-in data.
         """
-        if not isinstance(bytes, type("")):
-            bytes = bytesToString(bytes)
-        hashBytes = stringToBytes(sha1(bytes).digest())
+        hashBytes = SHA1(bytearray(bytes))
         prefixedHashBytes = self._addPKCS1SHA1Prefix(hashBytes)
         return self.verify(sigBytes, prefixedHashBytes)
 
@@ -228,10 +224,10 @@ class RSAKey:
         # yet correct.  However, nothing uses this code yet - an eventual
         # TLS 1.2 implementation will have to fix that.
         if not withNULL:
-            prefixBytes = createByteArraySequence(\
+            prefixBytes = bytearray(\
             [0x30,0x1f,0x30,0x07,0x06,0x05,0x2b,0x0e,0x03,0x02,0x1a,0x04,0x14])            
         else:
-            prefixBytes = createByteArraySequence(\
+            prefixBytes = bytearray(\
             [0x30,0x21,0x30,0x09,0x06,0x05,0x2b,0x0e,0x03,0x02,0x1a,0x05,0x00,0x04,0x14])            
         prefixedBytes = prefixBytes + bytes
         return prefixedBytes
@@ -241,7 +237,7 @@ class RSAKey:
         if blockType == 1: #Signature padding
             pad = [0xFF] * padLength
         elif blockType == 2: #Encryption padding
-            pad = createByteArraySequence([])
+            pad = bytearray(0)
             while len(pad) < padLength:
                 padBytes = getRandomBytes(padLength * 2)
                 pad = [b for b in padBytes if b != 0]
@@ -249,6 +245,6 @@ class RSAKey:
         else:
             raise AssertionError()
 
-        padding = createByteArraySequence([0,blockType] + pad + [0])
+        padding = bytearray([0,blockType] + pad + [0])
         paddedBytes = padding + bytes
         return paddedBytes

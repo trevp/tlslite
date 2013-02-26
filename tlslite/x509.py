@@ -26,7 +26,7 @@ class X509:
     """
 
     def __init__(self):
-        self.bytes = createByteArraySequence([])
+        self.bytes = bytearray(0)
         self.publicKey = None
         self.subject = None
 
@@ -50,10 +50,7 @@ class X509:
         @param bytes: A DER-encoded X.509 certificate.
         """
 
-        if isinstance(bytes, type("")):
-            bytes = stringToBytes(bytes)
-
-        self.bytes = bytes
+        self.bytes = bytearray(bytes)
         p = ASN1Parser(bytes)
 
         #Get the tbsCertificate
@@ -105,7 +102,7 @@ class X509:
         @rtype: str
         @return: A hex-encoded fingerprint.
         """
-        return sha1(bytesToString(self.bytes)).hexdigest()
+        return b2a_hex(SHA1(self.bytes))
 
     def writeBytes(self):
         return self.bytes

@@ -444,6 +444,7 @@ class TLSConnection(TLSRecordLayer):
                 if result in (0,1): yield result
                 else: break                
             (premasterSecret, serverCertChain, tackExt) = result
+
         #If the server selected an anonymous ciphersuite, the client
         #finishes reading the post-ServerHello messages.
         elif cipherSuite in CipherSuite.anonSuites:
@@ -485,7 +486,7 @@ class TLSConnection(TLSRecordLayer):
         self.session = Session()
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
             srpUsername, clientCertChain, serverCertChain,
-            tackExt, serverHello.tackExt!=None, clientHello.server_name)
+            tackExt, serverHello.tackExt!=None, serverName)
         self._handshakeDone(resumed=False)
 
 
@@ -517,7 +518,8 @@ class TLSConnection(TLSRecordLayer):
                 clientHello = ClientHello()
                 clientHello.create(settings.maxVersion, getRandomBytes(32),
                                    session.sessionID, cipherSuites,
-                                   certificateTypes, session.srpUsername,
+                                   certificateTypes, 
+                                   session.srpUsername,
                                    reqTack, nextProtos is not None,
                                    session.serverName)
 
@@ -525,9 +527,11 @@ class TLSConnection(TLSRecordLayer):
         else:
             clientHello = ClientHello()
             clientHello.create(settings.maxVersion, getRandomBytes(32),
-                               createByteArraySequence([]), cipherSuites,
-                               certificateTypes, srpUsername,
-                               reqTack, nextProtos is not None, serverName)
+                               bytearray(0), cipherSuites,
+                               certificateTypes, 
+                               srpUsername,
+                               reqTack, nextProtos is not None, 
+                               serverName)
         for result in self._sendMsg(clientHello):
             yield result
         yield clientHello
@@ -594,15 +598,20 @@ class TLSConnection(TLSRecordLayer):
     def _clientSelectNextProto(self, nextProtos, serverHello):
         # nextProtos is None or non-empty list of strings
         # serverHello.next_protos is None or possibly-empty list of strings
+        #
+        # !!! We assume the client may have specified nextProtos as a list of
+        # strings so we convert them to bytearrays (it's awkward to require
+        # the user to specify a list of bytearrays or "bytes", and in 
+        # Python 2.6 bytes() is just an alias for str() anyways...
         if nextProtos is not None and serverHello.next_protos is not None:
             for p in nextProtos:
-                if p in serverHello.next_protos:
-                    return p
+                if bytearray(p) in serverHello.next_protos:
+                    return bytearray(p)
             else:
                 # If the client doesn't support any of server's protocols,
                 # or the server doesn't advertise any (next_protos == [])
                 # the client SHOULD select the first protocol it supports.
-                return nextProtos[0]
+                return bytearray(nextProtos[0])
         return None
  
     def _clientResume(self, session, serverHello, clientRandom, 
@@ -725,7 +734,7 @@ class TLSConnection(TLSRecordLayer):
         A = powMod(g, a, N)
 
         #Calculate client's static DH values (x, v)
-        x = makeX(bytesToString(s), srpUsername, password)
+        x = makeX(s, bytearray(srpUsername, "utf-8"), password)
         v = powMod(g, x, N)
 
         #Calculate u
@@ -847,9 +856,8 @@ class TLSConnection(TLSRecordLayer):
                                          serverRandom)
                 verifyBytes = self._calcSSLHandshakeHash(masterSecret, b"")
             elif self.version in ((3,1), (3,2)):
-                verifyBytes = stringToBytes(\
-                    self._handshake_md5.digest() + \
-                    self._handshake_sha.digest())
+                verifyBytes = self._handshake_md5.digest() + \
+                                self._handshake_sha.digest()
             if self.fault == Fault.badVerifyMessage:
                 verifyBytes[0] = ((verifyBytes[0]+1) % 256)
             signedBytes = privateKey.sign(verifyBytes)
@@ -1118,7 +1126,7 @@ class TLSConnection(TLSRecordLayer):
         if sessionCache:
             sessionID = getRandomBytes(32)
         else:
-            sessionID = createByteArraySequence([])
+            sessionID = bytearray(0)
         
         if not clientHello.supports_npn:
             nextProtos = None
@@ -1183,13 +1191,19 @@ class TLSConnection(TLSRecordLayer):
             serverCertChain = certChain
         else:
             serverCertChain = None
+        srpUsername = None
+        serverName = None
+        if clientHello.srp_username:
+            srpUsername = clientHello.srp_username.decode("utf-8")
+        if clientHello.server_name:
+            serverName = clientHello.server_name.decode("utf-8")
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
-            clientHello.srp_username, clientCertChain, serverCertChain,
-            tackExt, serverHello.tackExt!=None, clientHello.server_name)
+            srpUsername, clientCertChain, serverCertChain,
+            tackExt, serverHello.tackExt!=None, serverName)
             
         #Add the session object to the session cache
         if sessionCache and sessionID:
-            sessionCache[bytesToString(sessionID)] = self.session
+            sessionCache[sessionID] = self.session
 
         self._handshakeDone(resumed=False)
 
@@ -1245,8 +1259,7 @@ class TLSConnection(TLSRecordLayer):
             #Check in the session cache
             if sessionCache and not session:
                 try:
-                    session = sessionCache[bytesToString(\
-                                               clientHello.session_id)]
+                    session = sessionCache[clientHello.session_id]
                     if not session.resumable:
                         raise AssertionError()
                     #Check for consistency with ClientHello
@@ -1259,12 +1272,14 @@ class TLSConnection(TLSRecordLayer):
                                 AlertDescription.handshake_failure):
                             yield result
                     if clientHello.srp_username:
-                        if clientHello.srp_username != session.srpUsername:
+                        if not session.srpUsername or \
+                            clientHello.srp_username != bytearray(session.srpUsername, "utf-8"):
                             for result in self._sendError(\
                                     AlertDescription.handshake_failure):
                                 yield result
                     if clientHello.server_name:
-                        if clientHello.server_name != session.serverName:
+                        if not session.serverName or \
+                            clientHello.server_name != bytearray(session.serverName, "utf-8"):
                             for result in self._sendError(\
                                     AlertDescription.handshake_failure):
                                 yield result                    
@@ -1341,10 +1356,11 @@ class TLSConnection(TLSRecordLayer):
     def _serverSRPKeyExchange(self, clientHello, serverHello, verifierDB, 
                                 cipherSuite, privateKey, serverCertChain):
 
-        self.allegedSrpUsername = clientHello.srp_username
+        srpUsername = clientHello.srp_username.decode("utf-8")
+        self.allegedSrpUsername = srpUsername
         #Get parameters from username
         try:
-            entry = verifierDB[clientHello.srp_username]
+            entry = verifierDB[srpUsername]
         except KeyError:
             for result in self._sendError(\
                     AlertDescription.unknown_psk_identity):
@@ -1358,7 +1374,7 @@ class TLSConnection(TLSRecordLayer):
 
         #Create ServerKeyExchange, signing it if necessary
         serverKeyExchange = ServerKeyExchange(cipherSuite)
-        serverKeyExchange.createSRP(N, g, stringToBytes(s), B)
+        serverKeyExchange.createSRP(N, g, s, B)
         if cipherSuite in CipherSuite.srpCertSuites:
             hashBytes = serverKeyExchange.hash(clientHello.random,
                                                serverHello.random)
@@ -1498,8 +1514,8 @@ class TLSConnection(TLSRecordLayer):
                                          clientHello.random, serverHello.random)
                 verifyBytes = self._calcSSLHandshakeHash(masterSecret, b"")
             elif self.version in ((3,1), (3,2)):
-                verifyBytes = stringToBytes(self._handshake_md5.digest() +\
-                                            self._handshake_sha.digest())
+                verifyBytes = self._handshake_md5.digest() + \
+                                self._handshake_sha.digest()
             for result in self._getMsg(ContentType.handshake,
                                       HandshakeType.certificate_verify):
                 if result in (0,1): yield result
@@ -1686,8 +1702,8 @@ class TLSConnection(TLSRecordLayer):
             else:
                 label = b"server finished"
 
-            handshakeHashes = stringToBytes(self._handshake_md5.digest() + \
-                                            self._handshake_sha.digest())
+            handshakeHashes = self._handshake_md5.digest() + \
+                                self._handshake_sha.digest()
             verifyData = PRF(masterSecret, label, handshakeHashes, 12)
             return verifyData
         else:

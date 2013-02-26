@@ -50,7 +50,7 @@ class SessionCache:
         self.lock.acquire()
         try:
             self._purge() #Delete old items, so we're assured of a new one
-            session = self.entriesDict[sessionID]
+            session = self.entriesDict[bytes(sessionID)]
 
             #When we add sessions they're resumable, but it's possible
             #for the session to be invalidated later on (if a fatal alert
@@ -69,7 +69,7 @@ class SessionCache:
         self.lock.acquire()
         try:
             #Add the new element
-            self.entriesDict[sessionID] = session
+            self.entriesDict[bytes(sessionID)] = session
             self.entriesList[self.lastIndex] = (sessionID, time.time())
             self.lastIndex = (self.lastIndex+1) % len(self.entriesList)
 

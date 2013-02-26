@@ -7,10 +7,10 @@ from .compat import *
 
 class Writer:
     def __init__(self):
-        self.bytes = createByteArrayZeros(0)
+        self.bytes = bytearray(0)
 
     def add(self, x, length):
-        self.bytes += createByteArrayZeros(length)
+        self.bytes += bytearray(length)
         newIndex = len(self.bytes) - 1
         for count in range(length):
             self.bytes[newIndex] = x & 0xFF

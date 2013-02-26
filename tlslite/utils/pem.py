@@ -1,17 +1,11 @@
 # Author: Trevor Perrin
 # See the LICENSE file for legal information regarding use of this file.
 
-from .cryptomath import base64ToBytes
+from .compat import *
 import binascii
 
 #This code is shared with tackpy (somewhat), so I'd rather make minimal
 #changes, and preserve the use of a2b_base64 throughout.
-
-def a2b_base64(s):
-    return base64ToBytes(s)
-    
-def b2a_base64(b):
-    return bytesToBase64(b)
 
 def dePem(s, name):
     """Decode a PEM string into a bytearray of its payload.

@@ -27,12 +27,11 @@ class _ConnectionState:
         self.encContext = None
         self.seqnum = 0
 
-    def getSeqNumStr(self):
+    def getSeqNumBytes(self):
         w = Writer()
         w.add(self.seqnum, 8)
-        seqnumStr = bytesToString(w.bytes)
         self.seqnum += 1
-        return seqnumStr
+        return w.bytes
 
 
 class TLSRecordLayer:
@@ -112,8 +111,8 @@ class TLSRecordLayer:
         self._readBuffer = b""
 
         #Handshake digests
-        self._handshake_md5 = md5()
-        self._handshake_sha = sha1()
+        self._handshake_md5 = hashlib.md5()
+        self._handshake_sha = hashlib.sha1()
 
         #TLS Protocol Version
         self.version = (0,0) #read-only
@@ -197,7 +196,7 @@ class TLSRecordLayer:
                         if result in (0,1):
                             yield result
                     applicationData = result
-                    self._readBuffer += bytesToString(applicationData.write())
+                    self._readBuffer += applicationData.write()
                 except TLSRemoteAlert as alert:
                     if alert.description != AlertDescription.close_notify:
                         raise
@@ -210,9 +209,9 @@ class TLSRecordLayer:
             if max == None:
                 max = len(self._readBuffer)
 
-            returnStr = self._readBuffer[:max]
+            returnBytes = self._readBuffer[:max]
             self._readBuffer = self._readBuffer[max:]
-            yield returnStr
+            yield str(returnBytes)
         except GeneratorExit:
             raise
         except:
@@ -260,7 +259,7 @@ class TLSRecordLayer:
                     break
                 if endIndex > len(s):
                     endIndex = len(s)
-                block = stringToBytes(s[startIndex : endIndex])
+                block = bytearray(s[startIndex : endIndex])
                 applicationData = ApplicationData().create(block)
                 for result in self._sendMsg(applicationData, \
                                             randomizeFirstBlock):
@@ -527,41 +526,38 @@ class TLSRecordLayer:
                                        randomizeFirstBlock = False):
                 yield result                                            
 
-        bytes = msg.write()
+        b = msg.write()
         
         # If a 1-byte message was passed in, and we "split" the 
         # first(only) byte off above, we may have a 0-length msg:
-        if len(bytes) == 0:
+        if len(b) == 0:
             return
             
         contentType = msg.contentType
 
         #Update handshake hashes
         if contentType == ContentType.handshake:
-            bytesStr = bytesToString(bytes)
-            self._handshake_md5.update(bytesStr)
-            self._handshake_sha.update(bytesStr)
+            self._handshake_md5.update(compat26Str(b))
+            self._handshake_sha.update(compat26Str(b))
 
         #Calculate MAC
         if self._writeState.macContext:
-            seqnumStr = self._writeState.getSeqNumStr()
-            bytesStr = bytesToString(bytes)
+            seqnumBytes = self._writeState.getSeqNumBytes()
             mac = self._writeState.macContext.copy()
-            mac.update(seqnumStr)
-            mac.update(chr(contentType))
+            mac.update(compat26Str(seqnumBytes))
+            mac.update(compat26Str(bytearray([contentType])))
             if self.version == (3,0):
-                mac.update( chr( len(bytes)//256 ) )
-                mac.update( chr( len(bytes)%256 ) )
+                mac.update( compat26Str( bytearray([len(b)//256] )))
+                mac.update( compat26Str( bytearray([len(b)%256] )))
             elif self.version in ((3,1), (3,2)):
-                mac.update(chr(self.version[0]))
-                mac.update(chr(self.version[1]))
-                mac.update( chr( len(bytes)//256 ) )
-                mac.update( chr( len(bytes)%256 ) )
+                mac.update(compat26Str( bytearray([self.version[0]] )))
+                mac.update(compat26Str( bytearray([self.version[1]] )))
+                mac.update( compat26Str( bytearray([len(b)//256] )))
+                mac.update( compat26Str( bytearray([len(b)%256] )))
             else:
                 raise AssertionError()
-            mac.update(bytesStr)
-            macString = mac.digest()
-            macBytes = stringToBytes(macString)
+            mac.update(compat26Str(b))
+            macBytes = bytearray(mac.digest())
             if self.fault == Fault.badMAC:
                 macBytes[0] = (macBytes[0]+1) % 256
 
@@ -572,34 +568,29 @@ class TLSRecordLayer:
 
                 #Add TLS 1.1 fixed block
                 if self.version == (3,2):
-                    bytes = self.fixedIVBlock + bytes
+                    b = self.fixedIVBlock + b
 
-                #Add padding: bytes = bytes + (macBytes + paddingBytes)
-                currentLength = len(bytes) + len(macBytes) + 1
+                #Add padding: b = b+ (macBytes + paddingBytes)
+                currentLength = len(b) + len(macBytes) + 1
                 blockLength = self._writeState.encContext.block_size
                 paddingLength = blockLength-(currentLength % blockLength)
 
-                paddingBytes = createByteArraySequence([paddingLength] * \
-                                                       (paddingLength+1))
+                paddingBytes = bytearray([paddingLength] * (paddingLength+1))
                 if self.fault == Fault.badPadding:
                     paddingBytes[0] = (paddingBytes[0]+1) % 256
                 endBytes = macBytes + paddingBytes
-                bytes += endBytes
+                b += endBytes
                 #Encrypt
-                plaintext = stringToBytes(bytes)
-                ciphertext = self._writeState.encContext.encrypt(plaintext)
-                bytes = stringToBytes(ciphertext)
+                b = self._writeState.encContext.encrypt(b)
 
             #Encrypt (for Stream Cipher)
             else:
-                bytes += macBytes
-                plaintext = bytesToString(bytes)
-                ciphertext = self._writeState.encContext.encrypt(plaintext)
-                bytes = stringToBytes(ciphertext)
+                b += macBytes
+                b = self._writeState.encContext.encrypt(b)
 
         #Add record header and send
-        r = RecordHeader3().create(self.version, contentType, len(bytes))
-        s = bytesToString(r.write() + bytes)
+        r = RecordHeader3().create(self.version, contentType, len(b))
+        s = r.write() + b
         while 1:
             try:
                 bytesSent = self.sock.send(s) #Might raise socket.error
@@ -768,9 +759,8 @@ class TLSRecordLayer:
                             yield result
 
                 #Update handshake hashes
-                sToHash = bytesToString(p.bytes)
-                self._handshake_md5.update(sToHash)
-                self._handshake_sha.update(sToHash)
+                self._handshake_md5.update(compat26Str(p.bytes))
+                self._handshake_sha.update(compat26Str(p.bytes))
 
                 #Parse based on handshake type
                 if subType == HandshakeType.client_hello:
@@ -809,19 +799,19 @@ class TLSRecordLayer:
 
         #If there's a handshake message waiting, return it
         if self._handshakeBuffer:
-            recordHeader, bytes = self._handshakeBuffer[0]
+            recordHeader, b = self._handshakeBuffer[0]
             self._handshakeBuffer = self._handshakeBuffer[1:]
-            yield (recordHeader, Parser(bytes))
+            yield (recordHeader, Parser(b))
             return
 
         #Otherwise...
         #Read the next record header
-        bytes = createByteArraySequence([])
+        b = bytearray(0)
         recordHeaderLength = 1
         ssl2 = False
         while 1:
             try:
-                s = self.sock.recv(recordHeaderLength-len(bytes))
+                s = self.sock.recv(recordHeaderLength-len(b))
             except socket.error as why:
                 if why.args[0] == errno.EWOULDBLOCK:
                     yield 0
@@ -833,24 +823,24 @@ class TLSRecordLayer:
             if len(s)==0:
                 raise TLSAbruptCloseError()
 
-            bytes += stringToBytes(s)
-            if len(bytes)==1:
-                if bytes[0] in ContentType.all:
+            b += bytearray(s)
+            if len(b)==1:
+                if b[0] in ContentType.all:
                     ssl2 = False
                     recordHeaderLength = 5
-                elif bytes[0] == 128:
+                elif b[0] == 128:
                     ssl2 = True
                     recordHeaderLength = 2
                 else:
                     raise SyntaxError()
-            if len(bytes) == recordHeaderLength:
+            if len(b) == recordHeaderLength:
                 break
 
         #Parse the record header
         if ssl2:
-            r = RecordHeader2().parse(Parser(bytes))
+            r = RecordHeader2().parse(Parser(b))
         else:
-            r = RecordHeader3().parse(Parser(bytes))
+            r = RecordHeader3().parse(Parser(b))
 
         #Check the record header fields
         if r.length > 18432:
@@ -858,10 +848,10 @@ class TLSRecordLayer:
                 yield result
 
         #Read the record contents
-        bytes = createByteArraySequence([])
+        b = bytearray(0)
         while 1:
             try:
-                s = self.sock.recv(r.length - len(bytes))
+                s = self.sock.recv(r.length - len(b))
             except socket.error as why:
                 if why.args[0] == errno.EWOULDBLOCK:
                     yield 0
@@ -873,8 +863,8 @@ class TLSRecordLayer:
             if len(s)==0:
                     raise TLSAbruptCloseError()
 
-            bytes += stringToBytes(s)
-            if len(bytes) == r.length:
+            b += bytearray(s)
+            if len(b) == r.length:
                 break
 
         #Check the record header fields (2)
@@ -892,11 +882,11 @@ class TLSRecordLayer:
         #        yield result
 
         #Decrypt the record
-        for result in self._decryptRecord(r.type, bytes):
+        for result in self._decryptRecord(r.type, b):
             if result in (0,1): yield result
             else: break
-        bytes = result
-        p = Parser(bytes)
+        b = result
+        p = Parser(b)
 
         #If it doesn't contain handshake messages, we can just return it
         if r.type != ContentType.handshake:
@@ -908,7 +898,7 @@ class TLSRecordLayer:
             #Otherwise, we loop through and add the handshake messages to the
             #handshake buffer
             while 1:
-                if p.index == len(bytes): #If we're at the end
+                if p.index == len(b): #If we're at the end
                     if not self._handshakeBuffer:
                         for result in self._sendError(\
                                 AlertDescription.decode_error, \
@@ -916,51 +906,49 @@ class TLSRecordLayer:
                             yield result
                     break
                 #There needs to be at least 4 bytes to get a header
-                if p.index+4 > len(bytes):
+                if p.index+4 > len(b):
                     for result in self._sendError(\
                             AlertDescription.decode_error,
                             "A record has a partial handshake message (1)"):
                         yield result
                 p.get(1) # skip handshake type
                 msgLength = p.get(3)
-                if p.index+msgLength > len(bytes):
+                if p.index+msgLength > len(b):
                     for result in self._sendError(\
                             AlertDescription.decode_error,
                             "A record has a partial handshake message (2)"):
                         yield result
 
-                handshakePair = (r, bytes[p.index-4 : p.index+msgLength])
+                handshakePair = (r, b[p.index-4 : p.index+msgLength])
                 self._handshakeBuffer.append(handshakePair)
                 p.index += msgLength
 
             #We've moved at least one handshake message into the
             #handshakeBuffer, return the first one
-            recordHeader, bytes = self._handshakeBuffer[0]
+            recordHeader, b = self._handshakeBuffer[0]
             self._handshakeBuffer = self._handshakeBuffer[1:]
-            yield (recordHeader, Parser(bytes))
+            yield (recordHeader, Parser(b))
 
 
-    def _decryptRecord(self, recordType, bytes):
+    def _decryptRecord(self, recordType, b):
         if self._readState.encContext:
 
             #Decrypt if it's a block cipher
             if self._readState.encContext.isBlockCipher:
                 blockLength = self._readState.encContext.block_size
-                if len(bytes) % blockLength != 0:
+                if len(b) % blockLength != 0:
                     for result in self._sendError(\
                             AlertDescription.decryption_failed,
                             "Encrypted data not a multiple of blocksize"):
                         yield result
-                ciphertext = bytesToString(bytes)
-                plaintext = self._readState.encContext.decrypt(ciphertext)
+                b = self._readState.encContext.decrypt(b)
                 if self.version == (3,2): #For TLS 1.1, remove explicit IV
-                    plaintext = plaintext[self._readState.encContext.block_size : ]
-                bytes = stringToBytes(plaintext)
+                    b = b[self._readState.encContext.block_size : ]
 
                 #Check padding
                 paddingGood = True
-                paddingLength = bytes[-1]
-                if (paddingLength+1) > len(bytes):
+                paddingLength = b[-1]
+                if (paddingLength+1) > len(b):
                     paddingGood=False
                     totalPaddingLength = 0
                 else:
@@ -968,7 +956,7 @@ class TLSRecordLayer:
                         totalPaddingLength = paddingLength+1
                     elif self.version in ((3,1), (3,2)):
                         totalPaddingLength = paddingLength+1
-                        paddingBytes = bytes[-totalPaddingLength:-1]
+                        paddingBytes = b[-totalPaddingLength:-1]
                         for byte in paddingBytes:
                             if byte != paddingLength:
                                 paddingGood = False
@@ -979,43 +967,39 @@ class TLSRecordLayer:
             #Decrypt if it's a stream cipher
             else:
                 paddingGood = True
-                ciphertext = bytesToString(bytes)
-                plaintext = self._readState.encContext.decrypt(ciphertext)
-                bytes = stringToBytes(plaintext)
+                b = self._readState.encContext.decrypt(b)
                 totalPaddingLength = 0
 
             #Check MAC
             macGood = True
             macLength = self._readState.macContext.digest_size
             endLength = macLength + totalPaddingLength
-            if endLength > len(bytes):
+            if endLength > len(b):
                 macGood = False
             else:
                 #Read MAC
-                startIndex = len(bytes) - endLength
+                startIndex = len(b) - endLength
                 endIndex = startIndex + macLength
-                checkBytes = bytes[startIndex : endIndex]
+                checkBytes = b[startIndex : endIndex]
 
                 #Calculate MAC
-                seqnumStr = self._readState.getSeqNumStr()
-                bytes = bytes[:-endLength]
-                bytesStr = bytesToString(bytes)
+                seqnumBytes = self._readState.getSeqNumBytes()
+                b = b[:-endLength]
                 mac = self._readState.macContext.copy()
-                mac.update(seqnumStr)
-                mac.update(chr(recordType))
+                mac.update(compat26Str(seqnumBytes))
+                mac.update(compat26Str(bytearray([recordType])))
                 if self.version == (3,0):
-                    mac.update( chr( len(bytes)//256 ) )
-                    mac.update( chr( len(bytes)%256 ) )
+                    mac.update( compat26Str(bytearray( [len(b)//256] ) ))
+                    mac.update( compat26Str(bytearray( [len(b)%256] ) ))
                 elif self.version in ((3,1), (3,2)):
-                    mac.update(chr(self.version[0]))
-                    mac.update(chr(self.version[1]))
-                    mac.update( chr( len(bytes)//256 ) )
-                    mac.update( chr( len(bytes)%256 ) )
+                    mac.update(compat26Str(bytearray( [self.version[0]] ) ))
+                    mac.update(compat26Str(bytearray( [self.version[1]] ) ))
+                    mac.update(compat26Str(bytearray( [len(b)//256] ) ))
+                    mac.update(compat26Str(bytearray( [len(b)%256] ) ))
                 else:
                     raise AssertionError()
-                mac.update(bytesStr)
-                macString = mac.digest()
-                macBytes = stringToBytes(macString)
+                mac.update(compat26Str(b))
+                macBytes = bytearray(mac.digest())
 
                 #Compare MACs
                 if macBytes != checkBytes:
@@ -1026,14 +1010,14 @@ class TLSRecordLayer:
                                           "MAC failure (or padding failure)"):
                     yield result
 
-        yield bytes
+        yield b
 
     def _handshakeStart(self, client):
         if not self.closed:
             raise ValueError("Renegotiation disallowed for security reasons")
         self._client = client
-        self._handshake_md5 = md5()
-        self._handshake_sha = sha1()
+        self._handshake_md5 = hashlib.md5()
+        self._handshake_sha = hashlib.sha1()
         self._handshakeBuffer = []
         self.allegedSrpUsername = None
         self._refCount = 1
@@ -1091,14 +1075,14 @@ class TLSRecordLayer:
         clientPendingState = _ConnectionState()
         serverPendingState = _ConnectionState()
         p = Parser(keyBlock)
-        clientMACBlock = bytesToString(p.getFixBytes(macLength))
-        serverMACBlock = bytesToString(p.getFixBytes(macLength))
-        clientKeyBlock = bytesToString(p.getFixBytes(keyLength))
-        serverKeyBlock = bytesToString(p.getFixBytes(keyLength))
-        clientIVBlock  = bytesToString(p.getFixBytes(ivLength))
-        serverIVBlock  = bytesToString(p.getFixBytes(ivLength))
-        clientPendingState.macContext = createMACFunc(clientMACBlock)
-        serverPendingState.macContext = createMACFunc(serverMACBlock)
+        clientMACBlock = p.getFixBytes(macLength)
+        serverMACBlock = p.getFixBytes(macLength)
+        clientKeyBlock = p.getFixBytes(keyLength)
+        serverKeyBlock = p.getFixBytes(keyLength)
+        clientIVBlock  = p.getFixBytes(ivLength)
+        serverIVBlock  = p.getFixBytes(ivLength)
+        clientPendingState.macContext = createMACFunc(compat26Str(clientMACBlock))
+        serverPendingState.macContext = createMACFunc(compat26Str(serverMACBlock))
         clientPendingState.encContext = createCipherFunc(clientKeyBlock,
                                                          clientIVBlock,
                                                          implementations)
@@ -1129,18 +1113,16 @@ class TLSRecordLayer:
 
     #Used for Finished messages and CertificateVerify messages in SSL v3
     def _calcSSLHandshakeHash(self, masterSecret, label):
-        masterSecretStr = bytesToString(masterSecret)
-
         imac_md5 = self._handshake_md5.copy()
         imac_sha = self._handshake_sha.copy()
 
-        imac_md5.update(label + masterSecretStr + b'\x36'*48)
-        imac_sha.update(label + masterSecretStr + b'\x36'*40)
+        imac_md5.update(compat26Str(label + masterSecret + bytearray([0x36]*48)))
+        imac_sha.update(compat26Str(label + masterSecret + bytearray([0x36]*40)))
 
-        md5Str = md5(masterSecretStr + (b'\x5c'*48) + \
-                         imac_md5.digest()).digest()
-        shaStr = sha1(masterSecretStr + (b'\x5c'*40) + \
-                         imac_sha.digest()).digest()
+        md5Bytes = MD5(masterSecret + bytearray([0x5c]*48) + \
+                         bytearray(imac_md5.digest()))
+        shaBytes = SHA1(masterSecret + bytearray([0x5c]*40) + \
+                         bytearray(imac_sha.digest()))
 
-        return stringToBytes(md5Str + shaStr)
+        return md5Bytes + shaBytes
 

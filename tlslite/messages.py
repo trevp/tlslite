@@ -103,29 +103,31 @@ class ClientHello(HandshakeMsg):
         HandshakeMsg.__init__(self, HandshakeType.client_hello)
         self.ssl2 = ssl2
         self.client_version = (0,0)
-        self.random = createByteArrayZeros(32)
-        self.session_id = createByteArraySequence([])
+        self.random = bytearray(32)
+        self.session_id = bytearray(0)
         self.cipher_suites = []         # a list of 16-bit values
         self.certificate_types = [CertificateType.x509]
         self.compression_methods = []   # a list of 8-bit values
         self.srp_username = None        # a string
         self.tack = False
         self.supports_npn = False
-        self.server_name = ""
+        self.server_name = bytearray(0)
 
     def create(self, version, random, session_id, cipher_suites,
-               certificate_types=None, srp_username=None,
-               tack=False, supports_npn=False, server_name=""):
+               certificate_types=None, srpUsername=None,
+               tack=False, supports_npn=False, serverName=None):
         self.client_version = version
         self.random = random
         self.session_id = session_id
         self.cipher_suites = cipher_suites
         self.certificate_types = certificate_types
         self.compression_methods = [0]
-        self.srp_username = srp_username
+        if srpUsername:
+            self.srp_username = bytearray(srpUsername, "utf-8")
         self.tack = tack
         self.supports_npn = supports_npn
-        self.server_name = server_name
+        if serverName:
+            self.server_name = bytearray(serverName, "utf-8")
         return self
 
     def parse(self, p):
@@ -139,7 +141,7 @@ class ClientHello(HandshakeMsg):
             self.random = p.getFixBytes(randomLength)
             if len(self.random) < 32:
                 zeroBytes = 32-len(self.random)
-                self.random = createByteArrayZeros(zeroBytes) + self.random
+                self.random = bytearray(zeroBytes) + self.random
             self.compression_methods = [0]#Fake this value
 
             #We're not doing a stopLengthCheck() for SSLv2, oh well..
@@ -158,7 +160,7 @@ class ClientHello(HandshakeMsg):
                     extLength = p.get(2)
                     index1 = p.index
                     if extType == ExtensionType.srp:
-                        self.srp_username = bytesToString(p.getVarBytes(1))
+                        self.srp_username = p.getVarBytes(1)
                     elif extType == ExtensionType.cert_type:
                         self.certificate_types = p.getVarList(1, 1)
                     elif extType == ExtensionType.tack:
@@ -175,7 +177,7 @@ class ClientHello(HandshakeMsg):
                             name_type = p2.get(1)
                             hostNameBytes = p2.getVarBytes(2)
                             if name_type == NameType.host_name:
-                                self.server_name = bytesToString(hostNameBytes)
+                                self.server_name = hostNameBytes
                                 break
                     else:
                         _ = p.getFixBytes(extLength)
@@ -204,7 +206,7 @@ class ClientHello(HandshakeMsg):
         if self.srp_username:
             w2.add(ExtensionType.srp, 2)
             w2.add(len(self.srp_username)+1, 2)
-            w2.addVarSeq(stringToBytes(self.srp_username), 1, 1)
+            w2.addVarSeq(self.srp_username, 1, 1)
         if self.supports_npn:
             w2.add(ExtensionType.supports_npn, 2)
             w2.add(0, 2)
@@ -213,7 +215,7 @@ class ClientHello(HandshakeMsg):
             w2.add(len(self.server_name)+5, 2)
             w2.add(len(self.server_name)+3, 2)            
             w2.add(NameType.host_name, 1)
-            w2.addVarSeq(stringToBytes(self.server_name), 1, 2) 
+            w2.addVarSeq(self.server_name, 1, 2) 
         if self.tack:
             w2.add(ExtensionType.tack, 2)
             w2.add(0, 2)
@@ -233,8 +235,8 @@ class ServerHello(HandshakeMsg):
     def __init__(self):
         HandshakeMsg.__init__(self, HandshakeType.server_hello)
         self.server_version = (0,0)
-        self.random = createByteArrayZeros(32)
-        self.session_id = createByteArraySequence([])
+        self.random = bytearray(32)
+        self.session_id = bytearray(0)
         self.cipher_suite = 0
         self.certificate_type = CertificateType.x509
         self.compression_method = 0
@@ -295,14 +297,12 @@ class ServerHello(HandshakeMsg):
         return protos
 
     def __next_protos_encoded(self):
-        a = []
+        b = bytearray()
         for e in self.next_protos_advertised:
             if len(e) > 255 or len(e) == 0:
                 raise BadNextProtos(len(e))
-            a.append(chr(len(e)))
-            a.append(e)
-
-        return [ord(x) for x in b''.join(a)]
+            b += bytearray( [len(e)] ) + bytearray(e)
+        return b
 
     def write(self):
         w = Writer()
@@ -431,13 +431,13 @@ class ServerKeyExchange(HandshakeMsg):
         self.cipherSuite = cipherSuite
         self.srp_N = 0
         self.srp_g = 0
-        self.srp_s = createByteArraySequence([])
+        self.srp_s = bytearray(0)
         self.srp_B = 0
         # Anon DH params:
         self.dh_p = 0
         self.dh_g = 0
         self.dh_Ys = 0
-        self.signature = createByteArraySequence([])
+        self.signature = bytearray(0)
 
     def createSRP(self, srp_N, srp_g, srp_s, srp_B):
         self.srp_N = srp_N
@@ -490,8 +490,7 @@ class ServerKeyExchange(HandshakeMsg):
         self.cipherSuite = None
         try:
             bytes = clientRandom + serverRandom + self.write()[4:]
-            s = bytesToString(bytes)
-            return stringToBytes(md5(s).digest() + sha1(s).digest())
+            return MD5(bytes) + SHA1(bytes)
         finally:
             self.cipherSuite = oldCipherSuite
 
@@ -517,7 +516,7 @@ class ClientKeyExchange(HandshakeMsg):
         self.cipherSuite = cipherSuite
         self.version = version
         self.srp_A = 0
-        self.encryptedPreMasterSecret = createByteArraySequence([])
+        self.encryptedPreMasterSecret = bytearray(0)
 
     def createSRP(self, srp_A):
         self.srp_A = srp_A
@@ -570,7 +569,7 @@ class ClientKeyExchange(HandshakeMsg):
 class CertificateVerify(HandshakeMsg):
     def __init__(self):
         HandshakeMsg.__init__(self, HandshakeType.certificate_verify)
-        self.signature = createByteArraySequence([])
+        self.signature = bytearray(0)
 
     def create(self, signature):
         self.signature = signature
@@ -626,16 +625,16 @@ class NextProtocol(HandshakeMsg):
 
     def write(self, trial=False):
         w = Writer()
-        w.addVarSeq(stringToBytes(self.next_proto), 1, 1)
+        w.addVarSeq(self.next_proto, 1, 1)
         paddingLen = 32 - ((len(self.next_proto) + 2) % 32)
-        w.addVarSeq(stringToBytes(b'\x00' * paddingLen), 1, 1)
+        w.addVarSeq(bytearray(paddingLen), 1, 1)
         return self.postWrite(w)
 
 class Finished(HandshakeMsg):
     def __init__(self, version):
         HandshakeMsg.__init__(self, HandshakeType.finished)
         self.version = version
-        self.verify_data = createByteArraySequence([])
+        self.verify_data = bytearray(0)
 
     def create(self, verify_data):
         self.verify_data = verify_data
@@ -660,7 +659,7 @@ class Finished(HandshakeMsg):
 class ApplicationData:
     def __init__(self):
         self.contentType = ContentType.application_data
-        self.bytes = createByteArraySequence([])
+        self.bytes = bytearray(0)
 
     def create(self, bytes):
         self.bytes = bytes

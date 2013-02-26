@@ -30,10 +30,10 @@ class VerifierDB(BaseDB):
 
     def _getItem(self, username, valueStr):
         (N, g, salt, verifier) = valueStr.split(b" ")
-        N = base64ToNumber(N)
-        g = base64ToNumber(g)
-        salt = base64ToString(salt)
-        verifier = base64ToNumber(verifier)
+        N = bytesToNumber(a2b_base64(N))
+        g = bytesToNumber(a2b_base64(g))
+        salt = a2b_base64(salt)
+        verifier = bytesToNumber(a2b_base64(verifier))
         return (N, g, salt, verifier)
 
     def __setitem__(self, username, verifierEntry):
@@ -56,10 +56,10 @@ class VerifierDB(BaseDB):
         if len(username)>=256:
             raise ValueError("username too long")
         N, g, salt, verifier = value
-        N = numberToBase64(N)
-        g = numberToBase64(g)
-        salt = stringToBase64(salt)
-        verifier = numberToBase64(verifier)
+        N = b2a_base64(numberToBytes(N))
+        g = b2a_base64(numberToBytes(g))
+        salt = b2a_base64(salt)
+        verifier = b2a_base64(numberToBytes(verifier))
         valueStr = b" ".join( (N, g, salt, verifier)  )
         return valueStr
 

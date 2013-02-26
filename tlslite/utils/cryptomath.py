@@ -50,10 +50,30 @@ length = len(zlib.compress(os.urandom(1000)))
 assert(length > 900)
 
 def getRandomBytes(howMany):
-    s = os.urandom(howMany)
-    assert(len(s) == howMany)
-    return stringToBytes(s)
+    b = bytearray(os.urandom(howMany))
+    assert(len(b) == howMany)
+    return b
+
 prngName = "os.urandom"
+
+# **************************************************************************
+# Simple hash functions
+# **************************************************************************
+
+import hmac
+import hashlib
+
+def MD5(b):
+    return bytearray(hashlib.md5(compat26Str(b)).digest())
+
+def SHA1(b):
+    return bytearray(hashlib.sha1(compat26Str(b)).digest())
+
+def HMAC_MD5(k, b):
+    return bytearray(hmac.new(compat26Str(k), compat26Str(b), hashlib.md5).digest())
+
+def HMAC_SHA1(k, b):
+    return bytearray(hmac.new(compat26Str(k), compat26Str(b), hashlib.sha1).digest())
 
 
 # **************************************************************************
@@ -78,46 +98,11 @@ def numberToBytes(n, howManyBytes=None):
     """    
     if howManyBytes == None:
         howManyBytes = numBytes(n)
-    bytes = createByteArrayZeros(howManyBytes)
+    bytes = bytearray(howManyBytes)
     for count in range(howManyBytes-1, -1, -1):
         bytes[count] = int(n % 256)
         n >>= 8
     return bytes    
-
-def bytesToBase64(bytes):
-    s = bytesToString(bytes)
-    return stringToBase64(s)
-
-def base64ToBytes(s):
-    s = base64ToString(s)
-    return stringToBytes(s)
-
-def numberToBase64(n):
-    bytes = numberToBytes(n)
-    return bytesToBase64(bytes)
-
-def base64ToNumber(s):
-    bytes = base64ToBytes(s)
-    return bytesToNumber(bytes)
-
-def stringToNumber(s):
-    bytes = stringToBytes(s)
-    return bytesToNumber(bytes)
-
-def numberToString(s, howManyBytes=None):
-    bytes = numberToBytes(s, howManyBytes)
-    return bytesToString(bytes)
-
-def base64ToString(s):
-    try:
-        return base64.decodestring(s)
-    except binascii.Error as e:
-        raise SyntaxError(e)
-    except binascii.Incomplete as e:
-        raise SyntaxError(e)
-
-def stringToBase64(s):
-    return base64.encodestring(s).replace(b"\n", b"")
 
 def mpiToNumber(mpi): #mpi is an openssl-format bignum string
     if (ord(mpi[4]) & 0x80) !=0: #Make sure this is a positive number
@@ -133,7 +118,7 @@ def numberToMPI(n):
     if (numBits(n) & 0x7)==0:
         ext = 1
     length = numBytes(n) + ext
-    bytes = createByteArrayZeros(4+ext) + bytes
+    bytes = bytearray(4+ext) + bytes
     bytes[0] = (length >> 24) & 0xFF
     bytes[1] = (length >> 16) & 0xFF
     bytes[2] = (length >> 8) & 0xFF
@@ -145,6 +130,18 @@ def numberToMPI(n):
 # **************************************************************************
 # Misc. Utility Functions
 # **************************************************************************
+
+def numBits(n):
+    if n==0:
+        return 0
+    s = "%x" % n
+    return ((len(s)-1)*4) + \
+    {'0':0, '1':1, '2':2, '3':2,
+     '4':3, '5':3, '6':3, '7':3,
+     '8':4, '9':4, 'a':4, 'b':4,
+     'c':4, 'd':4, 'e':4, 'f':4,
+     }[s[0]]
+    return int(math.floor(math.log(n, 2))+1)
 
 def numBytes(n):
     if n==0:

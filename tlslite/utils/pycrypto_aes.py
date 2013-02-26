@@ -22,8 +22,8 @@ if pycryptoLoaded:
 
         def encrypt(self, plaintext):
             plaintext = bytesToString(plaintext)
-            return stringToBytes(self.context.encrypt(plaintext))
+            return bytearray(self.context.encrypt(plaintext))
 
         def decrypt(self, ciphertext):
             ciphertext = bytesToString(ciphertext)
-            return stringToBytes(self.context.decrypt(ciphertext))
+            return bytearray(self.context.decrypt(ciphertext))
