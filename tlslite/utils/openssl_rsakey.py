@@ -59,15 +59,15 @@ if m2cryptoLoaded:
             return self._hasPrivateKey
 
         def _rawPrivateKeyOp(self, m):
-            s = numberToString(m, numBytes(self.n))
-            c = stringToNumber(m2.rsa_private_encrypt(self.rsa, s,
-                                                      m2.no_padding))
+            b = numberToByteArray(m, numBytes(self.n))
+            s = m2.rsa_private_encrypt(self.rsa, bytes(b), m2.no_padding)
+            c = bytesToNumber(bytearray(s))
             return c
 
         def _rawPublicKeyOp(self, c):
-            s = numberToString(c, numBytes(self.n))
-            m = stringToNumber(m2.rsa_public_decrypt(self.rsa, s,
-                                                     m2.no_padding))
+            b = numberToByteArray(c, numBytes(self.n))
+            s = m2.rsa_public_decrypt(self.rsa, bytes(b), m2.no_padding)
+            m = bytesToNumber(bytearray(s))
             return m
 
         def acceptsPassword(self): return True

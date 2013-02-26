@@ -16,13 +16,13 @@ if pycryptoLoaded:
 
         def __init__(self, key):
             RC4.__init__(self, key, "pycrypto")
-            key = bytesToString(key)
+            key = bytes(key)
             self.context = Crypto.Cipher.ARC4.new(key)
 
         def encrypt(self, plaintext):
-            plaintext = bytesToString(plaintext)
+            plaintext = bytes(plaintext)
             return bytearray(self.context.encrypt(plaintext))
 
         def decrypt(self, ciphertext):
-            ciphertext = bytesToString(ciphertext)
+            ciphertext = bytes(ciphertext)
             return bytearray(self.context.decrypt(ciphertext))

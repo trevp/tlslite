@@ -22,7 +22,7 @@ if m2cryptoLoaded:
             m2.rc4_free(self.rc4)
 
         def encrypt(self, plaintext):
-            return m2.rc4_update(self.rc4, plaintext)
+            return bytearray(m2.rc4_update(self.rc4, plaintext))
 
         def decrypt(self, ciphertext):
-            return self.encrypt(ciphertext)
+            return bytearray(self.encrypt(ciphertext))
