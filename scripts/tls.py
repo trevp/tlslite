@@ -3,6 +3,7 @@
 # Authors: 
 #   Trevor Perrin
 #   Marcelo Fernandez - bugfix and NPN support
+#   Martin von Loewis - python 3 port
 #
 # See the LICENSE file for legal information regarding use of this file.
 from __future__ import print_function

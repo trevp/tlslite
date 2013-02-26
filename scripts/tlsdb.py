@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
-# Author: Trevor Perrin
+# Authors: 
+#   Trevor Perrin
+#   Martin von Loewis - python 3 port
+#
 # See the LICENSE file for legal information regarding use of this file.
+
 from __future__ import print_function
 import sys
 import os
