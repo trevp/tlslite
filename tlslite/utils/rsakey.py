@@ -79,8 +79,13 @@ class RSAKey:
         @return: Whether the signature matches the passed-in data.
         """
         hashBytes = SHA1(bytearray(bytes))
-        prefixedHashBytes = self._addPKCS1SHA1Prefix(hashBytes)
-        return self.verify(sigBytes, prefixedHashBytes)
+        
+        # Try it with/without the embedded NULL
+        prefixedHashBytes1 = self._addPKCS1SHA1Prefix(hashBytes, False)
+        prefixedHashBytes2 = self._addPKCS1SHA1Prefix(hashBytes, True)
+        result1 = self.verify(sigBytes, prefixedHashBytes1)
+        result2 = self.verify(sigBytes, prefixedHashBytes2)
+        return (result1 or result2)
 
     def sign(self, bytes):
         """Sign the passed-in bytes.
@@ -219,10 +224,11 @@ class RSAKey:
         # algorithmIdentifier should be encoded with a NULL parameter or 
         # with the parameter omitted.  While the original intention was 
         # apparently to omit it, many toolkits went the other way.  TLS 1.2
-        # specifies the NULL should be included.  Anyways, verification
-        # code should accept both, so the above hashAndVerify() is not
-        # yet correct.  However, nothing uses this code yet - an eventual
-        # TLS 1.2 implementation will have to fix that.
+        # specifies the NULL should be included, and this behavior is also
+        # mandated in recent versions of PKCS #1, and is what tlslite has
+        # always implemented.  Anyways, verification code should probably 
+        # accept both.  However, nothing uses this code yet, so this is 
+        # all fairly moot.
         if not withNULL:
             prefixBytes = bytearray(\
             [0x30,0x1f,0x30,0x07,0x06,0x05,0x2b,0x0e,0x03,0x02,0x1a,0x04,0x14])            
