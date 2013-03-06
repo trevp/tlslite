@@ -95,7 +95,7 @@ def clientTestCmd(argv):
     test = 0
 
     badFault = False
-    
+
     print("Test 0 - anonymous handshake")
     connection = connect()
     connection.handshakeClientAnonymous()
@@ -250,7 +250,7 @@ def clientTestCmd(argv):
         if alert.description != AlertDescription.bad_record_mac:
             raise
     connection.close()
-
+    
     print("Test 21 - HTTPS test X.509")
     address = address[0], address[1]+1
     if hasattr(socket, "timeout"):
@@ -447,6 +447,11 @@ def serverTestCmd(argv):
     def connect():
         return TLSConnection(lsock.accept()[0])
 
+    x509Cert = X509().parse(open(os.path.join(dir, "serverX509Cert.pem")).read())
+    x509Chain = X509CertChain([x509Cert])
+    s = open(os.path.join(dir, "serverX509Key.pem")).read()
+    x509Key = parsePEMKey(s, private=True)
+
     print("Test 0 - Anonymous server handshake")
     connection = connect()
     connection.handshakeServer(anon=True)
@@ -454,11 +459,6 @@ def serverTestCmd(argv):
     connection.close() 
     
     print("Test 1 - good X.509")
-    x509Cert = X509().parse(open(os.path.join(dir, "serverX509Cert.pem")).read())
-    x509Chain = X509CertChain([x509Cert])
-    s = open(os.path.join(dir, "serverX509Key.pem")).read()
-    x509Key = parsePEMKey(s, private=True)
-
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
     assert(connection.session.serverName == address[0])    

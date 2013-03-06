@@ -106,7 +106,7 @@ class HTTPTLSConnection(httplib.HTTPConnection, ClientHelper):
                  anon)
 
     def connect(self):
-         httplib.HTTPConnection.connect(self)
-         self.sock = TLSConnection(self.sock)
-         self.sock.ignoreAbruptClose = self.ignoreAbruptClose
-         ClientHelper._handshake(self, self.sock)
+        httplib.HTTPConnection.connect(self)
+        self.sock = TLSConnection(self.sock)
+        self.sock.ignoreAbruptClose = self.ignoreAbruptClose
+        ClientHelper._handshake(self, self.sock)

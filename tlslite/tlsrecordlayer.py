@@ -248,7 +248,7 @@ class TLSRecordLayer:
         """
         try:
             if self.closed:
-                raise ValueError()
+                raise ValueError("Writing to a closed connection")
 
             index = 0
             blockSize = 16384
@@ -269,7 +269,7 @@ class TLSRecordLayer:
                 index += 1
         except GeneratorExit:
             raise
-        except:
+        except Exception:
             self._shutdown(False)
             raise
 
