@@ -248,7 +248,7 @@ class TLSRecordLayer:
         """
         try:
             if self.closed:
-                raise ValueError("Writing to a closed connection")
+                raise TLSConnectionClosedError()
 
             index = 0
             blockSize = 16384

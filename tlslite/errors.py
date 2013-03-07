@@ -7,6 +7,7 @@ TLSAuthenticationError, TLSNoAuthenticationError, TLSAuthenticationTypeError,
 TLSFingerprintError, TLSAuthorizationError, TLSValidationError, TLSFaultError
 """
 
+import socket
 from .constants import AlertDescription, AlertLevel
 
 class TLSError(Exception):
@@ -24,6 +25,11 @@ class TLSAbruptCloseError(TLSError):
     is closed without this, it could signify that an attacker is trying
     to truncate the connection.  It could also signify a misbehaving
     TLS implementation, or a random network failure.
+    """
+    pass
+    
+class TLSConnectionClosedError(TLSError, ValueError, socket.error):
+    """An attempt was made to write on a closed connection.
     """
     pass
 
