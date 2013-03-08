@@ -1,13 +1,17 @@
-# Author: Trevor Perrin
+# Authors: 
+#   Trevor Perrin
+#   Dave Baggett (Arcode Corporation) - Added TLSUnsupportedError.
+#
 # See the LICENSE file for legal information regarding use of this file.
 
 """Exception classes.
 @sort: TLSError, TLSAbruptCloseError, TLSAlert, TLSLocalAlert, TLSRemoteAlert,
 TLSAuthenticationError, TLSNoAuthenticationError, TLSAuthenticationTypeError,
-TLSFingerprintError, TLSAuthorizationError, TLSValidationError, TLSFaultError
+TLSFingerprintError, TLSAuthorizationError, TLSValidationError, TLSFaultError,
+TLSUnsupportedError
 """
-
 import socket
+
 from .constants import AlertDescription, AlertLevel
 
 class TLSError(Exception):
@@ -17,6 +21,10 @@ class TLSError(Exception):
         """"At least print out the Exception time for str(...)."""
         return repr(self)    
 
+class TLSClosedConnectionError(TLSError, socket.error):
+    """An attempt was made to use the connection after it was closed."""
+    pass
+
 class TLSAbruptCloseError(TLSError):
     """The socket was closed without a proper TLS shutdown.
 
@@ -25,11 +33,6 @@ class TLSAbruptCloseError(TLSError):
     is closed without this, it could signify that an attacker is trying
     to truncate the connection.  It could also signify a misbehaving
     TLS implementation, or a random network failure.
-    """
-    pass
-    
-class TLSConnectionClosedError(TLSError, ValueError, socket.error):
-    """An attempt was made to write on a closed connection.
     """
     pass
 
@@ -148,8 +151,10 @@ class TLSAuthorizationError(TLSAuthenticationError):
 class TLSValidationError(TLSAuthenticationError):
     """The Checker has determined that the other party's certificate
     chain is invalid."""
-    pass
-
+    def __init__(self, msg, info=None):
+        # Include a dict containing info about this validation failure
+        TLSAuthenticationError.__init__(self, msg)
+        self.info = info
 
 class TLSFaultError(TLSError):
     """The other party responded incorrectly to an induced fault.
@@ -158,4 +163,10 @@ class TLSFaultError(TLSError):
     TLSConnection's fault variable is set to induce some sort of
     faulty behavior, and the other party doesn't respond appropriately.
     """
+    pass
+
+
+class TLSUnsupportedError(TLSError):
+    """The implementation doesn't support the requested (or required)
+    capabilities."""
     pass

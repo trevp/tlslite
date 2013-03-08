@@ -190,6 +190,9 @@ class TLSRecordLayer:
         @rtype: iterable
         @return: A generator; see above for details.
         """
+        if self.closed:
+            raise TLSClosedConnectionError("attempt to read from closed connection")
+        
         try:
             while len(self._readBuffer)<min and not self.closed:
                 try:
@@ -248,7 +251,7 @@ class TLSRecordLayer:
         """
         try:
             if self.closed:
-                raise TLSConnectionClosedError()
+                raise TLSClosedConnectionError("attempt to write to closed connection")
 
             index = 0
             blockSize = 16384
