@@ -1,4 +1,7 @@
-# Author: Trevor Perrin
+# Authors: 
+#   Trevor Perrin
+#   Dave Baggett (Arcode Corporation) - cleanup handling of constants
+#
 # See the LICENSE file for legal information regarding use of this file.
 
 """Class for setting handshake parameters."""
@@ -6,6 +9,13 @@
 from .constants import CertificateType
 from .utils import cryptomath
 from .utils import cipherfactory
+
+# RC4 is preferred as faster in Python, works in SSL3, and immune to CBC
+# issues such as timing attacks
+CIPHER_NAMES = ["rc4", "aes256", "aes128", "3des"]
+CIPHER_IMPLEMENTATIONS = ["openssl", "pycrypto", "python"]
+CERTIFICATE_TYPES = ["x509"]
+
 
 class HandshakeSettings:
     """This class encapsulates various parameters that can be used with
@@ -49,10 +59,11 @@ class HandshakeSettings:
     @ivar certificateTypes: The allowed certificate types, in order of
     preference.
 
-    The allowed values in this list are 'x509'.  This
-    list is only used with a client handshake.  The client will
-    advertise to the server which certificate types are supported, and
-    will check that the server uses one of the appropriate types.
+    The only allowed certificate type is 'x509'.  This list is only used with a
+    client handshake.  The client will advertise to the server which certificate
+    types are supported, and will check that the server uses one of the
+    appropriate types.
+
 
     @type minVersion: tuple
     @ivar minVersion: The minimum allowed SSL/TLS version.
@@ -81,9 +92,9 @@ class HandshakeSettings:
     def __init__(self):
         self.minKeySize = 1023
         self.maxKeySize = 8193
-        self.cipherNames = ["rc4", "aes256", "aes128", "3des"]
-        self.cipherImplementations = ["openssl", "pycrypto","python"]
-        self.certificateTypes = ["x509"]
+        self.cipherNames = CIPHER_NAMES
+        self.cipherImplementations = CIPHER_IMPLEMENTATIONS
+        self.certificateTypes = CERTIFICATE_TYPES
         self.minVersion = (3,0)
         self.maxVersion = (3,2)
         self.useExperimentalTackExtension = False
@@ -125,13 +136,13 @@ class HandshakeSettings:
         if other.maxKeySize>16384:
             raise ValueError("maxKeySize too large")
         for s in other.cipherNames:
-            if s not in ("rc4", "aes256", "aes128", "3des"):
+            if s not in CIPHER_NAMES:
                 raise ValueError("Unknown cipher name: '%s'" % s)
         for s in other.cipherImplementations:
-            if s not in ("openssl", "python", "pycrypto"):
+            if s not in CIPHER_IMPLEMENTATIONS:
                 raise ValueError("Unknown cipher implementation: '%s'" % s)
         for s in other.certificateTypes:
-            if s not in ("x509"):
+            if s not in CERTIFICATE_TYPES:
                 raise ValueError("Unknown certificate type: '%s'" % s)
 
         if other.minVersion > other.maxVersion:
