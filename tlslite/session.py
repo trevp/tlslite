@@ -1,4 +1,7 @@
-# Author: Trevor Perrin
+# Authors: 
+#   Trevor Perrin
+#   Dave Baggett (Arcode Corporation) - canonicalCipherName
+#
 # See the LICENSE file for legal information regarding use of this file.
 
 """Class representing a TLS session."""
@@ -111,15 +114,5 @@ class Session:
 
         @rtype: str
         @return: The name of the cipher used with this connection.
-        Either 'aes128', 'aes256', 'rc4', or '3des'.
         """
-        if self.cipherSuite in CipherSuite.aes128Suites:
-            return "aes128"
-        elif self.cipherSuite in CipherSuite.aes256Suites:
-            return "aes256"
-        elif self.cipherSuite in CipherSuite.rc4Suites:
-            return "rc4"
-        elif self.cipherSuite in CipherSuite.tripleDESSuites:
-            return "3des"
-        else:
-            return None
+        return CipherSuite.canonicalCipherName(self.cipherSuite)

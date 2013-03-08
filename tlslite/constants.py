@@ -3,6 +3,7 @@
 #   Google - defining ClientCertificateType
 #   Google (adapted by Sam Rushing) - NPN support
 #   Dimitris Moraitis - Anon ciphersuites
+#   Dave Baggett (Arcode Corporation) - canonicalCipherName
 #
 # See the LICENSE file for legal information regarding use of this file.
 
@@ -225,6 +226,20 @@ class CipherSuite:
 
     rc4Suites = []
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
+
+    @staticmethod
+    def canonicalCipherName(cipher):
+        "Return the canonical name of the cipher whose number is provided."
+        if cipher in CipherSuite.aes128Suites:
+            return "aes128"
+        elif cipher in CipherSuite.aes256Suites:
+            return "aes256"
+        elif cipher in CipherSuite.rc4Suites:
+            return "rc4"
+        elif cipher in CipherSuite.tripleDESSuites:
+            return "3des"
+        else:
+            return None
 
 
 # The following faults are induced as part of testing.  The faultAlerts
