@@ -38,7 +38,7 @@ if pycryptoLoaded:
         def generate(bits):
             key = PyCrypto_RSAKey()
             def f(numBytes):
-                return bytesToString(getRandomBytes(numBytes))
+                return bytes(getRandomBytes(numBytes))
             key.rsa = RSA.generate(bits, f)
             return key
         generate = staticmethod(generate)
