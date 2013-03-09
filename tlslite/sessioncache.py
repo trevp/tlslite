@@ -9,7 +9,7 @@
 import threading
 import time
 
-class SessionCache:
+class SessionCache(object):
     """This class is used by the server to cache TLS sessions.
 
     Caching sessions allows the client to use TLS session resumption

@@ -17,7 +17,7 @@ CIPHER_IMPLEMENTATIONS = ["openssl", "pycrypto", "python"]
 CERTIFICATE_TYPES = ["x509"]
 
 
-class HandshakeSettings:
+class HandshakeSettings(object):
     """This class encapsulates various parameters that can be used with
     a TLS handshake.
     @sort: minKeySize, maxKeySize, cipherNames, certificateTypes,

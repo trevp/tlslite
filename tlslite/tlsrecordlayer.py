@@ -22,7 +22,7 @@ import socket
 import errno
 import traceback
 
-class _ConnectionState:
+class _ConnectionState(object):
     def __init__(self):
         self.macContext = None
         self.encContext = None
@@ -35,7 +35,7 @@ class _ConnectionState:
         return w.bytes
 
 
-class TLSRecordLayer:
+class TLSRecordLayer(object):
     """
     This class handles data transmission for a TLS connection.
 

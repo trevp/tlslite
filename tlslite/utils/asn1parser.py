@@ -8,7 +8,7 @@ from .compat import *
 from .codec import *
 
 #Takes a byte array which has a DER TLV field at its head
-class ASN1Parser:
+class ASN1Parser(object):
     def __init__(self, bytes):
         p = Parser(bytes)
         p.get(1) #skip Type

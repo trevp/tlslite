@@ -12,7 +12,7 @@ from .utils.keyfactory import _createPublicRSAKey
 from .utils.pem import *
 
 
-class X509:
+class X509(object):
     """This class represents an X.509 certificate.
 
     @type bytes: L{bytearray} of unsigned bytes

@@ -8,7 +8,7 @@ from .x509certchain import X509CertChain
 from .errors import *
 
 
-class Checker:
+class Checker(object):
     """This class is passed to a handshake function to check the other
     party's certificate chain.
 

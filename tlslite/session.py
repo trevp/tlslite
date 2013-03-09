@@ -10,7 +10,7 @@ from .utils.compat import *
 from .mathtls import *
 from .constants import *
 
-class Session:
+class Session(object):
     """
     This class represents a TLS session.
 

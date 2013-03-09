@@ -6,7 +6,7 @@
 from .cryptomath import *
 
 
-class RSAKey:
+class RSAKey(object):
     """This is an abstract base class for RSA keys.
 
     Particular implementations of RSA keys, such as

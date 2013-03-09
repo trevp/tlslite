@@ -8,7 +8,7 @@ from .utils.tackwrapper import *
 from .utils.pem import *
 from .x509 import X509
 
-class X509CertChain:
+class X509CertChain(object):
     """This class represents a chain of X.509 certificates.
 
     @type x509List: list

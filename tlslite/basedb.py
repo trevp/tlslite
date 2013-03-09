@@ -13,7 +13,7 @@ except ImportError:
     import dbm as anydbm
 import threading
 
-class BaseDB:
+class BaseDB(object):
     def __init__(self, filename, type):
         self.type = type
         self.filename = filename

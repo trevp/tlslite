@@ -11,7 +11,7 @@ A helper class for using TLS Lite with stdlib clients
 
 from tlslite.checker import Checker
 
-class ClientHelper:
+class ClientHelper(object):
     """This is a helper class used to integrate TLS Lite with various
     TLS clients (e.g. poplib, smtplib, httplib, etc.)"""
 

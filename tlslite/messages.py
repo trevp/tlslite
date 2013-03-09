@@ -17,7 +17,7 @@ from .x509 import X509
 from .x509certchain import X509CertChain
 from .utils.tackwrapper import *
 
-class RecordHeader3:
+class RecordHeader3(object):
     def __init__(self):
         self.type = 0
         self.version = (0,0)
@@ -45,7 +45,7 @@ class RecordHeader3:
         self.ssl2 = False
         return self
 
-class RecordHeader2:
+class RecordHeader2(object):
     def __init__(self):
         self.type = 0
         self.version = (0,0)
@@ -62,7 +62,7 @@ class RecordHeader2:
         return self
 
 
-class Alert:
+class Alert(object):
     def __init__(self):
         self.contentType = ContentType.alert
         self.level = 0
@@ -87,7 +87,7 @@ class Alert:
         return w.bytes
 
 
-class HandshakeMsg:
+class HandshakeMsg(object):
     def __init__(self, handshakeType):
         self.contentType = ContentType.handshake
         self.handshakeType = handshakeType
@@ -586,7 +586,7 @@ class CertificateVerify(HandshakeMsg):
         w.addVarSeq(self.signature, 1, 2)
         return self.postWrite(w)
 
-class ChangeCipherSpec:
+class ChangeCipherSpec(object):
     def __init__(self):
         self.contentType = ContentType.change_cipher_spec
         self.type = 1
@@ -656,7 +656,7 @@ class Finished(HandshakeMsg):
         w.addFixSeq(self.verify_data, 1)
         return self.postWrite(w)
 
-class ApplicationData:
+class ApplicationData(object):
     def __init__(self):
         self.contentType = ContentType.application_data
         self.bytes = bytearray(0)
