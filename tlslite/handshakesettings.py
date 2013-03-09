@@ -119,11 +119,11 @@ class HandshakeSettings(object):
             raise ValueError("No supported certificate types")
 
         if not cryptomath.m2cryptoLoaded:
-            other.cipherImplementations = [e for e in \
-                other.cipherImplementations if e != "openssl"]
+            other.cipherImplementations = \
+                [e for e in other.cipherImplementations if e != "openssl"]
         if not cryptomath.pycryptoLoaded:
-            other.cipherImplementations = [e for e in \
-                other.cipherImplementations if e != "pycrypto"]
+            other.cipherImplementations = \
+                [e for e in other.cipherImplementations if e != "pycrypto"]
         if len(other.cipherImplementations)==0:
             raise ValueError("No supported cipher implementations")
 

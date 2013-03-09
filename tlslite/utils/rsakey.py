@@ -174,9 +174,11 @@ class RSAKey(object):
             return None
         m = self._rawPrivateKeyOp(c)
         decBytes = numberToByteArray(m, numBytes(self.n))
-        if decBytes[0] != 0 or decBytes[1] != 2: #Check first two bytes
+        #Check first two bytes
+        if decBytes[0] != 0 or decBytes[1] != 2:
             return None
-        for x in range(1, len(decBytes)-1): #Scan through for zero separator
+        #Scan through for zero separator
+        for x in range(1, len(decBytes)-1):
             if decBytes[x]== 0:
                 break
         else:
