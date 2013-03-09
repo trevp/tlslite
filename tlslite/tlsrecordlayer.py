@@ -873,7 +873,7 @@ class TLSRecordLayer(object):
             try:
                 s = self.sock.recv(r.length - len(b))
             except socket.error as why:
-                if why.args[0] == errno.EWOULDBLOCK:
+                if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
                     yield 0
                     continue
                 else:
