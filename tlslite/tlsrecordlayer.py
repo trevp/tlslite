@@ -109,7 +109,8 @@ class TLSRecordLayer:
 
         #Buffers for processing messages
         self._handshakeBuffer = []
-        self._readBuffer = b""
+        self.clearReadBuffer()
+        self.clearWriteBuffer()
 
         #Handshake digests
         self._handshake_md5 = hashlib.md5()
@@ -144,6 +145,14 @@ class TLSRecordLayer:
 
         #Fault we will induce, for testing purposes
         self.fault = None
+
+    def clearReadBuffer(self):
+        self._readBuffer = b''
+
+    def clearWriteBuffer(self):
+        self._send_writer = None
+        self._send_block_in_progress = None
+
 
     #*********************************************************
     # Public Functions START
@@ -221,6 +230,14 @@ class TLSRecordLayer:
         except:
             self._shutdown(False)
             raise
+
+    def unread(self, b):
+        """Add bytes to the front of the socket read buffer for future
+        reading. Be careful using this in the context of select(...): if you
+        unread the last data from a socket, that won't wake up selected waiters,
+        and those waiters may hang forever.
+        """
+        self._readBuffer = b + self._readBuffer
 
     def write(self, s):
         """Write some data to the TLS connection.
@@ -490,7 +507,6 @@ class TLSRecordLayer:
     def _shutdown(self, resumable):
         self._writeState = _ConnectionState()
         self._readState = _ConnectionState()
-        #Don't do this: self._readBuffer = ""
         self.version = (0,0)
         self._versionCheck = False
         self.closed = True
@@ -599,7 +615,7 @@ class TLSRecordLayer:
             try:
                 bytesSent = self.sock.send(s) #Might raise socket.error
             except socket.error as why:
-                if why.args[0] == errno.EWOULDBLOCK:
+                if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
                     yield 1
                     continue
                 else:
@@ -817,7 +833,7 @@ class TLSRecordLayer:
             try:
                 s = self.sock.recv(recordHeaderLength-len(b))
             except socket.error as why:
-                if why.args[0] == errno.EWOULDBLOCK:
+                if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
                     yield 0
                     continue
                 else:
