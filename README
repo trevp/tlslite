@@ -454,6 +454,12 @@ TLS Lite is probably vulnerable to the "Lucky 13" timing attack if AES or 3DES a
 
 12 History
 ===========
+0.4.5 - 
+ - Support for RC4-MD5 ciphersuite (if enabled in settings)
+ - TLSClosedConnectionError
+ - New-style classes
+ - handling EAGAIN error
+ - unread() 
 0.4.4 - 2/25/2013
  - Added Python 3 support (Martin von Loewis)
  - Added NPN client support (Marcelo Fernandez)

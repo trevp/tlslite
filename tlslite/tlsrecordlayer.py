@@ -1049,27 +1049,30 @@ class TLSRecordLayer(object):
     def _calcPendingStates(self, cipherSuite, masterSecret,
             clientRandom, serverRandom, implementations):
         if cipherSuite in CipherSuite.aes128Suites:
-            macLength = 20
             keyLength = 16
             ivLength = 16
             createCipherFunc = createAES
         elif cipherSuite in CipherSuite.aes256Suites:
-            macLength = 20
             keyLength = 32
             ivLength = 16
             createCipherFunc = createAES
         elif cipherSuite in CipherSuite.rc4Suites:
-            macLength = 20
             keyLength = 16
             ivLength = 0
             createCipherFunc = createRC4
         elif cipherSuite in CipherSuite.tripleDESSuites:
-            macLength = 20
             keyLength = 24
             ivLength = 8
             createCipherFunc = createTripleDES
         else:
             raise AssertionError()
+            
+        if cipherSuite in CipherSuite.shaSuites:
+            macLength = 20
+            digestmod = hashlib.sha1        
+        elif cipherSuite in CipherSuite.md5Suites:
+            macLength = 16
+            digestmod = hashlib.md5
 
         if self.version == (3,0):
             createMACFunc = createMAC_SSL
@@ -1101,8 +1104,10 @@ class TLSRecordLayer(object):
         serverKeyBlock = p.getFixBytes(keyLength)
         clientIVBlock  = p.getFixBytes(ivLength)
         serverIVBlock  = p.getFixBytes(ivLength)
-        clientPendingState.macContext = createMACFunc(compatHMAC(clientMACBlock))
-        serverPendingState.macContext = createMACFunc(compatHMAC(serverMACBlock))
+        clientPendingState.macContext = createMACFunc(
+            compatHMAC(clientMACBlock), digestmod=digestmod)
+        serverPendingState.macContext = createMACFunc(
+            compatHMAC(serverMACBlock), digestmod=digestmod)
         clientPendingState.encContext = createCipherFunc(clientKeyBlock,
                                                          clientIVBlock,
                                                          implementations)

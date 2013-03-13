@@ -13,9 +13,9 @@ from .utils import cipherfactory
 # RC4 is preferred as faster in Python, works in SSL3, and immune to CBC
 # issues such as timing attacks
 CIPHER_NAMES = ["rc4", "aes256", "aes128", "3des"]
+MAC_NAMES = ["sha"] # "md5" is allowed
 CIPHER_IMPLEMENTATIONS = ["openssl", "pycrypto", "python"]
 CERTIFICATE_TYPES = ["x509"]
-
 
 class HandshakeSettings(object):
     """This class encapsulates various parameters that can be used with
@@ -55,6 +55,14 @@ class HandshakeSettings(object):
 
     The default value is ['rc4', 'aes256', 'aes128', '3des'].
 
+    @type cipherNames: list
+    @ivar cipherNames: The allowed MAC algorithms.
+    
+    The allowed values in this list are 'sha' and 'md5'.
+    
+    The default value is ['sha'].
+
+
     @type certificateTypes: list
     @ivar certificateTypes: The allowed certificate types, in order of
     preference.
@@ -93,6 +101,7 @@ class HandshakeSettings(object):
         self.minKeySize = 1023
         self.maxKeySize = 8193
         self.cipherNames = CIPHER_NAMES
+        self.macNames = MAC_NAMES
         self.cipherImplementations = CIPHER_IMPLEMENTATIONS
         self.certificateTypes = CERTIFICATE_TYPES
         self.minVersion = (3,0)
@@ -106,6 +115,7 @@ class HandshakeSettings(object):
         other.minKeySize = self.minKeySize
         other.maxKeySize = self.maxKeySize
         other.cipherNames = self.cipherNames
+        other.macNames = self.macNames
         other.cipherImplementations = self.cipherImplementations
         other.certificateTypes = self.certificateTypes
         other.minVersion = self.minVersion

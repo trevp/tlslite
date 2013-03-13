@@ -116,3 +116,11 @@ class Session(object):
         @return: The name of the cipher used with this connection.
         """
         return CipherSuite.canonicalCipherName(self.cipherSuite)
+        
+    def getMacName(self):
+        """Get the name of the HMAC hash algo used with this connection.
+
+        @rtype: str
+        @return: The name of the HMAC hash algo used with this connection.
+        """
+        return CipherSuite.canonicalMacName(self.cipherSuite)

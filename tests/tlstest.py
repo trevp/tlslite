@@ -24,7 +24,7 @@ except ImportError:
 
 from tlslite import TLSConnection, Fault, HandshakeSettings, \
     X509, X509CertChain, IMAP4_TLS, VerifierDB, Session, SessionCache, \
-    parsePEMKey, \
+    parsePEMKey, constants, \
     AlertDescription, HTTPTLSConnection, TLSSocketServerMixIn, \
     POP3_TLS, m2cryptoLoaded, pycryptoLoaded, gmpyLoaded, tackpyLoaded, \
     Checker, __version__
@@ -119,6 +119,16 @@ def clientTestCmd(argv):
     testConnClient(connection)    
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()    
+
+    print("Test 1.b - good X509, RC4-MD5")
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.macNames = ["md5"]
+    connection.handshakeClientCert(settings=settings)
+    testConnClient(connection)    
+    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(connection.session.cipherSuite == constants.CipherSuite.TLS_RSA_WITH_RC4_128_MD5)
+    connection.close()
 
     if tackpyLoaded:
                     
@@ -470,6 +480,15 @@ def serverTestCmd(argv):
     settings = HandshakeSettings()
     settings.minVersion = (3,0)
     settings.maxVersion = (3,0)
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
+    testConnServer(connection)
+    connection.close()            
+
+    print("Test 1.b - good X.509, RC4-MD5")
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.macNames = ["sha", "md5"]
+    settings.cipherNames = ["rc4"]
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
     testConnServer(connection)
     connection.close()            

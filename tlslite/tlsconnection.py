@@ -497,11 +497,11 @@ class TLSConnection(TLSRecordLayer):
         #Initialize acceptable ciphersuites
         cipherSuites = [CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
         if srpParams:
-            cipherSuites += CipherSuite.getSrpAllSuites(settings.cipherNames)
+            cipherSuites += CipherSuite.getSrpAllSuites(settings)
         elif certParams:
-            cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
+            cipherSuites += CipherSuite.getCertSuites(settings)
         elif anonParams:
-            cipherSuites += CipherSuite.getAnonSuites(settings.cipherNames)
+            cipherSuites += CipherSuite.getAnonSuites(settings)
         else:
             assert(False)
 
@@ -1217,12 +1217,12 @@ class TLSConnection(TLSRecordLayer):
         if verifierDB:
             if certChain:
                 cipherSuites += \
-                    CipherSuite.getSrpCertSuites(settings.cipherNames)
-            cipherSuites += CipherSuite.getSrpSuites(settings.cipherNames)
+                    CipherSuite.getSrpCertSuites(settings)
+            cipherSuites += CipherSuite.getSrpSuites(settings)
         elif certChain:
-            cipherSuites += CipherSuite.getCertSuites(settings.cipherNames)
+            cipherSuites += CipherSuite.getCertSuites(settings)
         elif anon:
-            cipherSuites += CipherSuite.getAnonSuites(settings.cipherNames)
+            cipherSuites += CipherSuite.getAnonSuites(settings)
         else:
             assert(False)
 

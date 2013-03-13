@@ -128,85 +128,12 @@ class CipherSuite:
     TLS_RSA_WITH_AES_128_CBC_SHA = 0x002F
     TLS_RSA_WITH_AES_256_CBC_SHA = 0x0035
     TLS_RSA_WITH_RC4_128_SHA = 0x0005
+    
+    TLS_RSA_WITH_RC4_128_MD5 = 0x0004
 
     TLS_DH_ANON_WITH_AES_128_CBC_SHA = 0x0034
     TLS_DH_ANON_WITH_AES_256_CBC_SHA = 0x003A
-    
-    srpSuites = []
-    srpSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
-    srpSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
-    srpSuites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
-    
-    @staticmethod
-    def getSrpSuites(ciphers):
-        suites = []
-        for cipher in ciphers:
-            if cipher == "aes128":
-                suites.append(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
-            elif cipher == "aes256":
-                suites.append(CipherSuite.TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
-            elif cipher == "3des":
-                suites.append(CipherSuite.TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
-        return suites
 
-    srpCertSuites = []
-    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
-    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
-    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
-    srpAllSuites = srpSuites + srpCertSuites
-    
-    @staticmethod
-    def getSrpCertSuites(ciphers):
-        suites = []
-        for cipher in ciphers:
-            if cipher == "aes128":
-                suites.append(CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
-            elif cipher == "aes256":
-                suites.append(CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
-            elif cipher == "3des":
-                suites.append(CipherSuite.TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
-        return suites
-
-    @staticmethod
-    def getSrpAllSuites(ciphers):
-        return CipherSuite.getSrpSuites(ciphers) + \
-         CipherSuite.getSrpCertSuites(ciphers)
-
-    certSuites = []
-    certSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
-    certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
-    certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
-    certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
-    certAllSuites = srpCertSuites + certSuites
-    
-    @staticmethod    
-    def getCertSuites(ciphers):
-        suites = []
-        for cipher in ciphers:
-            if cipher == "aes128":
-                suites.append(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA)
-            elif cipher == "aes256":
-                suites.append(CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA)
-            elif cipher == "rc4":
-                suites.append(CipherSuite.TLS_RSA_WITH_RC4_128_SHA)
-            elif cipher == "3des":
-                suites.append(CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA)
-        return suites
-
-    anonSuites = []
-    anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
-    anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
-    
-    @staticmethod
-    def getAnonSuites(ciphers):
-        suites = []
-        for cipher in ciphers:
-            if cipher == "aes128":
-                suites.append(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA)
-            elif cipher == "aes256":
-                suites.append(CipherSuite.TLS_DH_ANON_WITH_AES_256_CBC_SHA)
-        return suites   
-    
     tripleDESSuites = []
     tripleDESSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
@@ -226,18 +153,112 @@ class CipherSuite:
 
     rc4Suites = []
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
+    rc4Suites.append(TLS_RSA_WITH_RC4_128_MD5)
+    
+    shaSuites = []
+    shaSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
+    shaSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
+    shaSuites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
+    shaSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
+    shaSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
+    shaSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
+    shaSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
+    shaSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
+    shaSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
+    shaSuites.append(TLS_RSA_WITH_RC4_128_SHA)
+    shaSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+    shaSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
+    
+    md5Suites = []
+    md5Suites.append(TLS_RSA_WITH_RC4_128_MD5)
 
     @staticmethod
-    def canonicalCipherName(cipher):
+    def _filterSuites(suites, settings):
+        macNames = settings.macNames
+        cipherNames = settings.cipherNames
+        macSuites = []
+        if "sha" in macNames:
+            macSuites += CipherSuite.shaSuites
+        if "md5" in macNames:
+            macSuites += CipherSuite.md5Suites
+
+        cipherSuites = []
+        if "aes128" in cipherNames:
+            cipherSuites += CipherSuite.aes128Suites
+        if "aes256" in cipherNames:
+            cipherSuites += CipherSuite.aes256Suites
+        if "3des" in cipherNames:
+            cipherSuites += CipherSuite.tripleDESSuites
+        if "rc4" in cipherNames:
+            cipherSuites += CipherSuite.rc4Suites
+
+        return [s for s in suites if s in macSuites and s in cipherSuites]
+
+    srpSuites = []
+    srpSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
+    srpSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
+    srpSuites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
+    
+    @staticmethod
+    def getSrpSuites(settings):
+        return CipherSuite._filterSuites(CipherSuite.srpSuites, settings)
+
+    srpCertSuites = []
+    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
+    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
+    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
+    
+    @staticmethod
+    def getSrpCertSuites(settings):
+        return CipherSuite._filterSuites(CipherSuite.srpCertSuites, settings)
+
+    srpAllSuites = srpSuites + srpCertSuites
+
+    @staticmethod
+    def getSrpAllSuites(settings):
+        return CipherSuite._filterSuites(CipherSuite.srpAllSuites, settings)
+
+    certSuites = []
+    certSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
+    certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
+    certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
+    certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
+    certSuites.append(TLS_RSA_WITH_RC4_128_MD5)
+    certAllSuites = srpCertSuites + certSuites
+    
+    @staticmethod
+    def getCertSuites(settings):
+        return CipherSuite._filterSuites(CipherSuite.certSuites, settings)
+
+    anonSuites = []
+    anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
+    
+    @staticmethod
+    def getAnonSuites(settings):
+        return CipherSuite._filterSuites(CipherSuite.anonSuites, settings)
+
+    @staticmethod
+    def canonicalCipherName(ciphersuite):
         "Return the canonical name of the cipher whose number is provided."
-        if cipher in CipherSuite.aes128Suites:
+        if ciphersuite in CipherSuite.aes128Suites:
             return "aes128"
-        elif cipher in CipherSuite.aes256Suites:
+        elif ciphersuite in CipherSuite.aes256Suites:
             return "aes256"
-        elif cipher in CipherSuite.rc4Suites:
+        elif ciphersuite in CipherSuite.rc4Suites:
             return "rc4"
-        elif cipher in CipherSuite.tripleDESSuites:
+        elif ciphersuite in CipherSuite.tripleDESSuites:
             return "3des"
+        else:
+            return None
+
+    @staticmethod
+    def canonicalMacName(ciphersuite):
+        "Return the canonical name of the MAC whose number is provided."
+        if ciphersuite in CipherSuite.shaSuites:
+            return "sha"
+        elif ciphersuite in CipherSuite.md5Suites:
+            return "md5"
         else:
             return None
 
