@@ -6,8 +6,7 @@ particular:
 - 
 
 Code written by Trevor Perrin, Kees Bos, Sam Rushing, Dimitris Moraitis,
-Marcelo Fernandez, and Martin von Loewis is available under the following
-terms:
+Marcelo Fernandez, Martin von Loewis, and Dave Baggett is available under the following terms:
 
 This is free and unencumbered software released into the public domain.
 
@@ -65,4 +64,3 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
