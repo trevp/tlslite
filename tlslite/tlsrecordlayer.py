@@ -151,7 +151,6 @@ class TLSRecordLayer(object):
 
     def clearWriteBuffer(self):
         self._send_writer = None
-        self._send_block_in_progress = None
 
 
     #*********************************************************
