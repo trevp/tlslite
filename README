@@ -459,7 +459,7 @@ TLS Lite is probably vulnerable to the "Lucky 13" timing attack if AES or 3DES a
  - TLSClosedConnectionError
  - New-style classes
  - handling EAGAIN error
- - unread() 
+ - added TLSConnection.unread() function 
 0.4.4 - 2/25/2013
  - Added Python 3 support (Martin von Loewis)
  - Added NPN client support (Marcelo Fernandez)

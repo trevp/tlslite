@@ -198,9 +198,6 @@ class TLSRecordLayer(object):
         @rtype: iterable
         @return: A generator; see above for details.
         """
-        if self.closed:
-            raise TLSClosedConnectionError("attempt to read from closed connection")
-        
         try:
             while len(self._readBuffer)<min and not self.closed:
                 try:
