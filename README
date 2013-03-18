@@ -455,11 +455,15 @@ TLS Lite is probably vulnerable to the "Lucky 13" timing attack if AES or 3DES a
 12 History
 ===========
 0.4.5 - 
- - Support for RC4-MD5 ciphersuite (if enabled in settings)
- - TLSClosedConnectionError
- - New-style classes
- - handling EAGAIN error
- - added TLSConnection.unread() function 
+ - **API CHANGE**: TLSClosedConnectionError instead of ValueError when writing
+   to a closed connection.  This inherits from socket.error, so should 
+   interact better with SocketServer (see http://bugs.python.org/issue14574)
+   and other things expecting a socket.error in this situation.
+ - Added support for RC4-MD5 ciphersuite (if enabled in settings)
+   - This is allegedly necessary to connect to some Internet servers.
+ - Added TLSConnection.unread() function 
+ - Switched to New-style classes (inherit from 'object')
+ - Minor cleanups
 0.4.4 - 2/25/2013
  - Added Python 3 support (Martin von Loewis)
  - Added NPN client support (Marcelo Fernandez)
