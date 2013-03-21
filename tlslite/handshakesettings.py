@@ -20,7 +20,7 @@ CERTIFICATE_TYPES = ["x509"]
 class HandshakeSettings(object):
     """This class encapsulates various parameters that can be used with
     a TLS handshake.
-    @sort: minKeySize, maxKeySize, cipherNames, certificateTypes,
+    @sort: minKeySize, maxKeySize, cipherNames, macNames, certificateTypes,
     minVersion, maxVersion
 
     @type minKeySize: int
@@ -55,8 +55,8 @@ class HandshakeSettings(object):
 
     The default value is ['rc4', 'aes256', 'aes128', '3des'].
 
-    @type cipherNames: list
-    @ivar cipherNames: The allowed MAC algorithms.
+    @type macNames: list
+    @ivar macNames: The allowed MAC algorithms.
     
     The allowed values in this list are 'sha' and 'md5'.
     

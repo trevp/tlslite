@@ -1,5 +1,5 @@
 
-tlslite version 0.4.4                                            Feb 25 2013
+tlslite version 0.4.5                                            Mar 20 2013
 Trevor Perrin <tlslite at trevp.net>
 http://trevp.net/tlslite/
 ============================================================================
@@ -103,7 +103,7 @@ X.509 with TACK
 To run an X.509 server using a TACK, install TACKpy, then run the same server
 command as above with added arguments:
 
- ... -t TACK1.pem -b TACK_Break_Sigs.pem localhost:4443
+ ... -t TACK1.pem localhost:4443
 
 SRP
 ----
@@ -450,12 +450,13 @@ may not work with all asyncore.dispatcher subclasses.
 TLS Lite is beta-quality code. It hasn't received much security analysis. Use
 at your own risk.
 
-TLS Lite is probably vulnerable to the "Lucky 13" timing attack if AES or 3DES are used.  Thus, TLS Lite prefers the RC4 cipher.
+TLS Lite is probably vulnerable to the "Lucky 13" timing attack if AES or 3DES
+are used.  Thus, TLS Lite prefers the RC4 cipher.
 
 
 12 History
 ===========
-0.4.5 - 
+0.4.5 - 3/20/2013
  - **API CHANGE**: TLSClosedConnectionError instead of ValueError when writing
    to a closed connection.  This inherits from socket.error, so should 
    interact better with SocketServer (see http://bugs.python.org/issue14574)
