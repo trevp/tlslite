@@ -216,7 +216,7 @@ else:
 #Pre-calculate a sieve of the ~100 primes < 1000:
 def makeSieve(n):
     sieve = list(range(n))
-    for count in range(2, int(math.sqrt(n))):
+    for count in range(2, int(math.sqrt(n))+1):
         if sieve[count] == 0:
             continue
         x = sieve[count] * 2
