@@ -10,6 +10,10 @@
 """Constants used in various places."""
 
 class CertificateType:
+    """
+    Canonical source:
+        http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#tls-extensiontype-values-3
+    """
     x509 = 0
     openpgp = 1
 
@@ -18,34 +22,57 @@ class ClientCertificateType:
     dss_sign = 2
     rsa_fixed_dh = 3
     dss_fixed_dh = 4
- 
+
 class HandshakeType:
+    """
+    Canonical source:
+        http://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-7
+    """
     hello_request = 0
     client_hello = 1
     server_hello = 2
+    hello_verify_request = 3
+    NewSessionTicket = 4
+
     certificate = 11
     server_key_exchange = 12
     certificate_request = 13
     server_hello_done = 14
     certificate_verify = 15
     client_key_exchange = 16
+
     finished = 20
+    certificate_url = 21
+    certificate_status = 22
+    supplemental_data = 23
     next_protocol = 67
 
 class ContentType:
+    """
+    Canonical source:
+        http://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-5
+    """
     change_cipher_spec = 20
     alert = 21
     handshake = 22
     application_data = 23
-    all = (20,21,22,23)
+    heartbeat = 24
+    all = (20, 21, 22, 23, 24)
 
 class ExtensionType:    # RFC 6066 / 4366
+    """
+    Canonical source:
+        http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#tls-extensiontype-values-1
+    """
     server_name = 0     # RFC 6066 / 4366
-    srp = 12            # RFC 5054  
     cert_type = 9       # RFC 6091
+    elliptic_curves = 10
+    ec_point_formats = 11
+    srp = 12            # RFC 5054
+    heartbeat = 15
     tack = 0xF300
     supports_npn = 13172
-    
+
 class NameType:
     host_name = 0
 
