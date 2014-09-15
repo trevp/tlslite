@@ -1,4 +1,4 @@
-# Authors: 
+# Authors:
 #   Trevor Perrin
 #   Google - handling CertificateRequest.certificate_types
 #   Google (adapted by Sam Rushing and Marcelo Fernandez) - NPN support
@@ -91,7 +91,7 @@ class HandshakeMsg(object):
     def __init__(self, handshakeType):
         self.contentType = ContentType.handshake
         self.handshakeType = handshakeType
-    
+
     def postWrite(self, w):
         headerWriter = Writer()
         headerWriter.add(self.handshakeType, 1)
@@ -260,6 +260,21 @@ class EllipticCurvesExtension(Extension):
         return self.post_write(writer.bytes)
 
 
+class SignatureAndHashAlgorithmExtension(Extension):
+    def __init__(self):
+        Extension.__init__(self, ExtensionType.signature_algorithms)
+        self.supported_signature_algorithms = []
+
+    def create(self, supported_signature_algorithms):
+        self.supported_signature_algorithms = supported_signature_algorithms
+        return self
+
+    def write(self):
+        writer = Writer()
+        writer.addVarSeq(self.supported_signature_algorithms, 2, 2)
+        return self.post_write(writer.bytes)
+
+
 class BadNextProtos(Exception):
     def __init__(self, l):
         self.length = l
@@ -367,7 +382,7 @@ class ServerHello(HandshakeMsg):
             w2.addFixSeq(encoded_next_protos_advertised, 1)
         if len(w2.bytes):
             w.add(len(w2.bytes), 2)
-            w.bytes += w2.bytes        
+            w.bytes += w2.bytes
         return self.postWrite(w)
 
 
@@ -481,7 +496,7 @@ class ServerKeyExchange(HandshakeMsg):
         self.srp_s = srp_s
         self.srp_B = srp_B
         return self
-    
+
     def createDH(self, dh_p, dh_g, dh_Ys):
         self.dh_p = dh_p
         self.dh_g = dh_g
@@ -561,11 +576,11 @@ class ClientKeyExchange(HandshakeMsg):
     def createRSA(self, encryptedPreMasterSecret):
         self.encryptedPreMasterSecret = encryptedPreMasterSecret
         return self
-    
+
     def createDH(self, dh_Yc):
         self.dh_Yc = dh_Yc
         return self
-    
+
     def parse(self, p):
         p.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
@@ -579,7 +594,7 @@ class ClientKeyExchange(HandshakeMsg):
             else:
                 raise AssertionError()
         elif self.cipherSuite in CipherSuite.anonSuites:
-            self.dh_Yc = bytesToNumber(p.getVarBytes(2))            
+            self.dh_Yc = bytesToNumber(p.getVarBytes(2))
         else:
             raise AssertionError()
         p.stopLengthCheck()
@@ -597,7 +612,7 @@ class ClientKeyExchange(HandshakeMsg):
             else:
                 raise AssertionError()
         elif self.cipherSuite in CipherSuite.anonSuites:
-            w.addVarSeq(numberToByteArray(self.dh_Yc), 1, 2)            
+            w.addVarSeq(numberToByteArray(self.dh_Yc), 1, 2)
         else:
             raise AssertionError()
         return self.postWrite(w)
@@ -700,7 +715,7 @@ class ApplicationData(object):
     def create(self, bytes):
         self.bytes = bytes
         return self
-        
+
     def splitFirstByte(self):
         newMsg = ApplicationData().create(self.bytes[:1])
         self.bytes = self.bytes[1:]

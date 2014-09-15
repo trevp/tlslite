@@ -1,4 +1,4 @@
-# Authors: 
+# Authors:
 #   Trevor Perrin
 #   Google - defining ClientCertificateType
 #   Google (adapted by Sam Rushing) - NPN support
@@ -69,6 +69,7 @@ class ExtensionType:    # RFC 6066 / 4366
     elliptic_curves = 10
     ec_point_formats = 11
     srp = 12            # RFC 5054
+    signature_algorithms = 13
     heartbeat = 15
     tack = 0xF300
     supports_npn = 13172
@@ -141,7 +142,7 @@ class CipherSuite:
     # We actually don't do any renegotiation, but this
     # prevents renegotiation attacks
     TLS_EMPTY_RENEGOTIATION_INFO_SCSV = 0x00FF
-    
+
     TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA  = 0xC01A
     TLS_SRP_SHA_WITH_AES_128_CBC_SHA = 0xC01D
     TLS_SRP_SHA_WITH_AES_256_CBC_SHA = 0xC020
@@ -155,7 +156,7 @@ class CipherSuite:
     TLS_RSA_WITH_AES_128_CBC_SHA = 0x002F
     TLS_RSA_WITH_AES_256_CBC_SHA = 0x0035
     TLS_RSA_WITH_RC4_128_SHA = 0x0005
-    
+
     TLS_RSA_WITH_RC4_128_MD5 = 0x0004
 
     TLS_DH_ANON_WITH_AES_128_CBC_SHA = 0x0034
@@ -181,7 +182,7 @@ class CipherSuite:
     rc4Suites = []
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_MD5)
-    
+
     shaSuites = []
     shaSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     shaSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
@@ -195,7 +196,7 @@ class CipherSuite:
     shaSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
-    
+
     md5Suites = []
     md5Suites.append(TLS_RSA_WITH_RC4_128_MD5)
 
@@ -225,7 +226,7 @@ class CipherSuite:
     srpSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
-    
+
     @staticmethod
     def getSrpSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.srpSuites, settings)
@@ -234,7 +235,7 @@ class CipherSuite:
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
-    
+
     @staticmethod
     def getSrpCertSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.srpCertSuites, settings)
@@ -252,7 +253,7 @@ class CipherSuite:
     certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_MD5)
     certAllSuites = srpCertSuites + certSuites
-    
+
     @staticmethod
     def getCertSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.certSuites, settings)
@@ -260,7 +261,7 @@ class CipherSuite:
     anonSuites = []
     anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
-    
+
     @staticmethod
     def getAnonSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.anonSuites, settings)
