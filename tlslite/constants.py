@@ -1,4 +1,4 @@
-# Authors: 
+# Authors:
 #   Trevor Perrin
 #   Google - defining ClientCertificateType
 #   Google (adapted by Sam Rushing) - NPN support
@@ -10,6 +10,10 @@
 """Constants used in various places."""
 
 class CertificateType:
+    """
+    Canonical source:
+        http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#tls-extensiontype-values-3
+    """
     x509 = 0
     openpgp = 1
 
@@ -18,34 +22,58 @@ class ClientCertificateType:
     dss_sign = 2
     rsa_fixed_dh = 3
     dss_fixed_dh = 4
- 
+
 class HandshakeType:
+    """
+    Canonical source:
+        http://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-7
+    """
     hello_request = 0
     client_hello = 1
     server_hello = 2
+    hello_verify_request = 3
+    NewSessionTicket = 4
+
     certificate = 11
     server_key_exchange = 12
     certificate_request = 13
     server_hello_done = 14
     certificate_verify = 15
     client_key_exchange = 16
+
     finished = 20
+    certificate_url = 21
+    certificate_status = 22
+    supplemental_data = 23
     next_protocol = 67
 
 class ContentType:
+    """
+    Canonical source:
+        http://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-5
+    """
     change_cipher_spec = 20
     alert = 21
     handshake = 22
     application_data = 23
-    all = (20,21,22,23)
+    heartbeat = 24
+    all = (20, 21, 22, 23, 24)
 
 class ExtensionType:    # RFC 6066 / 4366
+    """
+    Canonical source:
+        http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#tls-extensiontype-values-1
+    """
     server_name = 0     # RFC 6066 / 4366
-    srp = 12            # RFC 5054  
     cert_type = 9       # RFC 6091
+    elliptic_curves = 10
+    ec_point_formats = 11
+    srp = 12            # RFC 5054
+    signature_algorithms = 13
+    heartbeat = 15
     tack = 0xF300
     supports_npn = 13172
-    
+
 class NameType:
     host_name = 0
 
@@ -114,7 +142,7 @@ class CipherSuite:
     # We actually don't do any renegotiation, but this
     # prevents renegotiation attacks
     TLS_EMPTY_RENEGOTIATION_INFO_SCSV = 0x00FF
-    
+
     TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA  = 0xC01A
     TLS_SRP_SHA_WITH_AES_128_CBC_SHA = 0xC01D
     TLS_SRP_SHA_WITH_AES_256_CBC_SHA = 0xC020
@@ -128,7 +156,7 @@ class CipherSuite:
     TLS_RSA_WITH_AES_128_CBC_SHA = 0x002F
     TLS_RSA_WITH_AES_256_CBC_SHA = 0x0035
     TLS_RSA_WITH_RC4_128_SHA = 0x0005
-    
+
     TLS_RSA_WITH_RC4_128_MD5 = 0x0004
 
     TLS_DH_ANON_WITH_AES_128_CBC_SHA = 0x0034
@@ -154,7 +182,7 @@ class CipherSuite:
     rc4Suites = []
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_MD5)
-    
+
     shaSuites = []
     shaSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     shaSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
@@ -168,7 +196,7 @@ class CipherSuite:
     shaSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
-    
+
     md5Suites = []
     md5Suites.append(TLS_RSA_WITH_RC4_128_MD5)
 
@@ -198,7 +226,7 @@ class CipherSuite:
     srpSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
-    
+
     @staticmethod
     def getSrpSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.srpSuites, settings)
@@ -207,7 +235,7 @@ class CipherSuite:
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
-    
+
     @staticmethod
     def getSrpCertSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.srpCertSuites, settings)
@@ -225,7 +253,7 @@ class CipherSuite:
     certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_MD5)
     certAllSuites = srpCertSuites + certSuites
-    
+
     @staticmethod
     def getCertSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.certSuites, settings)
@@ -233,7 +261,7 @@ class CipherSuite:
     anonSuites = []
     anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
-    
+
     @staticmethod
     def getAnonSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.anonSuites, settings)

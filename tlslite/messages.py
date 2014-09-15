@@ -1,4 +1,4 @@
-# Authors: 
+# Authors:
 #   Trevor Perrin
 #   Google - handling CertificateRequest.certificate_types
 #   Google (adapted by Sam Rushing and Marcelo Fernandez) - NPN support
@@ -91,7 +91,7 @@ class HandshakeMsg(object):
     def __init__(self, handshakeType):
         self.contentType = ContentType.handshake
         self.handshakeType = handshakeType
-    
+
     def postWrite(self, w):
         headerWriter = Writer()
         headerWriter.add(self.handshakeType, 1)
@@ -112,10 +112,12 @@ class ClientHello(HandshakeMsg):
         self.tack = False
         self.supports_npn = False
         self.server_name = bytearray(0)
+        self.extensions = []
 
     def create(self, version, random, session_id, cipher_suites,
                certificate_types=None, srpUsername=None,
-               tack=False, supports_npn=False, serverName=None):
+               tack=False, supports_npn=False, serverName=None,
+               extensions=None):
         self.client_version = version
         self.random = random
         self.session_id = session_id
@@ -128,6 +130,8 @@ class ClientHello(HandshakeMsg):
         self.supports_npn = supports_npn
         if serverName:
             self.server_name = bytearray(serverName, "utf-8")
+        if extensions is not None:
+            self.extensions = extensions
         return self
 
     def parse(self, p):
@@ -213,16 +217,63 @@ class ClientHello(HandshakeMsg):
         if self.server_name:
             w2.add(ExtensionType.server_name, 2)
             w2.add(len(self.server_name)+5, 2)
-            w2.add(len(self.server_name)+3, 2)            
+            w2.add(len(self.server_name)+3, 2)
             w2.add(NameType.host_name, 1)
-            w2.addVarSeq(self.server_name, 1, 2) 
+            w2.addVarSeq(self.server_name, 1, 2)
         if self.tack:
             w2.add(ExtensionType.tack, 2)
             w2.add(0, 2)
+        for extension in self.extensions:
+            w2.bytes += extension.write()
+
         if len(w2.bytes):
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes
         return self.postWrite(w)
+
+
+class Extension(object):
+    def __init__(self, extension_type):
+        self.extension_type = extension_type
+
+    def post_write(self, extension_bytes):
+        writer = Writer()
+        writer.add(self.extension_type, 2)
+
+        extension_size = len(extension_bytes)
+        writer.add(extension_size, 2)
+        return writer.bytes + extension_bytes
+
+
+class EllipticCurvesExtension(Extension):
+    def __init__(self):
+        Extension.__init__(self, ExtensionType.elliptic_curves)
+        self.elliptic_curves = []
+
+    def create(self, elliptic_curves):
+        self.elliptic_curves = elliptic_curves
+        return self
+
+    def write(self):
+        writer = Writer()
+        writer.addVarSeq(self.elliptic_curves, 2, 2)
+        return self.post_write(writer.bytes)
+
+
+class SignatureAndHashAlgorithmExtension(Extension):
+    def __init__(self):
+        Extension.__init__(self, ExtensionType.signature_algorithms)
+        self.supported_signature_algorithms = []
+
+    def create(self, supported_signature_algorithms):
+        self.supported_signature_algorithms = supported_signature_algorithms
+        return self
+
+    def write(self):
+        writer = Writer()
+        writer.addVarSeq(self.supported_signature_algorithms, 2, 2)
+        return self.post_write(writer.bytes)
+
 
 class BadNextProtos(Exception):
     def __init__(self, l):
@@ -331,7 +382,7 @@ class ServerHello(HandshakeMsg):
             w2.addFixSeq(encoded_next_protos_advertised, 1)
         if len(w2.bytes):
             w.add(len(w2.bytes), 2)
-            w.bytes += w2.bytes        
+            w.bytes += w2.bytes
         return self.postWrite(w)
 
 
@@ -445,7 +496,7 @@ class ServerKeyExchange(HandshakeMsg):
         self.srp_s = srp_s
         self.srp_B = srp_B
         return self
-    
+
     def createDH(self, dh_p, dh_g, dh_Ys):
         self.dh_p = dh_p
         self.dh_g = dh_g
@@ -525,11 +576,11 @@ class ClientKeyExchange(HandshakeMsg):
     def createRSA(self, encryptedPreMasterSecret):
         self.encryptedPreMasterSecret = encryptedPreMasterSecret
         return self
-    
+
     def createDH(self, dh_Yc):
         self.dh_Yc = dh_Yc
         return self
-    
+
     def parse(self, p):
         p.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
@@ -543,7 +594,7 @@ class ClientKeyExchange(HandshakeMsg):
             else:
                 raise AssertionError()
         elif self.cipherSuite in CipherSuite.anonSuites:
-            self.dh_Yc = bytesToNumber(p.getVarBytes(2))            
+            self.dh_Yc = bytesToNumber(p.getVarBytes(2))
         else:
             raise AssertionError()
         p.stopLengthCheck()
@@ -561,7 +612,7 @@ class ClientKeyExchange(HandshakeMsg):
             else:
                 raise AssertionError()
         elif self.cipherSuite in CipherSuite.anonSuites:
-            w.addVarSeq(numberToByteArray(self.dh_Yc), 1, 2)            
+            w.addVarSeq(numberToByteArray(self.dh_Yc), 1, 2)
         else:
             raise AssertionError()
         return self.postWrite(w)
@@ -664,7 +715,7 @@ class ApplicationData(object):
     def create(self, bytes):
         self.bytes = bytes
         return self
-        
+
     def splitFirstByte(self):
         newMsg = ApplicationData().create(self.bytes[:1])
         self.bytes = self.bytes[1:]
