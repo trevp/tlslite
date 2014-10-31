@@ -554,7 +554,7 @@ class ClientKeyExchange(HandshakeMsg):
         if self.cipherSuite in CipherSuite.srpAllSuites:
             w.addVarSeq(numberToByteArray(self.srp_A), 1, 2)
         elif self.cipherSuite in CipherSuite.certSuites:
-            if self.version in ((3,1), (3,2)):
+            if self.version in ((3,1), (3,2), (3,3)):
                 w.addVarSeq(self.encryptedPreMasterSecret, 1, 2)
             elif self.version == (3,0):
                 w.addFixSeq(self.encryptedPreMasterSecret, 1)
@@ -644,7 +644,7 @@ class Finished(HandshakeMsg):
         p.startLengthCheck(3)
         if self.version == (3,0):
             self.verify_data = p.getFixBytes(36)
-        elif self.version in ((3,1), (3,2)):
+        elif self.version in ((3,1), (3,2), (3,3)):
             self.verify_data = p.getFixBytes(12)
         else:
             raise AssertionError()
