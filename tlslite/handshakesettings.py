@@ -105,7 +105,7 @@ class HandshakeSettings(object):
         self.cipherImplementations = CIPHER_IMPLEMENTATIONS
         self.certificateTypes = CERTIFICATE_TYPES
         self.minVersion = (3,0)
-        self.maxVersion = (3,2)
+        self.maxVersion = (3,3)
         self.useExperimentalTackExtension = False
 
     # Validates the min/max fields, and certificateTypes
