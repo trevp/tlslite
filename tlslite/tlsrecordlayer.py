@@ -1072,6 +1072,9 @@ class TLSRecordLayer(object):
         if cipherSuite in CipherSuite.shaSuites:
             macLength = 20
             digestmod = hashlib.sha1        
+        elif cipherSuite in CipherSuite.sha256Suites:
+            macLength = 32
+            digestmod = hashlib.sha256
         elif cipherSuite in CipherSuite.md5Suites:
             macLength = 16
             digestmod = hashlib.md5
