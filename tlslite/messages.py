@@ -387,21 +387,27 @@ class Certificate(HandshakeMsg):
         return self.postWrite(w)
 
 class CertificateRequest(HandshakeMsg):
-    def __init__(self):
+    def __init__(self, version):
         HandshakeMsg.__init__(self, HandshakeType.certificate_request)
         #Apple's Secure Transport library rejects empty certificate_types, so
         #default to rsa_sign.
         self.certificate_types = [ClientCertificateType.rsa_sign]
         self.certificate_authorities = []
+        self.version = version
+        self.supported_signature_algs = []
 
-    def create(self, certificate_types, certificate_authorities):
+    def create(self, certificate_types, certificate_authorities, sig_algs=(), version=(3,0)):
         self.certificate_types = certificate_types
         self.certificate_authorities = certificate_authorities
+        self.version = version
+        self.supported_signature_algs = sig_algs
         return self
 
     def parse(self, p):
         p.startLengthCheck(3)
         self.certificate_types = p.getVarList(1, 1)
+        if self.version >= (3,3):
+            self.supported_signature_algs = p.getVarList(2, 2)
         ca_list_length = p.get(2)
         index = 0
         self.certificate_authorities = []
@@ -415,6 +421,8 @@ class CertificateRequest(HandshakeMsg):
     def write(self):
         w = Writer()
         w.addVarSeq(self.certificate_types, 1, 1)
+        if self.version >= (3,3):
+            w.addVarSeq(self.supported_signature_algs, 2, 2)
         caLength = 0
         #determine length
         for ca_dn in self.certificate_authorities:
