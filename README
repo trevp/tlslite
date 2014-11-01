@@ -38,14 +38,14 @@ improvements to tlslite, also see 'tlslite-dev@googlegroups.com'.
 ============================
 TLS Lite is written (mostly) by Trevor Perrin. It includes code from Bram
 Cohen, Google, Kees Bos, Sam Rushing, Dimitris Moraitis, Marcelo Fernandez,
-Martin von Loewis, and Dave Baggett.
+Martin von Loewis, Dave Baggett, Yngve N. Pettersen, Opera Software ASA,
+(TLS 1.2 support).
 
 All code in TLS Lite has either been dedicated to the public domain by its
 authors, or placed under a BSD-style license. See the LICENSE file for
 details.
 
 Thanks to Edward Loper for Epydoc, which generated the API docs.
-
 
 3 Installation
 ===============
