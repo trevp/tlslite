@@ -22,3 +22,13 @@ docs:
 
 dist: docs
 	./setup.py sdist
+
+test:
+	cd tests/ && python ./tlstest.py server localhost:4433 . &
+	sleep 1
+	cd tests/ && python ./tlstest.py client localhost:4433 .
+
+test-dev:
+	cd tests/ && PYTHONPATH=.. python ./tlstest.py server localhost:4433 . &
+	sleep 1
+	cd tests/ && PYTHONPATH=.. python ./tlstest.py client localhost:4433 .
