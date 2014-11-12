@@ -1,5 +1,5 @@
 
-tlslite version 0.4.5                                            Mar 20 2013
+tlslite version 0.4.7                                            Nov 12 2014
 Trevor Perrin <tlslite at trevp.net>
 http://trevp.net/tlslite/
 ============================================================================
@@ -449,13 +449,18 @@ may not work with all asyncore.dispatcher subclasses.
 TLS Lite is beta-quality code. It hasn't received much security analysis. Use
 at your own risk.
 
+TLS Lite does NOT verify certificates.
+
 TLS Lite is probably vulnerable to the "Lucky 13" timing attack if AES or 3DES
-are used.  Thus, TLS Lite prefers the RC4 cipher.
+are used.  Thus, TLS Lite prefers the RC4 cipher which has problems of its own.
 
 
 12 History
 ===========
-0.4.7
+0.4.7 - 11/12/2014
+ - Added TLS 1.2 support
+ - Don't offer SSLv3 by default (e.g. POODLE)
+ - Fixed bug with PyCrypto_RSA integration
  - Fixed harmless bug that added non-prime into sieves list
  - Added "make test" and "make test-dev" targets (Hubert Kario)
 0.4.5 - 3/20/2013

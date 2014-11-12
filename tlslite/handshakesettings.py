@@ -76,20 +76,18 @@ class HandshakeSettings(object):
     @type minVersion: tuple
     @ivar minVersion: The minimum allowed SSL/TLS version.
 
-    This variable can be set to (3,0) for SSL 3.0, (3,1) for
-    TLS 1.0, or (3,2) for TLS 1.1.  If the other party wishes to
-    use a lower version, a protocol_version alert will be signalled.
-    The default is (3,0).
+    This variable can be set to (3,0) for SSL 3.0, (3,1) for TLS 1.0, (3,2) for
+    TLS 1.1, or (3,3) for TLS 1.2.  If the other party wishes to use a lower
+    version, a protocol_version alert will be signalled.  The default is (3,1).
 
     @type maxVersion: tuple
     @ivar maxVersion: The maximum allowed SSL/TLS version.
 
-    This variable can be set to (3,0) for SSL 3.0, (3,1) for
-    TLS 1.0, or (3,2) for TLS 1.1.  If the other party wishes to
-    use a higher version, a protocol_version alert will be signalled.
-    The default is (3,2).  (WARNING: Some servers may (improperly)
-    reject clients which offer support for TLS 1.1.  In this case,
-    try lowering maxVersion to (3,1)).
+    This variable can be set to (3,0) for SSL 3.0, (3,1) for TLS 1.0, (3,2) for
+    TLS 1.1, or (3,3) for TLS 1.2.  If the other party wishes to use a higher
+    version, a protocol_version alert will be signalled.  The default is (3,3).
+    (WARNING: Some servers may (improperly) reject clients which offer support
+    for TLS 1.1.  In this case, try lowering maxVersion to (3,1)).
     
     @type useExperimentalTackExtension: bool
     @ivar useExperimentalTackExtension: Whether to enabled TACK support.
@@ -104,7 +102,7 @@ class HandshakeSettings(object):
         self.macNames = MAC_NAMES
         self.cipherImplementations = CIPHER_IMPLEMENTATIONS
         self.certificateTypes = CERTIFICATE_TYPES
-        self.minVersion = (3,0)
+        self.minVersion = (3,1)
         self.maxVersion = (3,3)
         self.useExperimentalTackExtension = False
 
