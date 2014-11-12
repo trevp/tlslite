@@ -82,6 +82,10 @@ def HMAC_SHA1(k, b):
     b = compatHMAC(b)
     return bytearray(hmac.new(k, b, hashlib.sha1).digest())
 
+def HMAC_SHA256(k, b):
+    k = compatHMAC(k)
+    b = compatHMAC(b)
+    return bytearray(hmac.new(k, b, hashlib.sha256).digest())
 
 # **************************************************************************
 # Converter Functions

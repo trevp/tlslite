@@ -13,7 +13,7 @@ from .utils import cipherfactory
 # RC4 is preferred as faster in Python, works in SSL3, and immune to CBC
 # issues such as timing attacks
 CIPHER_NAMES = ["rc4", "aes256", "aes128", "3des"]
-MAC_NAMES = ["sha"] # "md5" is allowed
+MAC_NAMES = ["sha", "sha256"] # "md5" is allowed
 CIPHER_IMPLEMENTATIONS = ["openssl", "pycrypto", "python"]
 CERTIFICATE_TYPES = ["x509"]
 
@@ -105,7 +105,7 @@ class HandshakeSettings(object):
         self.cipherImplementations = CIPHER_IMPLEMENTATIONS
         self.certificateTypes = CERTIFICATE_TYPES
         self.minVersion = (3,0)
-        self.maxVersion = (3,2)
+        self.maxVersion = (3,3)
         self.useExperimentalTackExtension = False
 
     # Validates the min/max fields, and certificateTypes
@@ -158,11 +158,15 @@ class HandshakeSettings(object):
         if other.minVersion > other.maxVersion:
             raise ValueError("Versions set incorrectly")
 
-        if not other.minVersion in ((3,0), (3,1), (3,2)):
+        if not other.minVersion in ((3,0), (3,1), (3,2), (3,3)):
             raise ValueError("minVersion set incorrectly")
 
-        if not other.maxVersion in ((3,0), (3,1), (3,2)):
+        if not other.maxVersion in ((3,0), (3,1), (3,2), (3,3)):
             raise ValueError("maxVersion set incorrectly")
+
+        if other.maxVersion < (3,3):
+            # No sha256 pre TLS 1.2
+            other.macNames = [e for e in self.macNames if e != "sha256"]
 
         return other
 

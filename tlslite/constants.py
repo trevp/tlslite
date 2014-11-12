@@ -134,6 +134,9 @@ class CipherSuite:
     TLS_DH_ANON_WITH_AES_128_CBC_SHA = 0x0034
     TLS_DH_ANON_WITH_AES_256_CBC_SHA = 0x003A
 
+    TLS_RSA_WITH_AES_128_CBC_SHA256 = 0x003C
+    TLS_RSA_WITH_AES_256_CBC_SHA256 = 0x003D
+
     tripleDESSuites = []
     tripleDESSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
@@ -144,12 +147,14 @@ class CipherSuite:
     aes128Suites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+    aes128Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
 
     aes256Suites = []
     aes256Suites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
+    aes256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
 
     rc4Suites = []
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
@@ -169,6 +174,10 @@ class CipherSuite:
     shaSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
     
+    sha256Suites = []
+    sha256Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
+    sha256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
+
     md5Suites = []
     md5Suites.append(TLS_RSA_WITH_RC4_128_MD5)
 
@@ -179,6 +188,8 @@ class CipherSuite:
         macSuites = []
         if "sha" in macNames:
             macSuites += CipherSuite.shaSuites
+        if "sha256" in macNames:
+            macSuites += CipherSuite.sha256Suites
         if "md5" in macNames:
             macSuites += CipherSuite.md5Suites
 
@@ -224,6 +235,8 @@ class CipherSuite:
     certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_MD5)
+    certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
+    certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
     certAllSuites = srpCertSuites + certSuites
     
     @staticmethod

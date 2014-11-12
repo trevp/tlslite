@@ -860,6 +860,8 @@ class TLSConnection(TLSRecordLayer):
             elif self.version in ((3,1), (3,2)):
                 verifyBytes = self._handshake_md5.digest() + \
                                 self._handshake_sha.digest()
+            elif self.version == (3,3):
+                verifyBytes = self._handshake_sha256.digest()
             if self.fault == Fault.badVerifyMessage:
                 verifyBytes[0] = ((verifyBytes[0]+1) % 256)
             signedBytes = privateKey.sign(verifyBytes)
@@ -1472,7 +1474,7 @@ class TLSConnection(TLSRecordLayer):
                         clientCertChain = clientCertificate.certChain
                 else:
                     raise AssertionError()
-            elif self.version in ((3,1), (3,2)):
+            elif self.version in ((3,1), (3,2), (3,3)):
                 for result in self._getMsg(ContentType.handshake,
                                           HandshakeType.certificate,
                                           CertificateType.x509):
@@ -1518,6 +1520,8 @@ class TLSConnection(TLSRecordLayer):
             elif self.version in ((3,1), (3,2)):
                 verifyBytes = self._handshake_md5.digest() + \
                                 self._handshake_sha.digest()
+            elif self.version == (3,3):
+                verifyBytes = self._handshake_sha256.digest()
             for result in self._getMsg(ContentType.handshake,
                                       HandshakeType.certificate_verify):
                 if result in (0,1): yield result
@@ -1707,6 +1711,15 @@ class TLSConnection(TLSRecordLayer):
             handshakeHashes = self._handshake_md5.digest() + \
                                 self._handshake_sha.digest()
             verifyData = PRF(masterSecret, label, handshakeHashes, 12)
+            return verifyData
+        elif self.version == (3,3):
+            if (self._client and send) or (not self._client and not send):
+                label = b"client finished"
+            else:
+                label = b"server finished"
+
+            handshakeHashes = self._handshake_sha256.digest()
+            verifyData = PRF_1_2(masterSecret, label, handshakeHashes, 12)
             return verifyData
         else:
             raise AssertionError()
