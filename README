@@ -456,6 +456,9 @@ are used.  Thus, TLS Lite prefers the RC4 cipher.
 
 12 History
 ===========
+0.4.7
+ - Fixed harmless bug that added non-prime into sieves list
+ - Added "make test" and "make test-dev" targets (Hubert Kario)
 0.4.5 - 3/20/2013
  - **API CHANGE**: TLSClosedConnectionError instead of ValueError when writing
    to a closed connection.  This inherits from socket.error, so should 
