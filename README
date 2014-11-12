@@ -287,11 +287,10 @@ and ignore the other certificates.
 
 TACK objects return the (validated) TACK ID via getTACKID().
 
-To save yourself the trouble of inspecting certificates and/or TACKs after the
-handshake, you can pass a Checker object into the handshake function. The
-checker will be called if the handshake completes successfully. If the other
-party isn't approved by the checker, a subclass of TLSAuthenticationError will
-be raised.
+To save yourself the trouble of inspecting certificates after the handshake,
+you can pass a Checker object into the handshake function. The checker will be
+called if the handshake completes successfully. If the other party isn't
+approved by the checker, a subclass of TLSAuthenticationError will be raised.
 
 If the handshake fails for any reason, including a Checker error, an exception
 will be raised and the socket will be closed. If the socket timed out or was
