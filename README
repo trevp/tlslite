@@ -452,7 +452,8 @@ at your own risk.
 TLS Lite does NOT verify certificates.
 
 TLS Lite is probably vulnerable to the "Lucky 13" timing attack if AES or 3DES
-are used.  Thus, TLS Lite prefers the RC4 cipher which has problems of its own.
+are used.  Thus, TLS Lite prefers the RC4 cipher which is perhaps the lesser of
+two evils but is a cryptographically dubious cipher.
 
 
 12 History
