@@ -543,7 +543,7 @@ class ClientKeyExchange(HandshakeMsg):
         if self.cipherSuite in CipherSuite.srpAllSuites:
             self.srp_A = bytesToNumber(p.getVarBytes(2))
         elif self.cipherSuite in CipherSuite.certSuites:
-            if self.version in ((3,1), (3,2)):
+            if self.version in ((3,1), (3,2), (3,3)):
                 self.encryptedPreMasterSecret = p.getVarBytes(2)
             elif self.version == (3,0):
                 self.encryptedPreMasterSecret = \

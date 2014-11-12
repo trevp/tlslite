@@ -1441,7 +1441,7 @@ class TLSConnection(TLSRecordLayer):
             msgs.append(CertificateRequest().create(\
                 [ClientCertificateType.rsa_sign], reqCAs))
         elif reqCert:
-            msgs.append(CertificateRequest())
+            msgs.append(CertificateRequest(self.version))
         msgs.append(ServerHelloDone())
         for result in self._sendMsgs(msgs):
             yield result
