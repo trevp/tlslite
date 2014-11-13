@@ -31,5 +31,6 @@ test:
 	cd tests/ && python ./tlstest.py client localhost:4433 .
 
 test-dev:
+	PYTHONPATH=. python tests/test_tlslite_messages.py -v
 	cd tests/ && PYTHONPATH=.. python ./tlstest.py server localhost:4433 . & sleep 1
 	cd tests/ && PYTHONPATH=.. python ./tlstest.py client localhost:4433 .
