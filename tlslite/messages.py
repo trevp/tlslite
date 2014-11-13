@@ -3,6 +3,7 @@
 #   Google - handling CertificateRequest.certificate_types
 #   Google (adapted by Sam Rushing and Marcelo Fernandez) - NPN support
 #   Dimitris Moraitis - Anon ciphersuites
+#   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
 #
 # See the LICENSE file for legal information regarding use of this file.
 

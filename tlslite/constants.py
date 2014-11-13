@@ -4,6 +4,7 @@
 #   Google (adapted by Sam Rushing) - NPN support
 #   Dimitris Moraitis - Anon ciphersuites
 #   Dave Baggett (Arcode Corporation) - canonicalCipherName
+#   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
 #
 # See the LICENSE file for legal information regarding use of this file.
 

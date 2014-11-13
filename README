@@ -1,5 +1,5 @@
 
-tlslite version 0.4.7                                            Nov 12 2014
+tlslite version 0.4.8                                            Nov 12 2014
 Trevor Perrin <tlslite at trevp.net>
 http://trevp.net/tlslite/
 ============================================================================
@@ -38,8 +38,8 @@ improvements to tlslite, also see 'tlslite-dev@googlegroups.com'.
 ============================
 TLS Lite is written (mostly) by Trevor Perrin. It includes code from Bram
 Cohen, Google, Kees Bos, Sam Rushing, Dimitris Moraitis, Marcelo Fernandez,
-Martin von Loewis, Dave Baggett, Yngve N. Pettersen, Opera Software ASA,
-(TLS 1.2 support).
+Martin von Loewis, Dave Baggett, and Yngve N. Pettersen (ported by Paul 
+Sokolovsky).
 
 All code in TLS Lite has either been dedicated to the public domain by its
 authors, or placed under a BSD-style license. See the LICENSE file for
@@ -451,14 +451,18 @@ at your own risk.
 
 TLS Lite does NOT verify certificates by default.
 
+TLS Lite's pure-python ciphers are probably vulnerable to timing attacks.
+
 TLS Lite is probably vulnerable to the "Lucky 13" timing attack if AES or 3DES
-are used, or the weak cipher RC4 otherwise.  This unhappy situation will
-remain until TLS Lite implements authenticated-encryption ciphersuites
-(like GCM), or RFC 7366.
+are used, or the weak cipher RC4 otherwise.  This unhappy situation will remain
+until TLS Lite implements authenticated-encryption ciphersuites (like GCM), or
+RFC 7366.
 
 
 12 History
 ===========
+0.4.8 - 11/12/2014
+ - Added more acknowledgements and security considerations
 0.4.7 - 11/12/2014
  - Added TLS 1.2 support
  - Don't offer SSLv3 by default (e.g. POODLE)

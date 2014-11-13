@@ -1,6 +1,7 @@
 # Authors: 
 #   Trevor Perrin
 #   Dave Baggett (Arcode Corporation) - cleanup handling of constants
+#   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
 #
 # See the LICENSE file for legal information regarding use of this file.
 

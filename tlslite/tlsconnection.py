@@ -4,6 +4,7 @@
 #   Google (adapted by Sam Rushing and Marcelo Fernandez) - NPN support
 #   Dimitris Moraitis - Anon ciphersuites
 #   Martin von Loewis - python 3 port
+#   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
 #
 # See the LICENSE file for legal information regarding use of this file.
 
