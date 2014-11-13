@@ -449,11 +449,12 @@ may not work with all asyncore.dispatcher subclasses.
 TLS Lite is beta-quality code. It hasn't received much security analysis. Use
 at your own risk.
 
-TLS Lite does NOT verify certificates.
+TLS Lite does NOT verify certificates by default.
 
 TLS Lite is probably vulnerable to the "Lucky 13" timing attack if AES or 3DES
-are used.  Thus, TLS Lite prefers the RC4 cipher which is perhaps the lesser of
-two evils but is a cryptographically dubious cipher.
+are used, or the weak cipher RC4 otherwise.  This unhappy situation will
+remain until TLS Lite implements authenticated-encryption ciphersuites
+(like GCM), or RFC 7366.
 
 
 12 History

@@ -206,18 +206,18 @@ class CipherSuite:
         return [s for s in suites if s in macSuites and s in cipherSuites]
 
     srpSuites = []
-    srpSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
-    srpSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
+    srpSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
+    srpSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     
     @staticmethod
     def getSrpSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.srpSuites, settings)
 
     srpCertSuites = []
-    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
-    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
+    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
+    srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
     
     @staticmethod
     def getSrpCertSuites(settings):
@@ -230,13 +230,13 @@ class CipherSuite:
         return CipherSuite._filterSuites(CipherSuite.srpAllSuites, settings)
 
     certSuites = []
-    certSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
-    certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
+    certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
+    certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
     certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
+    certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
+    certSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_MD5)
-    certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
-    certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
     certAllSuites = srpCertSuites + certSuites
     
     @staticmethod
@@ -244,8 +244,8 @@ class CipherSuite:
         return CipherSuite._filterSuites(CipherSuite.certSuites, settings)
 
     anonSuites = []
-    anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     
     @staticmethod
     def getAnonSuites(settings):
