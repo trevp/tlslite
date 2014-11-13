@@ -464,7 +464,7 @@ RFC 7366.
 0.4.8 - 11/12/2014
  - Added more acknowledgements and security considerations
 0.4.7 - 11/12/2014
- - Added TLS 1.2 support
+ - Added TLS 1.2 support (Yngve Pettersen and Paul Sokolovsky)
  - Don't offer SSLv3 by default (e.g. POODLE)
  - Fixed bug with PyCrypto_RSA integration
  - Fixed harmless bug that added non-prime into sieves list
