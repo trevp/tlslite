@@ -100,10 +100,3 @@ class SessionCache(object):
             else:
                 break
         self.firstIndex = index
-
-def _test():
-    import doctest, SessionCache
-    return doctest.testmod(SessionCache)
-
-if __name__ == "__main__":
-    _test()
