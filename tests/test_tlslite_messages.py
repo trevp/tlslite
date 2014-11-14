@@ -282,7 +282,7 @@ class TestServerHello(unittest.TestCase):
             server_hello.parse(p)
 
         # TODO the message probably could be more descriptive...
-        self.assertEqual("", context.exception.message)
+        self.assertIsNone(context.exception.msg)
 
     def test_parse_with_length_long_by_one(self):
         p = Parser(bytearray(
@@ -301,7 +301,7 @@ class TestServerHello(unittest.TestCase):
             server_hello.parse(p)
 
         # TODO the message probably could be more descriptive...
-        self.assertEqual("", context.exception.message)
+        self.assertIsNone(context.exception.msg)
 
     def test_parse_with_extensions_length_short_by_one(self):
         p = Parser(bytearray(
@@ -329,7 +329,7 @@ class TestServerHello(unittest.TestCase):
             server_hello.parse(p)
 
         # TODO the message could be more descriptive...
-        self.assertEqual("", context.exception.message)
+        self.assertIsNone(context.exception.msg)
 
     def test_parse_with_extensions_length_long_by_one(self):
         p = Parser(bytearray(
@@ -357,7 +357,7 @@ class TestServerHello(unittest.TestCase):
             server_hello.parse(p)
 
         # TODO the message could be more descriptive...
-        self.assertEqual("", context.exception.message)
+        self.assertIsNone(context.exception.msg)
 
     def test_write(self):
         server_hello = ServerHello().create(
@@ -387,7 +387,7 @@ class TestServerHello(unittest.TestCase):
                 4,                              # cipher suite
                 0,                              # certificate type
                 None,                           # TACK ext
-                ["spdy/3", "http/1.1"])         # next protos advertised
+                [b'spdy/3', b'http/1.1'])       # next protos advertised
 
         self.assertEqual(list(bytearray(
             b'\x02' +               # type of message - server_hello
