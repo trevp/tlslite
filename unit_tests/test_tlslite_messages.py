@@ -2,7 +2,7 @@
 # see LICENCE file for legal information regarding use of this file
 
 import unittest
-from tlslite.messages import ClientHello
+from tlslite.messages import ClientHello, ServerHello
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType
 
@@ -198,6 +198,215 @@ class TestClientHello(unittest.TestCase):
                 # utf-8 encoding of "example.com"
                 b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'
                 )), list(client_hello.write()))
+
+class TestServerHello(unittest.TestCase):
+    def test___init__(self):
+        server_hello = ServerHello()
+
+        self.assertEqual((0,0), server_hello.server_version)
+        self.assertEqual(bytearray(32), server_hello.random)
+        self.assertEqual(bytearray(0), server_hello.session_id)
+        self.assertEqual(0, server_hello.cipher_suite)
+        self.assertEqual(CertificateType.x509, server_hello.certificate_type)
+        self.assertEqual(0, server_hello.compression_method)
+        self.assertEqual(None, server_hello.tackExt)
+        self.assertEqual(None, server_hello.next_protos_advertised)
+        self.assertEqual(None, server_hello.next_protos)
+
+    def test_create(self):
+        server_hello = ServerHello().create(
+                (1,1),                          # server version
+                bytearray(b'\x00'*31+b'\x01'),  # random
+                bytearray(0),                   # session id
+                4,                              # cipher suite
+                1,                              # certificate type
+                None,                           # TACK ext
+                None)                           # next protos advertised
+
+        self.assertEqual((1,1), server_hello.server_version)
+        self.assertEqual(bytearray(b'\x00'*31 + b'\x01'), server_hello.random)
+        self.assertEqual(bytearray(0), server_hello.session_id)
+        self.assertEqual(4, server_hello.cipher_suite)
+        self.assertEqual(CertificateType.openpgp, server_hello.certificate_type)
+        self.assertEqual(0, server_hello.compression_method)
+        self.assertEqual(None, server_hello.tackExt)
+        self.assertEqual(None, server_hello.next_protos_advertised)
+
+    def test_parse(self):
+        p = Parser(bytearray(
+            # don't include type of message as it is handled by the hello
+            # protocol layer
+            # b'\x02' +                     # type of message - server_hello
+            b'\x00\x00\x36' +               # length - 54 bytes
+            b'\x03\x03' +                   # version - TLS 1.2
+            b'\x01'*31 + b'\x02' +          # random
+            b'\x00' +                       # session id length
+            b'\x00\x9d' +                   # cipher suite
+            b'\x01' +                       # compression method (zlib)
+            b'\x00\x0e' +                   # extensions length - 14 bytes
+            b'\xff\x01' +                   # ext type - renegotiation_info
+            b'\x00\x01' +                   # ext length - 1 byte
+            b'\x00' +                       # value - supported (0)
+            b'\x00\x23' +                   # ext type - session ticket (35)
+            b'\x00\x00' +                   # ext length - 0 bytes
+            b'\x00\x0f' +                   # ext type - heartbeat (15)
+            b'\x00\x01' +                   # ext length - 1 byte
+            b'\x01'))                       # peer allowed to send requests (1)
+        server_hello = ServerHello()
+        server_hello = server_hello.parse(p)
+
+        self.assertEqual((3,3), server_hello.server_version)
+        self.assertEqual(bytearray(b'\x01'*31 + b'\x02'), server_hello.random)
+        self.assertEqual(bytearray(0), server_hello.session_id)
+        self.assertEqual(157, server_hello.cipher_suite)
+        # XXX not sent by server!
+        self.assertEqual(CertificateType.x509, server_hello.certificate_type)
+        self.assertEqual(1, server_hello.compression_method)
+        self.assertEqual(None, server_hello.tackExt)
+        self.assertEqual(None, server_hello.next_protos_advertised)
+
+    def test_parse_with_length_short_by_one(self):
+        p = Parser(bytearray(
+            # don't include type of message as it is handled by the hello
+            # protocol layer
+            # b'\x02' +                     # type of message - server_hello
+            b'\x00\x00\x25' +               # length - 37 bytes (one short)
+            b'\x03\x03' +                   # version - TLS 1.2
+            b'\x01'*31 + b'\x02' +          # random
+            b'\x00' +                       # session id length
+            b'\x00\x9d' +                   # cipher suite
+            b'\x01'                         # compression method (zlib)
+            ))
+        server_hello = ServerHello()
+        with self.assertRaises(SyntaxError) as context:
+            server_hello.parse(p)
+
+        # TODO the message probably could be more descriptive...
+        self.assertIsNone(context.exception.msg)
+
+    def test_parse_with_length_long_by_one(self):
+        p = Parser(bytearray(
+            # don't include type of message as it is handled by the hello
+            # protocol layer
+            # b'\x02' +                     # type of message - server_hello
+            b'\x00\x00\x27' +               # length - 39 bytes (one long)
+            b'\x03\x03' +                   # version - TLS 1.2
+            b'\x01'*31 + b'\x02' +          # random
+            b'\x00' +                       # session id length
+            b'\x00\x9d' +                   # cipher suite
+            b'\x01'                         # compression method (zlib)
+            ))
+        server_hello = ServerHello()
+        with self.assertRaises(SyntaxError) as context:
+            server_hello.parse(p)
+
+        # TODO the message probably could be more descriptive...
+        self.assertIsNone(context.exception.msg)
+
+    def test_parse_with_extensions_length_short_by_one(self):
+        p = Parser(bytearray(
+            # don't include type of message as it is handled by the hello
+            # protocol layer
+            # b'\x02' +                     # type of message - server_hello
+            b'\x00\x00\x36' +               # length - 54 bytes
+            b'\x03\x03' +                   # version - TLS 1.2
+            b'\x01'*31 + b'\x02' +          # random
+            b'\x00' +                       # session id length
+            b'\x00\x9d' +                   # cipher suite
+            b'\x01' +                       # compression method (zlib)
+            b'\x00\x0d' +                   # extensions length - 13 bytes (!)
+            b'\xff\x01' +                   # ext type - renegotiation_info
+            b'\x00\x01' +                   # ext length - 1 byte
+            b'\x00' +                       # value - supported (0)
+            b'\x00\x23' +                   # ext type - session ticket (35)
+            b'\x00\x00' +                   # ext length - 0 bytes
+            b'\x00\x0f' +                   # ext type - heartbeat (15)
+            b'\x00\x01' +                   # ext length - 1 byte
+            b'\x01'))                       # peer allowed to send requests (1)
+        server_hello = ServerHello()
+
+        with self.assertRaises(SyntaxError) as context:
+            server_hello.parse(p)
+
+        # TODO the message could be more descriptive...
+        self.assertIsNone(context.exception.msg)
+
+    def test_parse_with_extensions_length_long_by_one(self):
+        p = Parser(bytearray(
+            # don't include type of message as it is handled by the hello
+            # protocol layer
+            # b'\x02' +                     # type of message - server_hello
+            b'\x00\x00\x36' +               # length - 54 bytes
+            b'\x03\x03' +                   # version - TLS 1.2
+            b'\x01'*31 + b'\x02' +          # random
+            b'\x00' +                       # session id length
+            b'\x00\x9d' +                   # cipher suite
+            b'\x01' +                       # compression method (zlib)
+            b'\x00\x0f' +                   # extensions length - 15 bytes (!)
+            b'\xff\x01' +                   # ext type - renegotiation_info
+            b'\x00\x01' +                   # ext length - 1 byte
+            b'\x00' +                       # value - supported (0)
+            b'\x00\x23' +                   # ext type - session ticket (35)
+            b'\x00\x00' +                   # ext length - 0 bytes
+            b'\x00\x0f' +                   # ext type - heartbeat (15)
+            b'\x00\x01' +                   # ext length - 1 byte
+            b'\x01'))                       # peer allowed to send requests (1)
+        server_hello = ServerHello()
+
+        with self.assertRaises(SyntaxError) as context:
+            server_hello.parse(p)
+
+        # TODO the message could be more descriptive...
+        self.assertIsNone(context.exception.msg)
+
+    def test_write(self):
+        server_hello = ServerHello().create(
+                (1,1),                          # server version
+                bytearray(b'\x00'*31+b'\x02'),  # random
+                bytearray(0),                   # session id
+                4,                              # cipher suite
+                None,                           # certificate type
+                None,                           # TACK ext
+                None)                           # next protos advertised
+
+        self.assertEqual(list(bytearray(
+            b'\x02' +               # type of message - server_hello
+            b'\x00\x00\x26' +       # length
+            b'\x01\x01' +           # proto version
+            b'\x00'*31 + b'\x02' +  # random
+            b'\x00' +               # session id length
+            b'\x00\x04' +           # cipher suite
+            b'\x00'                 # compression method
+            )), list(server_hello.write()))
+
+    def test_write_with_next_protos(self):
+        server_hello = ServerHello().create(
+                (1,1),                          # server version
+                bytearray(b'\x00'*31+b'\x02'),  # random
+                bytearray(0),                   # session id
+                4,                              # cipher suite
+                0,                              # certificate type
+                None,                           # TACK ext
+                [b'spdy/3', b'http/1.1'])       # next protos advertised
+
+        self.assertEqual(list(bytearray(
+            b'\x02' +               # type of message - server_hello
+            b'\x00\x00\x3c' +       # length
+            b'\x01\x01' +           # proto version
+            b'\x00'*31 + b'\x02' +  # random
+            b'\x00' +               # session id length
+            b'\x00\x04' +           # cipher suite
+            b'\x00' +               # compression method
+            b'\x00\x14' +           # extensions length
+            b'\x33\x74' +           # ext type - NPN (13172)
+            b'\x00\x10' +           # ext length - 16 bytes
+            b'\x06' +               # first entry length - 6 bytes
+            # utf-8 encoding of 'spdy/3'
+            b'\x73\x70\x64\x79\x2f\x33'
+            b'\x08' +               # second entry length - 8 bytes
+            # utf-8 endoding of 'http/1.1'
+            b'\x68\x74\x74\x70\x2f\x31\x2e\x31'
+            )), list(server_hello.write()))
 
 if __name__ == '__main__':
     unittest.main()
