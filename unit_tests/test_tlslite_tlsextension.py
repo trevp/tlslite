@@ -3,8 +3,9 @@
 # See the LICENSE file for legal information regarding use of this file.
 
 import unittest
-from tlslite.tlsextension import TLSExtension
+from tlslite.tlsextension import TLSExtension, SNIExtension
 from tlslite.utils.codec import Parser
+from tlslite.constants import NameType
 
 class TestTLSExtension(unittest.TestCase):
     def test___init__(self):
@@ -57,6 +58,330 @@ class TestTLSExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError) as context:
             TLSExtension().parse(p)
+
+class TestSNIExtension(unittest.TestCase):
+    def test___init__(self):
+        server_name = SNIExtension()
+
+        self.assertEqual(None, server_name.server_names)
+        self.assertEqual(tuple(), server_name.host_names)
+        # properties inherited from TLSExtension:
+        self.assertEqual(0, server_name.ext_type)
+        self.assertEqual(bytearray(0), server_name.ext_data)
+
+    def test_create(self):
+        server_name = SNIExtension()
+        server_name = server_name.create()
+
+        self.assertEqual(None, server_name.server_names)
+        self.assertEqual(tuple(), server_name.host_names)
+
+    def test_create_with_hostname(self):
+        server_name = SNIExtension()
+        server_name = server_name.create(bytearray(b'example.com'))
+
+        self.assertEqual((bytearray(b'example.com'),), server_name.host_names)
+        self.assertEqual([SNIExtension.ServerName(
+            NameType.host_name,
+            bytearray(b'example.com')
+            )], server_name.server_names)
+
+    def test_create_with_host_names(self):
+        server_name = SNIExtension()
+        server_name = server_name.create(host_names=[bytearray(b'example.com'),
+            bytearray(b'www.example.com')])
+
+        self.assertEqual((
+            bytearray(b'example.com'),
+            bytearray(b'www.example.com')
+            ), server_name.host_names)
+        self.assertEqual([
+            SNIExtension.ServerName(
+                NameType.host_name,
+                bytearray(b'example.com')),
+            SNIExtension.ServerName(
+                NameType.host_name,
+                bytearray(b'www.example.com'))],
+            server_name.server_names)
+
+    def test_create_with_server_names(self):
+        server_name = SNIExtension()
+        server_name = server_name.create(server_names=[
+            SNIExtension.ServerName(1, bytearray(b'example.com')),
+            SNIExtension.ServerName(4, bytearray(b'www.example.com')),
+            SNIExtension.ServerName(0, bytearray(b'example.net'))])
+
+        self.assertEqual((bytearray(b'example.net'),), server_name.host_names)
+        self.assertEqual([
+            SNIExtension.ServerName(
+                1, bytearray(b'example.com')),
+            SNIExtension.ServerName(
+                4, bytearray(b'www.example.com')),
+            SNIExtension.ServerName(
+                0, bytearray(b'example.net'))],
+            server_name.server_names)
+
+    def test_host_names(self):
+        server_name = SNIExtension()
+        server_name = server_name.create(server_names=[
+            SNIExtension.ServerName(0, bytearray(b'example.net')),
+            SNIExtension.ServerName(1, bytearray(b'example.com')),
+            SNIExtension.ServerName(4, bytearray(b'www.example.com'))
+            ])
+
+        server_name.host_names = \
+                [bytearray(b'example.com')]
+
+        self.assertEqual((bytearray(b'example.com'),), server_name.host_names)
+        self.assertEqual([
+            SNIExtension.ServerName(0, bytearray(b'example.com')),
+            SNIExtension.ServerName(1, bytearray(b'example.com')),
+            SNIExtension.ServerName(4, bytearray(b'www.example.com'))],
+            server_name.server_names)
+
+    def test_host_names_delete(self):
+        server_name = SNIExtension()
+        server_name = server_name.create(server_names=[
+            SNIExtension.ServerName(0, bytearray(b'example.net')),
+            SNIExtension.ServerName(1, bytearray(b'example.com')),
+            SNIExtension.ServerName(4, bytearray(b'www.example.com'))
+            ])
+
+        del server_name.host_names
+
+        self.assertEqual(tuple(), server_name.host_names)
+        self.assertEqual([
+            SNIExtension.ServerName(1, bytearray(b'example.com')),
+            SNIExtension.ServerName(4, bytearray(b'www.example.com'))],
+            server_name.server_names)
+
+    def test_write(self):
+        server_name = SNIExtension()
+        server_name = server_name.create(bytearray(b'example.com'))
+
+        self.assertEqual(bytearray(
+            b'\x00\x0e' +   # length of array - 14 bytes
+            b'\x00' +       # type of element - host_name (0)
+            b'\x00\x0b' +   # length of element - 11 bytes
+            # UTF-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'
+            ), server_name.ext_data)
+
+        self.assertEqual(bytearray(
+            b'\x00\x00' +   # type of extension - SNI (0)
+            b'\x00\x10' +   # length of extension - 16 bytes
+            b'\x00\x0e' +   # length of array - 14 bytes
+            b'\x00' +       # type of element - host_name (0)
+            b'\x00\x0b' +   # length of element - 11 bytes
+            # UTF-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'
+            ), server_name.write())
+
+    def test_write_with_multiple_hostnames(self):
+        server_name = SNIExtension()
+        server_name = server_name.create(host_names=[
+            bytearray(b'example.com'),
+            bytearray(b'example.org')])
+
+        self.assertEqual(bytearray(
+            b'\x00\x1c' +   # lenght of array - 28 bytes
+            b'\x00' +       # type of element - host_name (0)
+            b'\x00\x0b' +   # length of element - 11 bytes
+            # utf-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d' +
+            b'\x00' +       # type of elemnt - host_name (0)
+            b'\x00\x0b' +   # length of elemnet - 11 bytes
+            # utf-8 encoding of example.org
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x6f\x72\x67'
+            ), server_name.ext_data)
+
+        self.assertEqual(bytearray(
+            b'\x00\x00' +   # type of extension - SNI (0)
+            b'\x00\x1e' +   # length of extension - 26 bytes
+            b'\x00\x1c' +   # lenght of array - 24 bytes
+            b'\x00' +       # type of element - host_name (0)
+            b'\x00\x0b' +   # length of element - 11 bytes
+            # utf-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d' +
+            b'\x00' +       # type of elemnt - host_name (0)
+            b'\x00\x0b' +   # length of elemnet - 11 bytes
+            # utf-8 encoding of example.org
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x6f\x72\x67'
+            ), server_name.write())
+
+    def test_write_of_empty_extension(self):
+        server_name = SNIExtension()
+
+        self.assertEqual(bytearray(
+            b'\x00\x00' +   # type of extension - SNI (0)
+            b'\x00\x00'     # length of extension - 0 bytes
+            ), server_name.write())
+
+    def test_write_of_empty_list_of_names(self):
+        server_name = SNIExtension()
+        server_name = server_name.create(server_names=[])
+
+        self.assertEqual(bytearray(
+            b'\x00\x00'    # length of array - 0 bytes
+            ), server_name.ext_data)
+
+        self.assertEqual(bytearray(
+            b'\x00\x00' +  # type of extension - SNI 0
+            b'\x00\x02' +  # length of extension - 2 bytes
+            b'\x00\x00'    # length of array of names - 0 bytes
+            ), server_name.write())
+
+    def test_parse(self):
+        server_name = SNIExtension()
+
+        p = Parser(bytearray(0))
+
+        with self.assertRaises(SyntaxError):
+            server_name = server_name.parse(p)
+
+    def test_parse_null_length_array(self):
+        server_name = SNIExtension()
+
+        p = Parser(bytearray(b'\x00\x00'))
+
+        server_name = server_name.parse(p)
+
+        self.assertEqual([], server_name.server_names)
+
+    def test_parse_with_host_name(self):
+        server_name = SNIExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x0e' +   # length of array
+            b'\x00' +       # type of entry - host_name (0)
+            b'\x00\x0b' +   # length of name - 11 bytes
+            # UTF-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'))
+
+        server_name = server_name.parse(p)
+
+        self.assertEqual(bytearray(b'example.com'), server_name.host_names[0])
+        self.assertEqual(tuple([bytearray(b'example.com')]),
+                server_name.host_names)
+
+    def test_parse_with_multiple_host_names(self):
+        server_name = SNIExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x1c' +   # length of array - 28 bytes
+            b'\x0a' +       # type of entry - unassigned (10)
+            b'\x00\x0b' +   # length of name - 11 bytes
+            # UTF-8 encoding of example.org
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x6f\x72\x67' +
+            b'\x00' +       # type of entry - host_name (0)
+            b'\x00\x0b' +   # length of name - 11 bytes
+            # UTF-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'))
+
+        server_name = server_name.parse(p)
+
+        self.assertEqual(bytearray(b'example.com'), server_name.host_names[0])
+        self.assertEqual(tuple([bytearray(b'example.com')]),
+                server_name.host_names)
+
+        SN = SNIExtension.ServerName
+
+        self.assertEqual([
+            SN(10, bytearray(b'example.org')),
+            SN(0, bytearray(b'example.com'))
+            ], server_name.server_names)
+
+    def test_parse_with_array_length_long_by_one(self):
+        server_name = SNIExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x0f' +   # length of array (one too long)
+            b'\x00' +       # type of entry - host_name (0)
+            b'\x00\x0b' +   # length of name - 11 bytes
+            # UTF-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'))
+
+        with self.assertRaises(SyntaxError):
+            server_name = server_name.parse(p)
+
+    def test_parse_with_array_length_short_by_one(self):
+        server_name = SNIExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x0d' +   # length of array (one too short)
+            b'\x00' +       # type of entry - host_name (0)
+            b'\x00\x0b' +   # length of name - 11 bytes
+            # UTF-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'))
+
+        with self.assertRaises(SyntaxError):
+            server_name = server_name.parse(p)
+
+    def test_parse_with_name_length_long_by_one(self):
+        server_name = SNIExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x1c' +   # length of array - 28 bytes
+            b'\x0a' +       # type of entry - unassigned (10)
+            b'\x00\x0c' +   # length of name - 12 bytes (long by one)
+            # UTF-8 encoding of example.org
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x6f\x72\x67' +
+            b'\x00' +       # type of entry - host_name (0)
+            b'\x00\x0b' +   # length of name - 11 bytes
+            # UTF-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'))
+
+        with self.assertRaises(SyntaxError):
+            server_name = server_name.parse(p)
+
+        server_name = SNIExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x1c' +   # length of array - 28 bytes
+            b'\x0a' +       # type of entry - unassigned (10)
+            b'\x00\x0b' +   # length of name - 11 bytes
+            # UTF-8 encoding of example.org
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x6f\x72\x67' +
+            b'\x00' +       # type of entry - host_name (0)
+            b'\x00\x0c' +   # length of name - 12 bytes (long by one)
+            # UTF-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'))
+
+        with self.assertRaises(SyntaxError):
+            server_name = server_name.parse(p)
+
+    def test_parse_with_name_length_short_by_one(self):
+        server_name = SNIExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x1c' +   # length of array - 28 bytes
+            b'\x0a' +       # type of entry - unassigned (10)
+            b'\x00\x0a' +   # length of name - 10 bytes (short by one)
+            # UTF-8 encoding of example.org
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x6f\x72\x67' +
+            b'\x00' +       # type of entry - host_name (0)
+            b'\x00\x0b' +   # length of name - 11 bytes
+            # UTF-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'))
+
+        with self.assertRaises(SyntaxError):
+            server_name = server_name.parse(p)
+
+        server_name = SNIExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x1c' +   # length of array - 28 bytes
+            b'\x0a' +       # type of entry - unassigned (10)
+            b'\x00\x0b' +   # length of name - 11 bytes
+            # UTF-8 encoding of example.org
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x6f\x72\x67' +
+            b'\x00' +       # type of entry - host_name (0)
+            b'\x00\x0a' +   # length of name - 10 bytes (short by one)
+            # UTF-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'))
+
+        with self.assertRaises(SyntaxError):
+            server_name = server_name.parse(p)
 
 if __name__ == '__main__':
     unittest.main()

@@ -5,9 +5,11 @@
 """ Helper package for handling TLS extensions encountered in ClientHello
 and ServerHello messages.
 """
+
 from __future__ import generators
 from .utils.codec import Writer, Parser
-
+from collections import namedtuple
+from .constants import NameType, ExtensionType
 
 class TLSExtension(object):
     """
@@ -91,3 +93,211 @@ class TLSExtension(object):
         if len(self.ext_data) != ext_length:
             raise SyntaxError()
         return self
+
+class SNIExtension(TLSExtension):
+    """
+    Class for handling Server Name Indication (server_name) extension from
+    RFC 4366.
+
+    Note that while usually the client does advertise just one name, it is
+    possible to provide a list of names, each of different type.
+    The type is a single byte value (represented by ints), the names are
+    opaque byte strings, in case of DNS host names (records of type 0) they
+    are UTF-8 encoded domain names (without the ending dot).
+
+    @type host_names: tuple of bytearrays
+    @ivar host_names: tuple of hostnames (server name records of type 0)
+        advertised in the extension. Note that it may not include all names
+        from client hello as the client can advertise other types. Also note
+        that while it's not possible to change the returned array in place, it
+        is possible to assign a new set of names. IOW, this won't work::
+
+           sni_extension.host_names[0] = bytearray(b'example.com')
+
+        while this will work::
+
+           names = list(sni_extension.host_names)
+           names[0] = bytearray(b'example.com')
+           sni_extension.host_names = names
+
+
+    @type server_names: list of L{ServerName}
+    @ivar server_names: list of all names advertised in extension.
+        L{ServerName} is a namedtuple with two elements, the first
+        element (type) defines the type of the name (encoded as int)
+        while the other (name) is a bytearray that carries the value.
+        Known types are defined in L{tlslite.constants.NameType}.
+        The list will be empty if the on the wire extension had and empty
+        list while it will be None if the extension was empty.
+
+    @type ext_type: int
+    @ivar ext_type: numeric type of SNIExtension, i.e. 0
+
+    @type ext_data: bytearray
+    @ivar ext_data: raw representation of the extension
+    """
+
+    ServerName = namedtuple('ServerName', 'type name')
+
+    def __init__(self):
+        """
+        Create an instance of SNIExtension.
+
+        See also: L{create} and L{parse}.
+        """
+        self.server_names = None
+
+    def create(self, hostname=None, host_names=None, server_names=None):
+        """
+        Initializes an instance with provided hostname, host names or
+        raw server names.
+
+        Any of the parameters may be None, in that case the list inside the
+        extension won't be defined, if either host_names or server_names is
+        an empty list, then the extension will define a list of lenght 0.
+
+        If multiple parameters are specified at the same time, then the
+        resulting list of names will be concatenated in order of hostname,
+        host_names and server_names last.
+
+        @type  hostname: bytearray
+        @param hostname: raw UTF-8 encoding of the host name
+
+        @type  host_names: list of bytearrays
+        @param host_names: list of raw UTF-8 encoded host names
+
+        @type  server_names: list of L{ServerName}
+        @param server_names: pairs of type and name
+
+        @rtype: L{SNIExtension}
+        """
+        if hostname is None and host_names is None and server_names is None:
+            self.server_names = None
+            return self
+        else:
+            self.server_names = []
+
+        if hostname:
+            self.server_names+=[SNIExtension.ServerName(NameType.host_name,\
+                    hostname)]
+
+        if host_names:
+            self.server_names+=\
+                    [SNIExtension.ServerName(NameType.host_name, x) for x in\
+                    host_names]
+
+        if server_names:
+            self.server_names+=server_names
+
+        return self
+
+    @property
+    def ext_type(self):
+        """ Return the type of TLS extension, in this case - 0
+
+        @rtype: int
+        """
+        return ExtensionType.server_name
+
+    @property
+    def host_names(self):
+        """ Returns a simulated list of host_names from the extension.
+
+        @rtype: tuple of bytearrays
+        """
+        # because we can't simulate assignments to array elements we return
+        # an immutable type
+        if self.server_names is None:
+            return tuple()
+        else:
+            return tuple([x.name for x in self.server_names if \
+                x.type == NameType.host_name])
+
+    @host_names.setter
+    def host_names(self, host_names):
+        """ Removes all host names from the extension and replaces them by
+        names in X{host_names} parameter.
+
+        Newly added parameters will be added at the I{beginning} of the list
+        of extensions.
+
+        @type host_names: iterable of bytearrays
+        @param host_names: host names to replace the old server names of type 0
+        """
+
+        self.server_names = \
+                [SNIExtension.ServerName(NameType.host_name, x) for x in \
+                    host_names] + \
+                [x for x in self.server_names if \
+                    x.type != NameType.host_name]
+
+    @host_names.deleter
+    def host_names(self):
+        """ Remove all host names from extension, leaves other name types
+        unmodified
+        """
+        self.server_names = [x for x in self.server_names if \
+                x.type != NameType.host_name]
+
+    @property
+    def ext_data(self):
+        """ raw encoding of extension data, without type and length header
+
+        @rtype: bytearray
+        """
+        if self.server_names is None:
+            return bytearray(0)
+
+        w2 = Writer()
+        for server_name in self.server_names:
+            w2.add(server_name.type, 1)
+            w2.add(len(server_name.name), 2)
+            w2.bytes += server_name.name
+
+        # note that when the array is empty we write it as array of length 0
+        w = Writer()
+        w.add(len(w2.bytes), 2)
+        w.bytes += w2.bytes
+        return w.bytes
+
+    def write(self):
+        """ Returns encoded extension, as encoded on the wire
+
+        @rtype: bytearray
+        @return: an array of bytes formatted as they are supposed to be written
+            on the wire, including the type, length and extension data
+        """
+
+        raw_data = self.ext_data
+
+        w = Writer()
+        w.add(self.ext_type, 2)
+        w.add(len(raw_data), 2)
+        w.bytes += raw_data
+
+        return w.bytes
+
+    def parse(self, p):
+        """ Parses the on the wire extension data and returns an object that
+        represents it.
+
+        The parser should not include the type or length of extension!
+
+        @type p: L{tlslite.util.codec.Parser}
+        @param p: data to be parsed
+
+        @rtype: L{SNIExtension}
+        @raise SyntaxError: when the internal sizes don't match the attached
+            data
+        """
+        self.server_names = []
+
+        p.startLengthCheck(2)
+        while not p.atLengthCheck():
+            sn_type = p.get(1)
+            sn_name = p.getVarBytes(2)
+            self.server_names += [SNIExtension.ServerName(sn_type, sn_name)]
+        p.stopLengthCheck()
+
+        return self
+
