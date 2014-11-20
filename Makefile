@@ -48,5 +48,6 @@ ifndef PYTHON3
 	python -m unittest discover -v
 endif
 endif
+	epydoc --check --fail-on-error -v tlslite
 	cd tests/ && PYTHONPATH=.. python ./tlstest.py server localhost:4433 . & sleep 1
 	cd tests/ && PYTHONPATH=.. python ./tlstest.py client localhost:4433 .
