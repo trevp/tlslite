@@ -14,7 +14,7 @@ To use, do::
 
     from tlslite import TLSConnection, ...
     
-If you want to import the most useful objects, the cleanest way is:
+If you want to import the most useful objects, the cleanest way is::
 
     from tlslite.api import *
 
