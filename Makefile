@@ -24,7 +24,7 @@ clean:
 	rm -f MANIFEST
 
 docs:
-	epydoc --html -v --introspect-only -o docs tlslite
+	epydoc --html -v --introspect-only -o docs --graph all tlslite
 
 dist: docs
 	./setup.py sdist
