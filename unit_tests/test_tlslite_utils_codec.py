@@ -143,16 +143,16 @@ class TestParser(unittest.TestCase):
             b'\x00\x00\x00'
             ))
 
-        # XXX doesn't raise exception!
-        self.assertEqual(bytearray(b'\x00\x00\x00'), p.getVarBytes(2))
+        with self.assertRaises(SyntaxError):
+            p.getVarBytes(2)
 
     def test_getFixBytes_with_incorrect_data(self):
         p = Parser(bytearray(
             b'\x00\x04'
             ))
 
-        # XXX doesn't raise exception!
-        self.assertEqual(bytearray(b'\x00\x04'), p.getFixBytes(10))
+        with self.assertRaises(SyntaxError):
+            p.getFixBytes(10)
 
 if __name__ == '__main__':
     unittest.main()
