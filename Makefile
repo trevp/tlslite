@@ -24,7 +24,7 @@ clean:
 	rm -f MANIFEST
 
 docs:
-	epydoc --html -v --introspect-only -o docs tlslite
+	epydoc --html -v --introspect-only -o docs --graph all tlslite
 
 dist: docs
 	./setup.py sdist
@@ -48,5 +48,6 @@ ifndef PYTHON3
 	python -m unittest discover -v
 endif
 endif
+	epydoc --check --fail-on-error -v tlslite
 	cd tests/ && PYTHONPATH=.. python ./tlstest.py server localhost:4433 . & sleep 1
 	cd tests/ && PYTHONPATH=.. python ./tlstest.py client localhost:4433 .
