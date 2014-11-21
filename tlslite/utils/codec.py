@@ -87,3 +87,6 @@ class Parser(object):
             return True
         else:
             raise SyntaxError()
+
+    def getRemainingLength(self):
+        return len(self.bytes) - self.index
