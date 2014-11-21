@@ -301,3 +301,76 @@ class SNIExtension(TLSExtension):
 
         return self
 
+class NPNExtension(TLSExtension):
+    """
+    This class handles the unofficial Next Protocol Negotiation TLS extension.
+
+    @type protocols: list of bytearrays
+    @ivar protocols: list of protocol names supported by the server
+
+    @type ext_type: int
+    @ivar ext_type: numeric type of NPNExtension, i.e. 13172
+
+    @type ext_data: bytearray
+    @ivar ext_data: raw representation of extension data
+    """
+
+    def __init__(self):
+        """
+        Create an instance of NPNExtension
+
+        See also: L{create} and L{parse}
+        """
+
+        self.protocols = None
+
+    @property
+    def ext_type(self):
+        """ Return the type of TLS extension, in this case - 13172
+
+        @rtype: int
+        """
+        return ExtensionType.supports_npn
+
+    @property
+    def ext_data(self):
+        """ Return the raw data encoding of the extension
+
+        @rtype: bytearray
+        """
+        if self.protocols is None:
+            return bytearray(0)
+
+        w = Writer()
+        for prot in self.protocols:
+            w.add(len(prot), 1)
+            w.addFixSeq(prot, 1)
+
+        return w.bytes
+
+    def create(self, protocols=None):
+        """ Create an instance of NPNExtension with specified protocols
+
+        @type protocols: list of bytearray
+        @param protocols: list of protocol names that are supported
+        """
+        self.protocols = protocols
+        return self
+
+    def parse(self, p):
+        """ Parse the extension from on the wire format
+
+        @type p: L{tlslite.util.codec.Parser}
+        @param p: data to be parsed
+
+        @raise SyntaxError: when the size of the passed element doesn't match
+            the internal representation
+
+        @rtype: L{NPNExtension}
+        """
+        self.protocols = []
+
+        while p.getRemainingLength() > 0:
+            self.protocols += [p.getVarBytes(1)]
+
+        return self

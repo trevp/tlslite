@@ -3,7 +3,7 @@
 # See the LICENSE file for legal information regarding use of this file.
 
 import unittest
-from tlslite.tlsextension import TLSExtension, SNIExtension
+from tlslite.tlsextension import TLSExtension, SNIExtension, NPNExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType
 
@@ -382,6 +382,106 @@ class TestSNIExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             server_name = server_name.parse(p)
+
+class TestNPNExtension(unittest.TestCase):
+    def test___init___(self):
+        npn_extension = NPNExtension()
+
+        self.assertEqual(None, npn_extension.protocols)
+        self.assertEqual(13172, npn_extension.ext_type)
+        self.assertEqual(bytearray(0), npn_extension.ext_data)
+
+    def test_create(self):
+        npn_extension = NPNExtension()
+        npn_extension = npn_extension.create()
+
+        self.assertEqual(None, npn_extension.protocols)
+        self.assertEqual(13172, npn_extension.ext_type)
+        self.assertEqual(bytearray(0), npn_extension.ext_data)
+
+    def test_create_with_list_of_protocols(self):
+        npn_extension = NPNExtension()
+        npn_extension = npn_extension.create([
+            bytearray(b'http/1.1'),
+            bytearray(b'spdy/3')])
+
+        self.assertEqual([
+            bytearray(b'http/1.1'),
+            bytearray(b'spdy/3')], npn_extension.protocols)
+        self.assertEqual(bytearray(
+            b'\x08' +   # length of name of protocol
+            # utf-8 encoding of "http/1.1"
+            b'\x68\x74\x74\x70\x2f\x31\x2e\x31' +
+            b'\x06' +   # length of name of protocol
+            # utf-8 encoding of "http/1.1"
+            b'\x73\x70\x64\x79\x2f\x33'
+            ), npn_extension.ext_data)
+
+    def test_write(self):
+        npn_extension = NPNExtension().create()
+
+        self.assertEqual(bytearray(
+            b'\x33\x74' +   # type of extension - NPN
+            b'\x00\x00'     # length of extension
+            ), npn_extension.write())
+
+    def test_write_with_list(self):
+        npn_extension = NPNExtension()
+        npn_extensnio = npn_extension.create([
+            bytearray(b'http/1.1'),
+            bytearray(b'spdy/3')])
+
+        self.assertEqual(bytearray(
+            b'\x33\x74' +   # type of extension - NPN
+            b'\x00\x10' +   # length of extension
+            b'\x08' +       # length of name of protocol
+            # utf-8 encoding of "http/1.1"
+            b'\x68\x74\x74\x70\x2f\x31\x2e\x31' +
+            b'\x06' +       # length of name of protocol
+            # utf-8 encoding of "spdy/3"
+            b'\x73\x70\x64\x79\x2f\x33'
+            ), npn_extension.write())
+
+    def test_parse(self):
+        npn_extension = NPNExtension()
+
+        p = Parser(bytearray(0))
+
+        npn_extension = npn_extension.parse(p)
+
+        self.assertEqual(bytearray(0), npn_extension.ext_data)
+        self.assertEqual([], npn_extension.protocols)
+
+    def test_parse_with_procotol(self):
+        npn_extension = NPNExtension()
+
+        p = Parser(bytearray(
+            b'\x08' +   # length of name
+            b'\x68\x74\x74\x70\x2f\x31\x2e\x31'))
+
+        npn_extension = npn_extension.parse(p)
+
+        self.assertEqual([bytearray(b'http/1.1')], npn_extension.protocols)
+
+    def test_parse_with_protocol_length_short_by_one(self):
+        npn_extension = NPNExtension()
+
+        p = Parser(bytearray(
+            b'\x07' +   # length of name - 7 (short by one)
+            b'\x68\x74\x74\x70\x2f\x31\x2e\x31'))
+
+        with self.assertRaises(SyntaxError):
+            npn_extension.parse(p)
+
+    def test_parse_with_protocol_length_long_by_one(self):
+        npn_extension = NPNExtension()
+
+        p = Parser(bytearray(
+            b'\x09' +   # length of name - 9 (short by one)
+            b'\x68\x74\x74\x70\x2f\x31\x2e\x31'))
+
+        with self.assertRaises(SyntaxError):
+            npn_extension.parse(p)
 
 if __name__ == '__main__':
     unittest.main()
