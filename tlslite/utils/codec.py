@@ -42,6 +42,8 @@ class Parser(object):
         return x
 
     def getFixBytes(self, lengthBytes):
+        if self.index + lengthBytes > len(self.bytes):
+            raise SyntaxError()
         bytes = self.bytes[self.index : self.index+lengthBytes]
         self.index += lengthBytes
         return bytes
