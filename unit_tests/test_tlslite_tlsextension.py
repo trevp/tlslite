@@ -3,7 +3,8 @@
 # See the LICENSE file for legal information regarding use of this file.
 
 import unittest
-from tlslite.tlsextension import TLSExtension, SNIExtension, NPNExtension
+from tlslite.tlsextension import TLSExtension, SNIExtension, NPNExtension,\
+        SRPExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType
 
@@ -382,6 +383,75 @@ class TestSNIExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             server_name = server_name.parse(p)
+
+class TestSRPExtension(unittest.TestCase):
+    def test___init___(self):
+        srp_extension = SRPExtension()
+
+        self.assertEqual(None, srp_extension.identity)
+        self.assertEqual(12, srp_extension.ext_type)
+        self.assertEqual(bytearray(0), srp_extension.ext_data)
+
+    def test_create(self):
+        srp_extension = SRPExtension()
+        srp_extension = srp_extension.create()
+
+        self.assertEqual(None, srp_extension.identity)
+        self.assertEqual(12, srp_extension.ext_type)
+        self.assertEqual(bytearray(0), srp_extension.ext_data)
+
+    def test_create_with_name(self):
+        srp_extension = SRPExtension()
+        srp_extension = srp_extension.create(bytearray(b'username'))
+
+        self.assertEqual(bytearray(b'username'), srp_extension.identity)
+        self.assertEqual(bytearray(
+            b'\x08' + # length of string - 8 bytes
+            b'username'), srp_extension.ext_data)
+
+    def test_create_with_too_long_name(self):
+        srp_extension = SRPExtension()
+
+        with self.assertRaises(ValueError):
+            srp_extension = srp_extension.create(bytearray(b'a'*256))
+
+    def test_write(self):
+        srp_extension = SRPExtension()
+        srp_extension = srp_extension.create(bytearray(b'username'))
+
+        self.assertEqual(bytearray(
+            b'\x00\x0c' +   # type of extension - SRP (12)
+            b'\x00\x09' +   # length of extension - 9 bytes
+            b'\x08' +       # length of encoded name
+            b'username'), srp_extension.write())
+
+    def test_parse(self):
+        srp_extension = SRPExtension()
+        p = Parser(bytearray(b'\x00'))
+
+        srp_extension = srp_extension.parse(p)
+
+        self.assertEqual(bytearray(0), srp_extension.identity)
+
+    def test_parse(self):
+        srp_extension = SRPExtension()
+        p = Parser(bytearray(
+            b'\x08' +
+            b'username'))
+
+        srp_extension = srp_extension.parse(p)
+
+        self.assertEqual(bytearray(b'username'),
+                srp_extension.identity)
+
+    def test_parse_with_length_long_by_one(self):
+        srp_extension = SRPExtension()
+        p = Parser(bytearray(
+            b'\x09' +
+            b'username'))
+
+        with self.assertRaises(SyntaxError):
+            srp_extension = srp_extension.parse(p)
 
 class TestNPNExtension(unittest.TestCase):
     def test___init___(self):

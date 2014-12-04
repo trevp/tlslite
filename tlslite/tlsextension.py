@@ -301,6 +301,92 @@ class SNIExtension(TLSExtension):
 
         return self
 
+class SRPExtension(TLSExtension):
+    """
+    This class handles the Secure Remote Password protocol TLS extension
+    defined in RFC 5054.
+
+    @type ext_type: int
+    @ivar ext_type: numeric type of SRPExtension, i.e. 12
+
+    @type ext_data: bytearray
+    @ivar ext_data: raw representation of extension data
+
+    @type identity: bytearray
+    @ivar identity: UTF-8 encoding of user name
+    """
+
+    def __init__(self):
+        """
+        Create an instance of SRPExtension
+
+        See also: L{create} and L{parse}
+        """
+
+        self.identity = None
+
+    @property
+    def ext_type(self):
+        """
+        Return the type of TLS extension, in this case - 12
+
+        @rtype: int
+        """
+
+        return ExtensionType.srp
+
+    @property
+    def ext_data(self):
+        """
+        Return raw data encoding of the extension
+
+        @rtype: bytearray
+        """
+
+        if self.identity is None:
+            return bytearray(0)
+
+        w = Writer()
+        w.add(len(self.identity), 1)
+        w.addFixSeq(self.identity, 1)
+
+        return w.bytes
+
+    def create(self, identity=None):
+        """ Create and instance of SRPExtension with specified protocols
+
+        @type identity: bytearray
+        @param identity: UTF-8 encoded identity (user name) to be provided
+            to user. MUST be shorter than 2^8-1.
+
+        @raise ValueError: when the identity lenght is longer than 2^8-1
+        """
+
+        if identity is None:
+            return self
+
+        if len(identity) >= 2**8:
+            raise ValueError()
+
+        self.identity = identity
+        return self
+
+    def parse(self, p):
+        """
+        Parse the extension from on the wire format
+
+        @type p: L{tlslite.util.codec.Parser}
+        @param p: data to be parsed
+
+        @raise SyntaxError: when the data is internally inconsistent
+
+        @rtype: L{SRPExtension}
+        """
+
+        self.identity = p.getVarBytes(1)
+
+        return self
+
 class NPNExtension(TLSExtension):
     """
     This class handles the unofficial Next Protocol Negotiation TLS extension.
