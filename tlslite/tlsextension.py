@@ -27,7 +27,13 @@ class TLSExtension(object):
     @type ext_data: bytearray
     @ivar ext_data: a byte array containing the value of the extension as
         to be written on the wire
+
+    @type _extensions: dict
+    @cvar _extensions: dictionary with concrete implementations of specific
+        TLS extensions, key is the numeric value of the extension ID
     """
+    # actual definition at the end of file, after definitions of all classes
+    _extensions = {}
 
     def __init__(self):
         """
@@ -87,8 +93,16 @@ class TLSExtension(object):
         @rtype: L{TLSExtension}
         """
 
-        self.ext_type = p.get(2)
+        ext_type = p.get(2)
         ext_length = p.get(2)
+
+        if ext_type in self._extensions:
+            ext = TLSExtension._extensions[ext_type]()
+            ext_parser = Parser(p.getFixBytes(ext_length))
+            ext = ext.parse(ext_parser)
+            return ext
+
+        self.ext_type = ext_type
         self.ext_data = p.getFixBytes(ext_length)
         if len(self.ext_data) != ext_length:
             raise SyntaxError()
@@ -542,3 +556,8 @@ class NPNExtension(TLSExtension):
             self.protocols += [p.getVarBytes(1)]
 
         return self
+
+TLSExtension._extensions = { ExtensionType.server_name : SNIExtension,
+        ExtensionType.cert_type : ClntCertTypeExtension,
+        ExtensionType.srp : SRPExtension,
+        ExtensionType.supports_npn : NPNExtension }
