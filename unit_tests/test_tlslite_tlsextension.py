@@ -4,7 +4,7 @@
 
 import unittest
 from tlslite.tlsextension import TLSExtension, SNIExtension, NPNExtension,\
-        SRPExtension
+        SRPExtension, ClientCertTypeExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType
 
@@ -383,6 +383,73 @@ class TestSNIExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             server_name = server_name.parse(p)
+
+class TestClientCertTypeExtension(unittest.TestCase):
+    def test___init___(self):
+        cert_type = ClientCertTypeExtension()
+
+        self.assertEqual(9, cert_type.ext_type)
+        self.assertEqual(bytearray(0), cert_type.ext_data)
+        self.assertEqual(None, cert_type.cert_types)
+
+    def test_create(self):
+        cert_type = ClientCertTypeExtension()
+        cert_type = cert_type.create()
+
+        self.assertEqual(9, cert_type.ext_type)
+        self.assertEqual(bytearray(0), cert_type.ext_data)
+        self.assertEqual(None, cert_type.cert_types)
+
+    def test_create_with_empty_list(self):
+        cert_type = ClientCertTypeExtension()
+        cert_type = cert_type.create([])
+
+        self.assertEqual(bytearray(b'\x00'), cert_type.ext_data)
+        self.assertEqual([], cert_type.cert_types)
+
+    def test_create_with_list(self):
+        cert_type = ClientCertTypeExtension()
+        cert_type = cert_type.create([0])
+
+        self.assertEqual(bytearray(b'\x01\x00'), cert_type.ext_data)
+        self.assertEqual([0], cert_type.cert_types)
+
+    def test_write(self):
+        cert_type = ClientCertTypeExtension()
+        cert_type = cert_type.create([0, 1])
+
+        self.assertEqual(bytearray(
+            b'\x00\x09' +
+            b'\x00\x03' +
+            b'\x02' +
+            b'\x00\x01'), cert_type.write())
+
+    def test_parse(self):
+        cert_type = ClientCertTypeExtension()
+
+        p = Parser(bytearray(b'\x00'))
+
+        cert_type = cert_type.parse(p)
+
+        self.assertEqual(9, cert_type.ext_type)
+        self.assertEqual([], cert_type.cert_types)
+
+    def test_parse_with_list(self):
+        cert_type = ClientCertTypeExtension()
+
+        p = Parser(bytearray(b'\x02\x01\x00'))
+
+        cert_type = cert_type.parse(p)
+
+        self.assertEqual([1, 0], cert_type.cert_types)
+
+    def test_parse_with_length_long_by_one(self):
+        cert_type = ClientCertTypeExtension()
+
+        p = Parser(bytearray(b'\x03\x01\x00'))
+
+        with self.assertRaises(SyntaxError):
+            cert_type.parse(p)
 
 class TestSRPExtension(unittest.TestCase):
     def test___init___(self):

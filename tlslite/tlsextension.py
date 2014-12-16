@@ -301,6 +301,88 @@ class SNIExtension(TLSExtension):
 
         return self
 
+class ClientCertTypeExtension(TLSExtension):
+    """
+    This class handles the Certificate Type extension (variant sent by client)
+    defined in RFC 6091.
+
+    @type ext_type: int
+    @ivar ext_type: numeric type of Certificate Type extension, i.e. 9
+
+    @type ext_data: bytearray
+    @ivar ext_data: raw representation of the extension data
+
+    @type cert_types: list of int
+    @ivar cert_types: list of certificate type identifiers (each one byte long)
+    """
+
+    def __init__(self):
+        """
+        Create an instance of ClientCertTypeExtension
+
+        See also: L{create} and L{parse}
+        """
+
+        self.cert_types = None
+
+    @property
+    def ext_type(self):
+        """
+        Return the type of TLS extension, in this case - 9
+
+        @rtype: int
+        """
+
+        return ExtensionType.cert_type
+
+    @property
+    def ext_data(self):
+        """
+        Return the raw encoding of this extension
+
+        @rtype: bytearray
+        """
+
+        if self.cert_types is None:
+            return bytearray(0)
+
+        w = Writer()
+        w.add(len(self.cert_types), 1)
+        for c_type in self.cert_types:
+            w.add(c_type, 1)
+
+        return w.bytes
+
+    def create(self, cert_types=None):
+        """
+        Return instance of this extension with specified certificate types
+
+        @type cert_types: iterable list of int
+        @param cert_types: list of certificate types to advertise, all values
+            should be between 0 and 2^8-1 inclusive
+
+        @raises ValueError: when the list includes too big or negative integers
+        """
+        self.cert_types = cert_types
+        return self
+
+    def parse(self, p):
+        """
+        Parse the extension from binary data
+
+        @type p: L{tlslite.util.codec.Parser}
+        @param p: data to be parsed
+
+        @raise SyntaxError: when the size of the passed element doesn't match
+            the internal representation
+
+        @rtype: L{ClientCertTypeExtension}
+        """
+
+        self.cert_types = p.getVarList(1, 1)
+
+        return self
+
 class SRPExtension(TLSExtension):
     """
     This class handles the Secure Remote Password protocol TLS extension
