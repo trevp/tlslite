@@ -74,6 +74,169 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual(bytearray(0), client_hello.session_id)
         self.assertEqual([], client_hello.cipher_suites)
         self.assertEqual([], client_hello.compression_methods)
+        self.assertEqual(bytearray(0), client_hello.server_name)
+        # XXX not sent
+        self.assertEqual([0], client_hello.certificate_types)
+        self.assertEqual(False, client_hello.supports_npn)
+        self.assertEqual(False, client_hello.tack)
+        self.assertEqual(None, client_hello.srp_username)
+
+    def test_parse_with_empty_extensions(self):
+        p = Parser(bytearray(
+            # we don't include the type of message as it is handled by the
+            # hello protocol parser
+            #b'x01' +             # type of message - client_hello
+            b'\x00'*2 + b'\x28' + # length - 38 bytes
+            b'\x01\x01' +         # protocol version - arbitrary (invalid)
+            b'\x00'*32 +          # client random
+            b'\x00' +             # session ID length
+            b'\x00'*2 +           # cipher suites length
+            b'\x00' +             # compression methods length
+            b'\x00\x00'           # extensions length
+            ))
+        client_hello = ClientHello()
+        client_hello = client_hello.parse(p)
+
+        self.assertEqual((1,1), client_hello.client_version)
+        self.assertEqual(bytearray(32), client_hello.random)
+        self.assertEqual(bytearray(0), client_hello.session_id)
+        self.assertEqual([], client_hello.cipher_suites)
+        self.assertEqual([], client_hello.compression_methods)
+
+    def test_parse_with_SNI_extension(self):
+        p = Parser(bytearray(
+            # we don't include the type of message as it is handled by the
+            # hello protocol parser
+            #b'x01' +             # type of message - client_hello
+            b'\x00'*2 + b'\x3c' + # length - 60 bytes
+            b'\x01\x01' +         # protocol version - arbitrary (invalid)
+            b'\x00'*32 +          # client random
+            b'\x00' +             # session ID length
+            b'\x00'*2 +           # cipher suites length
+            b'\x00' +             # compression methods length
+            b'\x00\x14' +         # extensions length - 20 bytes
+            b'\x00\x00' +         # extension type - SNI (0)
+            b'\x00\x10' +         # extension length - 16 bytes
+            b'\x00\x0e' +         # length of array - 14 bytes
+            b'\x00' +             # type of entry - host_name (0)
+            b'\x00\x0b' +         # length of name - 11 bytes
+            # UTF-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'
+            ))
+        client_hello = ClientHello()
+        client_hello = client_hello.parse(p)
+
+        self.assertEqual((1,1), client_hello.client_version)
+        self.assertEqual(bytearray(32), client_hello.random)
+        self.assertEqual(bytearray(0), client_hello.session_id)
+        self.assertEqual([], client_hello.cipher_suites)
+        self.assertEqual([], client_hello.compression_methods)
+        self.assertEqual(bytearray(b'example.com'), client_hello.server_name)
+
+    def test_parse_with_cert_type_extension(self):
+        p = Parser(bytearray(
+            # we don't include the type of message as it is handled by the
+            # hello protocol parser
+            #b'x01' +             # type of message - client_hello
+            b'\x00'*2 + b'\x2f' + # length - 47 bytes
+            b'\x01\x01' +         # protocol version - arbitrary (invalid)
+            b'\x00'*32 +          # client random
+            b'\x00' +             # session ID length
+            b'\x00'*2 +           # cipher suites length
+            b'\x00' +             # compression methods length
+            b'\x00\x07' +         # extensions length - 7 bytes
+            b'\x00\x09' +         # extension type - cert_types (9)
+            b'\x00\x03' +         # extension length - 3 bytes
+            b'\x02' +             # length of array - 2 bytes
+            b'\x00' +             # type - x509 (0)
+            b'\x01'               # type - opengpg (1)
+            ))
+        client_hello = ClientHello()
+        client_hello = client_hello.parse(p)
+
+        self.assertEqual((1,1), client_hello.client_version)
+        self.assertEqual(bytearray(32), client_hello.random)
+        self.assertEqual(bytearray(0), client_hello.session_id)
+        self.assertEqual([], client_hello.cipher_suites)
+        self.assertEqual([], client_hello.compression_methods)
+        self.assertEqual([0,1], client_hello.certificate_types)
+
+    def test_parse_with_SRP_extension(self):
+        p = Parser(bytearray(
+            # we don't include the type of message as it is handled by the
+            # hello protocol parser
+            #b'x01' +             # type of message - client_hello
+            b'\x00'*2 + b'\x35' + # length - 53 bytes
+            b'\x01\x01' +         # protocol version - arbitrary (invalid)
+            b'\x00'*32 +          # client random
+            b'\x00' +             # session ID length
+            b'\x00'*2 +           # cipher suites length
+            b'\x00' +             # compression methods length
+            b'\x00\x0d' +         # extensions length - 13 bytes
+            b'\x00\x0c' +         # extension type - SRP (12)
+            b'\x00\x09' +         # extension length - 9 bytes
+            b'\x08' +             # length of name - 8 bytes
+            b'username'           # UTF-8 encoding of "username" :)
+            ))
+        client_hello = ClientHello()
+        client_hello = client_hello.parse(p)
+
+        self.assertEqual((1,1), client_hello.client_version)
+        self.assertEqual(bytearray(32), client_hello.random)
+        self.assertEqual(bytearray(0), client_hello.session_id)
+        self.assertEqual([], client_hello.cipher_suites)
+        self.assertEqual([], client_hello.compression_methods)
+        self.assertEqual(bytearray(b'username'), client_hello.srp_username)
+
+    def test_parse_with_NPN_extension(self):
+        p = Parser(bytearray(
+            # we don't include the type of message as it is handled by the
+            # hello protocol parser
+            #b'x01' +             # type of message - client_hello
+            b'\x00'*2 + b'\x2c' + # length - 44 bytes
+            b'\x01\x01' +         # protocol version - arbitrary (invalid)
+            b'\x00'*32 +          # client random
+            b'\x00' +             # session ID length
+            b'\x00'*2 +           # cipher suites length
+            b'\x00' +             # compression methods length
+            b'\x00\x04' +         # extensions length - 4 bytes
+            b'\x33\x74' +         # extension type - NPN (13172)
+            b'\x00\x00'           # extension length - 0 bytes
+            ))
+        client_hello = ClientHello()
+        client_hello = client_hello.parse(p)
+
+        self.assertEqual((1,1), client_hello.client_version)
+        self.assertEqual(bytearray(32), client_hello.random)
+        self.assertEqual(bytearray(0), client_hello.session_id)
+        self.assertEqual([], client_hello.cipher_suites)
+        self.assertEqual([], client_hello.compression_methods)
+        self.assertEqual(True, client_hello.supports_npn)
+
+    def test_parse_with_TACK_extension(self):
+        p = Parser(bytearray(
+            # we don't include the type of message as it is handled by the
+            # hello protocol parser
+            #b'x01' +             # type of message - client_hello
+            b'\x00'*2 + b'\x2c' + # length - 44 bytes
+            b'\x01\x01' +         # protocol version - arbitrary (invalid)
+            b'\x00'*32 +          # client random
+            b'\x00' +             # session ID length
+            b'\x00'*2 +           # cipher suites length
+            b'\x00' +             # compression methods length
+            b'\x00\x04' +         # extensions length - 4 bytes
+            b'\xf3\x00' +         # extension type - TACK (62208)
+            b'\x00\x00'           # extension length - 0 bytes
+            ))
+        client_hello = ClientHello()
+        client_hello = client_hello.parse(p)
+
+        self.assertEqual((1,1), client_hello.client_version)
+        self.assertEqual(bytearray(32), client_hello.random)
+        self.assertEqual(bytearray(0), client_hello.session_id)
+        self.assertEqual([], client_hello.cipher_suites)
+        self.assertEqual([], client_hello.compression_methods)
+        self.assertEqual(True, client_hello.tack)
 
     def test_write(self):
         # client_hello = ClientHello(ssl2)
