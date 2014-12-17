@@ -4,6 +4,7 @@
 #   Google (adapted by Sam Rushing and Marcelo Fernandez) - NPN support
 #   Dimitris Moraitis - Anon ciphersuites
 #   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
+#   Hubert Kario - 'extensions' cleanup
 #
 # See the LICENSE file for legal information regarding use of this file.
 
@@ -17,6 +18,7 @@ from .constants import *
 from .x509 import X509
 from .x509certchain import X509CertChain
 from .utils.tackwrapper import *
+from .tlsextension import *
 
 class RecordHeader3(object):
     def __init__(self):
@@ -100,6 +102,30 @@ class HandshakeMsg(object):
         return headerWriter.bytes + w.bytes
 
 class ClientHello(HandshakeMsg):
+    """
+    Class for handling the ClientHello TLS message, supports both the SSLv2
+    and SSLv3 style messages.
+
+    @type certificate_types: list
+    @ivar certificate_types: list of supported certificate types (deprecated)
+
+    @type srp_username: bytearray
+    @ivar srp_username: name of the user in SRP extension (deprecated)
+
+    @type supports_npn: boolean
+    @ivar supports_npn: NPN extension presence (deprecated)
+
+    @type tack: boolean
+    @ivar tack: TACK extension presence (deprecated)
+
+    @type server_name: bytearray
+    @ivar server_name: first host_name (type 0) present in SNI extension
+        (deprecated)
+
+    @type extensions: list of L{TLSExtension}
+    @ivar extensions: list of TLS extensions parsed from wire or to send, see
+        L{TLSExtension} and child classes for exact examples
+    """
     def __init__(self, ssl2=False):
         HandshakeMsg.__init__(self, HandshakeType.client_hello)
         self.ssl2 = ssl2
@@ -107,27 +133,272 @@ class ClientHello(HandshakeMsg):
         self.random = bytearray(32)
         self.session_id = bytearray(0)
         self.cipher_suites = []         # a list of 16-bit values
-        self.certificate_types = [CertificateType.x509]
         self.compression_methods = []   # a list of 8-bit values
-        self.srp_username = None        # a string
-        self.tack = False
-        self.supports_npn = False
-        self.server_name = bytearray(0)
+        self.extensions = None
+
+    def get_extension(self, ext_type):
+        """
+        Returns extension of given type if present, None otherwise
+
+        @rtype: L{tlslite.tlsextension.TLSExtension}
+        @raise TLSInternalError: when there are multiple extensions of the
+            same type
+        """
+        if self.extensions is None:
+            return None
+
+        exts = [x for x in self.extensions if x.ext_type == ext_type]
+        if len(exts) > 1:
+            raise TLSInternalError(
+                    "Multiple extensions of the same type present")
+        elif len(exts) == 1:
+            return exts[0]
+        else:
+            return None
+
+    @property
+    def certificate_types(self):
+        """
+        Returns the list of certificate types supported.
+
+        @deprecated: use extensions field to get the extension for inspection
+        """
+        cert_type = self.get_extension(ExtensionType.cert_type)
+        if cert_type is None:
+            # XXX backwards compatibility
+            return [CertificateType.x509]
+        else:
+            return cert_type.cert_types
+
+    @certificate_types.setter
+    def certificate_types(self, val):
+        """
+        Sets the list of supported types to list given in L{val} if the
+        cert_type extension is present. Creates the extension and places it
+        last in the list otherwise.
+
+        @type val: list
+        @param val: list of supported certificate types by client encoded as
+            single byte integers
+        """
+        cert_type = self.get_extension(ExtensionType.cert_type)
+
+        if cert_type is None:
+            ext = ClntCertTypeExtension().create(val)
+            if self.extensions is None:
+                self.extensions = []
+            self.extensions += [ext]
+        else:
+            cert_type.cert_types = val
+
+    @property
+    def srp_username(self):
+        """
+        Returns username for the SRP.
+
+        @deprecated: use extensions field to get the extension for inspection
+        """
+        srp_ext = self.get_extension(ExtensionType.srp)
+
+        if srp_ext is None:
+            return None
+        else:
+            return srp_ext.identity
+
+    @srp_username.setter
+    def srp_username(self, name):
+        """
+        Sets the username for SRP.
+
+        @type name: bytearray
+        @param name: UTF-8 encoded username
+        """
+        srp_ext = self.get_extension(ExtensionType.srp)
+
+        if srp_ext is None:
+            ext = SRPExtension().create(name)
+            if self.extensions is None:
+                self.extensions = []
+            self.extensions += [ext]
+        else:
+            srp_ext.identity = name
+
+    @property
+    def tack(self):
+        """
+        Returns whatever the client supports TACK
+
+        @rtype: boolean
+        @deprecated: use extensions field to get the extension for inspection
+        """
+        tack_ext = self.get_extension(ExtensionType.tack)
+
+        if tack_ext is None:
+            return False
+        else:
+            return True
+
+    @tack.setter
+    def tack(self, present):
+        """
+        Creates or deletes the TACK extension.
+
+        @type present: boolean
+        @param present: True will create extension while False will remove
+            extension from client hello
+        """
+        if present:
+            tack_ext = self.get_extension(ExtensionType.tack)
+            if tack_ext is None:
+                if self.extensions is None:
+                    self.extensions = []
+                self.extensions += [TLSExtension().create(
+                        ExtensionType.tack,
+                        bytearray(0))]
+            else:
+                return
+        else:
+            if self.extensions is None:
+                return
+            # remove all extensions of this type without changing reference
+            self.extensions[:] = [x for x in self.extensions if
+                    x.ext_type != ExtensionType.tack]
+
+    @property
+    def supports_npn(self):
+        """
+        Returns whatever client supports NPN extension
+
+        @rtype: boolean
+        @deprecated: use extensions field to get the extension for inspection
+        """
+        npn_ext = self.get_extension(ExtensionType.supports_npn)
+
+        if npn_ext is None:
+            return False
+        else:
+            return True
+
+    @supports_npn.setter
+    def supports_npn(self, present):
+        """
+        Creates or deletes the NPN extension
+
+        @type present: boolean
+        @param present: selects whatever to create or remove the extension
+            from list of supported ones
+        """
+        if present:
+            npn_ext = self.get_extension(ExtensionType.supports_npn)
+            if npn_ext is None:
+                if self.extensions is None:
+                    self.extensions = []
+                self.extensions += [TLSExtension().create(
+                        ExtensionType.supports_npn,
+                        bytearray(0))]
+            else:
+                return
+        else:
+            if self.extensions is None:
+                return
+            #remove all extension of this type without changing reference
+            self.extensions[:] = [x for x in self.extensions if
+                    x.ext_type != ExtensionType.supports_npn]
+
+    @property
+    def server_name(self):
+        """
+        Returns first host_name present in SNI extension
+
+        @rtype: bytearray
+        @deprecated: use extensions field to get the extension for inspection
+        """
+        sni_ext = self.get_extension(ExtensionType.server_name)
+        if sni_ext is None:
+            return bytearray(0)
+        else:
+            if len(sni_ext.host_names) > 0:
+                return sni_ext.host_names[0]
+            else:
+                return bytearray(0)
+
+    @server_name.setter
+    def server_name(self, hostname):
+        """
+        Sets the first host_name present in SNI extension
+
+        @type hostname: bytearray
+        @param hostname: name of the host_name to set
+        """
+        sni_ext = self.get_extension(ExtensionType.server_name)
+        if sni_ext is None:
+            sni_ext = SNIExtension().create(hostname)
+            if self.extensions is None:
+                self.extensions = []
+            self.extensions += [sni_ext]
+        else:
+            names = sni_ext.host_names
+            names[0] = hostname
+            sni_ext.host_names = names
 
     def create(self, version, random, session_id, cipher_suites,
                certificate_types=None, srpUsername=None,
-               tack=False, supports_npn=False, serverName=None):
+               tack=False, supports_npn=False, serverName=None,
+               extensions=None):
+        """
+        Create a ClientHello message for sending.
+
+        @type version: tuple
+        @param version: the highest supported TLS version encoded as two int
+            tuple
+
+        @type random: bytearray
+        @param random: client provided random value, in old versions of TLS
+            (before 1.2) the first 32 bits should include system time
+
+        @type session_id: bytearray
+        @param session_id: ID of session, set when doing session resumption
+
+        @type cipher_suites: list
+        @param cipher_suites: list of ciphersuites adverties as supported
+
+        @type certificate_types: list
+        @param certificate_types: list of supported certificate types, uses
+            TLS extension for signalling, as such requires TLS1.0 to work
+
+        @type srpUsername: bytearray
+        @param srpUsername: utf-8 encoded username for SRP, TLS extension
+
+        @type tack: boolean
+        @param tack: whatever to advertise support for TACK, TLS extension
+
+        @type supports_npn: boolean
+        @param supports_npn: whatever to advertise support for NPN, TLS
+            extension
+
+        @type serverName: bytearray
+        @param serverName: the hostname to request in server name indication
+            extension, TLS extension. Note that SNI allows to set multiple
+            hostnames and values that are not hostnames, use L{SNIExtension}
+            together with L{extensions} to use it.
+
+        @type extensions: list of L{TLSExtension}
+        @param extensions: list of extensions to advertise
+        """
         self.client_version = version
         self.random = random
         self.session_id = session_id
         self.cipher_suites = cipher_suites
-        self.certificate_types = certificate_types
         self.compression_methods = [0]
-        if srpUsername:
+        if not extensions is None:
+            self.extensions = extensions
+        if not certificate_types is None:
+            self.certificate_types = certificate_types
+        if not srpUsername is None:
             self.srp_username = bytearray(srpUsername, "utf-8")
         self.tack = tack
         self.supports_npn = supports_npn
-        if serverName:
+        if not serverName is None:
             self.server_name = bytearray(serverName, "utf-8")
         return self
 
@@ -154,38 +425,11 @@ class ClientHello(HandshakeMsg):
             self.cipher_suites = p.getVarList(2, 2)
             self.compression_methods = p.getVarList(1, 1)
             if not p.atLengthCheck():
+                self.extensions = []
                 totalExtLength = p.get(2)
-                soFar = 0
-                while soFar != totalExtLength:
-                    extType = p.get(2)
-                    extLength = p.get(2)
-                    index1 = p.index
-                    if extType == ExtensionType.srp:
-                        self.srp_username = p.getVarBytes(1)
-                    elif extType == ExtensionType.cert_type:
-                        self.certificate_types = p.getVarList(1, 1)
-                    elif extType == ExtensionType.tack:
-                        self.tack = True
-                    elif extType == ExtensionType.supports_npn:
-                        self.supports_npn = True
-                    elif extType == ExtensionType.server_name:
-                        serverNameListBytes = p.getFixBytes(extLength)
-                        p2 = Parser(serverNameListBytes)
-                        p2.startLengthCheck(2)
-                        while 1:
-                            if p2.atLengthCheck():
-                                break # no host_name, oh well
-                            name_type = p2.get(1)
-                            hostNameBytes = p2.getVarBytes(2)
-                            if name_type == NameType.host_name:
-                                self.server_name = hostNameBytes
-                                break
-                    else:
-                        _ = p.getFixBytes(extLength)
-                    index2 = p.index
-                    if index2 - index1 != extLength:
-                        raise SyntaxError("Bad length for extension_data")
-                    soFar += 4 + extLength
+                while not p.atLengthCheck():
+                    ext = TLSExtension().parse(p)
+                    self.extensions += [ext]
             p.stopLengthCheck()
         return self
 
@@ -198,29 +442,11 @@ class ClientHello(HandshakeMsg):
         w.addVarSeq(self.cipher_suites, 2, 2)
         w.addVarSeq(self.compression_methods, 1, 1)
 
-        w2 = Writer() # For Extensions
-        if self.certificate_types and self.certificate_types != \
-                [CertificateType.x509]:
-            w2.add(ExtensionType.cert_type, 2)
-            w2.add(len(self.certificate_types)+1, 2)
-            w2.addVarSeq(self.certificate_types, 1, 1)
-        if self.srp_username:
-            w2.add(ExtensionType.srp, 2)
-            w2.add(len(self.srp_username)+1, 2)
-            w2.addVarSeq(self.srp_username, 1, 1)
-        if self.supports_npn:
-            w2.add(ExtensionType.supports_npn, 2)
-            w2.add(0, 2)
-        if self.server_name:
-            w2.add(ExtensionType.server_name, 2)
-            w2.add(len(self.server_name)+5, 2)
-            w2.add(len(self.server_name)+3, 2)            
-            w2.add(NameType.host_name, 1)
-            w2.addVarSeq(self.server_name, 1, 2) 
-        if self.tack:
-            w2.add(ExtensionType.tack, 2)
-            w2.add(0, 2)
-        if len(w2.bytes):
+        if not self.extensions is None:
+            w2 = Writer()
+            for ext in self.extensions:
+                w2.bytes += ext.write()
+
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes
         return self.postWrite(w)
