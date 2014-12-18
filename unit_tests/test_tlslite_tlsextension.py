@@ -74,6 +74,18 @@ class TestTLSExtension(unittest.TestCase):
 
         self.assertEqual(bytearray(b'example.com'), tls_extension.host_names[0])
 
+    def test_equality(self):
+        a = TLSExtension().create(0, bytearray(0))
+        b = SNIExtension().create()
+
+        self.assertTrue(a == b)
+
+    def test_equality_with_empty_array_in_sni_extension(self):
+        a = TLSExtension().create(0, bytearray(b'\x00\x00'))
+        b = SNIExtension().create(server_names=[])
+
+        self.assertTrue(a == b)
+
 class TestSNIExtension(unittest.TestCase):
     def test___init__(self):
         server_name = SNIExtension()
