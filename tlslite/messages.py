@@ -459,17 +459,145 @@ class BadNextProtos(Exception):
         return 'Cannot encode a list of next protocols because it contains an element with invalid length %d. Element lengths must be 0 < x < 256' % self.length
 
 class ServerHello(HandshakeMsg):
+    """server_hello message
+
+    @type server_version: tuple
+    @ivar server_version: protocol version encoded as two int tuple
+
+    @type random: bytearray
+    @ivar random: server random value
+
+    @type session_id: bytearray
+    @ivar session_id: session identifier for resumption
+
+    @type cipher_suite: int
+    @ivar cipher_suite: server selected cipher_suite
+
+    @type compression_method: int
+    @ivar compression_method: server selected compression method
+
+    @type next_protos: list of bytearray
+    @ivar next_protos: list of advertised protocols in NPN extension
+
+    @type next_protos_advertised: list of bytearray
+    @ivar next_protos_advertised: list of protocols advertised in NPN extension
+
+    @type certificate_type: int
+    @ivar certificate_type: certificate type selected by server
+    """
     def __init__(self):
+        """Initialise ServerHello object"""
+
         HandshakeMsg.__init__(self, HandshakeType.server_hello)
         self.server_version = (0,0)
         self.random = bytearray(32)
         self.session_id = bytearray(0)
         self.cipher_suite = 0
-        self.certificate_type = CertificateType.x509
         self.compression_method = 0
         self.tackExt = None
-        self.next_protos_advertised = None
-        self.next_protos = None
+        self.extensions = None
+
+    def getExtension(self, ext_type):
+        """Return extension of a given type, None if extension of given type
+        is not present
+
+        @rtype: L{TLSExtension}
+        @raise TLSInternalError: multiple extensions of the same type present
+        """
+        if self.extensions is None:
+            return None
+
+        exts = [x for x in self.extensions if x.ext_type == ext_type]
+        if len(exts) > 1:
+            raise TLSInternalError(
+                    "Multiple extensions of the same type present")
+        elif len(exts) == 1:
+            return exts[0]
+        else:
+            return None
+
+    def addExtension(self, ext):
+        """
+        Add extension to internal list of extensions
+
+        @type ext: TLSExtension
+        @param ext: extension to add to list
+        """
+        if self.extensions is None:
+            self.extensions = []
+        self.extensions.append(ext)
+
+    @property
+    def certificate_type(self):
+        """Returns the certificate type selected by server
+
+        @rtype: int
+        """
+        cert_type = self.getExtension(ExtensionType.cert_type)
+        if cert_type is None:
+            # XXX backwards compatibility, TLSConnection expects the default
+            # value to be that
+            return CertificateType.x509
+        return cert_type.cert_type
+
+    @certificate_type.setter
+    def certificate_type(self, val):
+        """Sets the certificate type supported
+
+        @type val: int
+        @param val: type of certificate
+        """
+        cert_type = self.getExtension(ExtensionType.cert_type)
+        if cert_type is None:
+            ext = ServerCertTypeExtension().create(val)
+            self.addExtension(ext)
+        else:
+            cert_type.cert_type = val
+
+    @property
+    def next_protos(self):
+        """Returns the advertised protocols in NPN extension
+
+        @rtype: list of bytearrays
+        """
+        npn_ext = self.getExtension(ExtensionType.supports_npn)
+
+        if npn_ext is None:
+            return None
+        else:
+            return npn_ext.protocols
+
+    @next_protos.setter
+    def next_protos(self, val):
+        """Sets the advertised protocols in NPN extension
+
+        @type val: list
+        @param val: list of protocols to advertise as UTF-8 encoded names
+        """
+        npn_ext = self.getExtension(ExtensionType.supports_npn)
+
+        if npn_ext is None:
+            ext = NPNExtension().create(val)
+            self.addExtension(ext)
+        else:
+            npn_ext.protocols = val
+
+    @property
+    def next_protos_advertised(self):
+        """Returns the advertised protocols in NPN extension
+
+        @rtype: list of bytearrays
+        """
+        return self.next_protos
+
+    @next_protos_advertised.setter
+    def next_protos_advertised(self, val):
+        """Sets the advertised protocols in NPN extension
+
+        @type val: list
+        @param val: list of protocols to advertise as UTF-8 encoded names
+        """
+        self.next_protos = val
 
     def create(self, version, random, session_id, cipher_suite,
                certificate_type, tackExt, next_protos_advertised):
