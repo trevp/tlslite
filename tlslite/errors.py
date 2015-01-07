@@ -170,3 +170,7 @@ class TLSUnsupportedError(TLSError):
     """The implementation doesn't support the requested (or required)
     capabilities."""
     pass
+
+class TLSInternalError(TLSError):
+    """The internal state of object is unexpected or invalid"""
+    pass
