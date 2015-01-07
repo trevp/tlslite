@@ -28,23 +28,42 @@ class TLSExtension(object):
     @ivar ext_data: a byte array containing the value of the extension as
         to be written on the wire
 
-    @type _extensions: dict
-    @cvar _extensions: dictionary with concrete implementations of specific
-        TLS extensions, key is the numeric value of the extension ID
+    @type server_type: boolean
+    @ivar server_type: indicates that the extension was parsed with ServerHello
+        specific parser, otherwise it used universal or ClientHello specific
+        parser
+
+    @type _universal_extensions: dict
+    @cvar _universal_extensions: dictionary with concrete implementations of
+        specific TLS extensions where key is the numeric value of the extension
+        ID. Contains ClientHello version of extensions or universal
+        implementations
+
+    @type _server_extensions: dict
+    @cvar _server_extensions: dictionary with concrete implementations of
+        specific TLS extensions where key is the numeric value of the extension
+        ID. Includes only those extensions that require special handlers for
+        ServerHello versions.
     """
     # actual definition at the end of file, after definitions of all classes
-    _extensions = {}
+    _universal_extensions = {}
+    _server_extensions = {}
 
-    def __init__(self):
+    def __init__(self, server=False):
         """
         Creates a generic TLS extension that can be used either for
         client hello or server hello message parsing or creation.
 
         You'll need to use L{create} or L{parse} methods to create an extension
         that is actually usable.
+
+        @type server: boolean
+        @param server: whatever to select ClientHello or ServerHello version
+            for parsing
         """
         self.ext_type = None
         self.ext_data = bytearray(0)
+        self.server_type = server
 
     def create(self, type, data):
         """
@@ -96,12 +115,22 @@ class TLSExtension(object):
         ext_type = p.get(2)
         ext_length = p.get(2)
 
-        if ext_type in self._extensions:
-            ext = TLSExtension._extensions[ext_type]()
+        # first check if we shouldn't use server side parser
+        if self.server_type and ext_type in self._server_extensions:
+            ext = self._server_extensions[ext_type]()
             ext_parser = Parser(p.getFixBytes(ext_length))
             ext = ext.parse(ext_parser)
             return ext
 
+        # then fallback to universal/ClientHello-specific parsers
+        if ext_type in self._universal_extensions:
+            ext = self._universal_extensions[ext_type]()
+            ext_parser = Parser(p.getFixBytes(ext_length))
+            ext = ext.parse(ext_parser)
+            return ext
+
+        # finally, just save the extension data as there are extensions which
+        # don't require specific handlers and indicate option by mere presence
         self.ext_type = ext_type
         self.ext_data = p.getFixBytes(ext_length)
         if len(self.ext_data) != ext_length:
@@ -637,7 +666,10 @@ class NPNExtension(TLSExtension):
 
         return self
 
-TLSExtension._extensions = { ExtensionType.server_name : SNIExtension,
+TLSExtension._universal_extensions = { ExtensionType.server_name : SNIExtension,
         ExtensionType.cert_type : ClientCertTypeExtension,
         ExtensionType.srp : SRPExtension,
         ExtensionType.supports_npn : NPNExtension }
+
+TLSExtension._server_extensions = {
+        ExtensionType.cert_type : ServerCertTypeExtension }

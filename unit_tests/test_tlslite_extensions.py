@@ -86,6 +86,19 @@ class TestTLSExtension(unittest.TestCase):
 
         self.assertTrue(a == b)
 
+    def test_parse_of_server_hello_extension(self):
+        ext = TLSExtension(server=True)
+
+        p = Parser(bytearray(
+            b'\x00\x09' +       # extension type - cert_type (9)
+            b'\x00\x01' +       # extension length - 1 byte
+            b'\x01'             # certificate type - OpenGPG (1)
+            ))
+
+        ext = ext.parse(p)
+
+        self.assertEqual(1, ext.cert_type)
+
 class TestSNIExtension(unittest.TestCase):
     def test___init__(self):
         server_name = SNIExtension()
