@@ -60,6 +60,20 @@ class TestTLSExtension(unittest.TestCase):
         with self.assertRaises(SyntaxError) as context:
             TLSExtension().parse(p)
 
+    def test_parse_with_sni_ext(self):
+        p = Parser(bytearray(
+            b'\x00\x00' +   # type of extension - SNI (0)
+            b'\x00\x10' +   # length of extension - 16 bytes
+            b'\x00\x0e' +   # length of array
+            b'\x00' +       # type of entry - host_name (0)
+            b'\x00\x0b' +   # length of name - 11 bytes
+            # UTF-8 encoding of example.com
+            b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'))
+
+        tls_extension = TLSExtension().parse(p)
+
+        self.assertEqual(bytearray(b'example.com'), tls_extension.host_names[0])
+
 class TestSNIExtension(unittest.TestCase):
     def test___init__(self):
         server_name = SNIExtension()
