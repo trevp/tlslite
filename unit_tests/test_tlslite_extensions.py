@@ -4,7 +4,7 @@
 
 import unittest
 from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
-        SRPExtension, ClientCertTypeExtension
+        SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType
 
@@ -476,6 +476,55 @@ class TestClientCertTypeExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             cert_type.parse(p)
+
+class TestServerCertTypeExtension(unittest.TestCase):
+    def test___init__(self):
+        cert_type = ServerCertTypeExtension()
+
+        self.assertEqual(9, cert_type.ext_type)
+        self.assertEqual(bytearray(0), cert_type.ext_data)
+        self.assertEqual(None, cert_type.cert_type)
+
+    def test_create(self):
+        cert_type = ServerCertTypeExtension().create(0)
+
+        self.assertEqual(9, cert_type.ext_type)
+        self.assertEqual(bytearray(b'\x00'), cert_type.ext_data)
+        self.assertEqual(0, cert_type.cert_type)
+
+    def test_parse(self):
+        p = Parser(bytearray(
+            b'\x00'             # certificate type - X.509 (0)
+            ))
+
+        cert_type = ServerCertTypeExtension().parse(p)
+
+        self.assertEqual(0, cert_type.cert_type)
+
+    def test_parse_with_no_data(self):
+        p = Parser(bytearray(0))
+
+        cert_type = ServerCertTypeExtension()
+
+        with self.assertRaises(SyntaxError):
+            cert_type.parse(p)
+
+    def test_parse_with_too_much_data(self):
+        p = Parser(bytearray(b'\x00\x00'))
+
+        cert_type = ServerCertTypeExtension()
+
+        with self.assertRaises(SyntaxError):
+            cert_type.parse(p)
+
+    def test_write(self):
+        cert_type = ServerCertTypeExtension().create(1)
+
+        self.assertEqual(bytearray(
+            b'\x00\x09' +       # extension type - cert_type (9)
+            b'\x00\x01' +       # extension length - 1 byte
+            b'\x01'             # selected certificate type - OpenPGP (1)
+            ), cert_type.write())
 
 class TestSRPExtension(unittest.TestCase):
     def test___init___(self):

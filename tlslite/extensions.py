@@ -409,6 +409,74 @@ class ClientCertTypeExtension(TLSExtension):
 
         return self
 
+class ServerCertTypeExtension(TLSExtension):
+    """
+    This class handles the Certificate Type extension (variant sent by server)
+    defined in RFC 6091.
+
+    @type ext_type: int
+    @ivar ext_type: byneruc ttoe if Certificate Type extension, i.e. 9
+
+    @type ext_data: bytearray
+    @ivar ext_data: raw representation of the extension data
+
+    @type cert_type: int
+    @ivar cert_type: the certificate type selected by server
+    """
+
+    def __init__(self):
+        """
+        Create an instance of ServerCertTypeExtension
+
+        See also: L{create} and L{parse}
+        """
+        self.cert_type = None
+
+    @property
+    def ext_type(self):
+        """
+        Return the type of TLS extension, in this case - 9
+
+        @rtype: int
+        """
+        return ExtensionType.cert_type
+
+    @property
+    def ext_data(self):
+        """
+        Return the raw encoding of the extension data
+
+        @rtype: bytearray
+        """
+        if self.cert_type is None:
+            return bytearray(0)
+
+        w = Writer()
+        w.add(self.cert_type, 1)
+
+        return w.bytes
+
+    def create(self, val):
+        """Create an instance for sending the extension to client.
+
+        @type val: int
+        @param val: selected type of certificate
+        """
+        self.cert_type = val
+        return self
+
+    def parse(self, p):
+        """Parse the extension from on the wire format
+
+        @type p: L{Parser}
+        @param p: parser with data
+        """
+        self.cert_type = p.get(1)
+        if p.getRemainingLength() > 0:
+            raise SyntaxError()
+
+        return self
+
 class SRPExtension(TLSExtension):
     """
     This class handles the Secure Remote Password protocol TLS extension
