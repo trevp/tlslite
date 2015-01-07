@@ -5,6 +5,8 @@ import unittest
 from tlslite.messages import ClientHello, ServerHello
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType
+from tlslite.tlsextension import SNIExtension, ClientCertTypeExtension, \
+    SRPExtension, TLSExtension
 
 class TestClientHello(unittest.TestCase):
     def test___init__(self):
@@ -80,6 +82,7 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual(False, client_hello.supports_npn)
         self.assertEqual(False, client_hello.tack)
         self.assertEqual(None, client_hello.srp_username)
+        self.assertEqual(None, client_hello.extensions)
 
     def test_parse_with_empty_extensions(self):
         p = Parser(bytearray(
@@ -102,6 +105,7 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual(bytearray(0), client_hello.session_id)
         self.assertEqual([], client_hello.cipher_suites)
         self.assertEqual([], client_hello.compression_methods)
+        self.assertEqual([], client_hello.extensions)
 
     def test_parse_with_SNI_extension(self):
         p = Parser(bytearray(
@@ -132,6 +136,8 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual([], client_hello.cipher_suites)
         self.assertEqual([], client_hello.compression_methods)
         self.assertEqual(bytearray(b'example.com'), client_hello.server_name)
+        sni = SNIExtension().create(bytearray(b'example.com'))
+        self.assertEqual([sni], client_hello.extensions)
 
     def test_parse_with_cert_type_extension(self):
         p = Parser(bytearray(
@@ -160,6 +166,8 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual([], client_hello.cipher_suites)
         self.assertEqual([], client_hello.compression_methods)
         self.assertEqual([0,1], client_hello.certificate_types)
+        cert_types = ClientCertTypeExtension().create([0,1])
+        self.assertEqual([cert_types], client_hello.extensions)
 
     def test_parse_with_SRP_extension(self):
         p = Parser(bytearray(
@@ -187,6 +195,8 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual([], client_hello.cipher_suites)
         self.assertEqual([], client_hello.compression_methods)
         self.assertEqual(bytearray(b'username'), client_hello.srp_username)
+        srp = SRPExtension().create(bytearray(b'username'))
+        self.assertEqual([srp], client_hello.extensions)
 
     def test_parse_with_NPN_extension(self):
         p = Parser(bytearray(
@@ -212,6 +222,8 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual([], client_hello.cipher_suites)
         self.assertEqual([], client_hello.compression_methods)
         self.assertEqual(True, client_hello.supports_npn)
+        npn = TLSExtension().create(13172, bytearray(0))
+        self.assertEqual([npn], client_hello.extensions)
 
     def test_parse_with_TACK_extension(self):
         p = Parser(bytearray(
@@ -237,6 +249,8 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual([], client_hello.cipher_suites)
         self.assertEqual([], client_hello.compression_methods)
         self.assertEqual(True, client_hello.tack)
+        tack = TLSExtension().create(62208, bytearray(0))
+        self.assertEqual([tack], client_hello.extensions)
 
     def test_write(self):
         # client_hello = ClientHello(ssl2)

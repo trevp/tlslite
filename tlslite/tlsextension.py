@@ -108,6 +108,18 @@ class TLSExtension(object):
             raise SyntaxError()
         return self
 
+    def __eq__(self, that):
+        """ Test if two TLS extensions will result in the same on the wire
+        representation.
+
+        Will return False for every object that's not an extension.
+        """
+        if hasattr(that, 'ext_type') and hasattr(that, 'ext_data'):
+            return self.ext_type == that.ext_type and \
+                    self.ext_data == that.ext_data
+        else:
+            return False
+
 class SNIExtension(TLSExtension):
     """
     Class for handling Server Name Indication (server_name) extension from
