@@ -363,7 +363,7 @@ class ClientHello(HandshakeMsg):
         @param session_id: ID of session, set when doing session resumption
 
         @type cipher_suites: list
-        @param cipher_suites: list of ciphersuites adverties as supported
+        @param cipher_suites: list of ciphersuites advertised as supported
 
         @type certificate_types: list
         @param certificate_types: list of supported certificate types, uses
