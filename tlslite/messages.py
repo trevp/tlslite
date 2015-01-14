@@ -48,6 +48,20 @@ class RecordHeader3(object):
         self.ssl2 = False
         return self
 
+    @property
+    def type_name(self):
+        matching = [x[0] for x in ContentType.__dict__.items()
+                if x[1] == self.type]
+        if len(matching) == 0:
+            return "unknown(" + str(self.type) + ")"
+        else:
+            return str(matching[0])
+
+    def __str__(self):
+        return "SSLv3 record,version({0[0]}.{0[1]}),"\
+                "content type({1}),length({2})".format(self.version,
+                        self.type_name, self.length)
+
 class RecordHeader2(object):
     def __init__(self):
         self.type = 0

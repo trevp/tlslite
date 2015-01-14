@@ -2,9 +2,9 @@
 # see LICENCE file for legal information regarding use of this file
 
 import unittest
-from tlslite.messages import ClientHello, ServerHello
+from tlslite.messages import ClientHello, ServerHello, RecordHeader3
 from tlslite.utils.codec import Parser
-from tlslite.constants import CipherSuite, CertificateType
+from tlslite.constants import CipherSuite, CertificateType, ContentType
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension
 
@@ -641,6 +641,28 @@ class TestServerHello(unittest.TestCase):
             # utf-8 endoding of 'http/1.1'
             b'\x68\x74\x74\x70\x2f\x31\x2e\x31'
             )), list(server_hello.write()))
+
+class TestRecordHeader3(unittest.TestCase):
+    def test_type_name(self):
+        rh = RecordHeader3()
+        rh = rh.create((3,0), ContentType.application_data, 0)
+
+        self.assertEqual("application_data", rh.type_name)
+
+    def test___str__(self):
+        rh = RecordHeader3()
+        rh = rh.create((3,0), ContentType.handshake, 12)
+
+        self.assertEqual("SSLv3 record,version(3.0),content type(handshake)," +\
+                "length(12)", str(rh))
+
+    def test___str___with_invalid_content_type(self):
+        rh = RecordHeader3()
+        rh = rh.create((3,3), 12, 0)
+
+        self.assertEqual("SSLv3 record,version(3.3)," +\
+                "content type(unknown(12)),length(0)",
+                str(rh))
 
 if __name__ == '__main__':
     unittest.main()
