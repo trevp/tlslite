@@ -642,6 +642,22 @@ class TestServerHello(unittest.TestCase):
             b'\x68\x74\x74\x70\x2f\x31\x2e\x31'
             )), list(server_hello.write()))
 
+    def test___str__(self):
+        server_hello = ServerHello()
+        server_hello = server_hello.create(
+                (3,0),
+                bytearray(b'\x00'*32),
+                bytearray(b'\x01\x20'),
+                34500,
+                0,
+                None,
+                None)
+
+        self.assertEqual("server_hello,length(40),version(3.0),random(...),"\
+                "session ID(bytearray(b'\\x01 ')),cipher(0x86c4),"\
+                "compression method(0)",
+                str(server_hello))
+
 class TestRecordHeader3(unittest.TestCase):
     def test_type_name(self):
         rh = RecordHeader3()

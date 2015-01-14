@@ -522,6 +522,21 @@ class ServerHello(HandshakeMsg):
         self._tack_ext = None
         self.extensions = None
 
+    def __str__(self):
+        base = "server_hello,length({0}),version({1[0]}.{1[1]}),random(...),"\
+                "session ID({2!r}),cipher({3:#x}),compression method({4})"\
+                .format(len(self.write())-4, self.server_version,
+                        self.session_id, self.cipher_suite,
+                        self.compression_method)
+
+        if self.extensions is None:
+            return base
+
+        ret = ",extensions["
+        ret += ",".join(repr(x) for x in self.extensions)
+        ret += "]"
+        return base + ret
+
     def getExtension(self, ext_type):
         """Return extension of a given type, None if extension of given type
         is not present
