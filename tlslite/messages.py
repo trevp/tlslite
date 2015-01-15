@@ -179,6 +179,29 @@ class ClientHello(HandshakeMsg):
         self.compression_methods = []   # a list of 8-bit values
         self.extensions = None
 
+    def __str__(self):
+        """
+        Return human readable representation of Client Hello
+
+        @rtype: str
+        """
+
+        if self.session_id.count(bytearray(b'\x00')) == len(self.session_id)\
+            and len(self.session_id) != 0:
+            session = "bytearray(b'\\x00'*{0})".format(len(self.session_id))
+        else:
+            session = repr(self.session_id)
+        ret = "client_hello,version({0[0]}.{0[1]}),random(...),"\
+                "session ID({1!s}),cipher suites({2!r}),"\
+                "compression methods({3!r})".format(
+                        self.client_version, session,
+                        self.cipher_suites, self.compression_methods)
+
+        if self.extensions is not None:
+            ret += ",extensions({0!r})".format(self.extensions)
+
+        return ret
+
     def getExtension(self, ext_type):
         """
         Returns extension of given type if present, None otherwise

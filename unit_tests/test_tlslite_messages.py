@@ -377,6 +377,33 @@ class TestClientHello(unittest.TestCase):
                 b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'
                 )), list(client_hello.write()))
 
+    def test___str__(self):
+        client_hello = ClientHello().create((3,0), bytearray(4), bytearray(0),\
+                [])
+
+        self.assertEqual("client_hello,version(3.0),random(...),"\
+                "session ID(bytearray(b'')),cipher suites([]),"\
+                "compression methods([0])", str(client_hello))
+
+    def test___str___with_all_null_session_id(self):
+        client_hello = ClientHello().create((3,0), bytearray(4), bytearray(10),\
+                [])
+
+        self.assertEqual("client_hello,version(3.0),random(...),"\
+                "session ID(bytearray(b'\\x00'*10)),cipher suites([]),"\
+                "compression methods([0])", str(client_hello))
+
+    def test___str___with_extensions(self):
+        client_hello = ClientHello().create((3,0), bytearray(4), bytearray(0),\
+                [],  extensions=[TLSExtension().create(0, bytearray(b'\x00'))])
+
+        self.assertEqual("client_hello,version(3.0),random(...),"\
+                "session ID(bytearray(b'')),cipher suites([]),"\
+                "compression methods([0]),extensions(["\
+                "TLSExtension(ext_type=0, ext_data=bytearray(b'\\x00'), "\
+                "server_type=False)])",
+                str(client_hello))
+
 class TestServerHello(unittest.TestCase):
     def test___init__(self):
         server_hello = ServerHello()
