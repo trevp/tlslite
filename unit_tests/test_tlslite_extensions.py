@@ -100,6 +100,14 @@ class TestTLSExtension(unittest.TestCase):
 
         self.assertEqual(1, ext.cert_type)
 
+    def test___repr__(self):
+        ext = TLSExtension()
+        ext = ext.create(0, bytearray(b'\x00\x00'))
+
+        self.assertEqual("TLSExtension(ext_type=0, "\
+                "ext_data=bytearray(b'\\x00\\x00'), server_type=False)",
+                repr(ext))
+
 class TestSNIExtension(unittest.TestCase):
     def test___init__(self):
         server_name = SNIExtension()
@@ -424,6 +432,18 @@ class TestSNIExtension(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             server_name = server_name.parse(p)
 
+    def test___repr__(self):
+        server_name = SNIExtension()
+        server_name = server_name.create(
+                server_names=[
+                    SNIExtension.ServerName(0, bytearray(b'example.com')),
+                    SNIExtension.ServerName(1, bytearray(b'\x04\x01'))])
+
+        self.assertEqual("SNIExtension(server_names=["\
+                "ServerName(name_type=0, name=bytearray(b'example.com')), "\
+                "ServerName(name_type=1, name=bytearray(b'\\x04\\x01'))])",
+                repr(server_name))
+
 class TestClientCertTypeExtension(unittest.TestCase):
     def test___init___(self):
         cert_type = ClientCertTypeExtension()
@@ -491,6 +511,13 @@ class TestClientCertTypeExtension(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             cert_type.parse(p)
 
+    def test___repr__(self):
+        cert_type = ClientCertTypeExtension()
+        cert_type = cert_type.create([0, 1])
+
+        self.assertEqual("ClientCertTypeExtension(cert_types=[0, 1])",
+                repr(cert_type))
+
 class TestServerCertTypeExtension(unittest.TestCase):
     def test___init__(self):
         cert_type = ServerCertTypeExtension()
@@ -539,6 +566,12 @@ class TestServerCertTypeExtension(unittest.TestCase):
             b'\x00\x01' +       # extension length - 1 byte
             b'\x01'             # selected certificate type - OpenPGP (1)
             ), cert_type.write())
+
+    def test___repr__(self):
+        cert_type = ServerCertTypeExtension().create(1)
+
+        self.assertEqual("ServerCertTypeExtension(cert_type=1)",
+                repr(cert_type))
 
 class TestSRPExtension(unittest.TestCase):
     def test___init___(self):
@@ -608,6 +641,13 @@ class TestSRPExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             srp_extension = srp_extension.parse(p)
+
+    def test___repr__(self):
+        srp_extension = SRPExtension()
+        srp_extension = srp_extension.create(bytearray(b'user'))
+
+        self.assertEqual("SRPExtension(identity=bytearray(b'user'))",
+                repr(srp_extension))
 
 class TestNPNExtension(unittest.TestCase):
     def test___init___(self):
@@ -708,6 +748,12 @@ class TestNPNExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             npn_extension.parse(p)
+
+    def test___repr__(self):
+        npn_extension = NPNExtension().create([bytearray(b'http/1.1')])
+
+        self.assertEqual("NPNExtension(protocols=[bytearray(b'http/1.1')])",
+                repr(npn_extension))
 
 class TestTACKExtension(unittest.TestCase):
     def test___init__(self):
@@ -826,6 +872,23 @@ class TestTACKExtension(unittest.TestCase):
                 bytearray(b'\x06'*64))
         self.assertEqual([tack], tack_ext.tacks)
         self.assertEqual(1, tack_ext.activation_flags)
+
+    def test___repr__(self):
+        tack = TACKExtension.TACK().create(
+                bytearray(b'\x00'),
+                1,
+                2,
+                3,
+                bytearray(b'\x04'),
+                bytearray(b'\x05'))
+        tack_ext = TACKExtension().create([tack], 1)
+        self.maxDiff = None
+        self.assertEqual("TACKExtension(activation_flags=1, tacks=["\
+                "TACK(public_key=bytearray(b'\\x00'), min_generation=1, "\
+                "generation=2, expiration=3, target_hash=bytearray(b'\\x04'), "\
+                "signature=bytearray(b'\\x05'))"\
+                "])",
+                repr(tack_ext))
 
 if __name__ == '__main__':
     unittest.main()
