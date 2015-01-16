@@ -5,7 +5,7 @@ import unittest
 from tlslite.messages import ClientHello, ServerHello
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType
-from tlslite.tlsextension import SNIExtension, ClientCertTypeExtension, \
+from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension
 
 class TestClientHello(unittest.TestCase):

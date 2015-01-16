@@ -3,7 +3,7 @@
 # See the LICENSE file for legal information regarding use of this file.
 
 import unittest
-from tlslite.tlsextension import TLSExtension, SNIExtension, NPNExtension,\
+from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SRPExtension, ClientCertTypeExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType

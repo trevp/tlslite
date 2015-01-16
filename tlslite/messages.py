@@ -18,7 +18,7 @@ from .constants import *
 from .x509 import X509
 from .x509certchain import X509CertChain
 from .utils.tackwrapper import *
-from .tlsextension import *
+from .extensions import *
 
 class RecordHeader3(object):
     def __init__(self):
@@ -140,7 +140,7 @@ class ClientHello(HandshakeMsg):
         """
         Returns extension of given type if present, None otherwise
 
-        @rtype: L{tlslite.tlsextension.TLSExtension}
+        @rtype: L{tlslite.extensions.TLSExtension}
         @raise TLSInternalError: when there are multiple extensions of the
             same type
         """
