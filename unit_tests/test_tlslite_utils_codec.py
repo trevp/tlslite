@@ -3,7 +3,7 @@
 # See the LICENSE file for legal information regarding use of this file.
 
 import unittest
-from tlslite.utils.codec import Parser
+from tlslite.utils.codec import Parser, Writer
 
 class TestParser(unittest.TestCase):
     def test___init__(self):
@@ -153,6 +153,60 @@ class TestParser(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             p.getFixBytes(10)
+
+class TestWriter(unittest.TestCase):
+    def test___init__(self):
+        w = Writer()
+
+        self.assertEqual(bytearray(0), w.bytes)
+
+    def test_add(self):
+        w = Writer()
+        w.add(255, 1)
+
+        self.assertEqual(bytearray(b'\xff'), w.bytes)
+
+    def test_add_with_multibyte_field(self):
+        w = Writer()
+        w.add(32, 2)
+
+        self.assertEqual(bytearray(b'\x00\x20'), w.bytes)
+
+    def test_add_with_multibyte_data(self):
+        w = Writer()
+        w.add(512, 2)
+
+        self.assertEqual(bytearray(b'\x02\x00'), w.bytes)
+
+    def test_add_with_overflowing_data(self):
+        w = Writer()
+        w.add(256, 1)
+
+        # XXX doesn't throw an exception
+        self.assertEqual(bytearray(b'\x00'), w.bytes)
+
+    def test_addFixSeq(self):
+        w = Writer()
+        w.addFixSeq([16,17,18], 2)
+
+        self.assertEqual(bytearray(b'\x00\x10\x00\x11\x00\x12'), w.bytes)
+
+    def test_addVarSeq(self):
+        w = Writer()
+        w.addVarSeq([16, 17, 18], 2, 2)
+
+        self.assertEqual(bytearray(
+            b'\x00\x06' +
+            b'\x00\x10' +
+            b'\x00\x11' +
+            b'\x00\x12'), w.bytes)
+
+    def test_bytes(self):
+        w = Writer()
+        w.bytes += bytearray(b'\xbe\xef')
+        w.add(15, 1)
+
+        self.assertEqual(bytearray(b'\xbe\xef\x0f'), w.bytes)
 
 if __name__ == '__main__':
     unittest.main()
