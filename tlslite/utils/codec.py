@@ -16,6 +16,8 @@ class Writer(object):
             self.bytes[newIndex] = x & 0xFF
             x >>= 8
             newIndex -= 1
+        if x != 0:
+            raise ValueError("Can't represent value in specified length")
 
     def addFixSeq(self, seq, length):
         for e in seq:

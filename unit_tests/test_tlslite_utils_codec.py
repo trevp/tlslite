@@ -180,10 +180,9 @@ class TestWriter(unittest.TestCase):
 
     def test_add_with_overflowing_data(self):
         w = Writer()
-        w.add(256, 1)
 
-        # XXX doesn't throw an exception
-        self.assertEqual(bytearray(b'\x00'), w.bytes)
+        with self.assertRaises(ValueError):
+            w.add(256, 1)
 
     def test_addFixSeq(self):
         w = Writer()
