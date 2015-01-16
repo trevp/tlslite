@@ -136,7 +136,7 @@ class ClientHello(HandshakeMsg):
         self.compression_methods = []   # a list of 8-bit values
         self.extensions = None
 
-    def get_extension(self, ext_type):
+    def getExtension(self, ext_type):
         """
         Returns extension of given type if present, None otherwise
 
@@ -163,7 +163,7 @@ class ClientHello(HandshakeMsg):
 
         @deprecated: use extensions field to get the extension for inspection
         """
-        cert_type = self.get_extension(ExtensionType.cert_type)
+        cert_type = self.getExtension(ExtensionType.cert_type)
         if cert_type is None:
             # XXX backwards compatibility
             return [CertificateType.x509]
@@ -181,7 +181,7 @@ class ClientHello(HandshakeMsg):
         @param val: list of supported certificate types by client encoded as
             single byte integers
         """
-        cert_type = self.get_extension(ExtensionType.cert_type)
+        cert_type = self.getExtension(ExtensionType.cert_type)
 
         if cert_type is None:
             ext = ClientCertTypeExtension().create(val)
@@ -198,7 +198,7 @@ class ClientHello(HandshakeMsg):
 
         @deprecated: use extensions field to get the extension for inspection
         """
-        srp_ext = self.get_extension(ExtensionType.srp)
+        srp_ext = self.getExtension(ExtensionType.srp)
 
         if srp_ext is None:
             return None
@@ -213,7 +213,7 @@ class ClientHello(HandshakeMsg):
         @type name: bytearray
         @param name: UTF-8 encoded username
         """
-        srp_ext = self.get_extension(ExtensionType.srp)
+        srp_ext = self.getExtension(ExtensionType.srp)
 
         if srp_ext is None:
             ext = SRPExtension().create(name)
@@ -231,7 +231,7 @@ class ClientHello(HandshakeMsg):
         @rtype: boolean
         @deprecated: use extensions field to get the extension for inspection
         """
-        tack_ext = self.get_extension(ExtensionType.tack)
+        tack_ext = self.getExtension(ExtensionType.tack)
 
         if tack_ext is None:
             return False
@@ -248,7 +248,7 @@ class ClientHello(HandshakeMsg):
             extension from client hello
         """
         if present:
-            tack_ext = self.get_extension(ExtensionType.tack)
+            tack_ext = self.getExtension(ExtensionType.tack)
             if tack_ext is None:
                 if self.extensions is None:
                     self.extensions = []
@@ -272,7 +272,7 @@ class ClientHello(HandshakeMsg):
         @rtype: boolean
         @deprecated: use extensions field to get the extension for inspection
         """
-        npn_ext = self.get_extension(ExtensionType.supports_npn)
+        npn_ext = self.getExtension(ExtensionType.supports_npn)
 
         if npn_ext is None:
             return False
@@ -289,7 +289,7 @@ class ClientHello(HandshakeMsg):
             from list of supported ones
         """
         if present:
-            npn_ext = self.get_extension(ExtensionType.supports_npn)
+            npn_ext = self.getExtension(ExtensionType.supports_npn)
             if npn_ext is None:
                 if self.extensions is None:
                     self.extensions = []
@@ -313,7 +313,7 @@ class ClientHello(HandshakeMsg):
         @rtype: bytearray
         @deprecated: use extensions field to get the extension for inspection
         """
-        sni_ext = self.get_extension(ExtensionType.server_name)
+        sni_ext = self.getExtension(ExtensionType.server_name)
         if sni_ext is None:
             return bytearray(0)
         else:
@@ -330,7 +330,7 @@ class ClientHello(HandshakeMsg):
         @type hostname: bytearray
         @param hostname: name of the host_name to set
         """
-        sni_ext = self.get_extension(ExtensionType.server_name)
+        sni_ext = self.getExtension(ExtensionType.server_name)
         if sni_ext is None:
             sni_ext = SNIExtension().create(hostname)
             if self.extensions is None:
