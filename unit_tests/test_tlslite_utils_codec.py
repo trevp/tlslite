@@ -154,5 +154,15 @@ class TestParser(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             p.getFixBytes(10)
 
+    def test_getRemainingLength(self):
+        p = Parser(bytearray(
+            b'\x00\x01\x05'
+            ))
+
+        self.assertEqual(1, p.get(2))
+        self.assertEqual(1, p.getRemainingLength())
+        self.assertEqual(5, p.get(1))
+        self.assertEqual(0, p.getRemainingLength())
+
 if __name__ == '__main__':
     unittest.main()
