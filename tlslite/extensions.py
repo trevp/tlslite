@@ -46,19 +46,19 @@ class TLSExtension(object):
         self.ext_type = None
         self.ext_data = bytearray(0)
 
-    def create(self, type, data):
+    def create(self, ext_type, data):
         """
         Initializes a generic TLS extension that can later be used in
         client hello or server hello messages
 
-        @type  type: int
-        @param type: type of the extension encoded as an integer between M{0}
+        @type  ext_type: int
+        @param ext_type: type of the extension encoded as an integer between M{0}
             and M{2^16-1}
         @type  data: bytearray
         @param data: raw data representing extension on the wire
         @rtype: L{TLSExtension}
         """
-        self.ext_type = type
+        self.ext_type = ext_type
         self.ext_data = data
         return self
 
@@ -163,7 +163,7 @@ class SNIExtension(TLSExtension):
     @ivar ext_data: raw representation of the extension
     """
 
-    ServerName = namedtuple('ServerName', 'type name')
+    ServerName = namedtuple('ServerName', 'name_type name')
 
     def __init__(self):
         """
@@ -193,7 +193,7 @@ class SNIExtension(TLSExtension):
         @param host_names: list of raw UTF-8 encoded host names
 
         @type  server_names: list of L{ServerName}
-        @param server_names: pairs of type and name
+        @param server_names: pairs of name_type and name encoded as a namedtuple
 
         @rtype: L{SNIExtension}
         """
@@ -237,7 +237,7 @@ class SNIExtension(TLSExtension):
             return tuple()
         else:
             return tuple([x.name for x in self.server_names if \
-                x.type == NameType.host_name])
+                x.name_type == NameType.host_name])
 
     @host_names.setter
     def host_names(self, host_names):
@@ -255,7 +255,7 @@ class SNIExtension(TLSExtension):
                 [SNIExtension.ServerName(NameType.host_name, x) for x in \
                     host_names] + \
                 [x for x in self.server_names if \
-                    x.type != NameType.host_name]
+                    x.name_type != NameType.host_name]
 
     @host_names.deleter
     def host_names(self):
@@ -263,7 +263,7 @@ class SNIExtension(TLSExtension):
         unmodified
         """
         self.server_names = [x for x in self.server_names if \
-                x.type != NameType.host_name]
+                x.name_type != NameType.host_name]
 
     @property
     def ext_data(self):
@@ -276,7 +276,7 @@ class SNIExtension(TLSExtension):
 
         w2 = Writer()
         for server_name in self.server_names:
-            w2.add(server_name.type, 1)
+            w2.add(server_name.name_type, 1)
             w2.add(len(server_name.name), 2)
             w2.bytes += server_name.name
 
