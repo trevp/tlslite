@@ -484,6 +484,10 @@ class ServerHello(HandshakeMsg):
 
     @type certificate_type: int
     @ivar certificate_type: certificate type selected by server
+
+    @type extensions: list
+    @ivar extensions: list of TLS extensions present in server_hello message,
+        see L{TLSExtension} and child classes for exact examples
     """
     def __init__(self):
         """Initialise ServerHello object"""
@@ -494,7 +498,7 @@ class ServerHello(HandshakeMsg):
         self.session_id = bytearray(0)
         self.cipher_suite = 0
         self.compression_method = 0
-        self.tackExt = None
+        self._tack_ext = None
         self.extensions = None
 
     def getExtension(self, ext_type):
@@ -528,6 +532,28 @@ class ServerHello(HandshakeMsg):
         self.extensions.append(ext)
 
     @property
+    def tackExt(self):
+        """ Returns the TACK extension
+        """
+        if self._tack_ext is None:
+            ext = self.getExtension(ExtensionType.tack)
+            if ext is None or not tackpyLoaded:
+                return None
+            else:
+                self._tack_ext = TackExtension(ext.ext_data)
+        return self._tack_ext
+
+    @tackExt.setter
+    def tackExt(self, val):
+        """ Set the TACK extension
+        """
+        self._tack_ext = val
+        # makes sure that extensions are included in the on the wire encoding
+        if not val is None:
+            if self.extensions is None:
+                self.extensions = []
+
+    @property
     def certificate_type(self):
         """Returns the certificate type selected by server
 
@@ -547,6 +573,10 @@ class ServerHello(HandshakeMsg):
         @type val: int
         @param val: type of certificate
         """
+        # XXX backwards compatibility, 0 means x.509 and should not be sent
+        if val == 0 or val is None:
+            return
+
         cert_type = self.getExtension(ExtensionType.cert_type)
         if cert_type is None:
             ext = ServerCertTypeExtension().create(val)
@@ -574,6 +604,12 @@ class ServerHello(HandshakeMsg):
         @type val: list
         @param val: list of protocols to advertise as UTF-8 encoded names
         """
+        if val is None:
+            return
+        else:
+        # convinience function, make sure the values are properly encoded
+            val = [ bytearray(x) for x in val ]
+
         npn_ext = self.getExtension(ExtensionType.supports_npn)
 
         if npn_ext is None:
@@ -600,7 +636,9 @@ class ServerHello(HandshakeMsg):
         self.next_protos = val
 
     def create(self, version, random, session_id, cipher_suite,
-               certificate_type, tackExt, next_protos_advertised):
+               certificate_type, tackExt, next_protos_advertised,
+               extensions=None):
+        self.extensions = extensions
         self.server_version = version
         self.random = random
         self.session_id = session_id
@@ -619,45 +657,14 @@ class ServerHello(HandshakeMsg):
         self.cipher_suite = p.get(2)
         self.compression_method = p.get(1)
         if not p.atLengthCheck():
+            self.extensions = []
             totalExtLength = p.get(2)
-            soFar = 0
-            while soFar != totalExtLength:
-                extType = p.get(2)
-                extLength = p.get(2)
-                if extType == ExtensionType.cert_type:
-                    if extLength != 1:
-                        raise SyntaxError()
-                    self.certificate_type = p.get(1)
-                elif extType == ExtensionType.tack and tackpyLoaded:
-                    self.tackExt = TackExtension(p.getFixBytes(extLength))
-                elif extType == ExtensionType.supports_npn:
-                    self.next_protos = self.__parse_next_protos(p.getFixBytes(extLength))
-                else:
-                    p.getFixBytes(extLength)
-                soFar += 4 + extLength
+            p2 = Parser(p.getFixBytes(totalExtLength))
+            while p2.getRemainingLength() > 0:
+                ext = TLSExtension(server=True).parse(p2)
+                self.extensions += [ext]
         p.stopLengthCheck()
         return self
-
-    def __parse_next_protos(self, b):
-        protos = []
-        while True:
-            if len(b) == 0:
-                break
-            l = b[0]
-            b = b[1:]
-            if len(b) < l:
-                raise BadNextProtos(len(b))
-            protos.append(b[:l])
-            b = b[l:]
-        return protos
-
-    def __next_protos_encoded(self):
-        b = bytearray()
-        for e in self.next_protos_advertised:
-            if len(e) > 255 or len(e) == 0:
-                raise BadNextProtos(len(e))
-            b += bytearray( [len(e)] ) + bytearray(e)
-        return b
 
     def write(self):
         w = Writer()
@@ -668,27 +675,20 @@ class ServerHello(HandshakeMsg):
         w.add(self.cipher_suite, 2)
         w.add(self.compression_method, 1)
 
-        w2 = Writer() # For Extensions
-        if self.certificate_type and self.certificate_type != \
-                CertificateType.x509:
-            w2.add(ExtensionType.cert_type, 2)
-            w2.add(1, 2)
-            w2.add(self.certificate_type, 1)
-        if self.tackExt:
-            b = self.tackExt.serialize()
-            w2.add(ExtensionType.tack, 2)
-            w2.add(len(b), 2)
-            w2.bytes += b
-        if self.next_protos_advertised is not None:
-            encoded_next_protos_advertised = self.__next_protos_encoded()
-            w2.add(ExtensionType.supports_npn, 2)
-            w2.add(len(encoded_next_protos_advertised), 2)
-            w2.addFixSeq(encoded_next_protos_advertised, 1)
-        if len(w2.bytes):
+        if not self.extensions is None:
+            w2 = Writer()
+            for ext in self.extensions:
+                w2.bytes += ext.write()
+
+            if self.tackExt:
+                b = self.tackExt.serialize()
+                w2.add(ExtensionType.tack, 2)
+                w2.add(len(b), 2)
+                w2.bytes += b
+
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes        
         return self.postWrite(w)
-
 
 class Certificate(HandshakeMsg):
     def __init__(self, certificateType):
