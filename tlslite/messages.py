@@ -156,6 +156,18 @@ class ClientHello(HandshakeMsg):
         else:
             return None
 
+    def addExtension(self, ext):
+        """
+        Adds extension to internal list of extensions
+
+        @type ext_type: TLSExtension
+        @param ext_type: extension object to add to list
+        """
+        if self.extensions is None:
+            self.extensions = []
+
+        self.extensions.append(ext)
+
     @property
     def certificate_types(self):
         """
@@ -186,9 +198,7 @@ class ClientHello(HandshakeMsg):
 
         if cert_type is None:
             ext = ClientCertTypeExtension().create(val)
-            if self.extensions is None:
-                self.extensions = []
-            self.extensions += [ext]
+            self.addExtension(ext)
         else:
             cert_type.cert_types = val
 
@@ -218,9 +228,7 @@ class ClientHello(HandshakeMsg):
 
         if srp_ext is None:
             ext = SRPExtension().create(name)
-            if self.extensions is None:
-                self.extensions = []
-            self.extensions += [ext]
+            self.addExtension(ext)
         else:
             srp_ext.identity = name
 
@@ -251,11 +259,8 @@ class ClientHello(HandshakeMsg):
         if present:
             tack_ext = self.getExtension(ExtensionType.tack)
             if tack_ext is None:
-                if self.extensions is None:
-                    self.extensions = []
-                self.extensions += [TLSExtension().create(
-                        ExtensionType.tack,
-                        bytearray(0))]
+                ext = TLSExtension().create(ExtensionType.tack, bytearray(0))
+                self.addExtension(ext)
             else:
                 return
         else:
@@ -292,11 +297,10 @@ class ClientHello(HandshakeMsg):
         if present:
             npn_ext = self.getExtension(ExtensionType.supports_npn)
             if npn_ext is None:
-                if self.extensions is None:
-                    self.extensions = []
-                self.extensions += [TLSExtension().create(
+                ext = TLSExtension().create(
                         ExtensionType.supports_npn,
-                        bytearray(0))]
+                        bytearray(0))
+                self.addExtension(ext)
             else:
                 return
         else:
@@ -334,9 +338,7 @@ class ClientHello(HandshakeMsg):
         sni_ext = self.getExtension(ExtensionType.server_name)
         if sni_ext is None:
             sni_ext = SNIExtension().create(hostname)
-            if self.extensions is None:
-                self.extensions = []
-            self.extensions += [sni_ext]
+            self.addExtension(sni_ext)
         else:
             names = sni_ext.host_names
             names[0] = hostname
