@@ -165,7 +165,8 @@ class ClientHello(HandshakeMsg):
         """
         cert_type = self.getExtension(ExtensionType.cert_type)
         if cert_type is None:
-            # XXX backwards compatibility
+            # XXX backwards compatibility: TLSConnection
+            # depends on a default value of this property
             return [CertificateType.x509]
         else:
             return cert_type.cert_types
