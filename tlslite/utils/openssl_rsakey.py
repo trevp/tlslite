@@ -120,6 +120,19 @@ if m2cryptoLoaded:
                         if key.rsa == None:
                             raise SyntaxError()
                         key._hasPrivateKey = True
+                    elif s.startswith("-----BEGIN PRIVATE KEY-----"):
+                        def f():pass
+                        key.rsa = m2.pkey_read_pem(bio, callback)
+                        if key.rsa == None:
+                            raise SyntaxError()
+                        # it assumes RSA key while EVP_PKEY can be also DSA or
+                        # EC, thus the double check against None
+                        # the library doesn't support DSA or EC so it's useless
+                        # to handle them differently
+                        key.rsa = m2.pkey_get1_rsa(key.rsa)
+                        if key.rsa == None:
+                            raise SyntaxError()
+                        key._hasPrivateKey = True
                     elif s.startswith("-----BEGIN PUBLIC KEY-----"):
                         key.rsa = m2.rsa_read_pub_key(bio)
                         if key.rsa == None:
