@@ -148,6 +148,9 @@ class TLSRecordLayer(object):
         #Fault we will induce, for testing purposes
         self.fault = None
 
+        #Limit the size of outgoing records to following size
+        self.blockSize = 16384 # 2**14
+
     def clearReadBuffer(self):
         self._readBuffer = b''
 
@@ -269,11 +272,10 @@ class TLSRecordLayer(object):
                 raise TLSClosedConnectionError("attempt to write to closed connection")
 
             index = 0
-            blockSize = 16384
             randomizeFirstBlock = True
             while 1:
-                startIndex = index * blockSize
-                endIndex = startIndex + blockSize
+                startIndex = index * self.blockSize
+                endIndex = startIndex + self.blockSize
                 if startIndex >= len(s):
                     break
                 if endIndex > len(s):
@@ -554,6 +556,25 @@ class TLSRecordLayer(object):
             return
             
         contentType = msg.contentType
+
+        #Fragment big handshake messages
+        if contentType == ContentType.handshake:
+            while len(b) > self.blockSize:
+                newB = b[:self.blockSize]
+                b = b[self.blockSize:]
+
+                class FakeMsg(object):
+                    def __init__(self, msg_type, data):
+                        self.contentType = msg_type
+                        self.data = data
+
+                    def write(self):
+                        return self.data
+
+                msgFragment = FakeMsg(msg.contentType, newB)
+                for result in self._sendMsg(msgFragment,
+                        randomizeFirstBlock=False):
+                    yield result
 
         #Update handshake hashes
         if contentType == ContentType.handshake:
