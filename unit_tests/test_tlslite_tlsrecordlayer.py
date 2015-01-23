@@ -136,13 +136,13 @@ class TestTLSRecordLayer(unittest.TestCase):
         gen = record_layer._getMsg(ContentType.handshake,
                 HandshakeType.server_hello)
 
-        # XXX decoder can't handle fragmented messages!
-        with self.assertRaises(TLSLocalAlert):
-            message = next(gen)
+        message = next(gen)
+        if message in (0,1):
+            raise Exception("blocking")
 
-        #self.assertEqual(ServerHello, type(message))
-        #self.assertEqual((3,3), message.server_version)
-        #self.assertEqual(0x002f, message.cipher_suite)
+        self.assertEqual(ServerHello, type(message))
+        self.assertEqual((3,3), message.server_version)
+        self.assertEqual(0x002f, message.cipher_suite)
 
     def test__getMsg_with_oversized_message(self):
 
