@@ -130,7 +130,7 @@ if m2cryptoLoaded:
                         # also DSA or EC, thus the double check against None
                         # (first if the file was properly loaded and second
                         # if the file actually has a RSA key in it)
-                        # the library doesn't support DSA or EC so it's useless
+                        # tlslite doesn't support DSA or EC so it's useless
                         # to handle them in a different way
                         if key.rsa == None:
                             raise SyntaxError()
