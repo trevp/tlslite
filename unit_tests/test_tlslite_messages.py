@@ -536,6 +536,63 @@ class TestServerHello(unittest.TestCase):
         # TODO the message could be more descriptive...
         self.assertIsNone(context.exception.msg)
 
+    def test_parse_with_cert_type_extension(self):
+        p = Parser(bytearray(
+            b'\x00\x00\x2d' +               # length - 45 bytes
+            b'\x03\x03' +                   # version - TLS 1.2
+            b'\x01'*31 + b'\x02' +          # random
+            b'\x00' +                       # session id length
+            b'\x00\x9d' +                   # cipher suite
+            b'\x00' +                       # compression method (none)
+            b'\x00\x05' +                   # extensions length - 5 bytes
+            b'\x00\x09' +                   # ext type - cert_type (9)
+            b'\x00\x01' +                   # ext length - 1 byte
+            b'\x01'                         # value - OpenPGP (1)
+            ))
+
+        server_hello = ServerHello().parse(p)
+        self.assertEqual(1, server_hello.certificate_type)
+
+    def test_parse_with_bad_cert_type_extension(self):
+        p = Parser(bytearray(
+            b'\x00\x00\x2e' +               # length - 46 bytes
+            b'\x03\x03' +                   # version - TLS 1.2
+            b'\x01'*31 + b'\x02' +          # random
+            b'\x00' +                       # session id length
+            b'\x00\x9d' +                   # cipher suite
+            b'\x00' +                       # compression method (none)
+            b'\x00\x06' +                   # extensions length - 5 bytes
+            b'\x00\x09' +                   # ext type - cert_type (9)
+            b'\x00\x02' +                   # ext length - 2 bytes
+            b'\x00\x01'                     # value - X.509 (0), OpenPGP (1)
+            ))
+
+        server_hello = ServerHello()
+        with self.assertRaises(SyntaxError) as context:
+            server_hello.parse(p)
+
+    def test_parse_with_NPN_extension(self):
+        p = Parser(bytearray(
+            b'\x00\x00\x3c' +               # length - 60 bytes
+            b'\x03\x03' +                   # version - TLS 1.2
+            b'\x01'*31 + b'\x02' +          # random
+            b'\x00' +                       # session id length
+            b'\x00\x9d' +                   # cipher suite
+            b'\x00' +                       # compression method (none)
+            b'\x00\x14' +                   # extensions length - 20 bytes
+            b'\x33\x74' +                   # ext type - npn
+            b'\x00\x10' +                   # ext length - 16 bytes
+            b'\x08' +                       # length of first name - 8 bytes
+            b'http/1.1' +
+            b'\x06' +                       # length of second name - 6 bytes
+            b'spdy/3'
+            ))
+
+        server_hello = ServerHello().parse(p)
+
+        self.assertEqual([bytearray(b'http/1.1'), bytearray(b'spdy/3')],
+                server_hello.next_protos)
+
     def test_write(self):
         server_hello = ServerHello().create(
                 (1,1),                          # server version

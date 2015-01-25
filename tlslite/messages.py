@@ -462,20 +462,186 @@ class BadNextProtos(Exception):
         return 'Cannot encode a list of next protocols because it contains an element with invalid length %d. Element lengths must be 0 < x < 256' % self.length
 
 class ServerHello(HandshakeMsg):
+    """server_hello message
+
+    @type server_version: tuple
+    @ivar server_version: protocol version encoded as two int tuple
+
+    @type random: bytearray
+    @ivar random: server random value
+
+    @type session_id: bytearray
+    @ivar session_id: session identifier for resumption
+
+    @type cipher_suite: int
+    @ivar cipher_suite: server selected cipher_suite
+
+    @type compression_method: int
+    @ivar compression_method: server selected compression method
+
+    @type next_protos: list of bytearray
+    @ivar next_protos: list of advertised protocols in NPN extension
+
+    @type next_protos_advertised: list of bytearray
+    @ivar next_protos_advertised: list of protocols advertised in NPN extension
+
+    @type certificate_type: int
+    @ivar certificate_type: certificate type selected by server
+
+    @type extensions: list
+    @ivar extensions: list of TLS extensions present in server_hello message,
+        see L{TLSExtension} and child classes for exact examples
+    """
     def __init__(self):
+        """Initialise ServerHello object"""
+
         HandshakeMsg.__init__(self, HandshakeType.server_hello)
         self.server_version = (0,0)
         self.random = bytearray(32)
         self.session_id = bytearray(0)
         self.cipher_suite = 0
-        self.certificate_type = CertificateType.x509
         self.compression_method = 0
-        self.tackExt = None
-        self.next_protos_advertised = None
-        self.next_protos = None
+        self._tack_ext = None
+        self.extensions = None
+
+    def getExtension(self, ext_type):
+        """Return extension of a given type, None if extension of given type
+        is not present
+
+        @rtype: L{TLSExtension}
+        @raise TLSInternalError: multiple extensions of the same type present
+        """
+        if self.extensions is None:
+            return None
+
+        exts = [x for x in self.extensions if x.ext_type == ext_type]
+        if len(exts) > 1:
+            raise TLSInternalError(
+                    "Multiple extensions of the same type present")
+        elif len(exts) == 1:
+            return exts[0]
+        else:
+            return None
+
+    def addExtension(self, ext):
+        """
+        Add extension to internal list of extensions
+
+        @type ext: TLSExtension
+        @param ext: extension to add to list
+        """
+        if self.extensions is None:
+            self.extensions = []
+        self.extensions.append(ext)
+
+    @property
+    def tackExt(self):
+        """ Returns the TACK extension
+        """
+        if self._tack_ext is None:
+            ext = self.getExtension(ExtensionType.tack)
+            if ext is None or not tackpyLoaded:
+                return None
+            else:
+                self._tack_ext = TackExtension(ext.ext_data)
+        return self._tack_ext
+
+    @tackExt.setter
+    def tackExt(self, val):
+        """ Set the TACK extension
+        """
+        self._tack_ext = val
+        # makes sure that extensions are included in the on the wire encoding
+        if not val is None:
+            if self.extensions is None:
+                self.extensions = []
+
+    @property
+    def certificate_type(self):
+        """Returns the certificate type selected by server
+
+        @rtype: int
+        """
+        cert_type = self.getExtension(ExtensionType.cert_type)
+        if cert_type is None:
+            # XXX backwards compatibility, TLSConnection expects the default
+            # value to be that
+            return CertificateType.x509
+        return cert_type.cert_type
+
+    @certificate_type.setter
+    def certificate_type(self, val):
+        """Sets the certificate type supported
+
+        @type val: int
+        @param val: type of certificate
+        """
+        # XXX backwards compatibility, 0 means x.509 and should not be sent
+        if val == 0 or val is None:
+            return
+
+        cert_type = self.getExtension(ExtensionType.cert_type)
+        if cert_type is None:
+            ext = ServerCertTypeExtension().create(val)
+            self.addExtension(ext)
+        else:
+            cert_type.cert_type = val
+
+    @property
+    def next_protos(self):
+        """Returns the advertised protocols in NPN extension
+
+        @rtype: list of bytearrays
+        """
+        npn_ext = self.getExtension(ExtensionType.supports_npn)
+
+        if npn_ext is None:
+            return None
+        else:
+            return npn_ext.protocols
+
+    @next_protos.setter
+    def next_protos(self, val):
+        """Sets the advertised protocols in NPN extension
+
+        @type val: list
+        @param val: list of protocols to advertise as UTF-8 encoded names
+        """
+        if val is None:
+            return
+        else:
+        # convinience function, make sure the values are properly encoded
+            val = [ bytearray(x) for x in val ]
+
+        npn_ext = self.getExtension(ExtensionType.supports_npn)
+
+        if npn_ext is None:
+            ext = NPNExtension().create(val)
+            self.addExtension(ext)
+        else:
+            npn_ext.protocols = val
+
+    @property
+    def next_protos_advertised(self):
+        """Returns the advertised protocols in NPN extension
+
+        @rtype: list of bytearrays
+        """
+        return self.next_protos
+
+    @next_protos_advertised.setter
+    def next_protos_advertised(self, val):
+        """Sets the advertised protocols in NPN extension
+
+        @type val: list
+        @param val: list of protocols to advertise as UTF-8 encoded names
+        """
+        self.next_protos = val
 
     def create(self, version, random, session_id, cipher_suite,
-               certificate_type, tackExt, next_protos_advertised):
+               certificate_type, tackExt, next_protos_advertised,
+               extensions=None):
+        self.extensions = extensions
         self.server_version = version
         self.random = random
         self.session_id = session_id
@@ -494,45 +660,14 @@ class ServerHello(HandshakeMsg):
         self.cipher_suite = p.get(2)
         self.compression_method = p.get(1)
         if not p.atLengthCheck():
+            self.extensions = []
             totalExtLength = p.get(2)
-            soFar = 0
-            while soFar != totalExtLength:
-                extType = p.get(2)
-                extLength = p.get(2)
-                if extType == ExtensionType.cert_type:
-                    if extLength != 1:
-                        raise SyntaxError()
-                    self.certificate_type = p.get(1)
-                elif extType == ExtensionType.tack and tackpyLoaded:
-                    self.tackExt = TackExtension(p.getFixBytes(extLength))
-                elif extType == ExtensionType.supports_npn:
-                    self.next_protos = self.__parse_next_protos(p.getFixBytes(extLength))
-                else:
-                    p.getFixBytes(extLength)
-                soFar += 4 + extLength
+            p2 = Parser(p.getFixBytes(totalExtLength))
+            while p2.getRemainingLength() > 0:
+                ext = TLSExtension(server=True).parse(p2)
+                self.extensions += [ext]
         p.stopLengthCheck()
         return self
-
-    def __parse_next_protos(self, b):
-        protos = []
-        while True:
-            if len(b) == 0:
-                break
-            l = b[0]
-            b = b[1:]
-            if len(b) < l:
-                raise BadNextProtos(len(b))
-            protos.append(b[:l])
-            b = b[l:]
-        return protos
-
-    def __next_protos_encoded(self):
-        b = bytearray()
-        for e in self.next_protos_advertised:
-            if len(e) > 255 or len(e) == 0:
-                raise BadNextProtos(len(e))
-            b += bytearray( [len(e)] ) + bytearray(e)
-        return b
 
     def write(self):
         w = Writer()
@@ -543,27 +678,20 @@ class ServerHello(HandshakeMsg):
         w.add(self.cipher_suite, 2)
         w.add(self.compression_method, 1)
 
-        w2 = Writer() # For Extensions
-        if self.certificate_type and self.certificate_type != \
-                CertificateType.x509:
-            w2.add(ExtensionType.cert_type, 2)
-            w2.add(1, 2)
-            w2.add(self.certificate_type, 1)
-        if self.tackExt:
-            b = self.tackExt.serialize()
-            w2.add(ExtensionType.tack, 2)
-            w2.add(len(b), 2)
-            w2.bytes += b
-        if self.next_protos_advertised is not None:
-            encoded_next_protos_advertised = self.__next_protos_encoded()
-            w2.add(ExtensionType.supports_npn, 2)
-            w2.add(len(encoded_next_protos_advertised), 2)
-            w2.addFixSeq(encoded_next_protos_advertised, 1)
-        if len(w2.bytes):
+        if not self.extensions is None:
+            w2 = Writer()
+            for ext in self.extensions:
+                w2.bytes += ext.write()
+
+            if self.tackExt:
+                b = self.tackExt.serialize()
+                w2.add(ExtensionType.tack, 2)
+                w2.add(len(b), 2)
+                w2.bytes += b
+
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes        
         return self.postWrite(w)
-
 
 class Certificate(HandshakeMsg):
     def __init__(self, certificateType):

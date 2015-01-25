@@ -4,7 +4,8 @@
 
 import unittest
 from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
-        SRPExtension, ClientCertTypeExtension
+        SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension,\
+        TACKExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType
 
@@ -85,6 +86,19 @@ class TestTLSExtension(unittest.TestCase):
         b = SNIExtension().create(server_names=[])
 
         self.assertTrue(a == b)
+
+    def test_parse_of_server_hello_extension(self):
+        ext = TLSExtension(server=True)
+
+        p = Parser(bytearray(
+            b'\x00\x09' +       # extension type - cert_type (9)
+            b'\x00\x01' +       # extension length - 1 byte
+            b'\x01'             # certificate type - OpenGPG (1)
+            ))
+
+        ext = ext.parse(p)
+
+        self.assertEqual(1, ext.cert_type)
 
 class TestSNIExtension(unittest.TestCase):
     def test___init__(self):
@@ -477,6 +491,55 @@ class TestClientCertTypeExtension(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             cert_type.parse(p)
 
+class TestServerCertTypeExtension(unittest.TestCase):
+    def test___init__(self):
+        cert_type = ServerCertTypeExtension()
+
+        self.assertEqual(9, cert_type.ext_type)
+        self.assertEqual(bytearray(0), cert_type.ext_data)
+        self.assertEqual(None, cert_type.cert_type)
+
+    def test_create(self):
+        cert_type = ServerCertTypeExtension().create(0)
+
+        self.assertEqual(9, cert_type.ext_type)
+        self.assertEqual(bytearray(b'\x00'), cert_type.ext_data)
+        self.assertEqual(0, cert_type.cert_type)
+
+    def test_parse(self):
+        p = Parser(bytearray(
+            b'\x00'             # certificate type - X.509 (0)
+            ))
+
+        cert_type = ServerCertTypeExtension().parse(p)
+
+        self.assertEqual(0, cert_type.cert_type)
+
+    def test_parse_with_no_data(self):
+        p = Parser(bytearray(0))
+
+        cert_type = ServerCertTypeExtension()
+
+        with self.assertRaises(SyntaxError):
+            cert_type.parse(p)
+
+    def test_parse_with_too_much_data(self):
+        p = Parser(bytearray(b'\x00\x00'))
+
+        cert_type = ServerCertTypeExtension()
+
+        with self.assertRaises(SyntaxError):
+            cert_type.parse(p)
+
+    def test_write(self):
+        cert_type = ServerCertTypeExtension().create(1)
+
+        self.assertEqual(bytearray(
+            b'\x00\x09' +       # extension type - cert_type (9)
+            b'\x00\x01' +       # extension length - 1 byte
+            b'\x01'             # selected certificate type - OpenPGP (1)
+            ), cert_type.write())
+
 class TestSRPExtension(unittest.TestCase):
     def test___init___(self):
         srp_extension = SRPExtension()
@@ -645,6 +708,124 @@ class TestNPNExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             npn_extension.parse(p)
+
+class TestTACKExtension(unittest.TestCase):
+    def test___init__(self):
+        tack_ext = TACKExtension()
+
+        self.assertEqual([], tack_ext.tacks)
+        self.assertEqual(0, tack_ext.activation_flags)
+        self.assertEqual(62208, tack_ext.ext_type)
+        self.assertEqual(bytearray(b'\x00\x00\x00'), tack_ext.ext_data)
+
+    def test_create(self):
+        tack_ext = TACKExtension().create([], 1)
+
+        self.assertEqual([], tack_ext.tacks)
+        self.assertEqual(1, tack_ext.activation_flags)
+
+    def test_tack___init__(self):
+        tack = TACKExtension.TACK()
+
+        self.assertEqual(bytearray(64), tack.public_key)
+        self.assertEqual(0, tack.min_generation)
+        self.assertEqual(0, tack.generation)
+        self.assertEqual(0, tack.expiration)
+        self.assertEqual(bytearray(32), tack.target_hash)
+        self.assertEqual(bytearray(64), tack.signature)
+
+    def test_tack_create(self):
+        tack = TACKExtension.TACK().create(
+                bytearray(b'\x01'*64),
+                2,
+                3,
+                4,
+                bytearray(b'\x05'*32),
+                bytearray(b'\x06'*64))
+
+        self.assertEqual(bytearray(b'\x01'*64), tack.public_key)
+        self.assertEqual(2, tack.min_generation)
+        self.assertEqual(3, tack.generation)
+        self.assertEqual(4, tack.expiration)
+        self.assertEqual(bytearray(b'\x05'*32), tack.target_hash)
+        self.assertEqual(bytearray(b'\x06'*64), tack.signature)
+
+    def test_tack_write(self):
+        tack = TACKExtension.TACK().create(
+                bytearray(b'\x01'*64),
+                2,
+                3,
+                4,
+                bytearray(b'\x05'*32),
+                bytearray(b'\x06'*64))
+
+        self.assertEqual(bytearray(
+            b'\x01'*64 +            # public_key
+            b'\x02' +               # min_generation
+            b'\x03' +               # generation
+            b'\x00\x00\x00\x04' +   # expiration
+            b'\x05'*32 +            # target_hash
+            b'\x06'*64)             # signature
+            , tack.write())
+
+    def test_tack_parse(self):
+        p = Parser(bytearray(
+            b'\x01'*64 +            # public_key
+            b'\x02' +               # min_generation
+            b'\x03' +               # generation
+            b'\x00\x00\x00\x04' +   # expiration
+            b'\x05'*32 +            # target_hash
+            b'\x06'*64))            # signature
+
+        tack = TACKExtension.TACK()
+
+        tack = tack.parse(p)
+
+        self.assertEqual(bytearray(b'\x01'*64), tack.public_key)
+        self.assertEqual(2, tack.min_generation)
+        self.assertEqual(3, tack.generation)
+        self.assertEqual(4, tack.expiration)
+        self.assertEqual(bytearray(b'\x05'*32), tack.target_hash)
+        self.assertEqual(bytearray(b'\x06'*64), tack.signature)
+
+    def test_tack___eq__(self):
+        a = TACKExtension.TACK()
+        b = TACKExtension.TACK()
+
+        self.assertTrue(a == b)
+        self.assertFalse(a == None)
+        self.assertFalse(a == "test")
+
+    def test_parse(self):
+        p = Parser(bytearray(3))
+
+        tack_ext = TACKExtension().parse(p)
+
+        self.assertEqual([], tack_ext.tacks)
+        self.assertEqual(0, tack_ext.activation_flags)
+
+    def test_parse_with_a_tack(self):
+        p = Parser(bytearray(
+            b'\x00\xa6' +           # length of array (166 bytes)
+            b'\x01'*64 +            # public_key
+            b'\x02' +               # min_generation
+            b'\x03' +               # generation
+            b'\x00\x00\x00\x04' +   # expiration
+            b'\x05'*32 +            # target_hash
+            b'\x06'*64 +            # signature
+            b'\x01'))               # activation_flags
+
+        tack_ext = TACKExtension().parse(p)
+
+        tack = TACKExtension.TACK().create(
+                bytearray(b'\x01'*64),
+                2,
+                3,
+                4,
+                bytearray(b'\x05'*32),
+                bytearray(b'\x06'*64))
+        self.assertEqual([tack], tack_ext.tacks)
+        self.assertEqual(1, tack_ext.activation_flags)
 
 if __name__ == '__main__':
     unittest.main()

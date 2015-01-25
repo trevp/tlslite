@@ -28,23 +28,42 @@ class TLSExtension(object):
     @ivar ext_data: a byte array containing the value of the extension as
         to be written on the wire
 
-    @type _extensions: dict
-    @cvar _extensions: dictionary with concrete implementations of specific
-        TLS extensions, key is the numeric value of the extension ID
+    @type server_type: boolean
+    @ivar server_type: indicates that the extension was parsed with ServerHello
+        specific parser, otherwise it used universal or ClientHello specific
+        parser
+
+    @type _universal_extensions: dict
+    @cvar _universal_extensions: dictionary with concrete implementations of
+        specific TLS extensions where key is the numeric value of the extension
+        ID. Contains ClientHello version of extensions or universal
+        implementations
+
+    @type _server_extensions: dict
+    @cvar _server_extensions: dictionary with concrete implementations of
+        specific TLS extensions where key is the numeric value of the extension
+        ID. Includes only those extensions that require special handlers for
+        ServerHello versions.
     """
     # actual definition at the end of file, after definitions of all classes
-    _extensions = {}
+    _universal_extensions = {}
+    _server_extensions = {}
 
-    def __init__(self):
+    def __init__(self, server=False):
         """
         Creates a generic TLS extension that can be used either for
         client hello or server hello message parsing or creation.
 
         You'll need to use L{create} or L{parse} methods to create an extension
         that is actually usable.
+
+        @type server: boolean
+        @param server: whatever to select ClientHello or ServerHello version
+            for parsing
         """
         self.ext_type = None
         self.ext_data = bytearray(0)
+        self.server_type = server
 
     def create(self, ext_type, data):
         """
@@ -96,12 +115,22 @@ class TLSExtension(object):
         ext_type = p.get(2)
         ext_length = p.get(2)
 
-        if ext_type in self._extensions:
-            ext = TLSExtension._extensions[ext_type]()
+        # first check if we shouldn't use server side parser
+        if self.server_type and ext_type in self._server_extensions:
+            ext = self._server_extensions[ext_type]()
             ext_parser = Parser(p.getFixBytes(ext_length))
             ext = ext.parse(ext_parser)
             return ext
 
+        # then fallback to universal/ClientHello-specific parsers
+        if ext_type in self._universal_extensions:
+            ext = self._universal_extensions[ext_type]()
+            ext_parser = Parser(p.getFixBytes(ext_length))
+            ext = ext.parse(ext_parser)
+            return ext
+
+        # finally, just save the extension data as there are extensions which
+        # don't require specific handlers and indicate option by mere presence
         self.ext_type = ext_type
         self.ext_data = p.getFixBytes(ext_length)
         if len(self.ext_data) != ext_length:
@@ -409,6 +438,74 @@ class ClientCertTypeExtension(TLSExtension):
 
         return self
 
+class ServerCertTypeExtension(TLSExtension):
+    """
+    This class handles the Certificate Type extension (variant sent by server)
+    defined in RFC 6091.
+
+    @type ext_type: int
+    @ivar ext_type: byneruc ttoe if Certificate Type extension, i.e. 9
+
+    @type ext_data: bytearray
+    @ivar ext_data: raw representation of the extension data
+
+    @type cert_type: int
+    @ivar cert_type: the certificate type selected by server
+    """
+
+    def __init__(self):
+        """
+        Create an instance of ServerCertTypeExtension
+
+        See also: L{create} and L{parse}
+        """
+        self.cert_type = None
+
+    @property
+    def ext_type(self):
+        """
+        Return the type of TLS extension, in this case - 9
+
+        @rtype: int
+        """
+        return ExtensionType.cert_type
+
+    @property
+    def ext_data(self):
+        """
+        Return the raw encoding of the extension data
+
+        @rtype: bytearray
+        """
+        if self.cert_type is None:
+            return bytearray(0)
+
+        w = Writer()
+        w.add(self.cert_type, 1)
+
+        return w.bytes
+
+    def create(self, val):
+        """Create an instance for sending the extension to client.
+
+        @type val: int
+        @param val: selected type of certificate
+        """
+        self.cert_type = val
+        return self
+
+    def parse(self, p):
+        """Parse the extension from on the wire format
+
+        @type p: L{Parser}
+        @param p: parser with data
+        """
+        self.cert_type = p.get(1)
+        if p.getRemainingLength() > 0:
+            raise SyntaxError()
+
+        return self
+
 class SRPExtension(TLSExtension):
     """
     This class handles the Secure Remote Password protocol TLS extension
@@ -569,7 +666,187 @@ class NPNExtension(TLSExtension):
 
         return self
 
-TLSExtension._extensions = { ExtensionType.server_name : SNIExtension,
+class TACKExtension(TLSExtension):
+    """
+    This class handles the server side TACK extension (see
+    draft-perrin-tls-tack-02).
+
+    @type tacks: list
+    @ivar tacks: list of L{TACK}'s supported by server
+
+    @type activation_flags: int
+    @ivar activation_flags: activation flags for the tacks
+    """
+
+    class TACK(object):
+        """
+        Implementation of the single TACK
+        """
+        def __init__(self):
+            """
+            Create a single TACK object
+            """
+            self.public_key = bytearray(64)
+            self.min_generation = 0
+            self.generation = 0
+            self.expiration = 0
+            self.target_hash = bytearray(32)
+            self.signature = bytearray(64)
+
+        def create(self, public_key, min_generation, generation, expiration,
+                target_hash, signature):
+            """
+            Initialise the TACK with data
+            """
+            self.public_key = public_key
+            self.min_generation = min_generation
+            self.generation = generation
+            self.expiration = expiration
+            self.target_hash = target_hash
+            self.signature = signature
+            return self
+
+        def write(self):
+            """
+            Convert the TACK into on the wire format
+
+            @rtype: bytearray
+            """
+            w = Writer()
+            if len(self.public_key) != 64:
+                raise TLSInternalError("Public_key must be 64 bytes long")
+            w.bytes += self.public_key
+            w.add(self.min_generation, 1)
+            w.add(self.generation, 1)
+            w.add(self.expiration, 4)
+            if len(self.target_hash) != 32:
+                raise TLSInternalError("Target_hash must be 32 bytes long")
+            w.bytes += self.target_hash
+            if len(self.signature) != 64:
+                raise TLSInternalError("Signature must be 64 bytes long")
+            w.bytes += self.signature
+            return w.bytes
+
+        def parse(self, p):
+            """
+            Parse the TACK from on the wire format
+
+            @type p: L{tlslite.util.codec.Parser}
+            @param p: data to be parsed
+
+            @rtype: L{TACK}
+            @raise SyntaxError: when the internal sizes don't match the
+                provided data
+            """
+
+            self.public_key = p.getFixBytes(64)
+            self.min_generation = p.get(1)
+            self.generation = p.get(1)
+            self.expiration = p.get(4)
+            self.target_hash = p.getFixBytes(32)
+            self.signature = p.getFixBytes(64)
+            return self
+
+        def __eq__(self, other):
+            """
+            Tests if the other object is equivalent to this TACK
+
+            Returns False for every object that's not a TACK
+            """
+            if hasattr(other, 'public_key') and\
+                    hasattr(other, 'min_generation') and\
+                    hasattr(other, 'generation') and\
+                    hasattr(other, 'expiration') and\
+                    hasattr(other, 'target_hash') and\
+                    hasattr(other, 'signature'):
+                if self.public_key != other.public_key:
+                    return False
+                if self.min_generation != other.min_generation:
+                    return False
+                if self.generation != other.generation:
+                    return False
+                if self.expiration != other.expiration:
+                    return False
+                if self.target_hash != other.target_hash:
+                    return False
+                if self.signature != other.signature:
+                    return False
+                return True
+            else:
+                return False
+
+    def __init__(self):
+        """
+        Create an instance of TACKExtension
+
+        See also: L{create} and L{parse}
+        """
+
+        self.tacks = []
+        self.activation_flags = 0
+
+    @property
+    def ext_type(self):
+        """
+        Returns the type of TLS extension, in this case - 62208
+
+        @rtype: int
+        """
+        return ExtensionType.tack
+
+    @property
+    def ext_data(self):
+        """
+        Return the raw data encoding of the extension
+
+        @rtype: bytearray
+        """
+        w2 = Writer()
+        for t in self.tacks:
+            w2.bytes += t.write()
+
+        w = Writer()
+        w.add(len(w2.bytes), 2)
+        w.bytes += w2.bytes
+        w.add(self.activation_flags, 1)
+        return w.bytes
+
+    def create(self, tacks, activation_flags):
+        """
+        Initialize the insance of TACKExtension
+
+        @rtype: TACKExtension
+        """
+
+        self.tacks = tacks
+        self.activation_flags = activation_flags
+        return self
+
+    def parse(self, p):
+        """
+        Parse the extension from on the wire format
+
+        @type p: L{tlslite.util.codec.Parser}
+        @param p: data to be parsed
+
+        @rtype: L{TACKExtension}
+        """
+        self.tacks = []
+
+        p.startLengthCheck(2)
+        while not p.atLengthCheck():
+            tack = TACKExtension.TACK().parse(p)
+            self.tacks += [tack]
+        p.stopLengthCheck()
+        self.activation_flags = p.get(1)
+
+        return self
+
+TLSExtension._universal_extensions = { ExtensionType.server_name : SNIExtension,
         ExtensionType.cert_type : ClientCertTypeExtension,
         ExtensionType.srp : SRPExtension,
         ExtensionType.supports_npn : NPNExtension }
+
+TLSExtension._server_extensions = {
+        ExtensionType.cert_type : ServerCertTypeExtension,
+        ExtensionType.tack : TACKExtension }
