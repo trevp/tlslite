@@ -2,9 +2,10 @@
 # see LICENCE file for legal information regarding use of this file
 
 import unittest
-from tlslite.messages import ClientHello, ServerHello
+from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert
 from tlslite.utils.codec import Parser
-from tlslite.constants import CipherSuite, CertificateType
+from tlslite.constants import CipherSuite, CertificateType, ContentType, \
+        AlertLevel, AlertDescription
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension
 
@@ -376,6 +377,44 @@ class TestClientHello(unittest.TestCase):
                 b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'
                 )), list(client_hello.write()))
 
+    def test___str__(self):
+        client_hello = ClientHello().create((3,0), bytearray(4), bytearray(0),\
+                [])
+
+        self.assertEqual("client_hello,version(3.0),random(...),"\
+                "session ID(bytearray(b'')),cipher suites([]),"\
+                "compression methods([0])", str(client_hello))
+
+    def test___str___with_all_null_session_id(self):
+        client_hello = ClientHello().create((3,0), bytearray(4), bytearray(10),\
+                [])
+
+        self.assertEqual("client_hello,version(3.0),random(...),"\
+                "session ID(bytearray(b'\\x00'*10)),cipher suites([]),"\
+                "compression methods([0])", str(client_hello))
+
+    def test___str___with_extensions(self):
+        client_hello = ClientHello().create((3,0), bytearray(4), bytearray(0),\
+                [],  extensions=[TLSExtension().create(0, bytearray(b'\x00'))])
+
+        self.assertEqual("client_hello,version(3.0),random(...),"\
+                "session ID(bytearray(b'')),cipher suites([]),"\
+                "compression methods([0]),extensions(["\
+                "TLSExtension(ext_type=0, ext_data=bytearray(b'\\x00'), "\
+                "server_type=False)])",
+                str(client_hello))
+
+    def test___repr__(self):
+        client_hello = ClientHello().create((3,3), bytearray(1), bytearray(0),\
+                [], extensions=[TLSExtension().create(0, bytearray(0))])
+
+        self.assertEqual("ClientHello(ssl2=False, client_version=(3.3), "\
+                "random=bytearray(b'\\x00'), session_id=bytearray(b''), "\
+                "cipher_suites=[], compression_methods=[0], "\
+                "extensions=[TLSExtension(ext_type=0, "\
+                "ext_data=bytearray(b''), server_type=False)])",
+                repr(client_hello))
+
 class TestServerHello(unittest.TestCase):
     def test___init__(self):
         server_hello = ServerHello()
@@ -641,6 +680,108 @@ class TestServerHello(unittest.TestCase):
             # utf-8 endoding of 'http/1.1'
             b'\x68\x74\x74\x70\x2f\x31\x2e\x31'
             )), list(server_hello.write()))
+
+    def test___str__(self):
+        server_hello = ServerHello()
+        server_hello = server_hello.create(
+                (3,0),
+                bytearray(b'\x00'*32),
+                bytearray(b'\x01\x20'),
+                34500,
+                0,
+                None,
+                None)
+
+        self.assertEqual("server_hello,length(40),version(3.0),random(...),"\
+                "session ID(bytearray(b'\\x01 ')),cipher(0x86c4),"\
+                "compression method(0)",
+                str(server_hello))
+
+    def test___repr__(self):
+        server_hello = ServerHello()
+        server_hello = server_hello.create(
+                (3,0),
+                bytearray(b'\x00'*32),
+                bytearray(0),
+                34500,
+                0,
+                None,
+                None,
+                extensions=[])
+        self.maxDiff = None
+        self.assertEqual("ServerHello(server_version=(3.0), "\
+                "random=bytearray(b'\\x00\\x00"\
+                "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00"\
+                "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00"\
+                "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'), "\
+                "session_id=bytearray(b''), "\
+                "cipher_suite=34500, compression_method=0, _tack_ext=None, "\
+                "extensions=[])", repr(server_hello))
+
+class TestRecordHeader3(unittest.TestCase):
+    def test_type_name(self):
+        rh = RecordHeader3()
+        rh = rh.create((3,0), ContentType.application_data, 0)
+
+        self.assertEqual("application_data", rh.type_name)
+
+    def test___str__(self):
+        rh = RecordHeader3()
+        rh = rh.create((3,0), ContentType.handshake, 12)
+
+        self.assertEqual("SSLv3 record,version(3.0),content type(handshake)," +\
+                "length(12)", str(rh))
+
+    def test___str___with_invalid_content_type(self):
+        rh = RecordHeader3()
+        rh = rh.create((3,3), 12, 0)
+
+        self.assertEqual("SSLv3 record,version(3.3)," +\
+                "content type(unknown(12)),length(0)",
+                str(rh))
+
+    def test___repr__(self):
+        rh = RecordHeader3()
+        rh = rh.create((3,0), ContentType.application_data, 256)
+
+        self.assertEqual("RecordHeader3(type=23, version=(3.0), length=256)",
+                repr(rh))
+
+class TestAlert(unittest.TestCase):
+    def test_level_name(self):
+        alert = Alert().create(AlertDescription.record_overflow,
+                AlertLevel.fatal)
+
+        self.assertEqual("fatal", alert.level_name)
+
+    def test_level_name_with_wrong_level(self):
+        alert = Alert().create(AlertDescription.close_notify, 11)
+
+        self.assertEqual("unknown(11)", alert.level_name)
+
+    def test_description_name(self):
+        alert = Alert().create(AlertDescription.record_overflow,
+                AlertLevel.fatal)
+
+        self.assertEqual("record_overflow", alert.description_name)
+
+    def test_description_name_with_wrong_id(self):
+        alert = Alert().create(1)
+
+        self.assertEqual("unknown(1)", alert.description_name)
+
+    def test___str__(self):
+        alert = Alert().create(AlertDescription.record_overflow,
+                AlertLevel.fatal)
+
+        self.assertEqual("Alert, level:fatal, description:record_overflow",
+                str(alert))
+
+    def test___repr__(self):
+        alert = Alert().create(AlertDescription.record_overflow,
+                AlertLevel.fatal)
+
+        self.assertEqual("Alert(level=2, description=22)", repr(alert))
 
 if __name__ == '__main__':
     unittest.main()

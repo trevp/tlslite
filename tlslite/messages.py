@@ -48,6 +48,24 @@ class RecordHeader3(object):
         self.ssl2 = False
         return self
 
+    @property
+    def type_name(self):
+        matching = [x[0] for x in ContentType.__dict__.items()
+                if x[1] == self.type]
+        if len(matching) == 0:
+            return "unknown(" + str(self.type) + ")"
+        else:
+            return str(matching[0])
+
+    def __str__(self):
+        return "SSLv3 record,version({0[0]}.{0[1]}),"\
+                "content type({1}),length({2})".format(self.version,
+                        self.type_name, self.length)
+
+    def __repr__(self):
+        return "RecordHeader3(type={0}, version=({1[0]}.{1[1]}), length={2})".\
+                format(self.type, self.version, self.length)
+
 class RecordHeader2(object):
     def __init__(self):
         self.type = 0
@@ -89,6 +107,31 @@ class Alert(object):
         w.add(self.description, 1)
         return w.bytes
 
+    @property
+    def level_name(self):
+        matching = [x[0] for x in AlertLevel.__dict__.items()
+                if x[1] == self.level]
+        if len(matching) == 0:
+            return "unknown({0})".format(self.level)
+        else:
+            return str(matching[0])
+
+    @property
+    def description_name(self):
+        matching = [x[0] for x in AlertDescription.__dict__.items()
+                if x[1] == self.description]
+        if len(matching) == 0:
+            return "unknown({0})".format(self.description)
+        else:
+            return str(matching[0])
+
+    def __str__(self):
+        return "Alert, level:{0}, description:{1}".format(self.level_name,
+                self.description_name)
+
+    def __repr__(self):
+        return "Alert(level={0}, description={1})".format(self.level,
+                self.description)
 
 class HandshakeMsg(object):
     def __init__(self, handshakeType):
@@ -135,6 +178,41 @@ class ClientHello(HandshakeMsg):
         self.cipher_suites = []         # a list of 16-bit values
         self.compression_methods = []   # a list of 8-bit values
         self.extensions = None
+
+    def __str__(self):
+        """
+        Return human readable representation of Client Hello
+
+        @rtype: str
+        """
+
+        if self.session_id.count(bytearray(b'\x00')) == len(self.session_id)\
+            and len(self.session_id) != 0:
+            session = "bytearray(b'\\x00'*{0})".format(len(self.session_id))
+        else:
+            session = repr(self.session_id)
+        ret = "client_hello,version({0[0]}.{0[1]}),random(...),"\
+                "session ID({1!s}),cipher suites({2!r}),"\
+                "compression methods({3!r})".format(
+                        self.client_version, session,
+                        self.cipher_suites, self.compression_methods)
+
+        if self.extensions is not None:
+            ret += ",extensions({0!r})".format(self.extensions)
+
+        return ret
+
+    def __repr__(self):
+        """
+        Return machine readable representation of Client Hello
+
+        @rtype: str
+        """
+        return "ClientHello(ssl2={0}, client_version=({1[0]}.{1[1]}), "\
+                "random={2!r}, session_id={3!r}, cipher_suites={4!r}, "\
+                "compression_methods={5}, extensions={6})".format(\
+                self.ssl2, self.client_version, self.random, self.session_id,
+                self.cipher_suites, self.compression_methods, self.extensions)
 
     def getExtension(self, ext_type):
         """
@@ -503,6 +581,29 @@ class ServerHello(HandshakeMsg):
         self.compression_method = 0
         self._tack_ext = None
         self.extensions = None
+
+    def __str__(self):
+        base = "server_hello,length({0}),version({1[0]}.{1[1]}),random(...),"\
+                "session ID({2!r}),cipher({3:#x}),compression method({4})"\
+                .format(len(self.write())-4, self.server_version,
+                        self.session_id, self.cipher_suite,
+                        self.compression_method)
+
+        if self.extensions is None:
+            return base
+
+        ret = ",extensions["
+        ret += ",".join(repr(x) for x in self.extensions)
+        ret += "]"
+        return base + ret
+
+    def __repr__(self):
+        return "ServerHello(server_version=({0[0]}.{0[1]}), random={1!r}, "\
+                "session_id={2!r}, cipher_suite={3}, compression_method={4}, "\
+                "_tack_ext={5}, extensions={6!r})".format(\
+                self.server_version, self.random, self.session_id,
+                self.cipher_suite, self.compression_method, self._tack_ext,
+                self.extensions)
 
     def getExtension(self, ext_type):
         """Return extension of a given type, None if extension of given type

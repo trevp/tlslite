@@ -149,6 +149,15 @@ class TLSExtension(object):
         else:
             return False
 
+    def __repr__(self):
+        """ Output human readable representation of object
+
+        @rtype: str
+        """
+        return "TLSExtension(ext_type={0!r}, ext_data={1!r},"\
+                " server_type={2!r})".format(
+                        self.ext_type, self.ext_data, self.server_type)
+
 class SNIExtension(TLSExtension):
     """
     Class for handling Server Name Indication (server_name) extension from
@@ -201,6 +210,14 @@ class SNIExtension(TLSExtension):
         See also: L{create} and L{parse}.
         """
         self.server_names = None
+
+    def __repr__(self):
+        """
+        Return programmer-readable representation of extension
+
+        @rtype: str
+        """
+        return "SNIExtension(server_names={0!r})".format(self.server_names)
 
     def create(self, hostname=None, host_names=None, server_names=None):
         """
@@ -380,6 +397,14 @@ class ClientCertTypeExtension(TLSExtension):
 
         self.cert_types = None
 
+    def __repr__(self):
+        """ Return programmer-centric representation of extension
+
+        @rtype: str
+        """
+        return "ClientCertTypeExtension(cert_types={0!r})"\
+                .format(self.cert_types)
+
     @property
     def ext_type(self):
         """
@@ -461,6 +486,13 @@ class ServerCertTypeExtension(TLSExtension):
         """
         self.cert_type = None
 
+    def __repr__(self):
+        """ Return programmer-centric description of object
+
+        @rtype: str
+        """
+        return "ServerCertTypeExtension(cert_type={0!r})".format(self.cert_type)
+
     @property
     def ext_type(self):
         """
@@ -529,6 +561,14 @@ class SRPExtension(TLSExtension):
         """
 
         self.identity = None
+
+    def __repr__(self):
+        """
+        Return programmer-centric description of extension
+
+        @rtype: str
+        """
+        return "SRPExtension(identity={0!r})".format(self.identity)
 
     @property
     def ext_type(self):
@@ -615,6 +655,14 @@ class NPNExtension(TLSExtension):
 
         self.protocols = None
 
+    def __repr__(self):
+        """
+        Create programmer-readable version of representation
+
+        @rtype: str
+        """
+        return "NPNExtension(protocols={0!r})".format(self.protocols)
+
     @property
     def ext_type(self):
         """ Return the type of TLS extension, in this case - 13172
@@ -692,6 +740,19 @@ class TACKExtension(TLSExtension):
             self.expiration = 0
             self.target_hash = bytearray(32)
             self.signature = bytearray(64)
+
+        def __repr__(self):
+            """
+            Return programmmer readable representation of TACK object
+
+            @rtype: str
+            """
+            return "TACK(public_key={0!r}, min_generation={1!r}, "\
+                    "generation={2!r}, expiration={3!r}, target_hash={4!r}, "\
+                    "signature={5!r})".format(
+                            self.public_key, self.min_generation,
+                            self.generation, self.expiration, self.target_hash,
+                            self.signature)
 
         def create(self, public_key, min_generation, generation, expiration,
                 target_hash, signature):
@@ -784,6 +845,15 @@ class TACKExtension(TLSExtension):
 
         self.tacks = []
         self.activation_flags = 0
+
+    def __repr__(self):
+        """
+        Create a programmer readable representation of TACK extension
+
+        @rtype: str
+        """
+        return "TACKExtension(activation_flags={0!r}, tacks={1!r})".format(
+                self.activation_flags, self.tacks)
 
     @property
     def ext_type(self):
