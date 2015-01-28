@@ -687,7 +687,7 @@ class TLSRecordLayer(object):
         @rtype: generator
         @return: generator that will return 0 or 1 in case the socket is non
            blocking and would block and bytearray in case the read finished
-        @raise L{tlslite.errors.TLSAbruptCloseError}: when the socket closed
+        @raise tlslite.errors.TLSAbruptCloseError: when the socket closed
         """
 
         b = bytearray(0)
@@ -720,7 +720,7 @@ class TLSRecordLayer(object):
         Read a single record from socket, handles both SSLv2 and SSLv3 record
         layer
 
-        @type: generator
+        @rtype: generator
         @return: generator that returns 0 or 1 in case the read would be
             blocking or a tuple containing record header (object) and record
             data (bytearray) read from socket
