@@ -404,6 +404,17 @@ class TestClientHello(unittest.TestCase):
                 "server_type=False)])",
                 str(client_hello))
 
+    def test___repr__(self):
+        client_hello = ClientHello().create((3,3), bytearray(1), bytearray(0),\
+                [], extensions=[TLSExtension().create(0, bytearray(0))])
+
+        self.assertEqual("ClientHello(ssl2=False, client_version=(3.3), "\
+                "random=bytearray(b'\\x00'), session_id=bytearray(b''), "\
+                "cipher_suites=[], compression_methods=[0], "\
+                "extensions=[TLSExtension(ext_type=0, "\
+                "ext_data=bytearray(b''), server_type=False)])",
+                repr(client_hello))
+
 class TestServerHello(unittest.TestCase):
     def test___init__(self):
         server_hello = ServerHello()

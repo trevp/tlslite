@@ -202,6 +202,18 @@ class ClientHello(HandshakeMsg):
 
         return ret
 
+    def __repr__(self):
+        """
+        Return machine readable representation of Client Hello
+
+        @rtype: str
+        """
+        return "ClientHello(ssl2={0}, client_version=({1[0]}.{1[1]}), "\
+                "random={2!r}, session_id={3!r}, cipher_suites={4!r}, "\
+                "compression_methods={5}, extensions={6})".format(\
+                self.ssl2, self.client_version, self.random, self.session_id,
+                self.cipher_suites, self.compression_methods, self.extensions)
+
     def getExtension(self, ext_type):
         """
         Returns extension of given type if present, None otherwise
