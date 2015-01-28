@@ -129,6 +129,10 @@ class Alert(object):
         return "Alert, level:{0}, description:{1}".format(self.level_name,
                 self.description_name)
 
+    def __repr__(self):
+        return "Alert(level={0}, description={1})".format(self.level,
+                self.description)
+
 class HandshakeMsg(object):
     def __init__(self, handshakeType):
         self.contentType = ContentType.handshake

@@ -739,5 +739,11 @@ class TestAlert(unittest.TestCase):
         self.assertEqual("Alert, level:fatal, description:record_overflow",
                 str(alert))
 
+    def test___repr__(self):
+        alert = Alert().create(AlertDescription.record_overflow,
+                AlertLevel.fatal)
+
+        self.assertEqual("Alert(level=2, description=22)", repr(alert))
+
 if __name__ == '__main__':
     unittest.main()
