@@ -62,6 +62,10 @@ class RecordHeader3(object):
                 "content type({1}),length({2})".format(self.version,
                         self.type_name, self.length)
 
+    def __repr__(self):
+        return "RecordHeader3(type={0}, version=({1[0]}.{1[1]}), length={2})".\
+                format(self.type, self.version, self.length)
+
 class RecordHeader2(object):
     def __init__(self):
         self.type = 0

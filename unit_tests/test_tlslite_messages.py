@@ -664,5 +664,12 @@ class TestRecordHeader3(unittest.TestCase):
                 "content type(unknown(12)),length(0)",
                 str(rh))
 
+    def test___repr__(self):
+        rh = RecordHeader3()
+        rh = rh.create((3,0), ContentType.application_data, 256)
+
+        self.assertEqual("RecordHeader3(type=23, version=(3.0), length=256)",
+                repr(rh))
+
 if __name__ == '__main__':
     unittest.main()
