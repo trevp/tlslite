@@ -745,3 +745,118 @@ class TestTLSRecordLayer(unittest.TestCase):
             else: break
 
         self.assertEqual(bytearray(0), result)
+
+    def test__sockRecvRecord_with_SSL3_record(self):
+        mock_sock = MockSocket(bytearray(
+            b'\x16' +           # handshake protocol
+            b'\x03\x03' +       # version
+            b'\x00\x02' +       # length
+            b'\x00\x00'
+            ))
+
+        record_layer = TLSRecordLayer(mock_sock)
+
+        for result in record_layer._sockRecvRecord():
+            if result in (0,1):
+                raise Exception("blocking socket")
+            else: break
+
+        r, b = result
+
+        self.assertEqual(ContentType.handshake, r.type)
+        self.assertEqual((3,3), r.version)
+        self.assertEqual(2, r.length)
+        self.assertFalse(r.ssl2)
+        self.assertEqual(bytearray(2), b)
+
+    def test__sockRecvRecord_with_empty_SSL3_record(self):
+        mock_sock = MockSocket(bytearray(
+            b'\x16' +           # handshake protocol
+            b'\x03\x03' +       # version
+            b'\x00\x00'         # length
+            ))
+
+        record_layer = TLSRecordLayer(mock_sock)
+
+        for result in record_layer._sockRecvRecord():
+            if result in (0,1):
+                raise Exception("blocking socket")
+            else: break
+
+        r, b = result
+
+        self.assertEqual(ContentType.handshake, r.type)
+        self.assertEqual((3,3), r.version)
+        self.assertEqual(0, r.length)
+        self.assertFalse(r.ssl2)
+        self.assertEqual(bytearray(0), b)
+
+    def test__sockRecvRecord_with_non_complete_SSL3_record(self):
+        mock_sock = MockSocket(bytearray(
+            b'\x16' +           # handshake protocol
+            b'\x03\x03' +       # version
+            b'\x00\x04' +       # length
+            b'\x00\x00'         # just 2 out of 4 bytes of data
+            ))
+
+        record_layer = TLSRecordLayer(mock_sock)
+
+        for result in record_layer._sockRecvRecord():
+            break
+
+        self.assertEqual(0, result)
+
+    def test__sockRecvRecord_with_SSL2_record(self):
+        mock_sock = MockSocket(bytearray(
+            b'\x80' +           # header
+            b'\x04' +           # length
+            b'\x00'*4           # data
+            ))
+
+        record_layer = TLSRecordLayer(mock_sock)
+
+        for result in record_layer._sockRecvRecord():
+            if result in (0,1):
+                raise Exception("blocking socket")
+            else: break
+
+        r, b = result
+
+        self.assertEqual(ContentType.handshake, r.type)
+        self.assertEqual((2,0), r.version)
+        self.assertEqual(4, r.length)
+        self.assertTrue(r.ssl2)
+        self.assertEqual(bytearray(4), b)
+
+    def test__sockRecvRecord_with_empty_SSL2_record(self):
+        mock_sock = MockSocket(bytearray(
+            b'\x80' +           # header
+            b'\x00'             # length
+            ))
+
+        record_layer = TLSRecordLayer(mock_sock)
+
+        for result in record_layer._sockRecvRecord():
+            if result in (0,1):
+                raise Exception("blocking socket")
+            else: break
+
+        r, b = result
+
+        self.assertEqual(ContentType.handshake, r.type)
+        self.assertEqual((2,0), r.version)
+        self.assertEqual(0, r.length)
+        self.assertTrue(r.ssl2)
+        self.assertEqual(bytearray(0), b)
+
+    def test__sockRecvRecord_with_non_complete_SSL2_record(self):
+        mock_sock = MockSocket(bytearray(
+            b'\x80'            # header
+            ))
+
+        record_layer = TLSRecordLayer(mock_sock)
+
+        for result in record_layer._sockRecvRecord():
+            break
+
+        self.assertEqual(0, result)

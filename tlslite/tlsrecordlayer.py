@@ -714,6 +714,67 @@ class TLSRecordLayer(object):
                 yield b
                 return
 
+    def _sockRecvRecord(self):
+        """
+        Read a single record from socket, handles both SSLv2 and SSLv3 record
+        layer
+
+        @type: generator
+        @return: generator that returns 0 or 1 in case the read would be
+            blocking or a tuple containing record header (object) and record
+            data (bytearray) read from socket
+        """
+
+        #Read the next record header
+        b = bytearray(0)
+        ssl2 = False
+        for result in self._sockRecvAll(1):
+            if result in (0,1): yield result
+            else: break
+        b += result
+
+        if b[0] in ContentType.all:
+            ssl2 = False
+            # SSLv3 record layer header is 5 bytes long, we already read 1
+            for result in self._sockRecvAll(4):
+                if result in (0,1): yield result
+                else: break
+            b += result
+        # XXX this should be 'b[0] & 128', otherwise hello messages longer than
+        # 127 bytes won't be properly parsed
+        elif b[0] == 128:
+            ssl2 = True
+            # in SSLv2 we need to read 2 bytes in total to know the size of
+            # header, we already read 1
+            for result in self._sockRecvAll(1):
+                if result in (0,1): yield result
+                else: break
+            b += result
+        else:
+            raise SyntaxError()
+
+        #Parse the record header
+        if ssl2:
+            r = RecordHeader2().parse(Parser(b))
+        else:
+            r = RecordHeader3().parse(Parser(b))
+
+        #Check the record header fields
+        # 18432 = 2**14 (basic record size limit) + 1024 (maximum compression
+        # overhead) + 1024 (maximum encryption overhead)
+        if r.length > 18432:
+            for result in self._sendError(AlertDescription.record_overflow):
+                yield result
+
+        #Read the record contents
+        b = bytearray(0)
+        for result in self._sockRecvAll(r.length):
+            if result in (0,1): yield result
+            else: break
+        b += result
+
+        yield (r, b)
+
     def _getMsg(self, expectedType, secondaryType=None, constructorType=None):
         try:
             if not isinstance(expectedType, tuple):
@@ -884,53 +945,12 @@ class TLSRecordLayer(object):
             return
 
         #Otherwise...
-        #Read the next record header
-        b = bytearray(0)
-        ssl2 = False
-        for result in self._sockRecvAll(1):
+        #read the next record
+        for result in self._sockRecvRecord():
             if result in (0,1): yield result
             else: break
-        b += result
 
-        if b[0] in ContentType.all:
-            ssl2 = False
-            # SSLv3 record layer header is 5 bytes long, we already read 1
-            for result in self._sockRecvAll(4):
-                if result in (0,1): yield result
-                else: break
-            b += result
-        # XXX this should be 'b[0] & 128', otherwise hello messages longer than
-        # 127 bytes won't be properly parsed
-        elif b[0] == 128:
-            ssl2 = True
-            # in SSLv2 we need to read 2 bytes in total to know the size of
-            # header, we already read 1
-            for result in self._sockRecvAll(1):
-                if result in (0,1): yield result
-                else: break
-            b += result
-        else:
-            raise SyntaxError()
-
-        #Parse the record header
-        if ssl2:
-            r = RecordHeader2().parse(Parser(b))
-        else:
-            r = RecordHeader3().parse(Parser(b))
-
-        #Check the record header fields
-        # 18432 = 2**14 (basic record size limit) + 1024 (maximum compression
-        # overhead) + 1024 (maximum encryption overhead)
-        if r.length > 18432:
-            for result in self._sendError(AlertDescription.record_overflow):
-                yield result
-
-        #Read the record contents
-        b = bytearray(0)
-        for result in self._sockRecvAll(r.length):
-            if result in (0,1): yield result
-            else: break
-        b += result
+        r, b = result
 
         #Check the record header fields (2)
         #We do this after reading the contents from the socket, so that
