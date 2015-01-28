@@ -138,11 +138,7 @@ class TestTLSRecordLayer(unittest.TestCase):
         gen = record_layer._getMsg(ContentType.handshake,
                 HandshakeType.server_hello)
 
-        # XXX record layer doesn't handle fragmented hello messages
-        with self.assertRaises(TLSLocalAlert):
-            message = next(gen)
-
-        return
+        message = next(gen)
 
         if message in (0,1):
             raise Exception("blocking")
@@ -176,9 +172,8 @@ class TestTLSRecordLayer(unittest.TestCase):
         gen = record_layer._getMsg(ContentType.handshake,
                 HandshakeType.server_hello)
 
-        # XXX decoder handles messages over the 2**14 limit!
-        # with self.assertRaises(TLSLocalAlert):
-        message = next(gen)
+        with self.assertRaises(TLSLocalAlert):
+            message = next(gen)
 
 
     def test_full_connection_with_RSA_kex(self):
@@ -690,10 +685,6 @@ class TestTLSRecordLayer(unittest.TestCase):
         self.assertEqual(ContentType.handshake, header.type)
         self.assertEqual(42, len(p.bytes))
         self.assertEqual(HandshakeType.server_hello, p.bytes[0])
-
-        # XXX generator stops as soon as a message was read
-        self.assertEqual(1, len(results))
-        return
 
         header, p = results[1]
 
