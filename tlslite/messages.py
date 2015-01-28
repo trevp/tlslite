@@ -107,6 +107,27 @@ class Alert(object):
         w.add(self.description, 1)
         return w.bytes
 
+    @property
+    def level_name(self):
+        matching = [x[0] for x in AlertLevel.__dict__.items()
+                if x[1] == self.level]
+        if len(matching) == 0:
+            return "unknown({0})".format(self.level)
+        else:
+            return str(matching[0])
+
+    @property
+    def description_name(self):
+        matching = [x[0] for x in AlertDescription.__dict__.items()
+                if x[1] == self.description]
+        if len(matching) == 0:
+            return "unknown({0})".format(self.description)
+        else:
+            return str(matching[0])
+
+    def __str__(self):
+        return "Alert, level:{0}, description:{1}".format(self.level_name,
+                self.description_name)
 
 class HandshakeMsg(object):
     def __init__(self, handshakeType):

@@ -2,9 +2,10 @@
 # see LICENCE file for legal information regarding use of this file
 
 import unittest
-from tlslite.messages import ClientHello, ServerHello, RecordHeader3
+from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert
 from tlslite.utils.codec import Parser
-from tlslite.constants import CipherSuite, CertificateType, ContentType
+from tlslite.constants import CipherSuite, CertificateType, ContentType, \
+        AlertLevel, AlertDescription
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension
 
@@ -707,6 +708,36 @@ class TestRecordHeader3(unittest.TestCase):
 
         self.assertEqual("RecordHeader3(type=23, version=(3.0), length=256)",
                 repr(rh))
+
+class TestAlert(unittest.TestCase):
+    def test_level_name(self):
+        alert = Alert().create(AlertDescription.record_overflow,
+                AlertLevel.fatal)
+
+        self.assertEqual("fatal", alert.level_name)
+
+    def test_level_name_with_wrong_level(self):
+        alert = Alert().create(AlertDescription.close_notify, 11)
+
+        self.assertEqual("unknown(11)", alert.level_name)
+
+    def test_description_name(self):
+        alert = Alert().create(AlertDescription.record_overflow,
+                AlertLevel.fatal)
+
+        self.assertEqual("record_overflow", alert.description_name)
+
+    def test_description_name_with_wrong_id(self):
+        alert = Alert().create(1)
+
+        self.assertEqual("unknown(1)", alert.description_name)
+
+    def test___str__(self):
+        alert = Alert().create(AlertDescription.record_overflow,
+                AlertLevel.fatal)
+
+        self.assertEqual("Alert, level:fatal, description:record_overflow",
+                str(alert))
 
 if __name__ == '__main__':
     unittest.main()
