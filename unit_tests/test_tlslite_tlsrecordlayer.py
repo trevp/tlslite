@@ -642,8 +642,8 @@ class TestTLSRecordLayer(unittest.TestCase):
 
         record_layer = TLSRecordLayer(mock_sock)
 
-        # XXX code tries to read zero length data from socket
-        with self.assertRaises(TLSAbruptCloseError):
+        # empty handshake messages are disallowed by standard
+        with self.assertRaises(TLSLocalAlert):
             for result in record_layer._getNextRecord():
                 if result in (0,1):
                     raise Exception("blocking socket")
@@ -708,3 +708,40 @@ class TestTLSRecordLayer(unittest.TestCase):
         self.assertEqual(ContentType.handshake, header.type)
         self.assertEqual(4, len(p.bytes))
         self.assertEqual(HandshakeType.server_hello_done, p.bytes[0])
+
+    def test__sockRecvAll(self):
+
+        mock_sock = MockSocket(bytearray(8), maxRet=1)
+
+        record_layer = TLSRecordLayer(mock_sock)
+
+        for result in record_layer._sockRecvAll(4):
+            if result in (0,1):
+                raise Exception("blocking socket")
+            else: break
+
+        self.assertEqual(4, len(result))
+
+        for result in record_layer._sockRecvAll(4):
+            if result in (0,1):
+                raise Exception("blocking socket")
+            else: break
+
+        self.assertEqual(4, len(result))
+
+        for result in record_layer._sockRecvAll(1):
+            break
+
+        self.assertEqual(0, result)
+
+    def test__sockRecvAll_with_empty_read(self):
+        mock_sock = MockSocket(bytearray(4))
+
+        record_layer = TLSRecordLayer(mock_sock)
+
+        for result in record_layer._sockRecvAll(0):
+            if result in (0,1):
+                raise Exception("blocking socket")
+            else: break
+
+        self.assertEqual(bytearray(0), result)
