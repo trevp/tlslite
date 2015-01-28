@@ -537,6 +537,14 @@ class ServerHello(HandshakeMsg):
         ret += "]"
         return base + ret
 
+    def __repr__(self):
+        return "ServerHello(server_version=({0[0]}.{0[1]}), random={1!r}, "\
+                "session_id={2!r}, cipher_suite={3}, compression_method={4}, "\
+                "_tack_ext={5}, extensions={6!r})".format(\
+                self.server_version, self.random, self.session_id,
+                self.cipher_suite, self.compression_method, self._tack_ext,
+                self.extensions)
+
     def getExtension(self, ext_type):
         """Return extension of a given type, None if extension of given type
         is not present

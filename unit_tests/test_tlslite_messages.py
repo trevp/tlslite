@@ -658,6 +658,27 @@ class TestServerHello(unittest.TestCase):
                 "compression method(0)",
                 str(server_hello))
 
+    def test___repr__(self):
+        server_hello = ServerHello()
+        server_hello = server_hello.create(
+                (3,0),
+                bytearray(b'\x00'*32),
+                bytearray(0),
+                34500,
+                0,
+                None,
+                None,
+                extensions=[])
+        self.maxDiff = None
+        self.assertEqual("ServerHello(server_version=(3.0), "\
+                "random=bytearray(b'\\x00\\x00"\
+                "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00"\
+                "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00"\
+                "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00'), "\
+                "session_id=bytearray(b''), "\
+                "cipher_suite=34500, compression_method=0, _tack_ext=None, "\
+                "extensions=[])", repr(server_hello))
+
 class TestRecordHeader3(unittest.TestCase):
     def test_type_name(self):
         rh = RecordHeader3()
