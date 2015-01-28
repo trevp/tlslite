@@ -160,8 +160,8 @@ class ClientHello(HandshakeMsg):
         """
         Adds extension to internal list of extensions
 
-        @type ext_type: TLSExtension
-        @param ext_type: extension object to add to list
+        @type ext: TLSExtension
+        @param ext: extension object to add to list
         """
         if self.extensions is None:
             self.extensions = []
