@@ -5,11 +5,12 @@
 import socket
 import errno
 class MockSocket(socket.socket):
-    def __init__(self, buf):
+    def __init__(self, buf, maxRet=None):
         self.index = 0
         self.buf = buf
         self.sent = []
         self.closed = False
+        self.maxRet = maxRet
 
     def __repr__(self):
         return "MockSocket(index={0}, buf={1!r}, sent={2!r})".format(
@@ -20,6 +21,8 @@ class MockSocket(socket.socket):
             raise ValueError("Read from closed socket")
         if size == 0:
             return bytearray(0)
+        if self.maxRet is not None and self.maxRet < size:
+            size = self.maxRet
         if len(self.buf[self.index:]) == 0:
             raise socket.error(errno.EWOULDBLOCK)
         elif len(self.buf[self.index:]) < size:

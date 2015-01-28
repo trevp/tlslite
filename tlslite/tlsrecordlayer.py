@@ -679,6 +679,40 @@ class TLSRecordLayer(object):
             s = s[bytesSent:]
             yield 1
 
+    def _sockRecvAll(self, length):
+        """
+        Read exactly the amount of bytes specified in L{length} from raw socket.
+
+        @rtype: generator
+        @return: generator that will return 0 or 1 in case the socket is non
+           blocking and would block and bytearray in case the read finished
+        @raise L{tlslite.errors.TLSAbruptCloseError}: when the socket closed
+        """
+
+        b = bytearray(0)
+
+        if length == 0:
+            yield b
+            return
+
+        while 1:
+            try:
+                s = self.sock.recv(length - len(b))
+            except socket.error as why:
+                if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
+                    yield 0
+                    continue
+                else:
+                    raise
+
+            #if the connection closed, raise socket error
+            if len(s) == 0:
+                raise TLSAbruptCloseError()
+
+            b += bytearray(s)
+            if len(b) == length:
+                yield b
+                return
 
     def _getMsg(self, expectedType, secondaryType=None, constructorType=None):
         try:
@@ -852,34 +886,31 @@ class TLSRecordLayer(object):
         #Otherwise...
         #Read the next record header
         b = bytearray(0)
-        recordHeaderLength = 1
         ssl2 = False
-        while 1:
-            try:
-                s = self.sock.recv(recordHeaderLength-len(b))
-            except socket.error as why:
-                if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
-                    yield 0
-                    continue
-                else:
-                    raise
+        for result in self._sockRecvAll(1):
+            if result in (0,1): yield result
+            else: break
+        b += result
 
-            #If the connection was abruptly closed, raise an error
-            if len(s)==0:
-                raise TLSAbruptCloseError()
-
-            b += bytearray(s)
-            if len(b)==1:
-                if b[0] in ContentType.all:
-                    ssl2 = False
-                    recordHeaderLength = 5
-                elif b[0] == 128:
-                    ssl2 = True
-                    recordHeaderLength = 2
-                else:
-                    raise SyntaxError()
-            if len(b) == recordHeaderLength:
-                break
+        if b[0] in ContentType.all:
+            ssl2 = False
+            # SSLv3 record layer header is 5 bytes long, we already read 1
+            for result in self._sockRecvAll(4):
+                if result in (0,1): yield result
+                else: break
+            b += result
+        # XXX this should be 'b[0] & 128', otherwise hello messages longer than
+        # 127 bytes won't be properly parsed
+        elif b[0] == 128:
+            ssl2 = True
+            # in SSLv2 we need to read 2 bytes in total to know the size of
+            # header, we already read 1
+            for result in self._sockRecvAll(1):
+                if result in (0,1): yield result
+                else: break
+            b += result
+        else:
+            raise SyntaxError()
 
         #Parse the record header
         if ssl2:
@@ -888,29 +919,18 @@ class TLSRecordLayer(object):
             r = RecordHeader3().parse(Parser(b))
 
         #Check the record header fields
+        # 18432 = 2**14 (basic record size limit) + 1024 (maximum compression
+        # overhead) + 1024 (maximum encryption overhead)
         if r.length > 18432:
             for result in self._sendError(AlertDescription.record_overflow):
                 yield result
 
         #Read the record contents
         b = bytearray(0)
-        while 1:
-            try:
-                s = self.sock.recv(r.length - len(b))
-            except socket.error as why:
-                if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
-                    yield 0
-                    continue
-                else:
-                    raise
-
-            #If the connection is closed, raise a socket error
-            if len(s)==0:
-                    raise TLSAbruptCloseError()
-
-            b += bytearray(s)
-            if len(b) == r.length:
-                break
+        for result in self._sockRecvAll(r.length):
+            if result in (0,1): yield result
+            else: break
+        b += result
 
         #Check the record header fields (2)
         #We do this after reading the contents from the socket, so that
