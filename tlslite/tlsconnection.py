@@ -23,7 +23,109 @@ from .messages import *
 from .mathtls import *
 from .handshakesettings import HandshakeSettings
 from .utils.tackwrapper import *
+from .utils.rsakey import RSAKey
 
+class KeyExchange(object):
+    def __init__(self, cipherSuite, clientHello, serverHello, privateKey):
+        """
+        Initializes the KeyExchange. privateKey is the signing private key.
+        """
+        self.cipherSuite = cipherSuite
+        self.clientHello = clientHello
+        self.serverHello = serverHello
+        self.privateKey = privateKey
+
+    def makeServerKeyExchange():
+        """
+        Returns a ServerKeyExchange object for the server's initial leg in the
+        handshake. If the key exchange method does not send ServerKeyExchange
+        (e.g. RSA), it returns None.
+        """
+        raise NotImplementedError()
+
+    def processClientKeyExchange(clientKeyExchange):
+        """
+        Processes the client's ClientKeyExchange message and returns the
+        premaster secret. Raises TLSLocalAlert on error.
+        """
+        raise NotImplementedError()
+
+class RSAKeyExchange(KeyExchange):
+    def makeServerKeyExchange(self):
+        return None
+
+    def processClientKeyExchange(self, clientKeyExchange):
+        premasterSecret = self.privateKey.decrypt(\
+            clientKeyExchange.encryptedPreMasterSecret)
+
+        # On decryption failure randomize premaster secret to avoid
+        # Bleichenbacher's "million message" attack
+        randomPreMasterSecret = getRandomBytes(48)
+        if not premasterSecret:
+            premasterSecret = randomPreMasterSecret
+        elif len(premasterSecret)!=48:
+            premasterSecret = randomPreMasterSecret
+        else:
+            versionCheck = (premasterSecret[0], premasterSecret[1])
+            if versionCheck != self.clientHello.client_version:
+                #Tolerate buggy IE clients
+                if versionCheck != self.serverHello.server_version:
+                    premasterSecret = randomPreMasterSecret
+        return premasterSecret
+
+def _hexStringToNumber(s):
+    s = s.replace(" ", "").replace("\n", "")
+    if len(s) % 2 != 0:
+        raise ValueError("Length is not even")
+    return bytesToNumber(bytearray(s.decode("hex")))
+
+class DHE_RSAKeyExchange(KeyExchange):
+    # 2048-bit MODP Group (RFC 3526, Section 3)
+    dh_p = _hexStringToNumber("""
+FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1
+29024E08 8A67CC74 020BBEA6 3B139B22 514A0879 8E3404DD
+EF9519B3 CD3A431B 302B0A6D F25F1437 4FE1356D 6D51C245
+E485B576 625E7EC6 F44C42E9 A637ED6B 0BFF5CB6 F406B7ED
+EE386BFB 5A899FA5 AE9F2411 7C4B1FE6 49286651 ECE45B3D
+C2007CB8 A163BF05 98DA4836 1C55D39A 69163FA8 FD24CF5F
+83655D23 DCA3AD96 1C62F356 208552BB 9ED52907 7096966D
+670C354E 4ABC9804 F1746C08 CA18217C 32905E46 2E36CE3B
+E39E772C 180E8603 9B2783A2 EC07A28F B5C55DF0 6F4C52C9
+DE2BCBF6 95581718 3995497C EA956AE5 15D22618 98FA0510
+15728E5A 8AACAA68 FFFFFFFF FFFFFFFF""")
+    dh_g = 2
+
+    # RFC 3526, Section 8.
+    strength = 160
+
+    def makeServerKeyExchange(self):
+        # Per RFC 3526, Section 1, the exponent should have double the entropy
+        # of the strength of the curve.
+        self.dh_Xs = bytesToNumber(getRandomBytes(self.strength * 2 / 8))
+        dh_Ys = powMod(self.dh_g, self.dh_Xs, self.dh_p)
+
+        version = self.serverHello.server_version
+        serverKeyExchange = ServerKeyExchange(self.cipherSuite, version)
+        serverKeyExchange.createDH(self.dh_p, self.dh_g, dh_Ys)
+        hashBytes = serverKeyExchange.hash(self.clientHello.random,
+                                           self.serverHello.random)
+        if version >= (3,3):
+            # TODO: Signature algorithm negotiation not supported.
+            hashBytes = RSAKey.addPKCS1SHA1Prefix(hashBytes)
+        serverKeyExchange.signature = self.privateKey.sign(hashBytes)
+        return serverKeyExchange
+
+    def processClientKeyExchange(self, clientKeyExchange):
+        dh_Yc = clientKeyExchange.dh_Yc
+
+        # First half of RFC 2631, Section 2.1.5. Validate the client's public
+        # key.
+        if not 2 <= dh_Yc <= self.dh_p - 1:
+            raise TLSLocalAlert(AlertDescription.illegal_parameter,
+                                "Invalid dh_Yc value")
+
+        S = powMod(dh_Yc, self.dh_Xs, self.dh_p)
+        return numberToByteArray(S)
 
 class TLSConnection(TLSRecordLayer):
     """
@@ -500,6 +602,8 @@ class TLSConnection(TLSRecordLayer):
         if srpParams:
             cipherSuites += CipherSuite.getSrpAllSuites(settings)
         elif certParams:
+            # TODO: Client DHE_RSA not supported.
+            # cipherSuites += CipherSuite.getDheCertSuites(settings)
             cipherSuites += CipherSuite.getCertSuites(settings)
         elif anonParams:
             cipherSuites += CipherSuite.getAnonSuites(settings)
@@ -1166,10 +1270,23 @@ class TLSConnection(TLSRecordLayer):
                 else: break
             premasterSecret = result
 
-        # Perform the RSA key exchange
-        elif cipherSuite in CipherSuite.certSuites:
+        # Perform a certificate-based key exchange
+        elif (cipherSuite in CipherSuite.certSuites or
+              cipherSuite in CipherSuite.dheCertSuites):
+            if cipherSuite in CipherSuite.certSuites:
+                keyExchange = RSAKeyExchange(cipherSuite,
+                                             clientHello,
+                                             serverHello,
+                                             privateKey)
+            elif cipherSuite in CipherSuite.dheCertSuites:
+                keyExchange = DHE_RSAKeyExchange(cipherSuite,
+                                                 clientHello,
+                                                 serverHello,
+                                                 privateKey)
+            else:
+                assert(False)
             for result in self._serverCertKeyExchange(clientHello, serverHello, 
-                                        certChain, privateKey,
+                                        certChain, keyExchange,
                                         reqCert, reqCAs, cipherSuite,
                                         settings):
                 if result in (0,1): yield result
@@ -1229,6 +1346,7 @@ class TLSConnection(TLSRecordLayer):
                     CipherSuite.getSrpCertSuites(settings)
             cipherSuites += CipherSuite.getSrpSuites(settings)
         elif certChain:
+            cipherSuites += CipherSuite.getDheCertSuites(settings)
             cipherSuites += CipherSuite.getCertSuites(settings)
         elif anon:
             cipherSuites += CipherSuite.getAnonSuites(settings)
@@ -1392,7 +1510,7 @@ class TLSConnection(TLSRecordLayer):
         B = (powMod(g, b, N) + (k*v)) % N
 
         #Create ServerKeyExchange, signing it if necessary
-        serverKeyExchange = ServerKeyExchange(cipherSuite)
+        serverKeyExchange = ServerKeyExchange(cipherSuite, self.version)
         serverKeyExchange.createSRP(N, g, s, B)
         if cipherSuite in CipherSuite.srpCertSuites:
             hashBytes = serverKeyExchange.hash(clientHello.random,
@@ -1440,11 +1558,11 @@ class TLSConnection(TLSRecordLayer):
 
 
     def _serverCertKeyExchange(self, clientHello, serverHello, 
-                                serverCertChain, privateKey,
+                                serverCertChain, keyExchange,
                                 reqCert, reqCAs, cipherSuite,
                                 settings):
-        #Send ServerHello, Certificate[, CertificateRequest],
-        #ServerHelloDone
+        #Send ServerHello, Certificate[, ServerKeyExchange]
+        #[, CertificateRequest], ServerHelloDone
         msgs = []
 
         # If we verify a client cert chain, return it
@@ -1452,6 +1570,9 @@ class TLSConnection(TLSRecordLayer):
 
         msgs.append(serverHello)
         msgs.append(Certificate(CertificateType.x509).create(serverCertChain))
+        serverKeyExchange = keyExchange.makeServerKeyExchange()
+        if serverKeyExchange is not None:
+            msgs.append(serverKeyExchange)
         if reqCert and reqCAs:
             msgs.append(CertificateRequest().create(\
                 [ClientCertificateType.rsa_sign], reqCAs))
@@ -1510,21 +1631,13 @@ class TLSConnection(TLSRecordLayer):
             else: break
         clientKeyExchange = result
 
-        #Decrypt ClientKeyExchange
-        premasterSecret = privateKey.decrypt(\
-            clientKeyExchange.encryptedPreMasterSecret)
-
-        # On decryption failure randomize premaster secret to avoid
-        # Bleichenbacher's "million message" attack
-        randomPreMasterSecret = getRandomBytes(48)
-        versionCheck = (premasterSecret[0], premasterSecret[1])
-        if not premasterSecret:
-            premasterSecret = randomPreMasterSecret
-        elif len(premasterSecret)!=48:
-            premasterSecret = randomPreMasterSecret
-        elif versionCheck != clientHello.client_version:
-            if versionCheck != self.version: #Tolerate buggy IE clients
-                premasterSecret = randomPreMasterSecret
+        #Process ClientKeyExchange
+        try:
+            premasterSecret = \
+                keyExchange.processClientKeyExchange(clientKeyExchange)
+        except TLSLocalAlert, alert:
+            for result in self._sendError(alert.description, alert.message):
+                yield result
 
         #Get and check CertificateVerify, if relevant
         if clientCertChain:
@@ -1572,7 +1685,7 @@ class TLSConnection(TLSRecordLayer):
         dh_Ys = powMod(dh_g, dh_Xs, dh_p)
 
         #Create ServerKeyExchange
-        serverKeyExchange = ServerKeyExchange(cipherSuite)
+        serverKeyExchange = ServerKeyExchange(cipherSuite, self.version)
         serverKeyExchange.createDH(dh_p, dh_g, dh_Ys)
         
         #Send ServerHello[, Certificate], ServerKeyExchange,
