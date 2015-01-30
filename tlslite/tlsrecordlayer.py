@@ -592,9 +592,9 @@ class TLSRecordLayer(object):
                     b = self.fixedIVBlock + b
 
                 #Add padding: b = b+ (macBytes + paddingBytes)
-                currentLength = len(b) + len(macBytes) + 1
+                currentLength = len(b) + len(macBytes)
                 blockLength = self._writeState.encContext.block_size
-                paddingLength = blockLength-(currentLength % blockLength)
+                paddingLength = blockLength - 1 - (currentLength % blockLength)
 
                 paddingBytes = bytearray([paddingLength] * (paddingLength+1))
                 if self.fault == Fault.badPadding:
