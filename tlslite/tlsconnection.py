@@ -968,7 +968,7 @@ class TLSConnection(TLSRecordLayer):
                         sessionCache=None, settings=None, checker=None,
                         reqCAs = None, 
                         tacks=None, activationFlags=0,
-                        nextProtos=None, anon=False):
+                        nextProtos=None, anon=False, fallbackSCSV=False):
         """Perform a handshake in the role of server.
 
         This function performs an SSL or TLS handshake.  Depending on
@@ -1037,6 +1037,11 @@ class TLSConnection(TLSRecordLayer):
         clients through the Next-Protocol Negotiation Extension, 
         if they support it.
 
+        @type fallbackSCSV: bool
+        @param fallbackSCSV: if true, the server will implement
+        TLS_FALLBACK_SCSV and thus reject connections using less than the
+        server's maximum TLS version that include this cipher suite.
+
         @raise socket.error: If a socket error occurs.
         @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
         without a preceding alert.
@@ -1048,7 +1053,7 @@ class TLSConnection(TLSRecordLayer):
                 certChain, privateKey, reqCert, sessionCache, settings,
                 checker, reqCAs, 
                 tacks=tacks, activationFlags=activationFlags, 
-                nextProtos=nextProtos, anon=anon):
+                nextProtos=nextProtos, anon=anon, fallbackSCSV=fallbackSCSV):
             pass
 
 
@@ -1057,7 +1062,7 @@ class TLSConnection(TLSRecordLayer):
                              sessionCache=None, settings=None, checker=None,
                              reqCAs=None, 
                              tacks=None, activationFlags=0,
-                             nextProtos=None, anon=False
+                             nextProtos=None, anon=False, fallbackSCSV=False
                              ):
         """Start a server handshake operation on the TLS connection.
 
@@ -1076,7 +1081,8 @@ class TLSConnection(TLSRecordLayer):
             sessionCache=sessionCache, settings=settings, 
             reqCAs=reqCAs, 
             tacks=tacks, activationFlags=activationFlags, 
-            nextProtos=nextProtos, anon=anon)
+            nextProtos=nextProtos, anon=anon,
+            fallbackSCSV=fallbackSCSV)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
@@ -1085,7 +1091,7 @@ class TLSConnection(TLSRecordLayer):
                              certChain, privateKey, reqCert, sessionCache,
                              settings, reqCAs, 
                              tacks, activationFlags, 
-                             nextProtos, anon):
+                             nextProtos, anon, fallbackSCSV):
 
         self._handshakeStart(client=False)
 
@@ -1117,7 +1123,7 @@ class TLSConnection(TLSRecordLayer):
         # Handle ClientHello and resumption
         for result in self._serverGetClientHello(settings, certChain,\
                                             verifierDB, sessionCache,
-                                            anon):
+                                            anon, fallbackSCSV):
             if result in (0,1): yield result
             elif result == None:
                 self._handshakeDone(resumed=True)                
@@ -1214,7 +1220,7 @@ class TLSConnection(TLSRecordLayer):
 
 
     def _serverGetClientHello(self, settings, certChain, verifierDB,
-                                sessionCache, anon):
+                                sessionCache, anon, fallbackSCSV):
         #Initialize acceptable cipher suites
         cipherSuites = []
         if verifierDB:
@@ -1252,6 +1258,14 @@ class TLSConnection(TLSRecordLayer):
         #If client's version is too high, propose my highest version
         elif clientHello.client_version > settings.maxVersion:
             self.version = settings.maxVersion
+
+        #Detect if the client performed an inappropriate fallback.
+        elif fallbackSCSV and clientHello.client_version < settings.maxVersion:
+            self.version = clientHello.client_version
+            if CipherSuite.TLS_FALLBACK_SCSV in clientHello.cipher_suites:
+                for result in self._sendError(\
+                        AlertDescription.inappropriate_fallback):
+                    yield result
 
         else:
             #Set the version to the client's version
