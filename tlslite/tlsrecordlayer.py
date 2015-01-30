@@ -761,7 +761,8 @@ class TLSRecordLayer(object):
                 elif subType == HandshakeType.certificate_verify:
                     yield CertificateVerify(self.version).parse(p)
                 elif subType == HandshakeType.server_key_exchange:
-                    yield ServerKeyExchange(constructorType).parse(p)
+                    yield ServerKeyExchange(constructorType,
+                                            self.version).parse(p)
                 elif subType == HandshakeType.server_hello_done:
                     yield ServerHelloDone().parse(p)
                 elif subType == HandshakeType.client_key_exchange:

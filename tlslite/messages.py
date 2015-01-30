@@ -946,9 +946,13 @@ class ServerKeyExchange(HandshakeMsg):
     @cvar dh_Ys: FFDH protocol server key share
     @type signature: bytearray
     @cvar signature: signature performed over the parameters by server
+    @type hashAlg: int
+    @cvar hashAlg: id of hash algorithm used for signature
+    @type signAlg: int
+    @cvar signAlg: id of signature algorithm used for signature
     """
 
-    def __init__(self, cipherSuite):
+    def __init__(self, cipherSuite, version):
         """
         Initialise Server Key Exchange for reading or writing
 
@@ -957,6 +961,7 @@ class ServerKeyExchange(HandshakeMsg):
         """
         HandshakeMsg.__init__(self, HandshakeType.server_key_exchange)
         self.cipherSuite = cipherSuite
+        self.version = version
         self.srp_N = 0
         self.srp_g = 0
         self.srp_s = bytearray(0)
@@ -965,7 +970,11 @@ class ServerKeyExchange(HandshakeMsg):
         self.dh_p = 0
         self.dh_g = 0
         self.dh_Ys = 0
+        # signature for certificate authenticated ciphersuites
         self.signature = bytearray(0)
+        # signature hash algorithm and signing algorithm for TLSv1.2
+        self.hashAlg = 0
+        self.signAlg = 0
 
     def createSRP(self, srp_N, srp_g, srp_s, srp_B):
         """Set SRP protocol parameters"""
@@ -994,16 +1003,23 @@ class ServerKeyExchange(HandshakeMsg):
             self.srp_g = bytesToNumber(parser.getVarBytes(2))
             self.srp_s = parser.getVarBytes(1)
             self.srp_B = bytesToNumber(parser.getVarBytes(2))
-            if self.cipherSuite in CipherSuite.srpCertSuites:
-                self.signature = parser.getVarBytes(2)
         elif self.cipherSuite in CipherSuite.anonSuites:
             self.dh_p = bytesToNumber(parser.getVarBytes(2))
             self.dh_g = bytesToNumber(parser.getVarBytes(2))
             self.dh_Ys = bytesToNumber(parser.getVarBytes(2))
+        else:
+            raise AssertionError()
+
+        if self.cipherSuite in CipherSuite.certAllSuites:
+            if self.version == (3, 3):
+                self.hashAlg = parser.get(1)
+                self.signAlg = parser.get(1)
+            self.signature = parser.getVarBytes(2)
+
         parser.stopLengthCheck()
         return self
 
-    def write(self):
+    def write_params(self):
         """Serialise message
 
         @rtype: bytearray
@@ -1014,30 +1030,31 @@ class ServerKeyExchange(HandshakeMsg):
             writer.addVarSeq(numberToByteArray(self.srp_g), 1, 2)
             writer.addVarSeq(self.srp_s, 1, 1)
             writer.addVarSeq(numberToByteArray(self.srp_B), 1, 2)
-            if self.cipherSuite in CipherSuite.srpCertSuites:
-                writer.addVarSeq(self.signature, 1, 2)
-        elif self.cipherSuite in CipherSuite.anonSuites:
+        elif self.cipherSuite in CipherSuite.dhAllSuites:
             writer.addVarSeq(numberToByteArray(self.dh_p), 1, 2)
             writer.addVarSeq(numberToByteArray(self.dh_g), 1, 2)
             writer.addVarSeq(numberToByteArray(self.dh_Ys), 1, 2)
-            if self.cipherSuite in []: # TODO support for signed_params
-                writer.addVarSeq(self.signature, 1, 2)
-        return self.postWrite(writer)
+        else:
+            assert(False)
+        return writer.bytes
+
+    def write(self):
+        w = Writer()
+        w.bytes += self.write_params()
+        if self.cipherSuite in CipherSuite.certAllSuites:
+            if self.version >= (3,3):
+                # TODO: Signature algorithm negotiation not supported.
+                w.add(HashAlgorithm.sha1, 1)
+                w.add(SignatureAlgorithm.rsa, 1)
+            w.addVarSeq(self.signature, 1, 2)
+        return self.postWrite(w)
 
     def hash(self, clientRandom, serverRandom):
-        """Calculate the signature hash"""
-        oldCipherSuite = self.cipherSuite
-        # temporarily change so serialiser omits signature
-        if self.cipherSuite in CipherSuite.srpAllSuites:
-            self.cipherSuite = CipherSuite.srpSuites[0]
-        try:
-            # skip message type(1 byte) and length(3 bytes)
-            payloadBytes = self.write()[4:]
-            bytesToMAC = clientRandom + serverRandom + payloadBytes
-            # TODO should use protocol dependant values (invalid in TLSv1.2)
-            return MD5(bytesToMAC) + SHA1(bytesToMAC)
-        finally:
-            self.cipherSuite = oldCipherSuite
+        bytes = clientRandom + serverRandom + self.write_params()
+        if self.version >= (3,3):
+            # TODO: Signature algorithm negotiation not supported.
+            return SHA1(bytes)
+        return MD5(bytes) + SHA1(bytes)
 
 class ServerHelloDone(HandshakeMsg):
     def __init__(self):
@@ -1146,7 +1163,7 @@ class ClientKeyExchange(HandshakeMsg):
                     parser.getFixBytes(parser.getRemainingLength())
             else:
                 raise AssertionError()
-        elif self.cipherSuite in CipherSuite.anonSuites:
+        elif self.cipherSuite in CipherSuite.dhAllSuites:
             self.dh_Yc = bytesToNumber(parser.getVarBytes(2))
         else:
             raise AssertionError()

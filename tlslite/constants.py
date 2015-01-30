@@ -211,6 +211,14 @@ class CipherSuite:
     ietfNames[0x0004] = 'TLS_RSA_WITH_RC4_128_MD5'
 
     # RFC 5246 - TLS v1.2 Protocol
+    TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA = 0x0016
+    ietfNames[0x0016] = 'TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA'
+    TLS_DHE_RSA_WITH_AES_128_CBC_SHA = 0x0033
+    ietfNames[0x0016] = 'TLS_DHE_RSA_WITH_AES_128_CBC_SHA'
+    TLS_DHE_RSA_WITH_AES_256_CBC_SHA = 0x0039
+    ietfNames[0x0039] = 'TLS_DHE_RSA_WITH_AES_256_CBC_SHA'
+
+    # RFC 5246 - TLS v1.2 Protocol
     TLS_DH_ANON_WITH_AES_128_CBC_SHA = 0x0034
     ietfNames[0x0034] = 'TLS_DH_ANON_WITH_AES_128_CBC_SHA'
     TLS_DH_ANON_WITH_AES_256_CBC_SHA = 0x003A
@@ -222,6 +230,12 @@ class CipherSuite:
     TLS_RSA_WITH_AES_256_CBC_SHA256 = 0x003D
     ietfNames[0x003D] = 'TLS_RSA_WITH_AES_256_CBC_SHA256'
 
+    # RFC 5246 - TLS v1.2
+    TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 = 0x0067
+    ietfNames[0x0067] = 'TLS_DHE_RSA_WITH_AES_128_CBC_SHA256'
+    TLS_DHE_RSA_WITH_AES_256_CBC_SHA256 = 0x006B
+    ietfNames[0x006B] = 'TLS_DHE_RSA_WITH_AES_256_CBC_SHA256'
+
     #
     # Define cipher suite families below
     #
@@ -231,14 +245,17 @@ class CipherSuite:
     tripleDESSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
+    tripleDESSuites.append(TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA)
 
     # AES-128 CBC ciphers
     aes128Suites = []
     aes128Suites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
+    aes128Suites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
+    aes128Suites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA256)
 
     # AES-256 CBC ciphers
     aes256Suites = []
@@ -246,7 +263,9 @@ class CipherSuite:
     aes256Suites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
+    aes256Suites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
+    aes256Suites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
 
     # RC4-128 stream cipher
     rc4Suites = []
@@ -265,6 +284,9 @@ class CipherSuite:
     shaSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
     shaSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
     shaSuites.append(TLS_RSA_WITH_RC4_128_SHA)
+    shaSuites.append(TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA)
+    shaSuites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA)
+    shaSuites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
 
@@ -272,6 +294,9 @@ class CipherSuite:
     sha256Suites = []
     sha256Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
     sha256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
+    sha256Suites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA256)
+    sha256Suites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
+
 
     # MD-5 HMAC, protocol default PRF
     md5Suites = []
@@ -300,6 +325,7 @@ class CipherSuite:
     def _filterSuites(suites, settings):
         macNames = settings.macNames
         cipherNames = settings.cipherNames
+        keyExchangeNames = settings.keyExchangeNames
         macSuites = []
         if "sha" in macNames:
             macSuites += CipherSuite.shaSuites
@@ -318,7 +344,20 @@ class CipherSuite:
         if "rc4" in cipherNames:
             cipherSuites += CipherSuite.rc4Suites
 
-        return [s for s in suites if s in macSuites and s in cipherSuites]
+        keyExchangeSuites = []
+        if "rsa" in keyExchangeNames:
+            keyExchangeSuites += CipherSuite.certSuites
+        if "dhe_rsa" in keyExchangeNames:
+            keyExchangeSuites += CipherSuite.dheCertSuites
+        if "srp_sha" in keyExchangeNames:
+            keyExchangeSuites += CipherSuite.srpSuites
+        if "srp_sha_rsa" in keyExchangeNames:
+            keyExchangeSuites += CipherSuite.srpCertSuites
+        if "dh_anon" in keyExchangeNames:
+            keyExchangeSuites += CipherSuite.anonSuites
+
+        return [s for s in suites if s in macSuites and
+                s in cipherSuites and s in keyExchangeSuites]
 
     # SRP key exchange
     srpSuites = []
@@ -355,12 +394,25 @@ class CipherSuite:
     certSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_MD5)
-    # RSA authentication
-    certAllSuites = srpCertSuites + certSuites
 
     @staticmethod
     def getCertSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.certSuites, settings)
+
+    # FFDHE key exchange, RSA authentication
+    dheCertSuites = []
+    dheCertSuites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
+    dheCertSuites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA256)
+    dheCertSuites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA)
+    dheCertSuites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA)
+    dheCertSuites.append(TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA)
+
+    @staticmethod
+    def getDheCertSuites(settings):
+        return CipherSuite._filterSuites(CipherSuite.dheCertSuites, settings)
+
+    # RSA authentication
+    certAllSuites = srpCertSuites + certSuites + dheCertSuites
 
     # anon FFDHE key exchange
     anonSuites = []
@@ -370,6 +422,8 @@ class CipherSuite:
     @staticmethod
     def getAnonSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.anonSuites, settings)
+
+    dhAllSuites = dheCertSuites + anonSuites
 
     @staticmethod
     def canonicalCipherName(ciphersuite):
