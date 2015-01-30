@@ -1499,21 +1499,6 @@ class TLSConnection(TLSRecordLayer):
 
     def _serverGetClientHello(self, settings, certChain, verifierDB,
                                 sessionCache, anon):
-        #Initialize acceptable cipher suites
-        cipherSuites = []
-        if verifierDB:
-            if certChain:
-                cipherSuites += \
-                    CipherSuite.getSrpCertSuites(settings)
-            cipherSuites += CipherSuite.getSrpSuites(settings)
-        elif certChain:
-            cipherSuites += CipherSuite.getDheCertSuites(settings)
-            cipherSuites += CipherSuite.getCertSuites(settings)
-        elif anon:
-            cipherSuites += CipherSuite.getAnonSuites(settings)
-        else:
-            assert(False)
-
         #Tentatively set version to most-desirable version, so if an error
         #occurs parsing the ClientHello, this is what we'll use for the
         #error alert
@@ -1551,6 +1536,19 @@ class TLSConnection(TLSRecordLayer):
 
         #Now that the version is known, limit to only the ciphers available to
         #that version.
+        cipherSuites = []
+        if verifierDB:
+            if certChain:
+                cipherSuites += \
+                    CipherSuite.getSrpCertSuites(settings, self.version)
+            cipherSuites += CipherSuite.getSrpSuites(settings, self.version)
+        elif certChain:
+            cipherSuites += CipherSuite.getDheCertSuites(settings, self.version)
+            cipherSuites += CipherSuite.getCertSuites(settings, self.version)
+        elif anon:
+            cipherSuites += CipherSuite.getAnonSuites(settings, self.version)
+        else:
+            assert(False)
         cipherSuites = CipherSuite.filterForVersion(cipherSuites,
                                                     minVersion=self.version,
                                                     maxVersion=self.version)
