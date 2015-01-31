@@ -540,35 +540,44 @@ class TLSRecordLayer(object):
                 yield result
             randomizeFirstBlock = True
 
-    def _sendMsg(self, msg, randomizeFirstBlock = True):
-        #Whenever we're connected and asked to send an app data message,
-        #we first send the first byte of the message.  This prevents
-        #an attacker from launching a chosen-plaintext attack based on
-        #knowing the next IV (a la BEAST).
-        if not self.closed and randomizeFirstBlock and self.version <= (3,1) \
-                and self._writeState.encContext \
-                and self._writeState.encContext.isBlockCipher \
-                and isinstance(msg, ApplicationData):
-            msgFirstByte = msg.splitFirstByte()
-            for result in self._sendMsg(msgFirstByte,
-                                       randomizeFirstBlock = False):
-                yield result                                            
+    def _encryptThenMAC(self, b, contentType):
+        # add padding and encrypt
+        if self._writeState.encContext:
+            # add IV for TLS1.1+
+            if self.version >= (3,2):
+                b = self.fixedIVBlock + b
 
-        b = msg.write()
-        
-        # If a 1-byte message was passed in, and we "split" the 
-        # first(only) byte off above, we may have a 0-length msg:
-        if len(b) == 0:
-            return
-            
-        contentType = msg.contentType
+            # add padding
+            currentLength = len(b) + 1
+            blockLength = self._writeState.encContext.block_size
+            paddingLength = blockLength - (currentLength % blockLength)
 
-        #Update handshake hashes
-        if contentType == ContentType.handshake:
-            self._handshake_md5.update(compat26Str(b))
-            self._handshake_sha.update(compat26Str(b))
-            self._handshake_sha256.update(compat26Str(b))
+            paddingBytes = bytearray([paddingLength] * (paddingLength + 1))
+            b += paddingBytes
 
+            # encrypt
+            b = self._writeState.encContext.encrypt(b)
+
+        # add MAC
+        if self._writeState.macContext:
+            # calculate HMAC
+            seqnumBytes = self._writeState.getSeqNumBytes()
+            mac = self._writeState.macContext.copy()
+            mac.update(compatHMAC(seqnumBytes))
+            mac.update(compatHMAC(bytearray([contentType])))
+            mac.update(compatHMAC(bytearray([self.version[0]])))
+            mac.update(compatHMAC(bytearray([self.version[1]])))
+            mac.update(compatHMAC(bytearray([len(b)//256])))
+            mac.update(compatHMAC(bytearray([len(b)%256])))
+            mac.update(compatHMAC(b))
+
+            # add HMAC
+            macBytes = bytearray(mac.digest())
+            b += macBytes
+
+        return b
+
+    def _macThenEncrypt(self, b, contentType):
         #Calculate MAC
         if self._writeState.macContext:
             seqnumBytes = self._writeState.getSeqNumBytes()
@@ -616,6 +625,42 @@ class TLSRecordLayer(object):
             else:
                 b += macBytes
                 b = self._writeState.encContext.encrypt(b)
+
+        return b
+
+    def _sendMsg(self, msg, randomizeFirstBlock = True):
+        #Whenever we're connected and asked to send an app data message,
+        #we first send the first byte of the message.  This prevents
+        #an attacker from launching a chosen-plaintext attack based on
+        #knowing the next IV (a la BEAST).
+        if not self.closed and randomizeFirstBlock and self.version <= (3,1) \
+                and self._writeState.encContext \
+                and self._writeState.encContext.isBlockCipher \
+                and isinstance(msg, ApplicationData):
+            msgFirstByte = msg.splitFirstByte()
+            for result in self._sendMsg(msgFirstByte,
+                                       randomizeFirstBlock = False):
+                yield result                                            
+
+        b = msg.write()
+        
+        # If a 1-byte message was passed in, and we "split" the 
+        # first(only) byte off above, we may have a 0-length msg:
+        if len(b) == 0:
+            return
+            
+        contentType = msg.contentType
+
+        #Update handshake hashes
+        if contentType == ContentType.handshake:
+            self._handshake_md5.update(compat26Str(b))
+            self._handshake_sha.update(compat26Str(b))
+            self._handshake_sha256.update(compat26Str(b))
+
+        if self.etm:
+            b = self._encryptThenMAC(b, contentType)
+        else:
+            b = self._macThenEncrypt(b, contentType)
 
         #Add record header and send
         r = RecordHeader3().create(self.version, contentType, len(b))
