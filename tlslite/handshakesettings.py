@@ -106,6 +106,7 @@ class HandshakeSettings(object):
         self.minVersion = (3,1)
         self.maxVersion = (3,3)
         self.useExperimentalTackExtension = False
+        self.useEncryptThenMAC = True
 
     # Validates the min/max fields, and certificateTypes
     # Filters out unsupported cipherNames and cipherImplementations
@@ -119,6 +120,7 @@ class HandshakeSettings(object):
         other.certificateTypes = self.certificateTypes
         other.minVersion = self.minVersion
         other.maxVersion = self.maxVersion
+        other.useEncryptThenMAC = self.useEncryptThenMAC
 
         if not cipherfactory.tripleDESPresent:
             other.cipherNames = [e for e in self.cipherNames if e != "3des"]
