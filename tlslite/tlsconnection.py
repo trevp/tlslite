@@ -1158,10 +1158,23 @@ class TLSConnection(TLSRecordLayer):
             tackExt = TackExtension.create(tacks, activationFlags)
         else:
             tackExt = None
+
+        # prepare encrypt then mac if required
+        if settings.useEncryptThenMAC and\
+                clientHello.getExtension(ExtensionType.encrypt_then_mac) and\
+                not cipherSuite in [CipherSuite.TLS_RSA_WITH_RC4_128_SHA,\
+                CipherSuite.TLS_RSA_WITH_RC4_128_MD5]:
+            extensions = [TLSExtension().create(
+                    ExtensionType.encrypt_then_mac,
+                    bytearray(0))]
+            self.etm = True
+        else:
+            extensions = None
+
         serverHello = ServerHello()
         serverHello.create(self.version, getRandomBytes(32), sessionID, \
                             cipherSuite, CertificateType.x509, tackExt,
-                            nextProtos)
+                            nextProtos, extensions=extensions)
 
         # Perform the SRP key exchange
         clientCertChain = None
