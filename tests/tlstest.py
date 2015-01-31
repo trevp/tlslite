@@ -451,6 +451,7 @@ def serverTestCmd(argv):
 
     #Connect to server
     lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    lsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     lsock.bind(address)
     lsock.listen(5)
 
@@ -629,6 +630,7 @@ def serverTestCmd(argv):
     print("Test 21 - HTTPS test X.509")
 
     #Close the current listening socket
+    lsock.shutdown(socket.SHUT_RDWR)
     lsock.close()
 
     #Create and run an HTTP Server using TLSSocketServerMixIn
@@ -637,6 +639,9 @@ def serverTestCmd(argv):
         def handshake(self, tlsConnection):
                 tlsConnection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
                 return True
+        def server_bind(self):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            HTTPServer.server_bind(self)
     cd = os.getcwd()
     os.chdir(dir)
     address = address[0], address[1]+1
@@ -648,6 +653,7 @@ def serverTestCmd(argv):
 
     #Re-connect the listening socket
     lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    lsock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     address = address[0], address[1]+1
     lsock.bind(address)
     lsock.listen(5)
