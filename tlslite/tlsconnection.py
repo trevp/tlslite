@@ -399,6 +399,12 @@ class TLSConnection(TLSRecordLayer):
         #We'll use this for the ClientHello, and if an error occurs
         #parsing the Server Hello, we'll use this version for the response
         self.version = settings.maxVersion
+
+        if settings.useEncryptThenMAC:
+            extensions = [TLSExtension().create(ExtensionType.encrypt_then_mac,
+                    bytearray(0))]
+        else:
+            extensions = None
         
         # OK Start sending messages!
         # *****************************
@@ -407,7 +413,7 @@ class TLSConnection(TLSRecordLayer):
         for result in self._clientSendClientHello(settings, session, 
                                         srpUsername, srpParams, certParams,
                                         anonParams, serverName, nextProtos,
-                                        reqTack):
+                                        reqTack, extensions=extensions):
             if result in (0,1): yield result
             else: break
         clientHello = result
@@ -422,6 +428,10 @@ class TLSConnection(TLSRecordLayer):
         # Choose a matching Next Protocol from server list against ours
         # (string or None)
         nextProto = self._clientSelectNextProto(nextProtos, serverHello)
+
+        # check if server supports encrypt_then_mac
+        if serverHello.getExtension(ExtensionType.encrypt_then_mac):
+            self.etm = True
 
         #If the server elected to resume the session, it is handled here.
         for result in self._clientResume(session, serverHello, 
@@ -494,7 +504,8 @@ class TLSConnection(TLSRecordLayer):
 
     def _clientSendClientHello(self, settings, session, srpUsername,
                                 srpParams, certParams, anonParams, 
-                                serverName, nextProtos, reqTack):
+                                serverName, nextProtos, reqTack,
+                                extensions=None):
         #Initialize acceptable ciphersuites
         cipherSuites = [CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
         if srpParams:
@@ -523,7 +534,8 @@ class TLSConnection(TLSRecordLayer):
                                    certificateTypes, 
                                    session.srpUsername,
                                    reqTack, nextProtos is not None,
-                                   session.serverName)
+                                   session.serverName,
+                                   extensions=extensions)
 
         #Or send ClientHello (without)
         else:
@@ -533,7 +545,8 @@ class TLSConnection(TLSRecordLayer):
                                certificateTypes, 
                                srpUsername,
                                reqTack, nextProtos is not None, 
-                               serverName)
+                               serverName,
+                               extensions=extensions)
         for result in self._sendMsg(clientHello):
             yield result
         yield clientHello

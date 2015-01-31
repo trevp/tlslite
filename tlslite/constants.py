@@ -44,6 +44,7 @@ class ExtensionType:    # RFC 6066 / 4366
     server_name = 0     # RFC 6066 / 4366
     srp = 12            # RFC 5054  
     cert_type = 9       # RFC 6091
+    encrypt_then_mac = 22 # RFC 7366
     tack = 0xF300
     supports_npn = 13172
     
