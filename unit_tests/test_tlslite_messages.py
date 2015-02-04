@@ -1,7 +1,12 @@
 # Author: Hubert Kario (c) 2014
 # see LICENCE file for legal information regarding use of this file
 
-import unittest
+# compatibility with Python 2.6, for that we need unittest2 package,
+# which is not available on 3.3 or 3.4
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
