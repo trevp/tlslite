@@ -819,19 +819,15 @@ class TACKExtension(TLSExtension):
                     hasattr(other, 'expiration') and\
                     hasattr(other, 'target_hash') and\
                     hasattr(other, 'signature'):
-                if self.public_key != other.public_key:
+                if self.public_key == other.public_key and\
+                   self.min_generation == other.min_generation and\
+                   self.generation == other.generation and\
+                   self.expiration == other.expiration and\
+                   self.target_hash == other.target_hash and\
+                   self.signature == other.signature:
+                    return True
+                else:
                     return False
-                if self.min_generation != other.min_generation:
-                    return False
-                if self.generation != other.generation:
-                    return False
-                if self.expiration != other.expiration:
-                    return False
-                if self.target_hash != other.target_hash:
-                    return False
-                if self.signature != other.signature:
-                    return False
-                return True
             else:
                 return False
 
