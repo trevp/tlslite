@@ -87,6 +87,16 @@ class TestTLSExtension(unittest.TestCase):
 
         self.assertTrue(a == b)
 
+    def test_equality_with_nearly_good_object(self):
+        class TestClass(object):
+            def __init__(self):
+                self.ext_type = 0
+
+        a = TLSExtension().create(0, bytearray(b'\x00\x00'))
+        b = TestClass()
+
+        self.assertFalse(a == b)
+
     def test_parse_of_server_hello_extension(self):
         ext = TLSExtension(server=True)
 
