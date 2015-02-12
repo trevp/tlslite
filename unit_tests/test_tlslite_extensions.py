@@ -834,9 +834,7 @@ class TestTACKExtension(unittest.TestCase):
                 bytearray(b'\x05'*32),
                 bytearray(b'\x06'*64))
 
-        # XXX missing import in tlslite.extensions
-        with self.assertRaises(NameError):
-        #with self.assertRaises(TLSInternalError):
+        with self.assertRaises(TLSInternalError):
             tack.write()
 
     def test_tack_write_with_bad_length_target_hash(self):
@@ -848,9 +846,7 @@ class TestTACKExtension(unittest.TestCase):
                 bytearray(b'\x05'*33),
                 bytearray(b'\x06'*64))
 
-        # XXX missing import in tlslite.extensions
-        with self.assertRaises(NameError):
-        #with self.assertRaises(TLSInternalError):
+        with self.assertRaises(TLSInternalError):
             tack.write()
 
     def test_tack_write_with_bad_length_signature(self):
@@ -862,9 +858,7 @@ class TestTACKExtension(unittest.TestCase):
                 bytearray(b'\x05'*32),
                 bytearray(b'\x06'*65))
 
-        # XXX missing import in tlslite.extensions
-        with self.assertRaises(NameError):
-        #with self.assertRaises(TLSInternalError):
+        with self.assertRaises(TLSInternalError):
             tack.write()
 
     def test_tack_parse(self):

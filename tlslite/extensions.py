@@ -10,6 +10,7 @@ from __future__ import generators
 from .utils.codec import Writer, Parser
 from collections import namedtuple
 from .constants import NameType, ExtensionType
+from .errors import TLSInternalError
 
 class TLSExtension(object):
     """
