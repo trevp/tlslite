@@ -133,8 +133,7 @@ class TLSExtension(object):
         # don't require specific handlers and indicate option by mere presence
         self.ext_type = ext_type
         self.ext_data = p.getFixBytes(ext_length)
-        if len(self.ext_data) != ext_length:
-            raise SyntaxError()
+        assert len(self.ext_data) == ext_length
         return self
 
     def __eq__(self, that):
