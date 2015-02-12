@@ -72,8 +72,8 @@ class TLSExtension(object):
         client hello or server hello messages
 
         @type  ext_type: int
-        @param ext_type: type of the extension encoded as an integer between M{0}
-            and M{2^16-1}
+        @param ext_type: type of the extension encoded as an integer between
+            M{0} and M{2^16-1}
         @type  data: bytearray
         @param data: raw data representing extension on the wire
         @rtype: L{TLSExtension}
@@ -250,16 +250,16 @@ class SNIExtension(TLSExtension):
             self.server_names = []
 
         if hostname:
-            self.server_names+=[SNIExtension.ServerName(NameType.host_name,\
+            self.server_names += [SNIExtension.ServerName(NameType.host_name,\
                     hostname)]
 
         if host_names:
-            self.server_names+=\
+            self.server_names +=\
                     [SNIExtension.ServerName(NameType.host_name, x) for x in\
                     host_names]
 
         if server_names:
-            self.server_names+=server_names
+            self.server_names += server_names
 
         return self
 
@@ -484,6 +484,7 @@ class ServerCertTypeExtension(TLSExtension):
 
         See also: L{create} and L{parse}
         """
+
         self.cert_type = None
 
     def __repr__(self):
@@ -908,11 +909,12 @@ class TACKExtension(TLSExtension):
 
         return self
 
-TLSExtension._universal_extensions = { ExtensionType.server_name : SNIExtension,
+TLSExtension._universal_extensions = {
+        ExtensionType.server_name : SNIExtension,
         ExtensionType.cert_type : ClientCertTypeExtension,
         ExtensionType.srp : SRPExtension,
-        ExtensionType.supports_npn : NPNExtension }
+        ExtensionType.supports_npn : NPNExtension}
 
 TLSExtension._server_extensions = {
         ExtensionType.cert_type : ServerCertTypeExtension,
-        ExtensionType.tack : TACKExtension }
+        ExtensionType.tack : TACKExtension}
