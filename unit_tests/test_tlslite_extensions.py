@@ -8,6 +8,7 @@ from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         TACKExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType
+from tlslite.errors import TLSInternalError
 
 class TestTLSExtension(unittest.TestCase):
     def test___init__(self):
@@ -86,6 +87,16 @@ class TestTLSExtension(unittest.TestCase):
         b = SNIExtension().create(server_names=[])
 
         self.assertTrue(a == b)
+
+    def test_equality_with_nearly_good_object(self):
+        class TestClass(object):
+            def __init__(self):
+                self.ext_type = 0
+
+        a = TLSExtension().create(0, bytearray(b'\x00\x00'))
+        b = TestClass()
+
+        self.assertFalse(a == b)
 
     def test_parse_of_server_hello_extension(self):
         ext = TLSExtension(server=True)
@@ -814,6 +825,42 @@ class TestTACKExtension(unittest.TestCase):
             b'\x06'*64)             # signature
             , tack.write())
 
+    def test_tack_write_with_bad_length_public_key(self):
+        tack = TACKExtension.TACK().create(
+                bytearray(b'\x01'*65),
+                2,
+                3,
+                4,
+                bytearray(b'\x05'*32),
+                bytearray(b'\x06'*64))
+
+        with self.assertRaises(TLSInternalError):
+            tack.write()
+
+    def test_tack_write_with_bad_length_target_hash(self):
+        tack = TACKExtension.TACK().create(
+                bytearray(b'\x01'*64),
+                2,
+                3,
+                4,
+                bytearray(b'\x05'*33),
+                bytearray(b'\x06'*64))
+
+        with self.assertRaises(TLSInternalError):
+            tack.write()
+
+    def test_tack_write_with_bad_length_signature(self):
+        tack = TACKExtension.TACK().create(
+                bytearray(b'\x01'*64),
+                2,
+                3,
+                4,
+                bytearray(b'\x05'*32),
+                bytearray(b'\x06'*65))
+
+        with self.assertRaises(TLSInternalError):
+            tack.write()
+
     def test_tack_parse(self):
         p = Parser(bytearray(
             b'\x01'*64 +            # public_key
@@ -841,6 +888,40 @@ class TestTACKExtension(unittest.TestCase):
         self.assertTrue(a == b)
         self.assertFalse(a == None)
         self.assertFalse(a == "test")
+
+    def test_tack___eq___with_different_tacks(self):
+        a = TACKExtension.TACK()
+        b = TACKExtension.TACK().create(
+                bytearray(b'\x01'*64),
+                2,
+                3,
+                4,
+                bytearray(b'\x05'*32),
+                bytearray(b'\x06'*64))
+
+        self.assertFalse(a == b)
+
+    def test_ext_data(self):
+        tack = TACKExtension.TACK().create(
+                bytearray(b'\x01'*64),
+                2,
+                3,
+                4,
+                bytearray(b'\x05'*32),
+                bytearray(b'\x06'*64))
+
+        tack_ext = TACKExtension().create([tack], 1)
+
+        self.assertEqual(bytearray(
+            b'\x00\xa6' +           # length
+            b'\x01'*64 +            # public_key
+            b'\x02' +               # min_generation
+            b'\x03' +               # generation
+            b'\x00\x00\x00\x04' +   # expiration
+            b'\x05'*32 +            # target_hash
+            b'\x06'*64 +            # signature
+            b'\x01'                 # activation flag
+            ), tack_ext.ext_data)
 
     def test_parse(self):
         p = Parser(bytearray(3))

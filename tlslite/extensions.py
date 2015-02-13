@@ -10,6 +10,7 @@ from __future__ import generators
 from .utils.codec import Writer, Parser
 from collections import namedtuple
 from .constants import NameType, ExtensionType
+from .errors import TLSInternalError
 
 class TLSExtension(object):
     """
@@ -71,8 +72,8 @@ class TLSExtension(object):
         client hello or server hello messages
 
         @type  ext_type: int
-        @param ext_type: type of the extension encoded as an integer between M{0}
-            and M{2^16-1}
+        @param ext_type: type of the extension encoded as an integer between
+            M{0} and M{2^16-1}
         @type  data: bytearray
         @param data: raw data representing extension on the wire
         @rtype: L{TLSExtension}
@@ -133,8 +134,7 @@ class TLSExtension(object):
         # don't require specific handlers and indicate option by mere presence
         self.ext_type = ext_type
         self.ext_data = p.getFixBytes(ext_length)
-        if len(self.ext_data) != ext_length:
-            raise SyntaxError()
+        assert len(self.ext_data) == ext_length
         return self
 
     def __eq__(self, that):
@@ -250,16 +250,16 @@ class SNIExtension(TLSExtension):
             self.server_names = []
 
         if hostname:
-            self.server_names+=[SNIExtension.ServerName(NameType.host_name,\
+            self.server_names += [SNIExtension.ServerName(NameType.host_name,\
                     hostname)]
 
         if host_names:
-            self.server_names+=\
+            self.server_names +=\
                     [SNIExtension.ServerName(NameType.host_name, x) for x in\
                     host_names]
 
         if server_names:
-            self.server_names+=server_names
+            self.server_names += server_names
 
         return self
 
@@ -484,6 +484,7 @@ class ServerCertTypeExtension(TLSExtension):
 
         See also: L{create} and L{parse}
         """
+
         self.cert_type = None
 
     def __repr__(self):
@@ -820,19 +821,15 @@ class TACKExtension(TLSExtension):
                     hasattr(other, 'expiration') and\
                     hasattr(other, 'target_hash') and\
                     hasattr(other, 'signature'):
-                if self.public_key != other.public_key:
+                if self.public_key == other.public_key and\
+                   self.min_generation == other.min_generation and\
+                   self.generation == other.generation and\
+                   self.expiration == other.expiration and\
+                   self.target_hash == other.target_hash and\
+                   self.signature == other.signature:
+                    return True
+                else:
                     return False
-                if self.min_generation != other.min_generation:
-                    return False
-                if self.generation != other.generation:
-                    return False
-                if self.expiration != other.expiration:
-                    return False
-                if self.target_hash != other.target_hash:
-                    return False
-                if self.signature != other.signature:
-                    return False
-                return True
             else:
                 return False
 
@@ -912,11 +909,12 @@ class TACKExtension(TLSExtension):
 
         return self
 
-TLSExtension._universal_extensions = { ExtensionType.server_name : SNIExtension,
+TLSExtension._universal_extensions = {
+        ExtensionType.server_name : SNIExtension,
         ExtensionType.cert_type : ClientCertTypeExtension,
         ExtensionType.srp : SRPExtension,
-        ExtensionType.supports_npn : NPNExtension }
+        ExtensionType.supports_npn : NPNExtension}
 
 TLSExtension._server_extensions = {
         ExtensionType.cert_type : ServerCertTypeExtension,
-        ExtensionType.tack : TACKExtension }
+        ExtensionType.tack : TACKExtension}
