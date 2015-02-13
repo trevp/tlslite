@@ -232,9 +232,7 @@ def makeSieve(n):
     sieve = [x for x in sieve[2:] if x]
     return sieve
 
-sieve = makeSieve(1000)
-
-def isPrime(n, iterations=5, display=False):
+def isPrime(n, iterations=5, display=False, sieve=makeSieve(1000)):
     #Trial division with sieve
     for x in sieve:
         if x >= n: return True
