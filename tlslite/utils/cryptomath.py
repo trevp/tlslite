@@ -52,6 +52,7 @@ except ImportError:
 import zlib
 length = len(zlib.compress(os.urandom(1000)))
 assert(length > 900)
+del length
 
 def getRandomBytes(howMany):
     b = bytearray(os.urandom(howMany))
