@@ -10,7 +10,7 @@ except ImportError:
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
-        AlertLevel, AlertDescription
+        AlertLevel, AlertDescription, ExtensionType
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension
 
@@ -419,6 +419,20 @@ class TestClientHello(unittest.TestCase):
                 "extensions=[TLSExtension(ext_type=0, "\
                 "ext_data=bytearray(b''), server_type=False)])",
                 repr(client_hello))
+
+    def test_getExtensionsIDs_with_empty_list(self):
+        client_hello = ClientHello()
+
+        self.assertEqual([], client_hello.getExtensionsIDs())
+
+    def test_getExtensionsIDs(self):
+        client_hello = ClientHello()
+        client_hello.extensions = [TLSExtension().create(0, bytearray(0)),
+                SRPExtension()]
+
+        self.assertEqual([ExtensionType.server_name,
+            ExtensionType.srp],
+            client_hello.getExtensionsIDs())
 
 class TestServerHello(unittest.TestCase):
     def test___init__(self):

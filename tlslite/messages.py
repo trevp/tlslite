@@ -234,6 +234,17 @@ class ClientHello(HandshakeMsg):
         else:
             return None
 
+    def getExtensionsIDs(self):
+        """
+        Returns a list of all ID types present in message
+
+        @rtype: list of int
+        """
+        if self.extensions is None:
+            return []
+        else:
+            return [x.ext_type for x in self.extensions]
+
     def addExtension(self, ext):
         """
         Adds extension to internal list of extensions
