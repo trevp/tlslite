@@ -532,13 +532,6 @@ class ClientHello(HandshakeMsg):
             w.bytes += w2.bytes
         return self.postWrite(w)
 
-class BadNextProtos(Exception):
-    def __init__(self, l):
-        self.length = l
-
-    def __str__(self):
-        return 'Cannot encode a list of next protocols because it contains an element with invalid length %d. Element lengths must be 0 < x < 256' % self.length
-
 class ServerHello(HandshakeMsg):
     """server_hello message
 
