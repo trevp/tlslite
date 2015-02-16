@@ -628,6 +628,17 @@ class ServerHello(HandshakeMsg):
         else:
             return None
 
+    def getExtensionsIDs(self):
+        """
+        Return a list of extension IDs present in message
+
+        @rtype: list of int
+        """
+        if self.extensions is None:
+            return []
+        else:
+            return [x.ext_type for x in self.extensions]
+
     def addExtension(self, ext):
         """
         Add extension to internal list of extensions

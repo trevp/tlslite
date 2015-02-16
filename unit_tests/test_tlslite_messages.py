@@ -12,7 +12,7 @@ from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
-    SRPExtension, TLSExtension
+    SRPExtension, TLSExtension, ServerCertTypeExtension
 
 class TestClientHello(unittest.TestCase):
     def test___init__(self):
@@ -736,6 +736,20 @@ class TestServerHello(unittest.TestCase):
                 "session_id=bytearray(b''), "\
                 "cipher_suite=34500, compression_method=0, _tack_ext=None, "\
                 "extensions=[])", repr(server_hello))
+
+    def test_getExtensionsIDs_with_empty_list(self):
+        server_hello = ServerHello()
+
+        self.assertEqual([], server_hello.getExtensionsIDs())
+
+    def test_getExtensionsIDs(self):
+        server_hello = ServerHello()
+        server_hello.extensions = [TLSExtension().create(0, bytearray(0)),
+                ServerCertTypeExtension()]
+
+        self.assertEqual([ExtensionType.server_name,
+            ExtensionType.cert_type],
+            server_hello.getExtensionsIDs())
 
 class TestRecordHeader3(unittest.TestCase):
     def test_type_name(self):
