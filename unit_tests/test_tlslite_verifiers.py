@@ -77,3 +77,17 @@ class TestServerHelloVerifier(unittest.TestCase):
             verifier.verify(server_hello)
 
         self.assertTrue('Duplicate extensions' in str(context.exception))
+
+    def test_verify_with_wrong_cipher_suite(self):
+        client_hello = ClientHello()
+        client_hello.cipher_suites = [1, 2, 3]
+
+        server_hello = ServerHello()
+        server_hello.cipher_suite = 4
+
+        verifier = ServerHelloVerifier(client_hello)
+
+        with self.assertRaises(TLSIllegalParameterException) as context:
+            verifier.verify(server_hello)
+
+        self.assertTrue('incorrect ciphersuite' in str(context.exception))

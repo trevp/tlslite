@@ -574,11 +574,6 @@ class TLSConnection(TLSRecordLayer):
                 AlertDescription.protocol_version,
                 "Too new version: %s" % str(serverHello.server_version)):
                 yield result
-        if serverHello.cipher_suite not in clientHello.cipher_suites:
-            for result in self._sendError(\
-                AlertDescription.illegal_parameter,
-                "Server responded with incorrect ciphersuite"):
-                yield result
         if serverHello.certificate_type not in clientHello.certificate_types:
             for result in self._sendError(\
                 AlertDescription.illegal_parameter,

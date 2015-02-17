@@ -63,4 +63,9 @@ class ServerHelloVerifier(object):
             raise TLSIllegalParameterException(\
                     "Duplicate extensions present in server hello")
 
+        # check if server selected cipher suite we advertised
+        if serverHello.cipher_suite not in self.clientHello.cipher_suites:
+            raise TLSIllegalParameterException(\
+                "Server responded with incorrect ciphersuite")
+
         return True
