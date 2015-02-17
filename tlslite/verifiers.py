@@ -68,4 +68,9 @@ class ServerHelloVerifier(object):
             raise TLSIllegalParameterException(\
                 "Server responded with incorrect ciphersuite")
 
+        # check for no compression
+        if serverHello.compression_method != 0:
+            raise TLSIllegalParameterException(\
+                "Server responded with incorrect compression method")
+
         return True

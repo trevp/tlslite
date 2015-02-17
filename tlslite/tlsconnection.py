@@ -579,11 +579,6 @@ class TLSConnection(TLSRecordLayer):
                 AlertDescription.illegal_parameter,
                 "Server responded with incorrect certificate type"):
                 yield result
-        if serverHello.compression_method != 0:
-            for result in self._sendError(\
-                AlertDescription.illegal_parameter,
-                "Server responded with incorrect compression method"):
-                yield result
         if serverHello.tackExt:            
             if not clientHello.tack:
                 for result in self._sendError(\

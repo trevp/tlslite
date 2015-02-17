@@ -24,8 +24,10 @@ class TestServerHelloVerifier(unittest.TestCase):
     def test_verify(self):
         client_hello = ClientHello()
         client_hello.cipher_suites = [1]
+        client_hello.client_version = (3, 3)
         server_hello = ServerHello()
         server_hello.cipher_suite = 1
+        server_hello.server_version = (3, 3)
 
         verifier = ServerHelloVerifier(client_hello)
 
@@ -33,11 +35,13 @@ class TestServerHelloVerifier(unittest.TestCase):
 
     def test_verify_with_renegotiation_info_scsv(self):
         client_hello = ClientHello()
+        client_hello.client_version = (3, 3)
         client_hello.cipher_suites = \
                 [1, CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
 
         server_hello = ServerHello()
         server_hello.cipher_suite = 1
+        server_hello.server_version = (3, 3)
         server_hello.extensions = [TLSExtension().create(\
                 ExtensionType.renegotiation_info,
                 bytearray(1))]
@@ -91,3 +95,17 @@ class TestServerHelloVerifier(unittest.TestCase):
             verifier.verify(server_hello)
 
         self.assertTrue('incorrect ciphersuite' in str(context.exception))
+
+    def test_verify_with_bad_compression(self):
+        client_hello = ClientHello()
+        client_hello.cipher_suites = [0]
+
+        server_hello = ServerHello()
+        server_hello.compression_method = 1
+
+        verifier = ServerHelloVerifier(client_hello)
+
+        with self.assertRaises(TLSIllegalParameterException) as context:
+            verifier.verify(server_hello)
+
+        self.assertTrue('incorrect compression' in str(context.exception))
