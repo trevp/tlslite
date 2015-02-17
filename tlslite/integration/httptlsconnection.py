@@ -92,11 +92,16 @@ class HTTPTLSConnection(httplib.HTTPConnection, ClientHelper):
         unexpected hangup.
         """
         if source_address:
-            httplib.HTTPConnection.__init__(self, host, port, strict,
-                                            timeout, source_address)
+            httplib.HTTPConnection.__init__(self,
+                    host=host,
+                    port=port,
+                    timeout=timeout,
+                    source_address=source_address)
         if not source_address:
-            httplib.HTTPConnection.__init__(self, host, port, strict,
-                                            timeout)
+            httplib.HTTPConnection.__init__(self,
+                    host=host,
+                    port=port,
+                    timeout=timeout)
         self.ignoreAbruptClose = ignoreAbruptClose
         ClientHelper.__init__(self,
                  username, password, 
