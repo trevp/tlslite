@@ -189,3 +189,8 @@ class TLSInternalError(TLSError):
 class TLSProtocolException(BaseTLSException):
     """Exceptions used internally for handling errors in received messages"""
     pass
+
+class TLSIllegalParameterException(TLSProtocolException):
+    """Parameters specified in message were incorrect or invalid
+    """
+    pass
