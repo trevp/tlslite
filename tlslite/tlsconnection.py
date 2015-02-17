@@ -562,23 +562,13 @@ class TLSConnection(TLSRecordLayer):
                     AlertDescription.illegal_parameter,
                     str(e)):
                 yield result
+        except TLSProtocolVersionException as e:
+            for result in self._sendError(\
+                    AlertDescription.protocol_version,
+                    str(e)):
+                yield result
 
         #Check ServerHello
-        if serverHello.server_version < settings.minVersion:
-            for result in self._sendError(\
-                AlertDescription.protocol_version,
-                "Too old version: %s" % str(serverHello.server_version)):
-                yield result
-        if serverHello.server_version > settings.maxVersion:
-            for result in self._sendError(\
-                AlertDescription.protocol_version,
-                "Too new version: %s" % str(serverHello.server_version)):
-                yield result
-        if serverHello.certificate_type not in clientHello.certificate_types:
-            for result in self._sendError(\
-                AlertDescription.illegal_parameter,
-                "Server responded with incorrect certificate type"):
-                yield result
         if serverHello.tackExt:            
             if not serverHello.tackExt.verifySignatures():
                 for result in self._sendError(\

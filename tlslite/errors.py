@@ -194,3 +194,8 @@ class TLSIllegalParameterException(TLSProtocolException):
     """Parameters specified in message were incorrect or invalid
     """
     pass
+
+class TLSProtocolVersionException(TLSProtocolException):
+    """Protocol version selected by peer is incorrect or invalid
+    """
+    pass

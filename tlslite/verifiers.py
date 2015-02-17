@@ -5,7 +5,7 @@
 
 from .constants import CipherSuite, ExtensionType
 from .handshakesettings import HandshakeSettings
-from .errors import TLSIllegalParameterException
+from .errors import TLSIllegalParameterException, TLSProtocolVersionException
 
 class ServerHelloVerifier(object):
     """
@@ -72,5 +72,28 @@ class ServerHelloVerifier(object):
         if serverHello.compression_method != 0:
             raise TLSIllegalParameterException(\
                 "Server responded with incorrect compression method")
+
+        # check if protocol version matches client hello version
+        if serverHello.server_version > self.clientHello.client_version:
+            raise TLSProtocolVersionException(\
+                "Newer version than advertised in client hello")
+
+        # check if protocol version selected by server is OK
+        if serverHello.server_version < self.settings.minVersion:
+            raise TLSProtocolVersionException(\
+                "Too old version: {0!s}".format(serverHello.server_version))
+        if serverHello.server_version > self.settings.maxVersion:
+            raise TLSProtocolVersionException(\
+                "Too new version: {0!s}".format(serverHello.server_version))
+
+        # check if cert_type extension matches the client one
+        if serverHello.getExtension(ExtensionType.cert_type) is not None:
+            server_cert_type = serverHello.getExtension(ExtensionType.cert_type)
+            client_cert_type = self.clientHello.getExtension(\
+                    ExtensionType.cert_type)
+            assert(client_cert_type is not None)
+            if server_cert_type.cert_type not in client_cert_type.cert_types:
+                raise TLSIllegalParameterException(\
+                    "Server responded with incorrect certificate type")
 
         return True
