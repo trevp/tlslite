@@ -554,6 +554,22 @@ class TLSConnection(TLSRecordLayer):
         self._versionCheck = True
 
         #Check ServerHello
+        clientHelloExtensions = clientHello.getExtensionsIDs()
+        serverHelloExtensions = serverHello.getExtensionsIDs()
+        #tlslite doesn't sent the renegotiation info as an extension
+        #but as a signaling cipher suite value, so expect a renegotiation
+        #info extension even if we didn't send it as an extension
+        if CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV in\
+                clientHello.cipher_suites:
+            clientHelloExtensions.append(ExtensionType.renegotiation_info)
+
+        for serverExtID in serverHelloExtensions:
+            if serverExtID not in clientHelloExtensions:
+                for result in self._sendError(\
+                        AlertDescription.illegal_parameter,
+                        "Server responded with extension not advertised"):
+                    yield result
+
         if serverHello.server_version < settings.minVersion:
             for result in self._sendError(\
                 AlertDescription.protocol_version,
