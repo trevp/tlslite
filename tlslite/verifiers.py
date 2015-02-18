@@ -3,9 +3,12 @@
 #
 # See the LICENSE file for legal information regarding use of this file.
 
+"""Sanity checkers for TLS messages."""
+
 from .constants import CipherSuite, ExtensionType
 from .handshakesettings import HandshakeSettings
-from .errors import TLSIllegalParameterException, TLSProtocolVersionException
+from .errors import TLSIllegalParameterException, TLSProtocolVersionException,\
+        TLSProtocolException
 
 class ServerHelloVerifier(object):
     """
@@ -28,6 +31,25 @@ class ServerHelloVerifier(object):
             settings = HandshakeSettings()
         self.settings = settings
         self.clientHello = clientHello
+
+    def check(self, serverHello):
+        """
+        Check if server hello matches client hello and is ok, doesn't report
+        specific errors. See also L{verify}.
+
+        @type serverHello: ServerHello
+        @param serverHello: server hello to test
+        @rtype: boolean
+        @return: True if server hello is ok, False if it fails at least one
+           of the checks
+        """
+
+        try:
+            self.verify(serverHello)
+        except TLSProtocolException:
+            return False
+        else:
+            return True
 
     def verify(self, serverHello):
         """
@@ -88,11 +110,11 @@ class ServerHelloVerifier(object):
 
         # check if cert_type extension matches the client one
         if serverHello.getExtension(ExtensionType.cert_type) is not None:
-            server_cert_type = serverHello.getExtension(ExtensionType.cert_type)
-            client_cert_type = self.clientHello.getExtension(\
+            serverCertType = serverHello.getExtension(ExtensionType.cert_type)
+            clientCertType = self.clientHello.getExtension(\
                     ExtensionType.cert_type)
-            assert(client_cert_type is not None)
-            if server_cert_type.cert_type not in client_cert_type.cert_types:
+            assert clientCertType is not None
+            if serverCertType.cert_type not in clientCertType.cert_types:
                 raise TLSIllegalParameterException(\
                     "Server responded with incorrect certificate type")
 

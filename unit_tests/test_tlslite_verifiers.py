@@ -194,3 +194,26 @@ class TestServerHelloVerifier(unittest.TestCase):
             verifier.verify(server_hello)
 
         self.assertTrue('incorrect certificate type' in str(context.exception))
+
+    def test_check(self):
+        client_hello = ClientHello()
+        client_hello.cipher_suites = [0]
+        client_hello.client_version = (3, 3)
+        server_hello = ServerHello()
+        server_hello.server_version = (3, 3)
+
+        verifier = ServerHelloVerifier(client_hello)
+
+        self.assertTrue(verifier.check(server_hello))
+
+    def test_check_with_bad_server_hello(self):
+        client_hello = ClientHello()
+        client_hello.cipher_suites = [0]
+        client_hello.client_version = (3, 3)
+        server_hello = ServerHello()
+        server_hello.cipher_suite = 1
+        server_hello.server_version = (3, 3)
+
+        verifier = ServerHelloVerifier(client_hello)
+
+        self.assertFalse(verifier.check(server_hello))
