@@ -155,6 +155,8 @@ class HandshakeSettings(object):
             raise ValueError("maxKeySize too small")
         if other.maxKeySize>16384:
             raise ValueError("maxKeySize too large")
+        if other.maxKeySize < other.minKeySize:
+            raise ValueError("maxKeySize smaller than minKeySize")
         for s in other.cipherNames:
             if s not in CIPHER_NAMES:
                 raise ValueError("Unknown cipher name: '%s'" % s)
