@@ -111,9 +111,15 @@ class HandshakeSettings(object):
         self.useExperimentalTackExtension = False
         self.sendFallbackSCSV = False
 
-    # Validates the min/max fields, and certificateTypes
-    # Filters out unsupported cipherNames and cipherImplementations
-    def _filter(self):
+    def validate(self):
+        """
+        Validate the settings, filter out unsupported ciphersuites and return
+        a copy of object. Does not modify the original object.
+
+        @rtype: HandshakeSettings
+        @return: a self-consistent copy of settings
+        @raise ValueError: when settings are invalid, insecure or unsupported.
+        """
         other = HandshakeSettings()
         other.minKeySize = self.minKeySize
         other.maxKeySize = self.maxKeySize

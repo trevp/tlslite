@@ -370,7 +370,7 @@ class TLSConnection(TLSRecordLayer):
         # or crypto libraries that were requested        
         if not settings:
             settings = HandshakeSettings()
-        settings = settings._filter()
+        settings = settings.validate()
 
         if clientCertChain:
             if not isinstance(clientCertChain, X509CertChain):
@@ -1116,7 +1116,7 @@ class TLSConnection(TLSRecordLayer):
 
         if not settings:
             settings = HandshakeSettings()
-        settings = settings._filter()
+        settings = settings.validate()
         
         # OK Start exchanging messages
         # ******************************
