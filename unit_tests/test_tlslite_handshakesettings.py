@@ -56,9 +56,8 @@ class TestHandshakeSettings(unittest.TestCase):
         hs.maxKeySize = 1024
         hs.minKeySize = 2048
 
-        # XXX not raised
-        #with self.assertRaises(ValueError):
-        hs.validate()
+        with self.assertRaises(ValueError):
+            hs.validate()
 
     def test_useEncryptThenMAC(self):
         hs = HandshakeSettings()
