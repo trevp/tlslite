@@ -106,10 +106,17 @@ class HandshakeSettings(object):
         self.minVersion = (3,1)
         self.maxVersion = (3,3)
         self.useExperimentalTackExtension = False
+        self.useEncryptThenMAC = True
 
-    # Validates the min/max fields, and certificateTypes
-    # Filters out unsupported cipherNames and cipherImplementations
-    def _filter(self):
+    def validate(self):
+        """
+        Validate the settings, filter out unsupported ciphersuites and return
+        a copy of object. Does not modify the original object.
+
+        @rtype: HandshakeSettings
+        @return: a self-consistent copy of settings
+        @raise ValueError: when settings are invalid, insecure or unsupported.
+        """
         other = HandshakeSettings()
         other.minKeySize = self.minKeySize
         other.maxKeySize = self.maxKeySize
@@ -119,6 +126,7 @@ class HandshakeSettings(object):
         other.certificateTypes = self.certificateTypes
         other.minVersion = self.minVersion
         other.maxVersion = self.maxVersion
+        other.useEncryptThenMAC = self.useEncryptThenMAC
 
         if not cipherfactory.tripleDESPresent:
             other.cipherNames = [e for e in self.cipherNames if e != "3des"]
@@ -144,6 +152,8 @@ class HandshakeSettings(object):
             raise ValueError("maxKeySize too small")
         if other.maxKeySize>16384:
             raise ValueError("maxKeySize too large")
+        if other.maxKeySize < other.minKeySize:
+            raise ValueError("maxKeySize smaller than minKeySize")
         for s in other.cipherNames:
             if s not in CIPHER_NAMES:
                 raise ValueError("Unknown cipher name: '%s'" % s)
