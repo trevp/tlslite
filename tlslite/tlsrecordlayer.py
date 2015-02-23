@@ -3,6 +3,7 @@
 #   Google (adapted by Sam Rushing) - NPN support
 #   Martin von Loewis - python 3 port
 #   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
+#   Hubert Kario - Encrypt then MAC - RFC 7366
 #
 # See the LICENSE file for legal information regarding use of this file.
 
@@ -532,6 +533,66 @@ class TLSRecordLayer(object):
                 yield result
             randomizeFirstBlock = True
 
+    def _macThenEncrypt(self, buf, contentType):
+        """
+        Apply encryption and MAC protection on the record layer payload. Use
+        the legacy MAC-then-encrypt construct.
+
+        @type buf: bytes
+        @param buf: payload
+        @type contentType: int
+        @param contentType: record layer content type
+        """
+        #Calculate MAC
+        if self._writeState.macContext:
+            seqnumBytes = self._writeState.getSeqNumBytes()
+            mac = self._writeState.macContext.copy()
+            mac.update(compatHMAC(seqnumBytes))
+            mac.update(compatHMAC(bytearray([contentType])))
+            if self.version == (3, 0):
+                mac.update(compatHMAC(bytearray([len(buf)//256])))
+                mac.update(compatHMAC(bytearray([len(buf)%256])))
+            elif self.version in ((3, 1), (3, 2), (3, 3)):
+                mac.update(compatHMAC(bytearray([self.version[0]])))
+                mac.update(compatHMAC(bytearray([self.version[1]])))
+                mac.update(compatHMAC(bytearray([len(buf)//256])))
+                mac.update(compatHMAC(bytearray([len(buf)%256])))
+            else:
+                raise AssertionError()
+            mac.update(compatHMAC(buf))
+            macBytes = bytearray(mac.digest())
+            if self.fault == Fault.badMAC:
+                macBytes[0] = (macBytes[0]+1) % 256
+
+        #Encrypt for Block or Stream Cipher
+        if self._writeState.encContext:
+            #Add padding and encrypt (for Block Cipher):
+            if self._writeState.encContext.isBlockCipher:
+
+                #Add TLS 1.1 fixed block
+                if self.version >= (3,2):
+                    buf = self.fixedIVBlock + buf
+
+                #Add padding: buf = buf+ (macBytes + paddingBytes)
+                currentLength = len(buf) + len(macBytes) + 1
+                blockLength = self._writeState.encContext.block_size
+                paddingLength = blockLength-(currentLength % blockLength)
+
+                paddingBytes = bytearray([paddingLength] * (paddingLength+1))
+                if self.fault == Fault.badPadding:
+                    paddingBytes[0] = (paddingBytes[0]+1) % 256
+                endBytes = macBytes + paddingBytes
+                buf += endBytes
+                #Encrypt
+                buf = self._writeState.encContext.encrypt(buf)
+
+            #Encrypt (for Stream Cipher)
+            else:
+                buf += macBytes
+                buf = self._writeState.encContext.encrypt(buf)
+
+        return buf
+
     def _sendMsg(self, msg, randomizeFirstBlock = True):
         #Whenever we're connected and asked to send an app data message,
         #we first send the first byte of the message.  This prevents
@@ -544,15 +605,15 @@ class TLSRecordLayer(object):
             msgFirstByte = msg.splitFirstByte()
             for result in self._sendMsg(msgFirstByte,
                                        randomizeFirstBlock = False):
-                yield result                                            
+                yield result
 
         b = msg.write()
-        
-        # If a 1-byte message was passed in, and we "split" the 
+
+        # If a 1-byte message was passed in, and we "split" the
         # first(only) byte off above, we may have a 0-length msg:
         if len(b) == 0:
             return
-            
+
         contentType = msg.contentType
 
         #Update handshake hashes
@@ -561,53 +622,7 @@ class TLSRecordLayer(object):
             self._handshake_sha.update(compat26Str(b))
             self._handshake_sha256.update(compat26Str(b))
 
-        #Calculate MAC
-        if self._writeState.macContext:
-            seqnumBytes = self._writeState.getSeqNumBytes()
-            mac = self._writeState.macContext.copy()
-            mac.update(compatHMAC(seqnumBytes))
-            mac.update(compatHMAC(bytearray([contentType])))
-            if self.version == (3,0):
-                mac.update( compatHMAC( bytearray([len(b)//256] )))
-                mac.update( compatHMAC( bytearray([len(b)%256] )))
-            elif self.version in ((3,1), (3,2), (3,3)):
-                mac.update(compatHMAC( bytearray([self.version[0]] )))
-                mac.update(compatHMAC( bytearray([self.version[1]] )))
-                mac.update( compatHMAC( bytearray([len(b)//256] )))
-                mac.update( compatHMAC( bytearray([len(b)%256] )))
-            else:
-                raise AssertionError()
-            mac.update(compatHMAC(b))
-            macBytes = bytearray(mac.digest())
-            if self.fault == Fault.badMAC:
-                macBytes[0] = (macBytes[0]+1) % 256
-
-        #Encrypt for Block or Stream Cipher
-        if self._writeState.encContext:
-            #Add padding and encrypt (for Block Cipher):
-            if self._writeState.encContext.isBlockCipher:
-
-                #Add TLS 1.1 fixed block
-                if self.version >= (3,2):
-                    b = self.fixedIVBlock + b
-
-                #Add padding: b = b+ (macBytes + paddingBytes)
-                currentLength = len(b) + len(macBytes) + 1
-                blockLength = self._writeState.encContext.block_size
-                paddingLength = blockLength-(currentLength % blockLength)
-
-                paddingBytes = bytearray([paddingLength] * (paddingLength+1))
-                if self.fault == Fault.badPadding:
-                    paddingBytes[0] = (paddingBytes[0]+1) % 256
-                endBytes = macBytes + paddingBytes
-                b += endBytes
-                #Encrypt
-                b = self._writeState.encContext.encrypt(b)
-
-            #Encrypt (for Stream Cipher)
-            else:
-                b += macBytes
-                b = self._writeState.encContext.encrypt(b)
+        b = self._macThenEncrypt(b, contentType)
 
         #Add record header and send
         r = RecordHeader3().create(self.version, contentType, len(b))
@@ -951,88 +966,101 @@ class TLSRecordLayer(object):
             self._handshakeBuffer = self._handshakeBuffer[1:]
             yield (recordHeader, Parser(b))
 
+    def _decryptRecordWithMtE(self, recordType, b):
+        """
+        Try to decrypt record assuming it is encrypted with the legacy
+        MAC-then-encrypt mechanism.
+
+        @type recordType: int
+        @param recordType: numeric type of record contents
+        @type b: bytearray
+        @param b: encypted payload
+        """
+        #Decrypt if it's a block cipher
+        if self._readState.encContext.isBlockCipher:
+            blockLength = self._readState.encContext.block_size
+            if len(b) % blockLength != 0:
+                for result in self._sendError(\
+                        AlertDescription.decryption_failed,
+                        "Encrypted data not a multiple of blocksize"):
+                    yield result
+            b = self._readState.encContext.decrypt(b)
+            if self.version >= (3, 2): #For TLS 1.1, remove explicit IV
+                b = b[self._readState.encContext.block_size : ]
+
+            #Check padding
+            paddingGood = True
+            paddingLength = b[-1]
+            if (paddingLength+1) > len(b):
+                paddingGood = False
+                totalPaddingLength = 0
+            else:
+                if self.version == (3, 0):
+                    totalPaddingLength = paddingLength+1
+                elif self.version in ((3, 1), (3, 2), (3, 3)):
+                    totalPaddingLength = paddingLength+1
+                    paddingBytes = b[-totalPaddingLength:-1]
+                    for byte in paddingBytes:
+                        if byte != paddingLength:
+                            paddingGood = False
+                            totalPaddingLength = 0
+                else:
+                    raise AssertionError()
+
+        #Decrypt if it's a stream cipher
+        else:
+            paddingGood = True
+            b = self._readState.encContext.decrypt(b)
+            totalPaddingLength = 0
+
+        #Check MAC
+        macGood = True
+        macLength = self._readState.macContext.digest_size
+        endLength = macLength + totalPaddingLength
+        if endLength > len(b):
+            macGood = False
+        else:
+            #Read MAC
+            startIndex = len(b) - endLength
+            endIndex = startIndex + macLength
+            checkBytes = b[startIndex : endIndex]
+
+            #Calculate MAC
+            seqnumBytes = self._readState.getSeqNumBytes()
+            b = b[:-endLength]
+            mac = self._readState.macContext.copy()
+            mac.update(compatHMAC(seqnumBytes))
+            mac.update(compatHMAC(bytearray([recordType])))
+            if self.version == (3, 0):
+                mac.update(compatHMAC(bytearray([len(b)//256])))
+                mac.update(compatHMAC(bytearray([len(b)%256])))
+            elif self.version in ((3, 1), (3, 2), (3, 3)):
+                mac.update(compatHMAC(bytearray([self.version[0]])))
+                mac.update(compatHMAC(bytearray([self.version[1]])))
+                mac.update(compatHMAC(bytearray([len(b)//256])))
+                mac.update(compatHMAC(bytearray([len(b)%256])))
+            else:
+                raise AssertionError()
+            mac.update(compatHMAC(b))
+            macBytes = bytearray(mac.digest())
+
+            #Compare MACs
+            if macBytes != checkBytes:
+                macGood = False
+
+        if not (paddingGood and macGood):
+            for result in self._sendError(AlertDescription.bad_record_mac,
+                                          "MAC failure (or padding failure)"):
+                yield result
+
+        yield b
 
     def _decryptRecord(self, recordType, b):
         if self._readState.encContext:
-
-            #Decrypt if it's a block cipher
-            if self._readState.encContext.isBlockCipher:
-                blockLength = self._readState.encContext.block_size
-                if len(b) % blockLength != 0:
-                    for result in self._sendError(\
-                            AlertDescription.decryption_failed,
-                            "Encrypted data not a multiple of blocksize"):
-                        yield result
-                b = self._readState.encContext.decrypt(b)
-                if self.version >= (3,2): #For TLS 1.1, remove explicit IV
-                    b = b[self._readState.encContext.block_size : ]
-
-                #Check padding
-                paddingGood = True
-                paddingLength = b[-1]
-                if (paddingLength+1) > len(b):
-                    paddingGood=False
-                    totalPaddingLength = 0
-                else:
-                    if self.version == (3,0):
-                        totalPaddingLength = paddingLength+1
-                    elif self.version in ((3,1), (3,2), (3,3)):
-                        totalPaddingLength = paddingLength+1
-                        paddingBytes = b[-totalPaddingLength:-1]
-                        for byte in paddingBytes:
-                            if byte != paddingLength:
-                                paddingGood = False
-                                totalPaddingLength = 0
-                    else:
-                        raise AssertionError()
-
-            #Decrypt if it's a stream cipher
-            else:
-                paddingGood = True
-                b = self._readState.encContext.decrypt(b)
-                totalPaddingLength = 0
-
-            #Check MAC
-            macGood = True
-            macLength = self._readState.macContext.digest_size
-            endLength = macLength + totalPaddingLength
-            if endLength > len(b):
-                macGood = False
-            else:
-                #Read MAC
-                startIndex = len(b) - endLength
-                endIndex = startIndex + macLength
-                checkBytes = b[startIndex : endIndex]
-
-                #Calculate MAC
-                seqnumBytes = self._readState.getSeqNumBytes()
-                b = b[:-endLength]
-                mac = self._readState.macContext.copy()
-                mac.update(compatHMAC(seqnumBytes))
-                mac.update(compatHMAC(bytearray([recordType])))
-                if self.version == (3,0):
-                    mac.update( compatHMAC(bytearray( [len(b)//256] ) ))
-                    mac.update( compatHMAC(bytearray( [len(b)%256] ) ))
-                elif self.version in ((3,1), (3,2), (3,3)):
-                    mac.update(compatHMAC(bytearray( [self.version[0]] ) ))
-                    mac.update(compatHMAC(bytearray( [self.version[1]] ) ))
-                    mac.update(compatHMAC(bytearray( [len(b)//256] ) ))
-                    mac.update(compatHMAC(bytearray( [len(b)%256] ) ))
-                else:
-                    raise AssertionError()
-                mac.update(compatHMAC(b))
-                macBytes = bytearray(mac.digest())
-
-                #Compare MACs
-                if macBytes != checkBytes:
-                    macGood = False
-
-            if not (paddingGood and macGood):
-                for result in self._sendError(AlertDescription.bad_record_mac,
-                                          "MAC failure (or padding failure)"):
-                    yield result
-
-        yield b
+            for result in self._decryptRecordWithMtE(recordType, b):
+                yield result
+        else:
+            yield b
 
     def _handshakeStart(self, client):
         if not self.closed:
