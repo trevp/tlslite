@@ -59,6 +59,21 @@ class TestHandshakeSettings(unittest.TestCase):
         with self.assertRaises(ValueError):
             hs.validate()
 
+    def test_cipherNames_with_unknown_name(self):
+        hs = HandshakeSettings()
+        hs.cipherNames = ["aes256"]
+
+        newHs = hs.validate()
+
+        self.assertEqual(["aes256"], newHs.cipherNames)
+
+    def test_cipherNames_with_unknown_name(self):
+        hs = HandshakeSettings()
+        hs.cipherNames = ["aes256gcm", "aes256"]
+
+        with self.assertRaises(ValueError):
+            hs.validate()
+
     def test_useEncryptThenMAC(self):
         hs = HandshakeSettings()
 
