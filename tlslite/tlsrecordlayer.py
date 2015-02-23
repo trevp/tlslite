@@ -540,6 +540,51 @@ class TLSRecordLayer(object):
                 yield result
             randomizeFirstBlock = True
 
+    def _encryptThenMAC(self, buf, contentType):
+        """
+        Apply encryption and MAC protection on the record layer payload.
+
+        @type buf: bytes
+        @param buf: payload
+        @type contentType: int
+        @param contentType: record layer content type
+        """
+        # add padding and encrypt
+        if self._writeState.encContext:
+            # add IV for TLS1.1+
+            if self.version >= (3, 2):
+                buf = self.fixedIVBlock + buf
+
+            # add padding
+            currentLength = len(buf) + 1
+            blockLength = self._writeState.encContext.block_size
+            paddingLength = blockLength - (currentLength % blockLength)
+
+            paddingBytes = bytearray([paddingLength] * (paddingLength + 1))
+            buf += paddingBytes
+
+            # encrypt
+            buf = self._writeState.encContext.encrypt(buf)
+
+        # add MAC
+        if self._writeState.macContext:
+            # calculate HMAC
+            seqnumBytes = self._writeState.getSeqNumBytes()
+            mac = self._writeState.macContext.copy()
+            mac.update(compatHMAC(seqnumBytes))
+            mac.update(compatHMAC(bytearray([contentType])))
+            mac.update(compatHMAC(bytearray([self.version[0]])))
+            mac.update(compatHMAC(bytearray([self.version[1]])))
+            mac.update(compatHMAC(bytearray([len(buf)//256])))
+            mac.update(compatHMAC(bytearray([len(buf)%256])))
+            mac.update(compatHMAC(buf))
+
+            # add HMAC
+            macBytes = bytearray(mac.digest())
+            buf += macBytes
+
+        return buf
+
     def _macThenEncrypt(self, buf, contentType):
         """
         Apply encryption and MAC protection on the record layer payload. Use
@@ -629,7 +674,10 @@ class TLSRecordLayer(object):
             self._handshake_sha.update(compat26Str(b))
             self._handshake_sha256.update(compat26Str(b))
 
-        b = self._macThenEncrypt(b, contentType)
+        if self.etm:
+            b = self._encryptThenMAC(b, contentType)
+        else:
+            b = self._macThenEncrypt(b, contentType)
 
         #Add record header and send
         r = RecordHeader3().create(self.version, contentType, len(b))
