@@ -540,6 +540,43 @@ class TLSRecordLayer(object):
                 yield result
             randomizeFirstBlock = True
 
+    def _encryptThenMAC(self, b, contentType):
+        # add padding and encrypt
+        if self._writeState.encContext:
+            # add IV for TLS1.1+
+            if self.version >= (3,2):
+                b = self.fixedIVBlock + b
+
+            # add padding
+            currentLength = len(b) + 1
+            blockLength = self._writeState.encContext.block_size
+            paddingLength = blockLength - (currentLength % blockLength)
+
+            paddingBytes = bytearray([paddingLength] * (paddingLength + 1))
+            b += paddingBytes
+
+            # encrypt
+            b = self._writeState.encContext.encrypt(b)
+
+        # add MAC
+        if self._writeState.macContext:
+            # calculate HMAC
+            seqnumBytes = self._writeState.getSeqNumBytes()
+            mac = self._writeState.macContext.copy()
+            mac.update(compatHMAC(seqnumBytes))
+            mac.update(compatHMAC(bytearray([contentType])))
+            mac.update(compatHMAC(bytearray([self.version[0]])))
+            mac.update(compatHMAC(bytearray([self.version[1]])))
+            mac.update(compatHMAC(bytearray([len(b)//256])))
+            mac.update(compatHMAC(bytearray([len(b)%256])))
+            mac.update(compatHMAC(b))
+
+            # add HMAC
+            macBytes = bytearray(mac.digest())
+            b += macBytes
+
+        return b
+
     def _macThenEncrypt(self, b, contentType):
         #Calculate MAC
         if self._writeState.macContext:
@@ -620,7 +657,10 @@ class TLSRecordLayer(object):
             self._handshake_sha.update(compat26Str(b))
             self._handshake_sha256.update(compat26Str(b))
 
-        b = self._macThenEncrypt(b, contentType)
+        if self.etm:
+            b = self._encryptThenMAC(b, contentType)
+        else:
+            b = self._macThenEncrypt(b, contentType)
 
         #Add record header and send
         r = RecordHeader3().create(self.version, contentType, len(b))
