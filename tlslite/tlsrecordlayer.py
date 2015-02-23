@@ -96,6 +96,10 @@ class TLSRecordLayer(object):
     attacker truncating the connection, and only if necessary to avoid
     spurious errors.  The default is False.
 
+    @type etm: bool
+    @ivar etm: if the record layer uses encrypt-then-mac construct defined
+    in RFC 7366 (read only)
+
     @sort: __init__, read, readAsync, write, writeAsync, close, closeAsync,
     getCipherImplementation, getCipherName
     """
@@ -148,6 +152,9 @@ class TLSRecordLayer(object):
 
         #Fault we will induce, for testing purposes
         self.fault = None
+
+        #Whatever to do Encrypt and MAC or MAC and Encrypt
+        self.etm = False
 
     def clearReadBuffer(self):
         self._readBuffer = b''
@@ -957,6 +964,71 @@ class TLSRecordLayer(object):
             self._handshakeBuffer = self._handshakeBuffer[1:]
             yield (recordHeader, Parser(b))
 
+    def _decryptRecordWithEtM(self, recordType, b):
+        # check MAC
+        macLength = self._readState.macContext.digest_size
+        if len(b) < macLength:
+            for result in self._sendError(AlertDescription.bad_record_mac,
+                    "MAC failure (truncated data)"):
+                yield result
+
+        checkBytes = b[-macLength:]
+        b = b[:-macLength]
+
+        seqnumBytes = self._readState.getSeqNumBytes()
+        mac = self._readState.macContext.copy()
+        mac.update(compatHMAC(seqnumBytes))
+        mac.update(compatHMAC(bytearray([recordType])))
+        mac.update(compatHMAC(bytearray([self.version[0]])))
+        mac.update(compatHMAC(bytearray([self.version[1]])))
+        mac.update(compatHMAC(bytearray([len(b)//256])))
+        mac.update(compatHMAC(bytearray([len(b)%256])))
+        mac.update(compatHMAC(b))
+
+        macBytes = bytearray(mac.digest())
+        if macBytes != checkBytes:
+            for result in self._sendError(AlertDescription.bad_record_mac,
+                    "MAC failure (mismatched data)"):
+                yield result
+
+        # decrypt
+        blockLength = self._readState.encContext.block_size
+        if len(b) % blockLength != 0:
+            for result in self._sendError(AlertDescription.decryption_failed,
+                    "Encrypted data must be multiple of blocksize"):
+                yield result
+
+        b = self._readState.encContext.decrypt(b)
+        if self.version >= (3,2): # remove explicit IV
+            b = b[self._readState.encContext.block_size:]
+
+        # Check padding
+        paddingGood = True
+        paddingLength = b[-1]
+        if (paddingLength+1) > len(b):
+            paddingGood = False
+            totalPaddingLength = 0
+        else:
+            if self.version == (3,0):
+                totalPaddingLength = paddingLength+1
+            else:
+                totalPaddingLength = paddingLength+1
+                paddingBytes = b[-totalPaddingLength:-1]
+                for byte in paddingBytes:
+                    if byte != paddingLength:
+                        paddingGood = False
+                        totalPaddingLength = 0
+
+        if not paddingGood:
+            for result in self._sendError(AlertDescription.decryption_failed,
+                    "Encrypted data does not have valid padding"):
+                yield result
+
+        # Remove padding
+        b = b[:-totalPaddingLength]
+
+        yield b
+
     def _decryptRecordWithMtE(self, recordType, b):
         #Decrypt if it's a block cipher
         if self._readState.encContext.isBlockCipher:
@@ -1039,8 +1111,12 @@ class TLSRecordLayer(object):
 
     def _decryptRecord(self, recordType, b):
         if self._readState.encContext:
-            for result in self._decryptRecordWithMtE(recordType, b):
-                yield result
+            if self.etm:
+                for result in self._decryptRecordWithEtM(recordType, b):
+                    yield result
+            else:
+                for result in self._decryptRecordWithMtE(recordType, b):
+                    yield result
         else:
             yield b
 
