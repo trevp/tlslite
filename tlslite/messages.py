@@ -8,7 +8,9 @@
 #
 # See the LICENSE file for legal information regarding use of this file.
 
-"""Classes representing TLS messages."""
+"""
+Classes representing TLS messages.
+"""
 
 from .utils.compat import *
 from .utils.cryptomath import *
