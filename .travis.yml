@@ -7,6 +7,14 @@ python:
   - 3.3
   - 3.4
 
+before_install:
+  - |
+       # workaround https://github.com/travis-ci/travis-ci/issues/2666
+       if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
+         PR_FIRST=$(curl -s https://github.com/${TRAVIS_REPO_SLUG}/pull/${TRAVIS_PULL_REQUEST}.patch | head -1 | grep -o -E '\b[0-9a-f]{40}\b' | tr -d '\n')
+         TRAVIS_COMMIT_RANGE=$PR_FIRST^..$TRAVIS_COMMIT
+       fi
+
 install:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then travis_retry pip install unittest2; fi
 
@@ -23,8 +31,7 @@ script:
         else
           python -m unittest discover || exit 1
         fi
-        cd tests/ && PYTHONPATH=.. python ./tlstest.py server localhost:4433 . & sleep 1
-        cd tests/ && PYTHONPATH=.. python ./tlstest.py client localhost:4433 .
+        make test-local || exit 1
         cd $TRAVIS_BUILD_DIR
       done
 
