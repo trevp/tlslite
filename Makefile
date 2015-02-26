@@ -60,6 +60,8 @@ ifndef PYTHON3
 endif
 endif
 	epydoc --check --fail-on-error -v tlslite
+	pylint --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" tlslite > pylint_report.txt || :
+	diff-quality --violations=pylint --fail-under=90 pylint_report.txt
 
 tests/TACK_Key1.pem:
 	tack genkey -x -p test -o tests/TACK_Key1.pem
