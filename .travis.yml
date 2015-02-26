@@ -13,6 +13,20 @@ install:
 script:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then unit2 discover; else python -m unittest discover; fi
   - ./setup.py install && make test
+  - echo "Will test commits between $TRAVIS_COMMIT_RANGE"
+  - | 
+      for i in $(git log --pretty=format:%H --reverse $TRAVIS_COMMIT_RANGE); do
+        git checkout $i
+        make clean
+        if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then
+          unit2 discover || exit 1
+        else
+          python -m unittest discover || exit 1
+        fi
+        cd tests/ && PYTHONPATH=.. python ./tlstest.py server localhost:4433 . & sleep 1
+        cd tests/ && PYTHONPATH=.. python ./tlstest.py client localhost:4433 .
+        cd $TRAVIS_BUILD_DIR
+      done
 
 sudo: false
 
