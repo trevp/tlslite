@@ -8,7 +8,9 @@
 #
 # See the LICENSE file for legal information regarding use of this file.
 
-"""Constants used in various places."""
+"""
+Constants used in various places.
+"""
 
 class CertificateType:
     x509 = 0
