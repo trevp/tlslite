@@ -34,6 +34,10 @@ test:
 	cd tests/ && python ./tlstest.py server localhost:4433 . & sleep 1
 	cd tests/ && python ./tlstest.py client localhost:4433 .
 
+test-local:
+	cd tests/ && PYTHONPATH=.. python ./tlstest.py server localhost:4433 . & sleep 1
+	cd tests/ && PYTHONPATH=.. python ./tlstest.py client localhost:4433 .
+
 test-dev:
 ifdef PYTHON2
 	@echo "Running test suite with Python 2"
