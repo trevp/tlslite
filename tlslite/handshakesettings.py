@@ -5,7 +5,9 @@
 #
 # See the LICENSE file for legal information regarding use of this file.
 
-"""Class for setting handshake parameters."""
+"""
+Class for setting handshake parameters.
+"""
 
 from .constants import CertificateType
 from .utils import cryptomath
