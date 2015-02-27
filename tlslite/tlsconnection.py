@@ -585,16 +585,16 @@ class TLSConnection(TLSRecordLayer):
                     AlertDescription.illegal_parameter,
                     "Server responded with unrequested Tack Extension"):
                     yield result
-        if serverHello.next_protos and not clientHello.supports_npn:
-            for result in self._sendError(\
-                AlertDescription.illegal_parameter,
-                "Server responded with unrequested NPN Extension"):
-                yield result
             if not serverHello.tackExt.verifySignatures():
                 for result in self._sendError(\
                     AlertDescription.decrypt_error,
                     "TackExtension contains an invalid signature"):
                     yield result
+        if serverHello.next_protos and not clientHello.supports_npn:
+            for result in self._sendError(\
+                AlertDescription.illegal_parameter,
+                "Server responded with unrequested NPN Extension"):
+                yield result
         yield serverHello
 
     def _clientSelectNextProto(self, nextProtos, serverHello):
