@@ -97,40 +97,6 @@ def clientTestCmd(argv):
 
     badFault = False
 
-    print("Test 0 - anonymous handshake")
-    connection = connect()
-    connection.handshakeClientAnonymous()
-    testConnClient(connection)
-    connection.close()
-        
-    print("Test 1 - good X509 (plus SNI)")
-    connection = connect()
-    connection.handshakeClientCert(serverName=address[0])
-    testConnClient(connection)
-    assert(isinstance(connection.session.serverCertChain, X509CertChain))
-    assert(connection.session.serverName == address[0])
-    connection.close()
-
-    print("Test 1.a - good X509, SSLv3")
-    connection = connect()
-    settings = HandshakeSettings()
-    settings.minVersion = (3,0)
-    settings.maxVersion = (3,0)
-    connection.handshakeClientCert(settings=settings)
-    testConnClient(connection)    
-    assert(isinstance(connection.session.serverCertChain, X509CertChain))
-    connection.close()    
-
-    print("Test 1.b - good X509, RC4-MD5")
-    connection = connect()
-    settings = HandshakeSettings()
-    settings.macNames = ["md5"]
-    connection.handshakeClientCert(settings=settings)
-    testConnClient(connection)    
-    assert(isinstance(connection.session.serverCertChain, X509CertChain))
-    assert(connection.session.cipherSuite == constants.CipherSuite.TLS_RSA_WITH_RC4_128_MD5)
-    connection.close()
-
     if tackpyLoaded:
                     
         settings = HandshakeSettings()
@@ -153,12 +119,6 @@ def clientTestCmd(argv):
             if alert.description != AlertDescription.illegal_parameter:
                 raise        
         connection.close()
-
-    print("Test 3 - good SRP")
-    connection = connect()
-    connection.handshakeClientSRP("test", "password")
-    testConnClient(connection)
-    connection.close()
 
     print("Test 4 - SRP faults")
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
@@ -472,37 +432,6 @@ def serverTestCmd(argv):
     s = open(os.path.join(dir, "serverX509Key.pem")).read()
     x509Key = parsePEMKey(s, private=True)
 
-    print("Test 0 - Anonymous server handshake")
-    connection = connect()
-    connection.handshakeServer(anon=True)
-    testConnServer(connection)    
-    connection.close() 
-    
-    print("Test 1 - good X.509")
-    connection = connect()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
-    assert(connection.session.serverName == address[0])    
-    testConnServer(connection)    
-    connection.close()
-
-    print("Test 1.a - good X.509, SSL v3")
-    connection = connect()
-    settings = HandshakeSettings()
-    settings.minVersion = (3,0)
-    settings.maxVersion = (3,0)
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
-    testConnServer(connection)
-    connection.close()            
-
-    print("Test 1.b - good X.509, RC4-MD5")
-    connection = connect()
-    settings = HandshakeSettings()
-    settings.macNames = ["sha", "md5"]
-    settings.cipherNames = ["rc4"]
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
-    testConnServer(connection)
-    connection.close()            
-    
     if tackpyLoaded:
         tack = Tack.createFromPem(open("./TACK1.pem", "rU").read())
         tackUnrelated = Tack.createFromPem(open("./TACKunrelated.pem", "rU").read())    
@@ -527,16 +456,10 @@ def serverTestCmd(argv):
             if alert.description != AlertDescription.illegal_parameter:
                 raise        
     
-    print("Test 3 - good SRP")
     verifierDB = VerifierDB()
     verifierDB.create()
     entry = VerifierDB.makeVerifier("test", "password", 1536)
     verifierDB["test"] = entry
-
-    connection = connect()
-    connection.handshakeServer(verifierDB=verifierDB)
-    testConnServer(connection)
-    connection.close()
 
     print("Test 4 - SRP faults")
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
