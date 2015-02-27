@@ -23,6 +23,7 @@ from .messages import *
 from .mathtls import *
 from .handshakesettings import HandshakeSettings
 from .utils.tackwrapper import *
+from .verifiers import ServerHelloVerifier
 
 
 class TLSConnection(TLSRecordLayer):
@@ -553,43 +554,22 @@ class TLSConnection(TLSRecordLayer):
         #Future responses from server must use this version
         self._versionCheck = True
 
-        #Check ServerHello
-        if serverHello.server_version < settings.minVersion:
+        verifier = ServerHelloVerifier(clientHello, settings)
+        try:
+            verifier.verify(serverHello)
+        except TLSIllegalParameterException as e:
             for result in self._sendError(\
-                AlertDescription.protocol_version,
-                "Too old version: %s" % str(serverHello.server_version)):
-                yield result
-        if serverHello.server_version > settings.maxVersion:
-            for result in self._sendError(\
-                AlertDescription.protocol_version,
-                "Too new version: %s" % str(serverHello.server_version)):
-                yield result
-        if serverHello.cipher_suite not in clientHello.cipher_suites:
-            for result in self._sendError(\
-                AlertDescription.illegal_parameter,
-                "Server responded with incorrect ciphersuite"):
-                yield result
-        if serverHello.certificate_type not in clientHello.certificate_types:
-            for result in self._sendError(\
-                AlertDescription.illegal_parameter,
-                "Server responded with incorrect certificate type"):
-                yield result
-        if serverHello.compression_method != 0:
-            for result in self._sendError(\
-                AlertDescription.illegal_parameter,
-                "Server responded with incorrect compression method"):
-                yield result
-        if serverHello.tackExt:            
-            if not clientHello.tack:
-                for result in self._sendError(\
                     AlertDescription.illegal_parameter,
-                    "Server responded with unrequested Tack Extension"):
-                    yield result
-        if serverHello.next_protos and not clientHello.supports_npn:
-            for result in self._sendError(\
-                AlertDescription.illegal_parameter,
-                "Server responded with unrequested NPN Extension"):
+                    str(e)):
                 yield result
+        except TLSProtocolVersionException as e:
+            for result in self._sendError(\
+                    AlertDescription.protocol_version,
+                    str(e)):
+                yield result
+
+        #Check ServerHello
+        if serverHello.tackExt:            
             if not serverHello.tackExt.verifySignatures():
                 for result in self._sendError(\
                     AlertDescription.decrypt_error,

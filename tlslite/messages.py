@@ -234,6 +234,17 @@ class ClientHello(HandshakeMsg):
         else:
             return None
 
+    def getExtensionsIDs(self):
+        """
+        Returns a list of all ID types present in message
+
+        @rtype: list of int
+        """
+        if self.extensions is None:
+            return []
+        else:
+            return [x.ext_type for x in self.extensions]
+
     def addExtension(self, ext):
         """
         Adds extension to internal list of extensions
@@ -532,13 +543,6 @@ class ClientHello(HandshakeMsg):
             w.bytes += w2.bytes
         return self.postWrite(w)
 
-class BadNextProtos(Exception):
-    def __init__(self, l):
-        self.length = l
-
-    def __str__(self):
-        return 'Cannot encode a list of next protocols because it contains an element with invalid length %d. Element lengths must be 0 < x < 256' % self.length
-
 class ServerHello(HandshakeMsg):
     """server_hello message
 
@@ -623,6 +627,17 @@ class ServerHello(HandshakeMsg):
             return exts[0]
         else:
             return None
+
+    def getExtensionsIDs(self):
+        """
+        Return a list of extension IDs present in message
+
+        @rtype: list of int
+        """
+        if self.extensions is None:
+            return []
+        else:
+            return [x.ext_type for x in self.extensions]
 
     def addExtension(self, ext):
         """
