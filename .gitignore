@@ -2,5 +2,6 @@
 .project
 .pydevproject
 .settings
+pylint_report.txt
 build/
 docs/
