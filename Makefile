@@ -23,6 +23,7 @@ clean:
 	rm -rf docs
 	rm -rf build
 	rm -f MANIFEST
+	rm -f tests/synchro.fifo
 
 docs:
 	epydoc --html -v --introspect-only -o docs --graph all tlslite
