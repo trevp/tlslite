@@ -139,7 +139,7 @@ def clientTestCmd(argv):
         print("Test 2.a - good X.509, TACK")
         connection = connect()
         connection.handshakeClientCert(settings=settings)
-        assert(connection.session.tackExt.tacks[0].getTackId() == "rrted.ptvtl.d2uiq.ox2xe.w4ss3")
+        assert(connection.session.tackExt.tacks[0].getTackId() == "5lcbe.eyweo.yxuan.rw6xd.jtoz7")
         assert(connection.session.tackExt.activation_flags == 1)        
         testConnClient(connection)    
         connection.close()    
