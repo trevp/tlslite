@@ -60,3 +60,14 @@ ifndef PYTHON3
 endif
 endif
 	epydoc --check --fail-on-error -v tlslite
+
+tests/TACK_Key1.pem:
+	tack genkey -x -p test -o tests/TACK_Key1.pem
+
+tests/TACK_Key2.pem:
+	tack genkey -x -p test -o tests/TACK_Key2.pem
+
+# the following needs to be used only when the server certificate gets recreated
+gen-tacks: tests/TACK_Key1.pem tests/TACK_Key2.pem
+	tack sign -x -k tests/TACK_Key1.pem -p test -c tests/serverX509Cert.pem -o tests/TACK1.pem
+	tack sign -x -k tests/TACK_Key2.pem -p test -c tests/serverX509Cert.pem -o tests/TACK2.pem
