@@ -4,6 +4,9 @@
 #
 PYTHON2 := $(shell which python2 2>/dev/null)
 PYTHON3 := $(shell which python3 2>/dev/null)
+COVERAGE := $(shell which coverage 2>/dev/null)
+COVERAGE2 := $(shell which coverage2 2>/dev/null)
+COVERAGE3 := $(shell which coverage3 2>/dev/null)
 
 .PHONY : default
 default:
@@ -62,6 +65,28 @@ endif
 	epydoc --check --fail-on-error -v tlslite
 	pylint --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" tlslite > pylint_report.txt || :
 	diff-quality --violations=pylint --fail-under=90 pylint_report.txt
+ifdef COVERAGE2
+	coverage2 run --branch --source tlslite -m unittest discover
+	coverage2 report -m
+	coverage2 xml
+	diff-cover --fail-under=90 coverage.xml
+endif
+ifdef COVERAGE3
+	coverage3 run --branch --source tlslite -m unittest discover
+	coverage3 report -m
+	coverage3 xml
+	diff-cover --fail-under=90 coverage.xml
+endif
+ifndef COVERAGE2
+ifndef COVERAGE3
+ifdef COVERAGE
+	coverage run --branch --source tlslite -m unittest discover
+	coverage report -m
+	coverage xml
+	diff-cover --fail-under=90 coverage.xml
+endif
+endif
+endif
 
 tests/TACK_Key1.pem:
 	tack genkey -x -p test -o tests/TACK_Key1.pem
