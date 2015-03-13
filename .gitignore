@@ -2,6 +2,8 @@
 .project
 .pydevproject
 .settings
+.coverage
+coverage.xml
 pylint_report.txt
 build/
 docs/

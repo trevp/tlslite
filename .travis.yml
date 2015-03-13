@@ -35,7 +35,13 @@ install:
   - travis_retry pip install -r build-requirements.txt
 
 script:
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then unit2 discover; else python -m unittest discover; fi
+  - |
+      if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then
+          coverage run --branch --source tlslite -m unittest2 discover;
+      else
+          coverage run --branch --source tlslite -m unittest discover;
+      fi
+  - coverage report -m
   - ./setup.py install && make test
   # pylint doesn't work on 2.6: https://bitbucket.org/logilab/pylint/issue/390/py26-compatiblity-broken
   # diff-quality doesn't work on 3.2: https://github.com/edx/diff-cover/issues/94
