@@ -67,4 +67,5 @@ script:
 
 sudo: false
 
-
+after_success:
+ - coveralls
