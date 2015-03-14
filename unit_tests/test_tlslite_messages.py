@@ -771,6 +771,59 @@ class TestRecordHeader2(unittest.TestCase):
         #self.assertEqual(512, rh.length)
 
 class TestRecordHeader3(unittest.TestCase):
+    def test___init__(self):
+        rh = RecordHeader3()
+
+        self.assertEqual(0, rh.type)
+        self.assertEqual((0, 0), rh.version)
+        self.assertEqual(0, rh.length)
+        self.assertFalse(rh.ssl2)
+
+    def test_create(self):
+        rh = RecordHeader3()
+
+        rh = rh.create((3, 3), ContentType.application_data, 10)
+
+        self.assertEqual((3, 3), rh.version)
+        self.assertEqual(ContentType.application_data, rh.type)
+        self.assertEqual(10, rh.length)
+        self.assertFalse(rh.ssl2)
+
+    def test_write(self):
+        rh = RecordHeader3()
+
+        rh = rh.create((3, 3), ContentType.application_data, 10)
+
+        self.assertEqual(bytearray(
+            b'\x17' +       # protocol type
+            b'\x03\x03' +   # protocol version
+            b'\x00\x0a'     # length
+            ), rh.write())
+
+    def test_write_with_too_big_length(self):
+        rh = RecordHeader3()
+
+        rh = rh.create((3, 3), ContentType.application_data, 2**17)
+
+        with self.assertRaises(ValueError):
+            rh.write()
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            b'\x17' +       # protocol type - app data
+            b'\x03\x03' +   # protocol version
+            b'\x00\x0f'     # length
+            ))
+
+        rh = RecordHeader3()
+
+        rh = rh.parse(parser)
+
+        self.assertFalse(rh.ssl2)
+        self.assertEqual(ContentType.application_data, rh.type)
+        self.assertEqual((3, 3), rh.version)
+        self.assertEqual(15, rh.length)
+
     def test_type_name(self):
         rh = RecordHeader3()
         rh = rh.create((3,0), ContentType.application_data, 0)
