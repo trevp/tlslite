@@ -7,7 +7,8 @@ try:
     import unittest2 as unittest
 except ImportError:
     import unittest
-from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert
+from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
+        RecordHeader2
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription
@@ -723,7 +724,106 @@ class TestServerHello(unittest.TestCase):
                 "cipher_suite=34500, compression_method=0, _tack_ext=None, "\
                 "extensions=[])", repr(server_hello))
 
+class TestRecordHeader2(unittest.TestCase):
+    def test___init__(self):
+        rh = RecordHeader2()
+
+        self.assertTrue(rh.ssl2)
+        self.assertEqual(0, rh.type)
+        self.assertEqual((0, 0), rh.version)
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            b'\x80' +       # head
+            b'\x12'         # length
+            ))
+
+        rh = RecordHeader2()
+        rh = rh.parse(parser)
+
+        self.assertTrue(rh.ssl2)
+        self.assertEqual(ContentType.handshake, rh.type)
+        self.assertEqual((2, 0), rh.version)
+        self.assertEqual(18, rh.length)
+
+    def test_parse_with_invalid_header(self):
+        parser = Parser(bytearray(
+            b'\x00' +       # header (bad)
+            b'\x12'         # length
+            ))
+
+        rh = RecordHeader2()
+        with self.assertRaises(SyntaxError):
+            rh.parse(parser)
+
+    def test_parse_with_very_long_message(self):
+        parser = Parser(bytearray(
+            b'\x82' +       # header and a nibble of length
+            b'\x00'
+            ))
+
+        rh = RecordHeader2()
+
+        #XXX can't handle two-byte length
+        with self.assertRaises(SyntaxError):
+            rh = rh.parse(parser)
+
+        #self.assertEqual(512, rh.length)
+
 class TestRecordHeader3(unittest.TestCase):
+    def test___init__(self):
+        rh = RecordHeader3()
+
+        self.assertEqual(0, rh.type)
+        self.assertEqual((0, 0), rh.version)
+        self.assertEqual(0, rh.length)
+        self.assertFalse(rh.ssl2)
+
+    def test_create(self):
+        rh = RecordHeader3()
+
+        rh = rh.create((3, 3), ContentType.application_data, 10)
+
+        self.assertEqual((3, 3), rh.version)
+        self.assertEqual(ContentType.application_data, rh.type)
+        self.assertEqual(10, rh.length)
+        self.assertFalse(rh.ssl2)
+
+    def test_write(self):
+        rh = RecordHeader3()
+
+        rh = rh.create((3, 3), ContentType.application_data, 10)
+
+        self.assertEqual(bytearray(
+            b'\x17' +       # protocol type
+            b'\x03\x03' +   # protocol version
+            b'\x00\x0a'     # length
+            ), rh.write())
+
+    def test_write_with_too_big_length(self):
+        rh = RecordHeader3()
+
+        rh = rh.create((3, 3), ContentType.application_data, 2**17)
+
+        with self.assertRaises(ValueError):
+            rh.write()
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            b'\x17' +       # protocol type - app data
+            b'\x03\x03' +   # protocol version
+            b'\x00\x0f'     # length
+            ))
+
+        rh = RecordHeader3()
+
+        rh = rh.parse(parser)
+
+        self.assertFalse(rh.ssl2)
+        self.assertEqual(ContentType.application_data, rh.type)
+        self.assertEqual((3, 3), rh.version)
+        self.assertEqual(15, rh.length)
+
     def test_type_name(self):
         rh = RecordHeader3()
         rh = rh.create((3,0), ContentType.application_data, 0)
