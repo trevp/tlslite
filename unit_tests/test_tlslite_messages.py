@@ -11,9 +11,10 @@ from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
-        AlertLevel, AlertDescription
+        AlertLevel, AlertDescription, ExtensionType
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension
+from tlslite.errors import TLSInternalError
 
 class TestClientHello(unittest.TestCase):
     def test___init__(self):
@@ -420,6 +421,47 @@ class TestClientHello(unittest.TestCase):
                 "extensions=[TLSExtension(ext_type=0, "\
                 "ext_data=bytearray(b''), server_type=False)])",
                 repr(client_hello))
+
+    def test_getExtension(self):
+        client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),
+                [], extensions=[TLSExtension().create(0, bytearray(0))])
+
+        ext = client_hello.getExtension(1)
+
+        self.assertIsNone(ext)
+
+    def test_getExtension_with_present_id(self):
+        client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),
+                [], extensions=[TLSExtension().create(0, bytearray(0))])
+
+        ext = client_hello.getExtension(0)
+
+        self.assertEqual(ext, TLSExtension().create(0, bytearray(0)))
+
+    def test_getExtension_with_duplicated_extensions(self):
+        client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),
+                [], extensions=[TLSExtension().create(0, bytearray(0)),
+                                SNIExtension().create(b'localhost')])
+
+        with self.assertRaises(TLSInternalError):
+            client_hello.getExtension(0)
+
+    def test_certificate_types(self):
+        client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),
+                [])
+
+        self.assertEqual(client_hello.certificate_types, [0])
+
+        client_hello.certificate_types = [0, 1]
+
+        self.assertEqual(client_hello.certificate_types, [0, 1])
+
+        client_hello.certificate_types = [0, 1, 2]
+
+        self.assertEqual(client_hello.certificate_types, [0, 1, 2])
+
+        ext = client_hello.getExtension(ExtensionType.cert_type)
+        self.assertEqual(ext.cert_types, [0, 1, 2])
 
 class TestServerHello(unittest.TestCase):
     def test___init__(self):
@@ -853,6 +895,13 @@ class TestRecordHeader3(unittest.TestCase):
                 repr(rh))
 
 class TestAlert(unittest.TestCase):
+    def test___init__(self):
+        alert = Alert()
+
+        self.assertEqual(alert.contentType, ContentType.alert)
+        self.assertEqual(alert.level, 0)
+        self.assertEqual(alert.description, 0)
+
     def test_level_name(self):
         alert = Alert().create(AlertDescription.record_overflow,
                 AlertLevel.fatal)
@@ -887,6 +936,34 @@ class TestAlert(unittest.TestCase):
                 AlertLevel.fatal)
 
         self.assertEqual("Alert(level=2, description=22)", repr(alert))
+
+    def test_parse(self):
+        alert = Alert()
+
+        parser = Parser(bytearray(
+            b'\x01' +           # level
+            b'\x02'             # description
+            ))
+
+        alert = alert.parse(parser)
+
+        self.assertEqual(alert.level, 1)
+        self.assertEqual(alert.description, 2)
+
+    def test_parse_with_missing_data(self):
+        alert = Alert()
+
+        parser = Parser(bytearray(
+            b'\x01'))           # level
+
+        with self.assertRaises(SyntaxError):
+            alert.parse(parser)
+
+    def test_write(self):
+        alert = Alert().create(AlertDescription.record_overflow)
+
+        self.assertEqual(bytearray(
+            b'\x02\x16'), alert.write())
 
 if __name__ == '__main__':
     unittest.main()
