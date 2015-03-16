@@ -1,6 +1,7 @@
 # Authors: 
 #   Trevor Perrin
 #   Martin von Loewis - python 3 port
+#   Mirko Dziadzka - bugfix
 #
 # See the LICENSE file for legal information regarding use of this file.
 
