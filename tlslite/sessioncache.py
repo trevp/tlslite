@@ -73,7 +73,7 @@ class SessionCache(object):
         try:
             #Add the new element
             self.entriesDict[bytes(sessionID)] = session
-            self.entriesList[self.lastIndex] = (sessionID, time.time())
+            self.entriesList[self.lastIndex] = (bytes(sessionID), time.time())
             self.lastIndex = (self.lastIndex+1) % len(self.entriesList)
 
             #If the cache is full, we delete the oldest element to make an
