@@ -5,8 +5,6 @@ try:
 except ImportError:
     import unittest
 
-import time
-
 from tlslite.sessioncache import SessionCache
 
 class TestGetAttributeAfterPurge(unittest.TestCase):
