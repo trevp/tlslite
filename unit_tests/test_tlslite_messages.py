@@ -853,6 +853,13 @@ class TestRecordHeader3(unittest.TestCase):
                 repr(rh))
 
 class TestAlert(unittest.TestCase):
+    def test___init__(self):
+        alert = Alert()
+
+        self.assertEqual(alert.contentType, ContentType.alert)
+        self.assertEqual(alert.level, 0)
+        self.assertEqual(alert.description, 0)
+
     def test_level_name(self):
         alert = Alert().create(AlertDescription.record_overflow,
                 AlertLevel.fatal)
@@ -887,6 +894,34 @@ class TestAlert(unittest.TestCase):
                 AlertLevel.fatal)
 
         self.assertEqual("Alert(level=2, description=22)", repr(alert))
+
+    def test_parse(self):
+        alert = Alert()
+
+        parser = Parser(bytearray(
+            b'\x01' +           # level
+            b'\x02'             # description
+            ))
+
+        alert = alert.parse(parser)
+
+        self.assertEqual(alert.level, 1)
+        self.assertEqual(alert.description, 2)
+
+    def test_parse_with_missing_data(self):
+        alert = Alert()
+
+        parser = Parser(bytearray(
+            b'\x01'))           # level
+
+        with self.assertRaises(SyntaxError):
+            alert.parse(parser)
+
+    def test_write(self):
+        alert = Alert().create(AlertDescription.record_overflow)
+
+        self.assertEqual(bytearray(
+            b'\x02\x16'), alert.write())
 
 if __name__ == '__main__':
     unittest.main()
