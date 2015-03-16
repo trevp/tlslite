@@ -705,7 +705,6 @@ def serverTestCmd(argv):
     print("Test 21 - HTTPS test X.509")
 
     #Close the current listening socket
-    lsock.shutdown(socket.SHUT_RDWR)
     lsock.close()
 
     #Create and run an HTTP Server using TLSSocketServerMixIn
