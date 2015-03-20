@@ -480,6 +480,30 @@ class TestClientHello(unittest.TestCase):
         ext = client_hello.getExtension(ExtensionType.srp)
         self.assertEqual(ext.identity, b'her-name')
 
+    def test_tack(self):
+        client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),
+                [])
+
+        self.assertFalse(client_hello.tack)
+
+        client_hello.tack = True
+
+        self.assertTrue(client_hello.tack)
+
+        client_hello.tack = True
+
+        self.assertTrue(client_hello.tack)
+
+        ext = client_hello.getExtension(ExtensionType.tack)
+        self.assertIsNotNone(ext)
+
+        client_hello.tack = False
+
+        self.assertFalse(client_hello.tack)
+
+        ext = client_hello.getExtension(ExtensionType.tack)
+        self.assertIsNone(ext)
+
 class TestServerHello(unittest.TestCase):
     def test___init__(self):
         server_hello = ServerHello()
