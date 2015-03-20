@@ -504,6 +504,30 @@ class TestClientHello(unittest.TestCase):
         ext = client_hello.getExtension(ExtensionType.tack)
         self.assertIsNone(ext)
 
+    def test_supports_npn(self):
+        client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),
+                [])
+
+        self.assertFalse(client_hello.supports_npn)
+
+        client_hello.supports_npn = True
+
+        self.assertTrue(client_hello.supports_npn)
+
+        client_hello.supports_npn = True
+
+        self.assertTrue(client_hello.supports_npn)
+
+        ext = client_hello.getExtension(ExtensionType.supports_npn)
+        self.assertIsNotNone(ext)
+
+        client_hello.supports_npn = False
+
+        self.assertFalse(client_hello.supports_npn)
+
+        ext = client_hello.getExtension(ExtensionType.supports_npn)
+        self.assertIsNone(ext)
+
 class TestServerHello(unittest.TestCase):
     def test___init__(self):
         server_hello = ServerHello()
