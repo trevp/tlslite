@@ -463,6 +463,23 @@ class TestClientHello(unittest.TestCase):
         ext = client_hello.getExtension(ExtensionType.cert_type)
         self.assertEqual(ext.cert_types, [0, 1, 2])
 
+    def test_srp_username(self):
+        client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),
+                [])
+
+        self.assertIsNone(client_hello.srp_username)
+
+        client_hello.srp_username = b'my-name'
+
+        self.assertEqual(client_hello.srp_username, b'my-name')
+
+        client_hello.srp_username = b'her-name'
+
+        self.assertEqual(client_hello.srp_username, b'her-name')
+
+        ext = client_hello.getExtension(ExtensionType.srp)
+        self.assertEqual(ext.identity, b'her-name')
+
 class TestServerHello(unittest.TestCase):
     def test___init__(self):
         server_hello = ServerHello()
