@@ -418,7 +418,7 @@ class ClientHello(HandshakeMsg):
             sni_ext = SNIExtension().create(hostname)
             self.addExtension(sni_ext)
         else:
-            names = sni_ext.host_names
+            names = list(sni_ext.host_names)
             names[0] = hostname
             sni_ext.host_names = names
 

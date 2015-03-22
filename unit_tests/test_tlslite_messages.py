@@ -528,6 +528,32 @@ class TestClientHello(unittest.TestCase):
         ext = client_hello.getExtension(ExtensionType.supports_npn)
         self.assertIsNone(ext)
 
+    def test_server_name(self):
+        client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),
+                [])
+
+        client_hello.server_name = b'example.com'
+
+        self.assertEqual(client_hello.server_name, b'example.com')
+
+        client_hello.server_name = b'example.org'
+
+        self.assertEqual(client_hello.server_name, b'example.org')
+
+        ext = client_hello.getExtension(ExtensionType.server_name)
+        self.assertIsNotNone(ext)
+
+    def test_server_name_other_than_dns_name(self):
+        client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),
+                [])
+
+        sni_ext = SNIExtension().create(server_names=[\
+                SNIExtension.ServerName(1, b'test')])
+
+        client_hello.extensions = [sni_ext]
+
+        self.assertEqual(client_hello.server_name, bytearray(0))
+
 class TestServerHello(unittest.TestCase):
     def test___init__(self):
         server_hello = ServerHello()
