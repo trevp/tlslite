@@ -116,6 +116,7 @@ def clientTestCmd(argv):
     testConnClient(connection)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     assert(connection.session.serverName == address[0])
+    assert(connection.etm)
     connection.close()
 
     print("Test 1.a - good X509, SSLv3")
@@ -424,7 +425,19 @@ def clientTestCmd(argv):
     assert(connection.next_proto == b'spdy/2')
     connection.close()
     
-    print('Test 25 - good standard XMLRPC https client')
+    print('Test 25 - no EtM server side')
+    synchro.recv(1)
+    connection = connect()
+    settings = HandshakeSettings()
+    assert settings.useEncryptThenMAC
+    connection.handshakeClientCert(serverName=address[0])
+    testConnClient(connection)
+    assert isinstance(connection.session.serverCertChain, X509CertChain)
+    assert connection.session.serverName == address[0]
+    assert not connection.etm
+    connection.close()
+
+    print('Test 26 - good standard XMLRPC https client')
     address = address[0], address[1]+1
     synchro.recv(1)
     try:
@@ -441,7 +454,7 @@ def clientTestCmd(argv):
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print('Test 26 - good tlslite XMLRPC client')
+    print('Test 27 - good tlslite XMLRPC client')
     transport = XMLRPCTransport(ignoreAbruptClose=True)
     server = xmlrpclib.Server('https://%s:%s' % address, transport)
     synchro.recv(1)
@@ -449,14 +462,14 @@ def clientTestCmd(argv):
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print('Test 27 - good XMLRPC ignored protocol')
+    print('Test 28 - good XMLRPC ignored protocol')
     server = xmlrpclib.Server('http://%s:%s' % address, transport)
     synchro.recv(1)
     assert server.add(1,2) == 3
     synchro.recv(1)
     assert server.pow(2,4) == 16
-        
-    print("Test 28 - Internet servers test")
+
+    print("Test 29 - Internet servers test")
     try:
         i = IMAP4_TLS("cyrus.andrew.cmu.edu")
         i.login("anonymous", "anonymous@anonymous.net")
@@ -843,7 +856,17 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print("Tests 25-27 - XMLRPXC server")
+    print('Test 25 - no EtM server side')
+    synchro.send(b'R')
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.useEncryptThenMAC = False
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
+            settings=settings)
+    testConnServer(connection)
+    connection.close()
+
+    print("Tests 26-28 - XMLRPXC server")
     address = address[0], address[1]+1
     class Server(TLSXMLRPCServer):
 
