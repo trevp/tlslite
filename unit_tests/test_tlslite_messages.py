@@ -554,6 +554,39 @@ class TestClientHello(unittest.TestCase):
 
         self.assertEqual(client_hello.server_name, bytearray(0))
 
+    def test_parse_with_SSLv2_client_hello(self):
+        parser = Parser(bytearray(
+            # length and type is handled by hello protocol parser
+            #b'\x80\x2e' +           # length - 46 bytes
+            #b'\x01' +               # message type - client hello
+            b'\x00\x02' +           # version - SSLv2
+            b'\x00\x15' +           # cipher spec length - 21 bytes
+            b'\x00\x00' +           # session ID length - 0 bytes
+            b'\x00\x10' +           # challange length - 16 bytes
+            b'\x07\x00\xc0' +       # cipher - SSL2_DES_192_EDE3_CBC_WITH_MD5
+            b'\x05\x00\x80' +       # cipher - SSL2_IDEA_128_CBC_WITH_MD5
+            b'\x03\x00\x80' +       # cipher - SSL2_RC2_CBC_128_CBC_WITH_MD5
+            b'\x01\x00\x80' +       # cipher - SSL2_RC4_128_WITH_MD5
+            b'\x06\x00\x40' +       # cipher - SSL2_DES_64_CBC_WITH_MD5
+            b'\x04\x00\x80' +       # cipher - SSL2_RC2_CBC_128_CBC_WITH_MD5
+            b'\x02\x00\x80' +       # cipher - SSL2_RC4_128_EXPORT40_WITH_MD5
+            b'\x01' * 16            # challenge
+            ))
+        client_hello = ClientHello(ssl2=True)
+
+        client_hello = client_hello.parse(parser)
+
+        # XXX the value on the wire is LSB, but should be interpreted MSB for
+        # SSL2
+        self.assertEqual((0, 2), client_hello.client_version)
+        self.assertEqual(bytearray(0), client_hello.session_id)
+        self.assertEqual([458944, 327808, 196736, 65664, 393280, 262272,
+                          131200],
+                         client_hello.cipher_suites)
+        self.assertEqual(bytearray(b'\x00'*16 + b'\x01'*16),
+                         client_hello.random)
+        self.assertEqual([0], client_hello.compression_methods)
+
 class TestServerHello(unittest.TestCase):
     def test___init__(self):
         server_hello = ServerHello()
