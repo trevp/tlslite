@@ -208,7 +208,7 @@ if gmpyLoaded:
         power = gmpy.mpz(power)
         modulus = gmpy.mpz(modulus)
         result = pow(base, power, modulus)
-        return long(result)
+        return compatLong(result)
 
 else:
     def powMod(base, power, modulus):
