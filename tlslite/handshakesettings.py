@@ -95,6 +95,9 @@ class HandshakeSettings(object):
     
     Note that TACK support is not standardized by IETF and uses a temporary
     TLS Extension number, so should NOT be used in production software.
+
+    @type sendFallbackSCSV: bool
+    @ivar sendFallbackSCSV: Whether to, as a client, send FALLBACK_SCSV.
     """
     def __init__(self):
         self.minKeySize = 1023
@@ -106,6 +109,7 @@ class HandshakeSettings(object):
         self.minVersion = (3,1)
         self.maxVersion = (3,3)
         self.useExperimentalTackExtension = False
+        self.sendFallbackSCSV = False
 
     # Validates the min/max fields, and certificateTypes
     # Filters out unsupported cipherNames and cipherImplementations
@@ -119,6 +123,7 @@ class HandshakeSettings(object):
         other.certificateTypes = self.certificateTypes
         other.minVersion = self.minVersion
         other.maxVersion = self.maxVersion
+        other.sendFallbackSCSV = self.sendFallbackSCSV
 
         if not cipherfactory.tripleDESPresent:
             other.cipherNames = [e for e in self.cipherNames if e != "3des"]

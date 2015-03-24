@@ -506,6 +506,12 @@ class TLSConnection(TLSRecordLayer):
         else:
             assert(False)
 
+        #Add any SCSVs. These are not real cipher suites, but signaling
+        #values which reuse the cipher suite field in the ClientHello.
+        wireCipherSuites = list(cipherSuites)
+        if settings.sendFallbackSCSV:
+            wireCipherSuites.append(CipherSuite.TLS_FALLBACK_SCSV)
+
         #Initialize acceptable certificate types
         certificateTypes = settings._getCertificateTypes()
             
@@ -519,7 +525,7 @@ class TLSConnection(TLSRecordLayer):
             else:
                 clientHello = ClientHello()
                 clientHello.create(settings.maxVersion, getRandomBytes(32),
-                                   session.sessionID, cipherSuites,
+                                   session.sessionID, wireCipherSuites,
                                    certificateTypes, 
                                    session.srpUsername,
                                    reqTack, nextProtos is not None,
@@ -529,7 +535,7 @@ class TLSConnection(TLSRecordLayer):
         else:
             clientHello = ClientHello()
             clientHello.create(settings.maxVersion, getRandomBytes(32),
-                               bytearray(0), cipherSuites,
+                               bytearray(0), wireCipherSuites,
                                certificateTypes, 
                                srpUsername,
                                reqTack, nextProtos is not None, 
@@ -1256,6 +1262,13 @@ class TLSConnection(TLSRecordLayer):
         else:
             #Set the version to the client's version
             self.version = clientHello.client_version  
+
+        #Detect if the client performed an inappropriate fallback.
+        if clientHello.client_version < settings.maxVersion and \
+            CipherSuite.TLS_FALLBACK_SCSV in clientHello.cipher_suites:
+            for result in self._sendError(\
+                  AlertDescription.inappropriate_fallback):
+                yield result
 
         #If resumption was requested and we have a session cache...
         if clientHello.session_id and sessionCache:

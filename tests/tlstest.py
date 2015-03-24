@@ -423,8 +423,31 @@ def clientTestCmd(argv):
     #print("  Next-Protocol Negotiated: %s" % connection.next_proto)
     assert(connection.next_proto == b'spdy/2')
     connection.close()
-    
-    print('Test 25 - good standard XMLRPC https client')
+
+    print("Test 25.a - FALLBACK_SCSV")
+    synchro.recv(1)
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.sendFallbackSCSV = True
+    connection.handshakeClientCert(settings=settings)
+    testConnClient(connection)
+    connection.close()
+
+    print("Test 25.b - FALLBACK_SCSV")
+    synchro.recv(1)
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.sendFallbackSCSV = True
+    settings.maxVersion = (3, 2)
+    try:
+        connection.handshakeClientCert(settings=settings)
+        assert()
+    except TLSRemoteAlert as alert:
+        if alert.description != AlertDescription.inappropriate_fallback:
+            raise
+    connection.close()
+
+    print('Test 26 - good standard XMLRPC https client')
     address = address[0], address[1]+1
     synchro.recv(1)
     try:
@@ -441,7 +464,7 @@ def clientTestCmd(argv):
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print('Test 26 - good tlslite XMLRPC client')
+    print('Test 27 - good tlslite XMLRPC client')
     transport = XMLRPCTransport(ignoreAbruptClose=True)
     server = xmlrpclib.Server('https://%s:%s' % address, transport)
     synchro.recv(1)
@@ -449,22 +472,22 @@ def clientTestCmd(argv):
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print('Test 27 - good XMLRPC ignored protocol')
+    print('Test 28 - good XMLRPC ignored protocol')
     server = xmlrpclib.Server('http://%s:%s' % address, transport)
     synchro.recv(1)
     assert server.add(1,2) == 3
     synchro.recv(1)
     assert server.pow(2,4) == 16
-        
-    print("Test 28 - Internet servers test")
+
+    print("Test 29 - Internet servers test")
     try:
         i = IMAP4_TLS("cyrus.andrew.cmu.edu")
         i.login("anonymous", "anonymous@anonymous.net")
         i.logout()
-        print("Test 28: IMAP4 good")
+        print("Test 30: IMAP4 good")
         p = POP3_TLS("pop.gmail.com")
         p.quit()
-        print("Test 29: POP3 good")
+        print("Test 31: POP3 good")
     except socket.error as e:
         print("Non-critical error: socket error trying to reach internet server: ", e)   
 
@@ -843,7 +866,25 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print("Tests 25-27 - XMLRPXC server")
+    print("Test 25.a - FALLBACK_SCSV")
+    synchro.send(b'R')
+    connection = connect()
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
+    testConnServer(connection)
+    connection.close()
+
+    print("Test 25.b - FALLBACK_SCSV")
+    synchro.send(b'R')
+    connection = connect()
+    try:
+        connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
+        assert()
+    except TLSLocalAlert as alert:
+        if alert.description != AlertDescription.inappropriate_fallback:
+            raise
+    connection.close()
+
+    print("Tests 26-28 - XMLRPXC server")
     address = address[0], address[1]+1
     class Server(TLSXMLRPCServer):
 
