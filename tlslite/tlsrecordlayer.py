@@ -1,6 +1,7 @@
 # Authors: 
 #   Trevor Perrin
 #   Google (adapted by Sam Rushing) - NPN support
+#   Google - minimal padding
 #   Martin von Loewis - python 3 port
 #   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
 #

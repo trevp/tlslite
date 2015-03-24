@@ -2,6 +2,7 @@
 #   Trevor Perrin
 #   Google - added reqCAs parameter
 #   Google (adapted by Sam Rushing and Marcelo Fernandez) - NPN support
+#   Google - FALLBACK_SCSV
 #   Dimitris Moraitis - Anon ciphersuites
 #   Martin von Loewis - python 3 port
 #   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
