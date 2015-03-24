@@ -140,3 +140,15 @@ class TestHandshakeSettings(unittest.TestCase):
         new_hs = hs.validate()
 
         self.assertFalse("sha256" in new_hs.macNames)
+
+    def test_getCertificateTypes(self):
+        hs = HandshakeSettings()
+
+        self.assertEqual([0], hs.getCertificateTypes())
+
+    def test_getCertificateTypes_with_unsupported_type(self):
+        hs = HandshakeSettings()
+        hs.certificateTypes = ["x509", "openpgp"]
+
+        with self.assertRaises(AssertionError):
+            hs.getCertificateTypes()

@@ -514,7 +514,7 @@ class TLSConnection(TLSRecordLayer):
             wireCipherSuites.append(CipherSuite.TLS_FALLBACK_SCSV)
 
         #Initialize acceptable certificate types
-        certificateTypes = settings._getCertificateTypes()
+        certificateTypes = settings.getCertificateTypes()
             
         #Either send ClientHello (with a resumable session)...
         if session and session.sessionID:

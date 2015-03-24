@@ -182,11 +182,12 @@ class HandshakeSettings(object):
 
         return other
 
-    def _getCertificateTypes(self):
-        l = []
+    def getCertificateTypes(self):
+        """Get list of certificate types as IDs"""
+        ret = []
         for ct in self.certificateTypes:
             if ct == "x509":
-                l.append(CertificateType.x509)
+                ret.append(CertificateType.x509)
             else:
                 raise AssertionError()
-        return l
+        return ret
