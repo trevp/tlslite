@@ -104,6 +104,7 @@ class AlertDescription:
     protocol_version = 70
     insufficient_security = 71
     internal_error = 80
+    inappropriate_fallback = 86
     user_canceled = 90
     no_renegotiation = 100
     unknown_psk_identity = 115
@@ -115,6 +116,9 @@ class CipherSuite:
     # We actually don't do any renegotiation, but this
     # prevents renegotiation attacks
     TLS_EMPTY_RENEGOTIATION_INFO_SCSV = 0x00FF
+
+    # draft-ietf-tls-downgrade-scsv-03
+    TLS_FALLBACK_SCSV = 0x5600
     
     TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA  = 0xC01A
     TLS_SRP_SHA_WITH_AES_128_CBC_SHA = 0xC01D
