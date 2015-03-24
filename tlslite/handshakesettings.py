@@ -111,9 +111,15 @@ class HandshakeSettings(object):
         self.useExperimentalTackExtension = False
         self.sendFallbackSCSV = False
 
-    # Validates the min/max fields, and certificateTypes
-    # Filters out unsupported cipherNames and cipherImplementations
-    def _filter(self):
+    def validate(self):
+        """
+        Validate the settings, filter out unsupported ciphersuites and return
+        a copy of object. Does not modify the original object.
+
+        @rtype: HandshakeSettings
+        @return: a self-consistent copy of settings
+        @raise ValueError: when settings are invalid, insecure or unsupported.
+        """
         other = HandshakeSettings()
         other.minKeySize = self.minKeySize
         other.maxKeySize = self.maxKeySize
@@ -149,6 +155,8 @@ class HandshakeSettings(object):
             raise ValueError("maxKeySize too small")
         if other.maxKeySize>16384:
             raise ValueError("maxKeySize too large")
+        if other.maxKeySize < other.minKeySize:
+            raise ValueError("maxKeySize smaller than minKeySize")
         for s in other.cipherNames:
             if s not in CIPHER_NAMES:
                 raise ValueError("Unknown cipher name: '%s'" % s)
@@ -174,11 +182,12 @@ class HandshakeSettings(object):
 
         return other
 
-    def _getCertificateTypes(self):
-        l = []
+    def getCertificateTypes(self):
+        """Get list of certificate types as IDs"""
+        ret = []
         for ct in self.certificateTypes:
             if ct == "x509":
-                l.append(CertificateType.x509)
+                ret.append(CertificateType.x509)
             else:
                 raise AssertionError()
-        return l
+        return ret

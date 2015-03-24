@@ -370,7 +370,7 @@ class TLSConnection(TLSRecordLayer):
         # or crypto libraries that were requested        
         if not settings:
             settings = HandshakeSettings()
-        settings = settings._filter()
+        settings = settings.validate()
 
         if clientCertChain:
             if not isinstance(clientCertChain, X509CertChain):
@@ -514,7 +514,7 @@ class TLSConnection(TLSRecordLayer):
             wireCipherSuites.append(CipherSuite.TLS_FALLBACK_SCSV)
 
         #Initialize acceptable certificate types
-        certificateTypes = settings._getCertificateTypes()
+        certificateTypes = settings.getCertificateTypes()
             
         #Either send ClientHello (with a resumable session)...
         if session and session.sessionID:
@@ -1116,7 +1116,7 @@ class TLSConnection(TLSRecordLayer):
 
         if not settings:
             settings = HandshakeSettings()
-        settings = settings._filter()
+        settings = settings.validate()
         
         # OK Start exchanging messages
         # ******************************
