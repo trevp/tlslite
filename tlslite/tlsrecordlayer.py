@@ -623,53 +623,43 @@ class TLSRecordLayer(object):
                 b += macBytes
                 b = self._writeState.encContext.encrypt(b)
 
-        #Add record header and send
-        r = RecordHeader3().create(self.version, contentType, len(b))
-        s = r.write() + b
-        while 1:
-            try:
-                bytesSent = self.sock.send(s) #Might raise socket.error
-            except socket.error as why:
-                if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
-                    yield 1
-                    continue
-                else:
-                    # The socket was unexpectedly closed.  The tricky part
-                    # is that there may be an alert sent by the other party
-                    # sitting in the read buffer.  So, if we get here after
-                    # handshaking, we will just raise the error and let the
-                    # caller read more data if it would like, thus stumbling
-                    # upon the error.
-                    #
-                    # However, if we get here DURING handshaking, we take
-                    # it upon ourselves to see if the next message is an 
-                    # Alert.
-                    if contentType == ContentType.handshake:
-                        
-                        # See if there's an alert record
-                        # Could raise socket.error or TLSAbruptCloseError
-                        for result in self._getNextRecord():
-                            if result in (0,1):
-                                yield result
-                                
-                        # Closes the socket
-                        self._shutdown(False)
-                        
-                        # If we got an alert, raise it        
-                        recordHeader, p = result                        
-                        if recordHeader.type == ContentType.alert:
-                            alert = Alert().parse(p)
-                            raise TLSRemoteAlert(alert)
-                    else:
-                        # If we got some other message who know what
-                        # the remote side is doing, just go ahead and
-                        # raise the socket.error
-                        raise
-            if bytesSent == len(s):
-                return
-            s = s[bytesSent:]
-            yield 1
+        msg = Message(contentType, b)
+        try:
+            for result in self._recordSocket.send(msg):
+                if result in (0, 1):
+                    yield result
+        except socket.error:
+            # The socket was unexpectedly closed.  The tricky part
+            # is that there may be an alert sent by the other party
+            # sitting in the read buffer.  So, if we get here after
+            # handshaking, we will just raise the error and let the
+            # caller read more data if it would like, thus stumbling
+            # upon the error.
+            #
+            # However, if we get here DURING handshaking, we take
+            # it upon ourselves to see if the next message is an
+            # Alert.
+            if contentType == ContentType.handshake:
 
+                # See if there's an alert record
+                # Could raise socket.error or TLSAbruptCloseError
+                for result in self._getNextRecord():
+                    if result in (0, 1):
+                        yield result
+
+                # Closes the socket
+                self._shutdown(False)
+
+                # If we got an alert, raise it
+                recordHeader, p = result
+                if recordHeader.type == ContentType.alert:
+                    alert = Alert().parse(p)
+                    raise TLSRemoteAlert(alert)
+            else:
+                # If we got some other message who know what
+                # the remote side is doing, just go ahead and
+                # raise the socket.error
+                raise
 
     def _getMsg(self, expectedType, secondaryType=None, constructorType=None):
         try:
