@@ -166,12 +166,10 @@ class TestTLSRecordLayer(unittest.TestCase):
         # XXX using private method!
         gen = sock._getNextRecord()
 
-        # XXX this should be TLSLocalAlert as we're expected to tell the other
-        # side they have sent us garbage
-        with self.assertRaises(SyntaxError) as context:
+        with self.assertRaises(TLSLocalAlert) as context:
             next(gen)
 
-        #self.assertEqual(str(context.exception), "illegal_parameter")
+        self.assertEqual(str(context.exception), "illegal_parameter")
 
     def test__getNextRecord_with_too_big_record(self):
         mockSock = MockSocket(bytearray(
