@@ -211,6 +211,8 @@ class RecordLayer(object):
     @ivar version: the TLS version to use (tuple encoded as on the wire)
     @ivar sock: underlying socket
     @ivar client: whatever the connection should use encryption
+    @ivar encryptThenMAC: use the encrypt-then-MAC mechanism for record
+    integrity
     """
 
     def __init__(self, sock):
@@ -225,6 +227,8 @@ class RecordLayer(object):
         self._pendingWriteState = ConnectionState()
         self._pendingReadState = ConnectionState()
         self.fixedIVBlock = None
+
+        self.encryptThenMAC = False
 
     @property
     def version(self):
@@ -315,6 +319,35 @@ class RecordLayer(object):
 
         return b
 
+    def _encryptThenMAC(self, buf, contentType):
+        """Pad, encrypt and then MAC the data"""
+        if self._writeState.encContext:
+            # add IV for TLS1.1+
+            if self.version >= (3, 2):
+                buf = self.fixedIVBlock + buf
+
+            buf = self._addPadding(buf)
+
+            buf = self._writeState.encContext.encrypt(buf)
+
+        # add MAC
+        if self._writeState.macContext:
+            seqnumBytes = self._writeState.getSeqNumBytes()
+            mac = self._writeState.macContext.copy()
+            mac.update(compatHMAC(seqnumBytes))
+            mac.update(compatHMAC(bytearray([contentType])))
+            mac.update(compatHMAC(bytearray([self.version[0]])))
+            mac.update(compatHMAC(bytearray([self.version[1]])))
+            mac.update(compatHMAC(bytearray([len(buf)//256])))
+            mac.update(compatHMAC(bytearray([len(buf)%256])))
+            mac.update(compatHMAC(buf))
+
+            # append MAC
+            macBytes = bytearray(mac.digest())
+            buf += macBytes
+
+        return buf
+
     def sendMessage(self, msg, randomizeFirstBlock=True):
         """
         Encrypt, MAC and send message through socket.
@@ -328,7 +361,10 @@ class RecordLayer(object):
         data = msg.write()
         contentType = msg.contentType
 
-        data = self._macThenEncrypt(data, contentType)
+        if self.encryptThenMAC:
+            data = self._encryptThenMAC(data, contentType)
+        else:
+            data = self._macThenEncrypt(data, contentType)
 
         encryptedMessage = Message(contentType, data)
 
