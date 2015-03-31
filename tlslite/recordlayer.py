@@ -221,6 +221,8 @@ class RecordLayer(object):
     @ivar version: the TLS version to use (tuple encoded as on the wire)
     @ivar sock: underlying socket
     @ivar client: whether the connection should use encryption
+    @ivar encryptThenMAC: use the encrypt-then-MAC mechanism for record
+    integrity
     """
 
     def __init__(self, sock):
@@ -235,6 +237,8 @@ class RecordLayer(object):
         self._pendingWriteState = ConnectionState()
         self._pendingReadState = ConnectionState()
         self.fixedIVBlock = None
+
+        self.encryptThenMAC = False
 
     @property
     def version(self):
@@ -329,6 +333,28 @@ class RecordLayer(object):
 
         return data
 
+    def _encryptThenMAC(self, buf, contentType):
+        """Pad, encrypt and then MAC the data"""
+        if self._writeState.encContext:
+            # add IV for TLS1.1+
+            if self.version >= (3, 2):
+                buf = self.fixedIVBlock + buf
+
+            buf = self._addPadding(buf)
+
+            buf = self._writeState.encContext.encrypt(buf)
+
+        # add MAC
+        if self._writeState.macContext:
+            seqnumBytes = self._writeState.getSeqNumBytes()
+            mac = self._writeState.macContext.copy()
+
+            # append MAC
+            macBytes = self._calculateMAC(mac, seqnumBytes, contentType, buf)
+            buf += macBytes
+
+        return buf
+
     # randomizeFirstBlock will get used once handling of fragmented
     # messages is implemented
     def sendMessage(self, msg, randomizeFirstBlock=True):
@@ -343,7 +369,10 @@ class RecordLayer(object):
         data = msg.write()
         contentType = msg.contentType
 
-        data = self._macThenEncrypt(data, contentType)
+        if self.encryptThenMAC:
+            data = self._encryptThenMAC(data, contentType)
+        else:
+            data = self._macThenEncrypt(data, contentType)
 
         encryptedMessage = Message(contentType, data)
 

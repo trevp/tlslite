@@ -765,6 +765,89 @@ class TestRecordLayer(unittest.TestCase):
             bytearray(b'\x32'), bytearray(b'\x32')],
             mockSock.sent)
 
+    def test_sendMessage_with_encryptThenMAC_and_unset_crypto_state(self):
+        sock = MockSocket(bytearray(0))
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 1)
+        recordLayer.encryptThenMAC = True
+
+        app_data = ApplicationData().create(bytearray(b'test'))
+
+        for result in recordLayer.sendMessage(app_data):
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+
+        self.assertEqual(len(sock.sent), 1)
+        self.assertEqual(bytearray(
+            b'\x17' +           # application data
+            b'\x03\x01' +       # TLS version
+            b'\x00\x04' +       # length
+            b'test'), sock.sent[0])
+
+    def test_sendMessage_with_encryptThenMAC_in_TLSv1_0(self):
+        sock = MockSocket(bytearray(0))
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 1)
+        recordLayer.encryptThenMAC = True
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeWriteState()
+
+        app_data = ApplicationData().create(bytearray(b'test'))
+
+        for result in recordLayer.sendMessage(app_data):
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+
+        self.assertEqual(len(sock.sent), 1)
+        self.assertEqual(bytearray(
+            b'\x17' +           # application data
+            b'\x03\x01' +       # TLS version
+            b'\x00\x24' +       # length - 1 block + 20 bytes of MAC
+            b'\xc7\xd6\xaf:.MY\x80W\x81\xd2|5A#\xd5' +
+            b'X\xcd\xdc\'o\xb3I\xdd-\xfc\tneq~\x0f' +
+            b'd\xdb\xbdw'), sock.sent[0])
+
+    def test_sendMessage_with_encryptThenMAC_in_TLSv1_2(self):
+        patcher = mock.patch.object(os,
+                                    'urandom',
+                                    lambda x: bytearray(x))
+        mock_random = patcher.start()
+        self.addCleanup(patcher.stop)
+
+        sock = MockSocket(bytearray(0))
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 3)
+        recordLayer.encryptThenMAC = True
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeWriteState()
+
+        app_data = ApplicationData().create(bytearray(b'test'))
+
+        for result in recordLayer.sendMessage(app_data):
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+
+        self.assertEqual(len(sock.sent), 1)
+        self.assertEqual(bytearray(
+            b'\x17' +           # application data
+            b'\x03\x03' +       # TLS version
+            b'\x00\x34' +       # length - IV + 1 block + 20 bytes of MAC
+            b'H&\x1f\xc1\x9c\xde"\x92\xdd\xe4|\xfco)R\xd6' +
+            b'\x11~\xf2\xed\xa0l\x11\xb4\xb7\xbd\x1a-<w\xbb\xf2' +
+            b'\xa4\x9bH}T\xcbT\x9d2\xed\xc5\xe1|\x82T\xf1' +
+            b'\xf6\x19\xfcw'), sock.sent[0])
+
     def test_recvMessage(self):
         sock = MockSocket(bytearray(
             b'\x16' +           # handshake
