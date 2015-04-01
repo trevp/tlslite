@@ -446,6 +446,68 @@ class RecordLayer(object):
 
         return b
 
+    def _macThenDecrypt(self, recordType, buf):
+        """
+        Check MAC of data, then decrypt and remove padding
+
+        @raise TLSBadRecordMAC: when the mac value is invalid
+        @raise TLSDecryptionFailed: when the data to decrypt has invalid size
+        """
+        if self._readState.macContext:
+            macLength = self._readState.macContext.digest_size
+            if len(buf) < macLength:
+                raise TLSBadRecordMAC("Truncated data")
+
+            checkBytes = buf[-macLength:]
+            buf = buf[:-macLength]
+
+            seqnumBytes = self._readState.getSeqNumBytes()
+            mac = self._readState.macContext.copy()
+            mac.update(compatHMAC(seqnumBytes))
+            mac.update(compatHMAC(bytearray([recordType])))
+            mac.update(compatHMAC(bytearray([self.version[0]])))
+            mac.update(compatHMAC(bytearray([self.version[1]])))
+            mac.update(compatHMAC(bytearray([len(buf)//256])))
+            mac.update(compatHMAC(bytearray([len(buf)%256])))
+            mac.update(compatHMAC(buf))
+
+            macBytes = bytearray(mac.digest())
+            if macBytes != checkBytes:
+                raise TLSBadRecordMAC("MAC mismatch")
+
+        if self._readState.encContext:
+            blockLength = self._readState.encContext.block_size
+            if len(buf) % blockLength != 0:
+                raise TLSDecryptionFailed("data length not multiple of "\
+                                          "block size")
+
+            buf = self._readState.encContext.decrypt(buf)
+
+            # remove explicit IV
+            if self.version >= (3, 2):
+                buf = buf[blockLength:]
+
+            # check padding
+            paddingLength = buf[-1]
+            if paddingLength + 1 > len(buf):
+                raise TLSBadRecordMAC("Invalid padding length")
+
+            paddingGood = True
+            totalPaddingLength = paddingLength+1
+            if self.version != (3, 0):
+                paddingBytes = buf[-totalPaddingLength:-1]
+                for byte in paddingBytes:
+                    if byte != paddingLength:
+                        paddingGood = False
+
+            if not paddingGood:
+                raise TLSBadRecordMAC("Invalid padding byte values")
+
+            # remove padding
+            buf = buf[:-totalPaddingLength]
+
+        return buf
+
     def recvMessage(self):
         """
         Read, decrypt and check integrity of message
@@ -464,7 +526,10 @@ class RecordLayer(object):
 
         (header, data) = result
 
-        data = self._decryptThenMAC(header.type, data)
+        if self.encryptThenMAC:
+            data = self._macThenDecrypt(header.type, data)
+        else:
+            data = self._decryptThenMAC(header.type, data)
 
         yield (header, Parser(data))
 
