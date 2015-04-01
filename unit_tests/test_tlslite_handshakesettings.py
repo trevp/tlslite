@@ -152,3 +152,20 @@ class TestHandshakeSettings(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             hs.getCertificateTypes()
+
+    def test_useEncryptThenMAC(self):
+        hs = HandshakeSettings()
+        self.assertTrue(hs.useEncryptThenMAC)
+
+        hs.useEncryptThenMAC = False
+
+        n_hs = hs.validate()
+
+        self.assertFalse(n_hs.useEncryptThenMAC)
+
+    def test_useEncryptThenMAC_with_wrong_value(self):
+        hs = HandshakeSettings()
+        hs.useEncryptThenMAC = None
+
+        with self.assertRaises(ValueError):
+            hs.validate()
