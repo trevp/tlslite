@@ -424,6 +424,10 @@ class TLSConnection(TLSRecordLayer):
         # (string or None)
         nextProto = self._clientSelectNextProto(nextProtos, serverHello)
 
+        # Check if server selected encrypt-then-MAC
+        if serverHello.getExtension(ExtensionType.encrypt_then_mac):
+            self._recordLayer.encryptThenMAC = True
+
         #If the server elected to resume the session, it is handled here.
         for result in self._clientResume(session, serverHello, 
                         clientHello.random, 
@@ -515,6 +519,13 @@ class TLSConnection(TLSRecordLayer):
 
         #Initialize acceptable certificate types
         certificateTypes = settings.getCertificateTypes()
+
+        #Initialize TLS extensions
+        if settings.useEncryptThenMAC:
+            extensions = [TLSExtension().create(ExtensionType.encrypt_then_mac,
+                                                bytearray(0))]
+        else:
+            extensions = None
             
         #Either send ClientHello (with a resumable session)...
         if session and session.sessionID:
@@ -530,7 +541,8 @@ class TLSConnection(TLSRecordLayer):
                                    certificateTypes, 
                                    session.srpUsername,
                                    reqTack, nextProtos is not None,
-                                   session.serverName)
+                                   session.serverName,
+                                   extensions=extensions)
 
         #Or send ClientHello (without)
         else:
@@ -540,7 +552,8 @@ class TLSConnection(TLSRecordLayer):
                                certificateTypes, 
                                srpUsername,
                                reqTack, nextProtos is not None, 
-                               serverName)
+                               serverName,
+                               extensions=extensions)
         for result in self._sendMsg(clientHello):
             yield result
         yield clientHello
@@ -1149,10 +1162,21 @@ class TLSConnection(TLSRecordLayer):
             tackExt = TackExtension.create(tacks, activationFlags)
         else:
             tackExt = None
+
+        # Prepare other extensions if requested
+        if settings.useEncryptThenMAC and \
+                clientHello.getExtension(ExtensionType.encrypt_then_mac) and \
+                cipherSuite not in CipherSuite.rc4Suites:
+            extensions = [TLSExtension().create(ExtensionType.encrypt_then_mac,
+                                                bytearray(0))]
+            self._recordLayer.encryptThenMAC = True
+        else:
+            extensions = None
+
         serverHello = ServerHello()
         serverHello.create(self.version, getRandomBytes(32), sessionID, \
-                            cipherSuite, CertificateType.x509, tackExt,
-                            nextProtos)
+                           cipherSuite, CertificateType.x509, tackExt,
+                           nextProtos, extensions=extensions)
 
         # Perform the SRP key exchange
         clientCertChain = None
