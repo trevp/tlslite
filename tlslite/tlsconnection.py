@@ -493,7 +493,8 @@ class TLSConnection(TLSRecordLayer):
         self.session = Session()
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
             srpUsername, clientCertChain, serverCertChain,
-            tackExt, serverHello.tackExt!=None, serverName)
+            tackExt, serverHello.tackExt!=None, serverName,
+            encryptThenMAC=self._recordLayer.encryptThenMAC)
         self._handshakeDone(resumed=False)
 
 
@@ -1232,7 +1233,8 @@ class TLSConnection(TLSRecordLayer):
             serverName = clientHello.server_name.decode("utf-8")
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
             srpUsername, clientCertChain, serverCertChain,
-            tackExt, serverHello.tackExt!=None, serverName)
+            tackExt, serverHello.tackExt!=None, serverName,
+            encryptThenMAC=self._recordLayer.encryptThenMAC)
             
         #Add the session object to the session cache
         if sessionCache and sessionID:
@@ -1323,16 +1325,30 @@ class TLSConnection(TLSRecordLayer):
                             for result in self._sendError(\
                                     AlertDescription.handshake_failure):
                                 yield result                    
+                    if session.encryptThenMAC and \
+                            not clientHello.getExtension(
+                                    ExtensionType.encrypt_then_mac):
+                        for result in self._sendError(\
+                                AlertDescription.handshake_failure):
+                            yield result
                 except KeyError:
                     pass
 
             #If a session is found..
             if session:
                 #Send ServerHello
+                if session.encryptThenMAC:
+                    self._recordLayer.encryptThenMAC = True
+                    extensions = [TLSExtension().create(
+                                  ExtensionType.encrypt_then_mac,
+                                  bytearray(0))]
+                else:
+                    extensions = None
                 serverHello = ServerHello()
                 serverHello.create(self.version, getRandomBytes(32),
                                    session.sessionID, session.cipherSuite,
-                                   CertificateType.x509, None, None)
+                                   CertificateType.x509, None, None,
+                                   extensions=extensions)
                 for result in self._sendMsg(serverHello):
                     yield result
 
