@@ -84,6 +84,11 @@ class TLSRecordLayer(object):
     attacker truncating the connection, and only if necessary to avoid
     spurious errors.  The default is False.
 
+    @type encryptThenMAC: bool
+    @ivear encryptThenMAC: Whether the connection uses the encrypt-then-MAC
+    construct for CBC cipher suites, will be False also if connection uses
+    RC4 or AEAD.
+
     @sort: __init__, read, readAsync, write, writeAsync, close, closeAsync,
     getCipherImplementation, getCipherName
     """
@@ -144,6 +149,11 @@ class TLSRecordLayer(object):
     def version(self, value):
         """Set the SSL protocol version of connection"""
         self._recordLayer.version = value
+
+    @property
+    def encryptThenMAC(self):
+        """Whether the connection uses Encrypt Then MAC (RFC 7366)"""
+        return self._recordLayer.encryptThenMAC
 
     def clearReadBuffer(self):
         self._readBuffer = b''
