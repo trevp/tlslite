@@ -110,6 +110,7 @@ class HandshakeSettings(object):
         self.maxVersion = (3,3)
         self.useExperimentalTackExtension = False
         self.sendFallbackSCSV = False
+        self.useEncryptThenMAC = True
 
     def validate(self):
         """
@@ -130,6 +131,7 @@ class HandshakeSettings(object):
         other.minVersion = self.minVersion
         other.maxVersion = self.maxVersion
         other.sendFallbackSCSV = self.sendFallbackSCSV
+        other.useEncryptThenMAC = self.useEncryptThenMAC
 
         if not cipherfactory.tripleDESPresent:
             other.cipherNames = [e for e in self.cipherNames if e != "3des"]
@@ -179,6 +181,9 @@ class HandshakeSettings(object):
         if other.maxVersion < (3,3):
             # No sha256 pre TLS 1.2
             other.macNames = [e for e in self.macNames if e != "sha256"]
+
+        if other.useEncryptThenMAC not in (True, False):
+            raise ValueError("useEncryptThenMAC can only be True or False")
 
         return other
 
