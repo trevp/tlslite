@@ -46,6 +46,20 @@ class ExtensionType:    # RFC 6066 / 4366
     cert_type = 9       # RFC 6091
     tack = 0xF300
     supports_npn = 13172
+
+class HashAlgorithm:
+    none = 0
+    md5 = 1
+    sha1 = 2
+    sha224 = 3
+    sha256 = 4
+    sha384 = 5
+
+class SignatureAlgorithm:
+    anonymous = 0
+    rsa = 1
+    dsa = 2
+    ecdsa = 3
     
 class NameType:
     host_name = 0
