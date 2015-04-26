@@ -508,6 +508,13 @@ class TLSConnection(TLSRecordLayer):
         else:
             assert(False)
 
+        #Don't advertise ciphers that aren't enabled in any versions in the
+        #supported range.
+        if self.fault != Fault.ignoreVersionForCipher:
+            cipherSuites = CipherSuite.filterForVersion(cipherSuites,
+                                                        minVersion=settings.minVersion,
+                                                        maxVersion=settings.maxVersion)
+
         #Add any SCSVs. These are not real cipher suites, but signaling
         #values which reuse the cipher suite field in the ClientHello.
         wireCipherSuites = list(cipherSuites)
@@ -572,7 +579,14 @@ class TLSConnection(TLSRecordLayer):
                 AlertDescription.protocol_version,
                 "Too new version: %s" % str(serverHello.server_version)):
                 yield result
-        if serverHello.cipher_suite not in clientHello.cipher_suites:
+        #Re-evaluate supported ciphers against the final protocol version.
+        if self.fault != Fault.ignoreVersionForCipher:
+            cipherSuites = CipherSuite.filterForVersion(clientHello.cipher_suites,
+                                                        minVersion=self.version,
+                                                        maxVersion=self.version)
+        else:
+            cipherSuites = clientHello.cipher_suites
+        if serverHello.cipher_suite not in cipherSuites:
             for result in self._sendError(\
                 AlertDescription.illegal_parameter,
                 "Server responded with incorrect ciphersuite"):
@@ -1275,6 +1289,13 @@ class TLSConnection(TLSRecordLayer):
             for result in self._sendError(\
                   AlertDescription.inappropriate_fallback):
                 yield result
+
+        #Now that the version is known, limit to only the ciphers available to
+        #that version.
+        if self.fault != Fault.ignoreVersionForCipher:
+            cipherSuites = CipherSuite.filterForVersion(cipherSuites,
+                                                        minVersion=self.version,
+                                                        maxVersion=self.version)
 
         #If resumption was requested and we have a session cache...
         if clientHello.session_id and sessionCache:
