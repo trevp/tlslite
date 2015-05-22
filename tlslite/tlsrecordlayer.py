@@ -859,8 +859,7 @@ class TLSRecordLayer(object):
 
         #Check the record header fields
         if recHeader.length > 18432:
-            for result in self._sendError(AlertDescription.record_overflow):
-                yield result
+            raise TLSRecordOverflow()
 
         #Read the record contents
         byteArray = bytearray(0)
@@ -876,7 +875,7 @@ class TLSRecordLayer(object):
 
             #If the connection is closed, raise a socket error
             if len(sockBytes) == 0:
-                    raise TLSAbruptCloseError()
+                raise TLSAbruptCloseError()
 
             byteArray += bytearray(sockBytes)
             if len(byteArray) == recHeader.length:
@@ -899,7 +898,8 @@ class TLSRecordLayer(object):
 
         #Decrypt the record
         for result in self._decryptRecord(recHeader.type, byteArray):
-            if result in (0,1): yield result
+            if result in (0, 1):
+                yield result
             else: break
         byteArray = result
         parser = Parser(byteArray)
@@ -917,11 +917,16 @@ class TLSRecordLayer(object):
             return
 
         #Otherwise...
-        for result in self._getRecord():
-            if result in (0, 1):
+        try:
+            for result in self._getRecord():
+                if result in (0, 1):
+                    yield result
+                else:
+                    break
+        except TLSRecordOverflow:
+            for result in self._sendError(AlertDescription.record_overflow):
                 yield result
-            else:
-                break
+                return
 
         recHeader, parser = result
         byteArray = parser.bytes
