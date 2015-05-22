@@ -817,17 +817,9 @@ class TLSRecordLayer(object):
                 yield result
 
 
-    #Returns next record or next handshake message
-    def _getNextRecord(self):
+    def _getRecord(self):
+        """Reads a single record layer message from socket"""
 
-        #If there's a handshake message waiting, return it
-        if self._handshakeBuffer:
-            recordHeader, byteArray = self._handshakeBuffer[0]
-            self._handshakeBuffer = self._handshakeBuffer[1:]
-            yield (recordHeader, Parser(byteArray))
-            return
-
-        #Otherwise...
         #Read the next record header
         byteArray = bytearray(0)
         recordHeaderLength = 1
@@ -911,6 +903,28 @@ class TLSRecordLayer(object):
             else: break
         byteArray = result
         parser = Parser(byteArray)
+
+        yield (recHeader, parser)
+
+    def _getNextRecord(self):
+        """Return single records read from socket"""
+
+        #If there's a handshake message waiting, return it
+        if self._handshakeBuffer:
+            recordHeader, byteArray = self._handshakeBuffer[0]
+            self._handshakeBuffer = self._handshakeBuffer[1:]
+            yield (recordHeader, Parser(byteArray))
+            return
+
+        #Otherwise...
+        for result in self._getRecord():
+            if result in (0, 1):
+                yield result
+            else:
+                break
+
+        recHeader, parser = result
+        byteArray = parser.bytes
 
         #If it doesn't contain handshake messages, we can just return it
         if recHeader.type != ContentType.handshake:
