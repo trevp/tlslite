@@ -927,6 +927,17 @@ class TLSRecordLayer(object):
             for result in self._sendError(AlertDescription.record_overflow):
                 yield result
                 return
+        except TLSDecryptionFailed:
+            for result in self._sendError(\
+                    AlertDescription.decryption_failed,
+                    "Encrypted data not a multiple of blocksize"):
+                yield result
+                return
+        except TLSBadRecordMAC:
+            for result in self._sendError(AlertDescription.bad_record_mac,
+                                          "MAC failure (or padding failure)"):
+                yield result
+                return
 
         recHeader, parser = result
         byteArray = parser.bytes
@@ -981,10 +992,7 @@ class TLSRecordLayer(object):
             if self._readState.encContext.isBlockCipher:
                 blockLength = self._readState.encContext.block_size
                 if len(b) % blockLength != 0:
-                    for result in self._sendError(\
-                            AlertDescription.decryption_failed,
-                            "Encrypted data not a multiple of blocksize"):
-                        yield result
+                    raise TLSDecryptionFailed()
                 b = self._readState.encContext.decrypt(b)
                 if self.version >= (3,2): #For TLS 1.1, remove explicit IV
                     b = b[self._readState.encContext.block_size : ]
@@ -1050,9 +1058,7 @@ class TLSRecordLayer(object):
                     macGood = False
 
             if not (paddingGood and macGood):
-                for result in self._sendError(AlertDescription.bad_record_mac,
-                                          "MAC failure (or padding failure)"):
-                    yield result
+                raise TLSBadRecordMAC()
 
         yield b
 
