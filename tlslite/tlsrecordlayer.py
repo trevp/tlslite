@@ -538,7 +538,7 @@ class TLSRecordLayer(object):
         #we first send the first byte of the message.  This prevents
         #an attacker from launching a chosen-plaintext attack based on
         #knowing the next IV (a la BEAST).
-        if not self.closed and randomizeFirstBlock and self.version <= (3,1) \
+        if not self.closed and randomizeFirstBlock and self.version <= (3, 1) \
                 and self._writeState.encContext \
                 and self._writeState.encContext.isBlockCipher \
                 and isinstance(msg, ApplicationData):
@@ -547,20 +547,20 @@ class TLSRecordLayer(object):
                                        randomizeFirstBlock = False):
                 yield result                                            
 
-        b = msg.write()
+        byteArray = msg.write()
         
         # If a 1-byte message was passed in, and we "split" the 
         # first(only) byte off above, we may have a 0-length msg:
-        if len(b) == 0:
+        if len(byteArray) == 0:
             return
             
         contentType = msg.contentType
 
         #Update handshake hashes
         if contentType == ContentType.handshake:
-            self._handshake_md5.update(compat26Str(b))
-            self._handshake_sha.update(compat26Str(b))
-            self._handshake_sha256.update(compat26Str(b))
+            self._handshake_md5.update(compat26Str(byteArray))
+            self._handshake_sha.update(compat26Str(byteArray))
+            self._handshake_sha256.update(compat26Str(byteArray))
 
         #Calculate MAC
         if self._writeState.macContext:
@@ -568,17 +568,17 @@ class TLSRecordLayer(object):
             mac = self._writeState.macContext.copy()
             mac.update(compatHMAC(seqnumBytes))
             mac.update(compatHMAC(bytearray([contentType])))
-            if self.version == (3,0):
-                mac.update( compatHMAC( bytearray([len(b)//256] )))
-                mac.update( compatHMAC( bytearray([len(b)%256] )))
-            elif self.version in ((3,1), (3,2), (3,3)):
-                mac.update(compatHMAC( bytearray([self.version[0]] )))
-                mac.update(compatHMAC( bytearray([self.version[1]] )))
-                mac.update( compatHMAC( bytearray([len(b)//256] )))
-                mac.update( compatHMAC( bytearray([len(b)%256] )))
+            if self.version == (3, 0):
+                mac.update(compatHMAC(bytearray([len(byteArray)//256])))
+                mac.update(compatHMAC(bytearray([len(byteArray)%256])))
+            elif self.version in ((3, 1), (3, 2), (3, 3)):
+                mac.update(compatHMAC(bytearray([self.version[0]])))
+                mac.update(compatHMAC(bytearray([self.version[1]])))
+                mac.update(compatHMAC(bytearray([len(byteArray)//256])))
+                mac.update(compatHMAC(bytearray([len(byteArray)%256])))
             else:
                 raise AssertionError()
-            mac.update(compatHMAC(b))
+            mac.update(compatHMAC(byteArray))
             macBytes = bytearray(mac.digest())
             if self.fault == Fault.badMAC:
                 macBytes[0] = (macBytes[0]+1) % 256
@@ -590,10 +590,10 @@ class TLSRecordLayer(object):
 
                 #Add TLS 1.1 fixed block
                 if self.version >= (3,2):
-                    b = self.fixedIVBlock + b
+                    byteArray = self.fixedIVBlock + byteArray
 
-                #Add padding: b = b+ (macBytes + paddingBytes)
-                currentLength = len(b) + len(macBytes)
+                #Add padding: byteArray = byteArray + (macBytes + paddingBytes)
+                currentLength = len(byteArray) + len(macBytes)
                 blockLength = self._writeState.encContext.block_size
                 paddingLength = blockLength - 1 - (currentLength % blockLength)
 
@@ -601,21 +601,23 @@ class TLSRecordLayer(object):
                 if self.fault == Fault.badPadding:
                     paddingBytes[0] = (paddingBytes[0]+1) % 256
                 endBytes = macBytes + paddingBytes
-                b += endBytes
+                byteArray += endBytes
                 #Encrypt
-                b = self._writeState.encContext.encrypt(b)
+                byteArray = self._writeState.encContext.encrypt(byteArray)
 
             #Encrypt (for Stream Cipher)
             else:
-                b += macBytes
-                b = self._writeState.encContext.encrypt(b)
+                byteArray += macBytes
+                byteArray = self._writeState.encContext.encrypt(byteArray)
 
         #Add record header and send
-        r = RecordHeader3().create(self.version, contentType, len(b))
-        s = r.write() + b
+        recHeader = RecordHeader3().create(self.version,
+                                           contentType,
+                                           len(byteArray))
+        sockBytes = recHeader.write() + byteArray
         while 1:
             try:
-                bytesSent = self.sock.send(s) #Might raise socket.error
+                bytesSent = self.sock.send(sockBytes) #Might raise socket.error
             except socket.error as why:
                 if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
                     yield 1
@@ -652,9 +654,9 @@ class TLSRecordLayer(object):
                         # the remote side is doing, just go ahead and
                         # raise the socket.error
                         raise
-            if bytesSent == len(s):
+            if bytesSent == len(sockBytes):
                 return
-            s = s[bytesSent:]
+            sockBytes = sockBytes[bytesSent:]
             yield 1
 
 
@@ -811,9 +813,9 @@ class TLSRecordLayer(object):
                     raise AssertionError()
 
         #If an exception was raised by a Parser or Message instance:
-        except SyntaxError as e:
+        except SyntaxError as why:
             for result in self._sendError(AlertDescription.decode_error,
-                                         formatExceptionTrace(e)):
+                                         formatExceptionTrace(why)):
                 yield result
 
 
