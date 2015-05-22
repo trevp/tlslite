@@ -175,3 +175,7 @@ class TLSUnsupportedError(TLSError):
 class TLSInternalError(TLSError):
     """The internal state of object is unexpected or invalid"""
     pass
+
+class TLSRecordOverflow(TLSInternalError):
+    """Read record is too big to handle"""
+    pass
