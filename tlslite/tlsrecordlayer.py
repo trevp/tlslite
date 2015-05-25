@@ -565,7 +565,7 @@ class TLSRecordLayer(object):
             self._handshake_sha256.update(compat26Str(byteArray))
 
         try:
-            for result in self._sendRecord(msg):
+            for result in self.sendRecord(msg):
                 yield result
         except TLSSocketClosed as why:
             # The socket was unexpectedly closed.  The tricky part
@@ -600,7 +600,7 @@ class TLSRecordLayer(object):
                 # raise the socket.error
                 raise why.reason
 
-    def _sendRecord(self, msg):
+    def sendRecord(self, msg):
         """Send a TLS message in the record layer, encrypt if handshake done"""
 
         byteArray = msg.write()
@@ -834,7 +834,7 @@ class TLSRecordLayer(object):
                 yield result
 
 
-    def _getRecord(self):
+    def getRecord(self):
         """Reads a single record layer message from socket"""
 
         #Read the next record header
@@ -935,7 +935,7 @@ class TLSRecordLayer(object):
 
         #Otherwise...
         try:
-            for result in self._getRecord():
+            for result in self.getRecord():
                 if result in (0, 1):
                     yield result
                 else:
@@ -1094,7 +1094,7 @@ class TLSRecordLayer(object):
         self.resumed = resumed
         self.closed = False
 
-    def _calcPendingStates(self, cipherSuite, masterSecret,
+    def calcPendingStates(self, cipherSuite, masterSecret,
             clientRandom, serverRandom, implementations):
         if cipherSuite in CipherSuite.aes128Suites:
             keyLength = 16
@@ -1184,11 +1184,11 @@ class TLSRecordLayer(object):
             #residue to create the IV for each sent block)
             self.fixedIVBlock = getRandomBytes(ivLength)
 
-    def _changeWriteState(self):
+    def changeWriteState(self):
         self._writeState = self._pendingWriteState
         self._pendingWriteState = _ConnectionState()
 
-    def _changeReadState(self):
+    def changeReadState(self):
         self._readState = self._pendingReadState
         self._pendingReadState = _ConnectionState()
 
