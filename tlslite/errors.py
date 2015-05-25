@@ -187,3 +187,9 @@ class TLSDecryptionFailed(TLSInternalError):
 class TLSBadRecordMAC(TLSInternalError):
     """MAC or padding of record was invalid"""
     pass
+
+class TLSSocketClosed(TLSInternalError):
+    """Socket was closed unexpectedly while writing messages"""
+    def __init__(self, reason):
+        super(TLSSocketClosed, self).__init__()
+        self.reason = reason
