@@ -1,7 +1,7 @@
 
-tlslite version 0.4.8                                            Nov 12 2014
-Trevor Perrin <tlslite at trevp.net>
-http://trevp.net/tlslite/
+tlslite-ng version 0.5.0-alpha1                                   2015-05-28
+Hubert Kario <hkario at redhat.com>
+https://github.com/tomato42/tlslite-ng/
 ============================================================================
 
 
@@ -12,36 +12,37 @@ Table of Contents
 3  Installation
 4  Getting Started with the Command-Line Tools
 5  Getting Started with the Library
-6  Using TLS Lite with httplib
-7  Using TLS Lite with poplib or imaplib
-8  Using TLS Lite with smtplib
-9 Using TLS Lite with SocketServer
-10 Using TLS Lite with asyncore
+6  Using tlslite-ng with httplib
+7  Using tlslite-ng with poplib or imaplib
+8  Using tlslite-ng with smtplib
+9  Using tlslite-ng with SocketServer
+10 Using tlslite-ng with asyncore
 11 SECURITY CONSIDERATIONS
 12 History
 
 
-1 Introduction 
-=============== 
-TLS Lite is an open source python library that implements SSL and TLS. TLS
-Lite supports RSA and SRP ciphersuites. TLS Lite is pure python, however it
-can use other libraries for faster crypto operations. TLS Lite integrates with
-several stdlib neworking libraries.
+1 Introduction
+===============
+tlslite-ng is an open source python library that implements SSL and TLS.
+tlslite-ng supports RSA and SRP ciphersuites. tlslite-ng is pure python, however
+it can use other libraries for faster crypto operations. tlslite-ng integrates
+with several stdlib neworking libraries.
 
 API documentation is available in the 'docs' directory.
 
-If you have questions or feedback, feel free to contact me.  For discussing
-improvements to tlslite, also see 'tlslite-dev@googlegroups.com'.
+If you have questions or feedback, feel free to contact me. Issues and pull
+requests can also be submitted through github issue tracking system.
 
+tlslite-ng aims to be a drop in replacement for the original TLS Lite.
 
 2 Licenses/Acknowledgements
 ============================
-TLS Lite is written (mostly) by Trevor Perrin. It includes code from Bram
-Cohen, Google, Kees Bos, Sam Rushing, Dimitris Moraitis, Marcelo Fernandez,
-Martin von Loewis, Dave Baggett, Yngve N. Pettersen (ported by Paul 
-Sokolovsky), and Mirko Dziadzka.
+tlslite-ng is a fork of TLS Lite. TLS Lite was written (mostly) by Trevor
+Perrin. It includes code from Bram Cohen, Google, Kees Bos, Sam Rushing,
+Dimitris Moraitis, Marcelo Fernandez, Martin von Loewis, Dave Baggett, Yngve
+N. Pettersen (ported by Paul Sokolovsky), and Mirko Dziadzka.
 
-All code in TLS Lite has either been dedicated to the public domain by its
+Original code in TLS Lite has either been dedicated to the public domain by its
 authors, or placed under a BSD-style license. See the LICENSE file for
 details.
 
@@ -68,17 +69,15 @@ Options:
 Run 'python setup.py install'
 
 Test the Installation:
-  - From the distribution's ./tests subdirectory, run:
-      ./tlstest.py server localhost:4443 .
-  - While the test server is waiting, run:
-      ./tlstest.py client localhost:4443 .
+  - From the distribution's directory, run:
+      make test
 
-  If both say "Test succeeded" at the end, you're ready to go.
+  If it says "Test succeeded" at the end, you're ready to go.
 
 
 4 Getting Started with the Command-Line Tools
 ==============================================
-tlslite installs two command-line scripts: 'tlsdb.py' and 'tls.py'.
+tlslite-ng installs two command-line scripts: 'tlsdb.py' and 'tls.py'.
 
 'tls.py' lets you run test clients and servers. It can be used for testing
 other TLS implementations, or as example code. Note that 'tls.py server' runs
@@ -137,7 +136,7 @@ Whether you're writing a client or server, there are six steps:
 5) Use the TLSConnection to exchange data.
 6) Call close() on the TLSConnection when you're done.
 
-TLS Lite also integrates with several stdlib python libraries. See the
+tlslite-ng also integrates with several stdlib python libraries. See the
 sections following this one for details.
 
 5 Step 1 - create a socket
@@ -368,9 +367,9 @@ close_notify alert that close() generates, so the connection will hang if
 closeSocket is set to True.)
 
 
-6 Using TLS Lite with httplib
-==============================
-TLS Lite comes with an HTTPTLSConnection class that extends httplib to work
+6 Using tlslite-ng with httplib
+===============================
+tlslite-ng comes with an HTTPTLSConnection class that extends httplib to work
 over SSL/TLS connections.  Depending on how you construct it, it will do
 different types of authentication.
 
@@ -391,9 +390,9 @@ different types of authentication.
   [...]
 
 
-7 Using TLS Lite with poplib or imaplib
-========================================
-TLS Lite comes with POP3_TLS and IMAP4_TLS classes that extend poplib and
+7 Using tlslite-ng with poplib or imaplib
+=========================================
+tlslite-ng comes with POP3_TLS and IMAP4_TLS classes that extend poplib and
 imaplib to work over SSL/TLS connections.  These classes can be constructed
 with the same parameters as HTTPTLSConnection (see previous section), and 
 behave similarly.
@@ -411,9 +410,9 @@ behave similarly.
   [...]  
   
 
-8 Using TLS Lite with smtplib
-==============================
-TLS Lite comes with an SMTP_TLS class that extends smtplib to work
+8 Using tlslite-ng with smtplib
+===============================
+tlslite comes with an SMTP_TLS class that extends smtplib to work
 over SSL/TLS connections.  This class accepts the same parameters as
 HTTPTLSConnection (see previous section), and behaves similarly.  Depending 
 on how you call starttls(), it will do different types of authentication.
@@ -426,10 +425,10 @@ on how you call starttls(), it will do different types of authentication.
   [...]
 
 
-9 Using TLS Lite with SocketServer
+9 Using tlslite-ng with SocketServer
 ====================================
-You can use TLS Lite to implement servers using Python's SocketServer
-framework.  TLS Lite comes with a TLSSocketServerMixIn class.  You can combine
+You can use tlslite-ng to implement servers using Python's SocketServer
+framework.  tlslite-ng comes with a TLSSocketServerMixIn class.  You can combine
 this with a TCPServer such as HTTPServer.  To combine them, define a new class
 that inherits from both of them (with the mix-in first). Then implement the
 handshake() method, doing some sort of server handshake on the connection
@@ -437,25 +436,25 @@ argument.  If the handshake method returns True, the RequestHandler will be
 triggered.  See the tests/httpsserver.py example.
 
 
-10 Using TLS Lite with asyncore
-================================
-TLS Lite can be used with subclasses of asyncore.dispatcher.  See the comments
+10 Using tlslite-ng with asyncore
+=================================
+tlslite-ng can be used with subclasses of asyncore.dispatcher.  See the comments
 in TLSAsyncDispatcherMixIn.py for details.  This is still experimental, and
 may not work with all asyncore.dispatcher subclasses.
 
 
 11 Security Considerations
 ===========================
-TLS Lite is beta-quality code. It hasn't received much security analysis. Use
+tlslite-ng is beta-quality code. It hasn't received much security analysis. Use
 at your own risk.
 
-TLS Lite does NOT verify certificates by default.
+tlslite-ng does NOT verify certificates by default.
 
-TLS Lite's pure-python ciphers are probably vulnerable to timing attacks.
+tlslite-ng's pure-python ciphers are probably vulnerable to timing attacks.
 
-TLS Lite is probably vulnerable to the "Lucky 13" timing attack if AES or 3DES
+tlslite-ng is probably vulnerable to the "Lucky 13" timing attack if AES or 3DES
 are used, or the weak cipher RC4 otherwise.  This unhappy situation will remain
-until TLS Lite implements authenticated-encryption ciphersuites (like GCM), or
+until tlslite-ng implements authenticated-encryption ciphersuites (like GCM), or
 RFC 7366.
 
 
