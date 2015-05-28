@@ -120,7 +120,7 @@ class TLSRecordLayer(object):
         self._handshake_sha256 = hashlib.sha256()
 
         #TLS Protocol Version
-        self.version = (0,0) #read-only
+        self._version = (0, 0) #read-only
         self._versionCheck = False #Once we choose a version, this is True
 
         #Current and Pending connection states
@@ -148,6 +148,16 @@ class TLSRecordLayer(object):
 
         #Fault we will induce, for testing purposes
         self.fault = None
+
+    @property
+    def version(self):
+        """Get the SSL protocol version of connection"""
+        return self._version
+
+    @version.setter
+    def version(self, value):
+        """Set the SSL protocol version of connection"""
+        self._version = value
 
     def clearReadBuffer(self):
         self._readBuffer = b''
