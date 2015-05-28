@@ -62,6 +62,8 @@ before_install:
          PR_FIRST=$(curl --silent --show-error --location $URL | head -1 | grep -o -E '\b[0-9a-f]{40}\b' | tr -d '\n')
          TRAVIS_COMMIT_RANGE=$PR_FIRST^..$TRAVIS_COMMIT
        fi
+  # sanity check current commit
+  - git rev-parse HEAD
   - echo "TRAVIS_COMMIT_RANGE=$TRAVIS_COMMIT_RANGE"
   - git fetch origin master:refs/remotes/origin/master
 
