@@ -1,5 +1,10 @@
 language: python
 
+# whitelist branches on which tests will be run
+branches:
+  only:
+    - master
+
 addons:
   apt_packages:
     # needed for M2Crypto
