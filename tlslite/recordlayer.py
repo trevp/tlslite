@@ -432,10 +432,12 @@ class RecordLayer(object):
         @raise socket.error: when reading from socket was unsuccessful
         """
 
+        result = None
         for result in self._recordSocket.recv():
             if result in (0, 1):
                 yield result
             else: break
+        assert result is not None
 
         (header, data) = result
 
@@ -557,3 +559,4 @@ class RecordLayer(object):
             #Choose fixedIVBlock for TLS 1.1 (this is encrypted with the CBC
             #residue to create the IV for each sent block)
             self.fixedIVBlock = getRandomBytes(ivLength)
+
