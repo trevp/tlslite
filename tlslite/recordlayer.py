@@ -296,21 +296,25 @@ class RecordLayer(object):
         data += paddingBytes
         return data
 
+    def _calculateMAC(self, mac, seqnumBytes, contentType, data):
+        """Calculate the SSL/TLS version of a MAC"""
+        mac.update(compatHMAC(seqnumBytes))
+        mac.update(compatHMAC(bytearray([contentType])))
+        assert self.version in ((3, 0), (3, 1), (3, 2), (3, 3))
+        if self.version != (3, 0):
+            mac.update(compatHMAC(bytearray([self.version[0]])))
+            mac.update(compatHMAC(bytearray([self.version[1]])))
+        mac.update(compatHMAC(bytearray([len(data)//256])))
+        mac.update(compatHMAC(bytearray([len(data)%256])))
+        mac.update(compatHMAC(data))
+        return bytearray(mac.digest())
+
     def _macThenEncrypt(self, data, contentType):
         """MAC then encrypt data"""
         if self._writeState.macContext:
             seqnumBytes = self._writeState.getSeqNumBytes()
             mac = self._writeState.macContext.copy()
-            mac.update(compatHMAC(seqnumBytes))
-            mac.update(compatHMAC(bytearray([contentType])))
-            assert self.version in ((3, 0), (3, 1), (3, 2), (3, 3))
-            if self.version != (3, 0):
-                mac.update(compatHMAC(bytearray([self.version[0]])))
-                mac.update(compatHMAC(bytearray([self.version[1]])))
-            mac.update(compatHMAC(bytearray([len(data)//256])))
-            mac.update(compatHMAC(bytearray([len(data)%256])))
-            mac.update(compatHMAC(data))
-            macBytes = bytearray(mac.digest())
+            macBytes = self._calculateMAC(mac, seqnumBytes, contentType, data)
 
         #Encrypt for Block or Stream Cipher
         if self._writeState.encContext:
@@ -405,15 +409,8 @@ class RecordLayer(object):
                 seqnumBytes = self._readState.getSeqNumBytes()
                 data = data[:-endLength]
                 mac = self._readState.macContext.copy()
-                mac.update(compatHMAC(seqnumBytes))
-                mac.update(compatHMAC(bytearray([recordType])))
-                if self.version != (3, 0):
-                    mac.update(compatHMAC(bytearray([self.version[0]])))
-                    mac.update(compatHMAC(bytearray([self.version[1]])))
-                mac.update(compatHMAC(bytearray([len(data)//256])))
-                mac.update(compatHMAC(bytearray([len(data)%256])))
-                mac.update(compatHMAC(data))
-                macBytes = bytearray(mac.digest())
+                macBytes = self._calculateMAC(mac, seqnumBytes, recordType,
+                                              data)
 
                 #Compare MACs
                 if macBytes != checkBytes:
