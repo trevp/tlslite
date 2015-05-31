@@ -22,7 +22,6 @@ from .utils.cryptomath import getRandomBytes
 from .recordlayer import RecordSocket
 
 import socket
-import errno
 import traceback
 
 class _ConnectionState(object):
