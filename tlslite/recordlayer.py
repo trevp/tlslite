@@ -105,19 +105,25 @@ class RecordSocket(object):
         #Read the next record header
         buf = bytearray(0)
         ssl2 = False
+
+        result = None
         for result in self._sockRecvAll(1):
             if result in (0, 1):
                 yield result
             else: break
+        assert result is not None
+
         buf += result
 
         if buf[0] in ContentType.all:
             ssl2 = False
             # SSLv3 record layer header is 5 bytes long, we already read 1
+            result = None
             for result in self._sockRecvAll(4):
                 if result in (0, 1):
                     yield result
                 else: break
+            assert result is not None
             buf += result
         # XXX this should be 'buf[0] & 128', otherwise hello messages longer
         # than 127 bytes won't be properly parsed
@@ -125,10 +131,12 @@ class RecordSocket(object):
             ssl2 = True
             # in SSLv2 we need to read 2 bytes in total to know the size of
             # header, we already read 1
+            result = None
             for result in self._sockRecvAll(1):
                 if result in (0, 1):
                     yield result
                 else: break
+            assert result is not None
             buf += result
         else:
             raise TLSIllegalParameterException(
@@ -160,10 +168,12 @@ class RecordSocket(object):
         malformed
         """
 
+        record = None
         for record in self._recvHeader():
             if record in (0, 1):
                 yield record
             else: break
+        assert record is not None
 
         #Check the record header fields
         # 18432 = 2**14 (basic record size limit) + 1024 (maximum compression
@@ -173,11 +183,14 @@ class RecordSocket(object):
 
         #Read the record contents
         buf = bytearray(0)
+
+        result = None
         for result in self._sockRecvAll(record.length):
             if result in (0, 1):
                 yield result
             else: break
+        assert result is not None
+
         buf += result
 
         yield (record, buf)
-
