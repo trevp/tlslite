@@ -12,13 +12,11 @@ from __future__ import generators
 
 from .utils.compat import *
 from .utils.cryptomath import *
-from .utils.cipherfactory import createAES, createRC4, createTripleDES
-from .utils.codec import *
+from .utils.codec import Parser
 from .errors import *
 from .messages import *
 from .mathtls import *
 from .constants import *
-from .utils.cryptomath import getRandomBytes
 from .recordlayer import RecordLayer
 
 import socket
@@ -526,6 +524,7 @@ class TLSRecordLayer(object):
         #an attacker from launching a chosen-plaintext attack based on
         #knowing the next IV (a la BEAST).
         # TODO don't reference private fields in _recordLayer
+        # to be fixed with proper message fragmentation implementation
         if not self.closed and randomizeFirstBlock and self.version <= (3,1) \
                 and self._recordLayer._writeState.encContext \
                 and self._recordLayer._writeState.encContext.isBlockCipher \

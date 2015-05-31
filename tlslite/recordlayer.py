@@ -60,7 +60,6 @@ class RecordSocket(object):
         @param msg: TLS message to send
         @raise socket.error: when write to socket failed
         """
-
         data = msg.write()
 
         header = RecordHeader3().create(self.version,
@@ -81,7 +80,6 @@ class RecordSocket(object):
            blocking and would block and bytearray in case the read finished
         @raise TLSAbruptCloseError: when the socket closed
         """
-
         buf = bytearray(0)
 
         if length == 0:
@@ -157,8 +155,7 @@ class RecordSocket(object):
 
     def recv(self):
         """
-        Read a single record from socket, handles both SSLv2 and SSLv3 record
-        layer
+        Read a single record from socket, handle SSLv2 and SSLv3 record layer
 
         @rtype: generator
         @return: generator that returns 0 or 1 in case the read would be
@@ -172,7 +169,6 @@ class RecordSocket(object):
         @raise TLSIllegalParameterException: When the record header was
         malformed
         """
-
         record = None
         for record in self._recvHeader():
             if record in (0, 1):
@@ -333,6 +329,8 @@ class RecordLayer(object):
 
         return data
 
+    # randomizeFirstBlock will get used once handling of fragmented
+    # messages is implemented
     def sendMessage(self, msg, randomizeFirstBlock=True):
         """
         Encrypt, MAC and send message through socket.
@@ -342,7 +340,6 @@ class RecordLayer(object):
         @param randomizeFirstBlock: set to perform 1/n-1 record splitting in
         SSLv3 and TLSv1.0 in application data
         """
-
         data = msg.write()
         contentType = msg.contentType
 
@@ -431,7 +428,6 @@ class RecordLayer(object):
         @raise TLSBadRecordMAC: when record has bad MAC or padding
         @raise socket.error: when reading from socket was unsuccessful
         """
-
         result = None
         for result in self._recordSocket.recv():
             if result in (0, 1):

@@ -82,7 +82,9 @@ class RecordHeader3(RecordHeader):
                 format(self.type, self.version, self.length)
 
 class RecordHeader2(RecordHeader):
+
     """SSLv2 record header (just reading)"""
+
     def __init__(self):
         """Define a SSLv2 style class"""
         super(RecordHeader2, self).__init__(ssl2=True)
