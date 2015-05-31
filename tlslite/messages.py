@@ -20,12 +20,24 @@ from .x509certchain import X509CertChain
 from .utils.tackwrapper import *
 from .extensions import *
 
-class RecordHeader3(object):
-    def __init__(self):
+class RecordHeader(object):
+
+    """Generic interface to SSLv2 and SSLv3 (and later) record headers"""
+
+    def __init__(self, ssl2):
+        """define instance variables"""
         self.type = 0
-        self.version = (0,0)
+        self.version = (0, 0)
         self.length = 0
-        self.ssl2 = False
+        self.ssl2 = ssl2
+
+class RecordHeader3(RecordHeader):
+
+    """SSLv3 (and later) TLS record header"""
+
+    def __init__(self):
+        """Define a SSLv3 style class"""
+        super(RecordHeader3, self).__init__(ssl2=False)
 
     def create(self, version, type, length):
         self.type = type
@@ -66,18 +78,17 @@ class RecordHeader3(object):
         return "RecordHeader3(type={0}, version=({1[0]}.{1[1]}), length={2})".\
                 format(self.type, self.version, self.length)
 
-class RecordHeader2(object):
+class RecordHeader2(RecordHeader):
+    """SSLv2 record header (just reading)"""
     def __init__(self):
-        self.type = 0
-        self.version = (0,0)
-        self.length = 0
-        self.ssl2 = True
+        """Define a SSLv2 style class"""
+        super(RecordHeader2, self).__init__(ssl2=True)
 
     def parse(self, p):
         if p.get(1)!=128:
             raise SyntaxError()
         self.type = ContentType.handshake
-        self.version = (2,0)
+        self.version = (2, 0)
         #We don't support 2-byte-length-headers; could be a problem
         self.length = p.get(1)
         return self
