@@ -40,30 +40,33 @@ class RecordHeader3(RecordHeader):
         super(RecordHeader3, self).__init__(ssl2=False)
 
     def create(self, version, type, length):
+        """Set object values for writing (serialisation)"""
         self.type = type
         self.version = version
         self.length = length
         return self
 
     def write(self):
-        w = Writer()
-        w.add(self.type, 1)
-        w.add(self.version[0], 1)
-        w.add(self.version[1], 1)
-        w.add(self.length, 2)
-        return w.bytes
+        """Serialise object to bytearray"""
+        writer = Writer()
+        writer.add(self.type, 1)
+        writer.add(self.version[0], 1)
+        writer.add(self.version[1], 1)
+        writer.add(self.length, 2)
+        return writer.bytes
 
-    def parse(self, p):
-        self.type = p.get(1)
-        self.version = (p.get(1), p.get(1))
-        self.length = p.get(2)
+    def parse(self, parser):
+        """Deserialise object from Parser"""
+        self.type = parser.get(1)
+        self.version = (parser.get(1), parser.get(1))
+        self.length = parser.get(2)
         self.ssl2 = False
         return self
 
     @property
     def type_name(self):
         matching = [x[0] for x in ContentType.__dict__.items()
-                if x[1] == self.type]
+                    if x[1] == self.type]
         if len(matching) == 0:
             return "unknown(" + str(self.type) + ")"
         else:
@@ -84,13 +87,14 @@ class RecordHeader2(RecordHeader):
         """Define a SSLv2 style class"""
         super(RecordHeader2, self).__init__(ssl2=True)
 
-    def parse(self, p):
-        if p.get(1)!=128:
+    def parse(self, parser):
+        """Deserialise object from Parser"""
+        if parser.get(1) != 128:
             raise SyntaxError()
         self.type = ContentType.handshake
         self.version = (2, 0)
-        #We don't support 2-byte-length-headers; could be a problem
-        self.length = p.get(1)
+        #XXX We don't support 2-byte-length-headers; could be a problem
+        self.length = parser.get(1)
         return self
 
 class Message(object):
