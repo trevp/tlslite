@@ -88,6 +88,17 @@ class TLSRecordLayer(object):
     construct for CBC cipher suites, will be False also if connection uses
     RC4 or AEAD.
 
+    @type blockSize: int
+    @ivar blockSize: maimum size of data to be sent in a single record layer
+    message. Note that after encryption is established (generally after
+    handshake protocol has finished) the actual amount of data written to
+    network socket will be larger because of the record layer header, padding
+    or encryption overhead. It can be set to low value (so that there is no
+    fragmentation on Ethernet, IP and TCP level) at the beginning of
+    connection to reduce latency and set to protocol max (2**14) to maximise
+    throughput after sending few kiB of data. Setting to values greater than
+    2**14 will cause the connection to be dropped by RFC compliant peers.
+
     @sort: __init__, read, readAsync, write, writeAsync, close, closeAsync,
     getCipherImplementation, getCipherName
     """
@@ -131,6 +142,9 @@ class TLSRecordLayer(object):
 
         #Fault we will induce, for testing purposes
         self.fault = None
+
+        #Limit the size of outgoing records to following size
+        self.blockSize = 16384 # 2**14
 
     @property
     def _client(self):
@@ -283,23 +297,10 @@ class TLSRecordLayer(object):
             if self.closed:
                 raise TLSClosedConnectionError("attempt to write to closed connection")
 
-            index = 0
-            blockSize = 16384
-            randomizeFirstBlock = True
-            while 1:
-                startIndex = index * blockSize
-                endIndex = startIndex + blockSize
-                if startIndex >= len(s):
-                    break
-                if endIndex > len(s):
-                    endIndex = len(s)
-                block = bytearray(s[startIndex : endIndex])
-                applicationData = ApplicationData().create(block)
-                for result in self._sendMsg(applicationData, \
-                                            randomizeFirstBlock):
-                    yield result
-                randomizeFirstBlock = False #only on 1st message
-                index += 1
+            applicationData = ApplicationData().create(bytearray(s))
+            for result in self._sendMsg(applicationData, \
+                                        randomizeFirstBlock=True):
+                yield result
         except GeneratorExit:
             raise
         except Exception:
@@ -563,6 +564,16 @@ class TLSRecordLayer(object):
             return
             
         contentType = msg.contentType
+
+        #Fragment big messages
+        while len(b) > self.blockSize:
+            newB = b[:self.blockSize]
+            b = b[self.blockSize:]
+
+            msgFragment = Message(contentType, newB)
+            for result in self._sendMsg(msgFragment,
+                                        randomizeFirstBlock=False):
+                yield result
 
         #Update handshake hashes
         if contentType == ContentType.handshake:

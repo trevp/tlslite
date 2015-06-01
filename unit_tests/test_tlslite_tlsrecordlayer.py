@@ -370,18 +370,17 @@ class TestTLSRecordLayer(unittest.TestCase):
 
         gen = record_layer._sendMsg(client_hello)
 
-        # XXX should not happen, client hello messages larger than record
-        # layer maximum fragment size should get fragmented
-        with self.assertRaises(ValueError):
-            next(gen)
+        for result in gen:
+            if result in (0, 1):
+                self.assertTrue(False, "blocking")
+            else:
+                break
 
-        return
-
-        send_arg = mock_sock.send.call_args_list[0]
         # The maximum length that can be sent in single record is 2**14
         # record layer adds 5 byte on top of that
-        self.assertTrue(len(send_arg[0][0]) <= 2**14 + 5)
-        self.assertEqual(2, mock_sock.send.call_count)
+        self.assertEqual(len(mock_sock.sent), 5)
+        for msg in mock_sock.sent:
+            self.assertTrue(len(msg) <= 2**14 + 5)
 
     def test__getMsg(self):
 
