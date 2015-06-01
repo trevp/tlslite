@@ -82,7 +82,7 @@ class TLSRecordLayer(object):
     spurious errors.  The default is False.
 
     @type encryptThenMAC: bool
-    @ivear encryptThenMAC: Whether the connection uses the encrypt-then-MAC
+    @ivar encryptThenMAC: Whether the connection uses the encrypt-then-MAC
     construct for CBC cipher suites, will be False also if connection uses
     RC4 or AEAD.
 
