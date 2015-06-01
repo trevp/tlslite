@@ -492,9 +492,10 @@ class TLSConnection(TLSRecordLayer):
         # Create the session object which is used for resumptions
         self.session = Session()
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
-            srpUsername, clientCertChain, serverCertChain,
-            tackExt, serverHello.tackExt!=None, serverName,
-            encryptThenMAC=self._recordLayer.encryptThenMAC)
+                            srpUsername, clientCertChain, serverCertChain,
+                            tackExt, (serverHello.tackExt is not None),
+                            serverName,
+                            encryptThenMAC=self._recordLayer.encryptThenMAC)
         self._handshakeDone(resumed=False)
 
 
@@ -1232,9 +1233,10 @@ class TLSConnection(TLSRecordLayer):
         if clientHello.server_name:
             serverName = clientHello.server_name.decode("utf-8")
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
-            srpUsername, clientCertChain, serverCertChain,
-            tackExt, serverHello.tackExt!=None, serverName,
-            encryptThenMAC=self._recordLayer.encryptThenMAC)
+                            srpUsername, clientCertChain, serverCertChain,
+                            tackExt, (serverHello.tackExt is not None),
+                            serverName,
+                            encryptThenMAC=self._recordLayer.encryptThenMAC)
             
         #Add the session object to the session cache
         if sessionCache and sessionID:
@@ -1339,9 +1341,9 @@ class TLSConnection(TLSRecordLayer):
                 #Send ServerHello
                 if session.encryptThenMAC:
                     self._recordLayer.encryptThenMAC = True
-                    extensions = [TLSExtension().create(
-                                  ExtensionType.encrypt_then_mac,
-                                  bytearray(0))]
+                    mte = TLSExtension().create(ExtensionType.encrypt_then_mac,
+                                                bytearray(0))
+                    extensions = [mte]
                 else:
                     extensions = None
                 serverHello = ServerHello()

@@ -62,9 +62,9 @@ class Session(object):
         self.encryptThenMAC = False
 
     def create(self, masterSecret, sessionID, cipherSuite,
-            srpUsername, clientCertChain, serverCertChain, 
-            tackExt, tackInHelloExt, serverName, resumable=True,
-            encryptThenMAC=False):
+               srpUsername, clientCertChain, serverCertChain,
+               tackExt, tackInHelloExt, serverName, resumable=True,
+               encryptThenMAC=False):
         self.masterSecret = masterSecret
         self.sessionID = sessionID
         self.cipherSuite = cipherSuite
