@@ -157,7 +157,13 @@ class TLSRecordLayer(object):
 
     @version.setter
     def version(self, value):
-        """Set the SSL protocol version of connection"""
+        """
+        Set the SSL protocol version of connection
+
+        The setter is a public method only for backwards compatibility.
+        Don't use it! See at HandshakeSettings for options to set desired
+        protocol version.
+        """
         self._version = value
         self._recordSocket.version = value
 
