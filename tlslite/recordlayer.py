@@ -6,11 +6,16 @@
 
 import socket
 import errno
-from tlslite.constants import ContentType
-from .messages import RecordHeader3, RecordHeader2
-from .utils.codec import Parser
+import hashlib
+from .constants import ContentType, CipherSuite
+from .messages import RecordHeader3, RecordHeader2, Message
+from .utils.cipherfactory import createAES, createRC4, createTripleDES
+from .utils.codec import Parser, Writer
+from .utils.compat import compatHMAC
+from .utils.cryptomath import getRandomBytes
 from .errors import TLSRecordOverflow, TLSIllegalParameterException,\
-        TLSAbruptCloseError
+        TLSAbruptCloseError, TLSDecryptionFailed, TLSBadRecordMAC
+from .mathtls import createMAC_SSL, createHMAC, PRF_SSL, PRF, PRF_1_2
 
 class RecordSocket(object):
 
@@ -55,7 +60,6 @@ class RecordSocket(object):
         @param msg: TLS message to send
         @raise socket.error: when write to socket failed
         """
-
         data = msg.write()
 
         header = RecordHeader3().create(self.version,
@@ -76,7 +80,6 @@ class RecordSocket(object):
            blocking and would block and bytearray in case the read finished
         @raise TLSAbruptCloseError: when the socket closed
         """
-
         buf = bytearray(0)
 
         if length == 0:
@@ -152,8 +155,7 @@ class RecordSocket(object):
 
     def recv(self):
         """
-        Read a single record from socket, handles both SSLv2 and SSLv3 record
-        layer
+        Read a single record from socket, handle SSLv2 and SSLv3 record layer
 
         @rtype: generator
         @return: generator that returns 0 or 1 in case the read would be
@@ -167,7 +169,6 @@ class RecordSocket(object):
         @raise TLSIllegalParameterException: When the record header was
         malformed
         """
-
         record = None
         for record in self._recvHeader():
             if record in (0, 1):
@@ -194,3 +195,364 @@ class RecordSocket(object):
         buf += result
 
         yield (record, buf)
+
+class ConnectionState(object):
+
+    """Preserve the connection state for reading and writing data to records"""
+
+    def __init__(self):
+        """Create an instance with empty encryption and MACing contexts"""
+        self.macContext = None
+        self.encContext = None
+        self.seqnum = 0
+
+    def getSeqNumBytes(self):
+        """Return encoded sequence number and increment it."""
+        writer = Writer()
+        writer.add(self.seqnum, 8)
+        self.seqnum += 1
+        return writer.bytes
+
+class RecordLayer(object):
+
+    """
+    Implementation of TLS record layer protocol
+
+    @ivar version: the TLS version to use (tuple encoded as on the wire)
+    @ivar sock: underlying socket
+    @ivar client: whether the connection should use encryption
+    """
+
+    def __init__(self, sock):
+        self.sock = sock
+        self._recordSocket = RecordSocket(sock)
+        self._version = (0, 0)
+
+        self.client = True
+
+        self._writeState = ConnectionState()
+        self._readState = ConnectionState()
+        self._pendingWriteState = ConnectionState()
+        self._pendingReadState = ConnectionState()
+        self.fixedIVBlock = None
+
+    @property
+    def version(self):
+        """Return the TLS version used by record layer"""
+        return self._version
+
+    @version.setter
+    def version(self, val):
+        """Set the TLS version used by record layer"""
+        self._version = val
+        self._recordSocket.version = val
+
+    def getCipherName(self):
+        """
+        Return the name of the bulk cipher used by this connection
+
+        @rtype: str
+        @return: The name of the cipher, like 'aes128', 'rc4', etc.
+        """
+        if self._writeState.encContext is None:
+            return None
+        return self._writeState.encContext.name
+
+    def getCipherImplementation(self):
+        """
+        Return the name of the implementation used for the connection
+
+        'python' for tlslite internal implementation, 'openssl' for M2crypto
+        and 'pycrypto' for pycrypto
+        @rtype: str
+        @return: Name of cipher implementation used, None if not initialised
+        """
+        if self._writeState.encContext is None:
+            return None
+        return self._writeState.encContext.implementation
+
+    def shutdown(self):
+        """Clear read and write states"""
+        self._writeState = ConnectionState()
+        self._readState = ConnectionState()
+        self._pendingWriteState = ConnectionState()
+        self._pendingReadState = ConnectionState()
+
+    #
+    # sending messages
+    #
+
+    def _addPadding(self, data):
+        """Add padding to data so that it is multiple of block size"""
+        currentLength = len(data)
+        blockLength = self._writeState.encContext.block_size
+        paddingLength = blockLength - 1 - (currentLength % blockLength)
+
+        paddingBytes = bytearray([paddingLength] * (paddingLength+1))
+        data += paddingBytes
+        return data
+
+    def _calculateMAC(self, mac, seqnumBytes, contentType, data):
+        """Calculate the SSL/TLS version of a MAC"""
+        mac.update(compatHMAC(seqnumBytes))
+        mac.update(compatHMAC(bytearray([contentType])))
+        assert self.version in ((3, 0), (3, 1), (3, 2), (3, 3))
+        if self.version != (3, 0):
+            mac.update(compatHMAC(bytearray([self.version[0]])))
+            mac.update(compatHMAC(bytearray([self.version[1]])))
+        mac.update(compatHMAC(bytearray([len(data)//256])))
+        mac.update(compatHMAC(bytearray([len(data)%256])))
+        mac.update(compatHMAC(data))
+        return bytearray(mac.digest())
+
+    def _macThenEncrypt(self, data, contentType):
+        """MAC then encrypt data"""
+        if self._writeState.macContext:
+            seqnumBytes = self._writeState.getSeqNumBytes()
+            mac = self._writeState.macContext.copy()
+            macBytes = self._calculateMAC(mac, seqnumBytes, contentType, data)
+
+        #Encrypt for Block or Stream Cipher
+        if self._writeState.encContext:
+            data += macBytes
+            #Add padding (for Block Cipher):
+            if self._writeState.encContext.isBlockCipher:
+
+                #Add TLS 1.1 fixed block
+                if self.version >= (3, 2):
+                    data = self.fixedIVBlock + data
+
+                data = self._addPadding(data)
+
+            #Encrypt
+            data = self._writeState.encContext.encrypt(data)
+
+        return data
+
+    # randomizeFirstBlock will get used once handling of fragmented
+    # messages is implemented
+    def sendMessage(self, msg, randomizeFirstBlock=True):
+        """
+        Encrypt, MAC and send message through socket.
+
+        @param msg: TLS message to send
+        @type msg: ApplicationData, HandshakeMessage, etc.
+        @param randomizeFirstBlock: set to perform 1/n-1 record splitting in
+        SSLv3 and TLSv1.0 in application data
+        """
+        data = msg.write()
+        contentType = msg.contentType
+
+        data = self._macThenEncrypt(data, contentType)
+
+        encryptedMessage = Message(contentType, data)
+
+        for result in self._recordSocket.send(encryptedMessage):
+            yield result
+
+    #
+    # receiving messages
+    #
+
+    def _decryptThenMAC(self, recordType, data):
+        """Decrypt data, check padding and MAC"""
+        if self._readState.encContext:
+            assert self.version in ((3, 0), (3, 1), (3, 2), (3, 3))
+
+            #Decrypt if it's a block cipher
+            if self._readState.encContext.isBlockCipher:
+                blockLength = self._readState.encContext.block_size
+                if len(data) % blockLength != 0:
+                    raise TLSDecryptionFailed()
+                data = self._readState.encContext.decrypt(data)
+                if self.version >= (3, 2): #For TLS 1.1, remove explicit IV
+                    data = data[self._readState.encContext.block_size : ]
+
+                #Check padding
+                paddingGood = True
+                paddingLength = data[-1]
+                if (paddingLength+1) > len(data):
+                    paddingGood = False
+                    totalPaddingLength = 0
+                else:
+                    totalPaddingLength = paddingLength+1
+                    if self.version != (3, 0):
+                        # check if all padding bytes have correct value
+                        paddingBytes = data[-totalPaddingLength:-1]
+                        for byte in paddingBytes:
+                            if byte != paddingLength:
+                                paddingGood = False
+                                totalPaddingLength = 0
+
+            #Decrypt if it's a stream cipher
+            else:
+                paddingGood = True
+                data = self._readState.encContext.decrypt(data)
+                totalPaddingLength = 0
+
+            #Check MAC
+            macGood = True
+            macLength = self._readState.macContext.digest_size
+            endLength = macLength + totalPaddingLength
+            if endLength > len(data):
+                macGood = False
+            else:
+                #Read MAC
+                startIndex = len(data) - endLength
+                endIndex = startIndex + macLength
+                checkBytes = data[startIndex : endIndex]
+
+                #Calculate MAC
+                seqnumBytes = self._readState.getSeqNumBytes()
+                data = data[:-endLength]
+                mac = self._readState.macContext.copy()
+                macBytes = self._calculateMAC(mac, seqnumBytes, recordType,
+                                              data)
+
+                #Compare MACs
+                if macBytes != checkBytes:
+                    macGood = False
+
+            if not (paddingGood and macGood):
+                raise TLSBadRecordMAC()
+
+        return data
+
+    def recvMessage(self):
+        """
+        Read, decrypt and check integrity of message
+
+        @rtype: tuple
+        @return: message header and decrypted message payload
+        @raise TLSDecryptionFailed: when decryption of data failed
+        @raise TLSBadRecordMAC: when record has bad MAC or padding
+        @raise socket.error: when reading from socket was unsuccessful
+        """
+        result = None
+        for result in self._recordSocket.recv():
+            if result in (0, 1):
+                yield result
+            else: break
+        assert result is not None
+
+        (header, data) = result
+
+        data = self._decryptThenMAC(header.type, data)
+
+        yield (header, Parser(data))
+
+    #
+    # cryptography state methods
+    #
+
+    def changeWriteState(self):
+        """
+        Change the cipher state to the pending one for write operations.
+
+        This should be done only once after a call to L{calcPendingStates} was
+        performed and directly after sending a L{ChangeCipherSpec} message.
+        """
+        self._writeState = self._pendingWriteState
+        self._pendingWriteState = ConnectionState()
+
+    def changeReadState(self):
+        """
+        Change the cipher state to the pending one for read operations.
+
+        This should be done only once after a call to L{calcPendingStates} was
+        performed and directly after receiving a L{ChangeCipherSpec} message.
+        """
+        self._readState = self._pendingReadState
+        self._pendingReadState = ConnectionState()
+
+    def calcPendingStates(self, cipherSuite, masterSecret, clientRandom,
+                          serverRandom, implementations):
+        """Create pending states for encryption and decryption."""
+        if cipherSuite in CipherSuite.aes128Suites:
+            keyLength = 16
+            ivLength = 16
+            createCipherFunc = createAES
+        elif cipherSuite in CipherSuite.aes256Suites:
+            keyLength = 32
+            ivLength = 16
+            createCipherFunc = createAES
+        elif cipherSuite in CipherSuite.rc4Suites:
+            keyLength = 16
+            ivLength = 0
+            createCipherFunc = createRC4
+        elif cipherSuite in CipherSuite.tripleDESSuites:
+            keyLength = 24
+            ivLength = 8
+            createCipherFunc = createTripleDES
+        else:
+            raise AssertionError()
+
+        if cipherSuite in CipherSuite.shaSuites:
+            macLength = 20
+            digestmod = hashlib.sha1
+        elif cipherSuite in CipherSuite.sha256Suites:
+            macLength = 32
+            digestmod = hashlib.sha256
+        elif cipherSuite in CipherSuite.md5Suites:
+            macLength = 16
+            digestmod = hashlib.md5
+
+        if self.version == (3, 0):
+            createMACFunc = createMAC_SSL
+        elif self.version in ((3, 1), (3, 2), (3, 3)):
+            createMACFunc = createHMAC
+
+        outputLength = (macLength*2) + (keyLength*2) + (ivLength*2)
+
+        #Calculate Keying Material from Master Secret
+        if self.version == (3, 0):
+            keyBlock = PRF_SSL(masterSecret,
+                               serverRandom + clientRandom,
+                               outputLength)
+        elif self.version in ((3, 1), (3, 2)):
+            keyBlock = PRF(masterSecret,
+                           b"key expansion",
+                           serverRandom + clientRandom,
+                           outputLength)
+        elif self.version == (3, 3):
+            keyBlock = PRF_1_2(masterSecret,
+                               b"key expansion",
+                               serverRandom + clientRandom,
+                               outputLength)
+        else:
+            raise AssertionError()
+
+        #Slice up Keying Material
+        clientPendingState = ConnectionState()
+        serverPendingState = ConnectionState()
+        parser = Parser(keyBlock)
+        clientMACBlock = parser.getFixBytes(macLength)
+        serverMACBlock = parser.getFixBytes(macLength)
+        clientKeyBlock = parser.getFixBytes(keyLength)
+        serverKeyBlock = parser.getFixBytes(keyLength)
+        clientIVBlock = parser.getFixBytes(ivLength)
+        serverIVBlock = parser.getFixBytes(ivLength)
+        clientPendingState.macContext = createMACFunc(
+            compatHMAC(clientMACBlock), digestmod=digestmod)
+        serverPendingState.macContext = createMACFunc(
+            compatHMAC(serverMACBlock), digestmod=digestmod)
+        clientPendingState.encContext = createCipherFunc(clientKeyBlock,
+                                                         clientIVBlock,
+                                                         implementations)
+        serverPendingState.encContext = createCipherFunc(serverKeyBlock,
+                                                         serverIVBlock,
+                                                         implementations)
+
+        #Assign new connection states to pending states
+        if self.client:
+            self._pendingWriteState = clientPendingState
+            self._pendingReadState = serverPendingState
+        else:
+            self._pendingWriteState = serverPendingState
+            self._pendingReadState = clientPendingState
+
+        if self.version >= (3, 2) and ivLength:
+            #Choose fixedIVBlock for TLS 1.1 (this is encrypted with the CBC
+            #residue to create the IV for each sent block)
+            self.fixedIVBlock = getRandomBytes(ivLength)
+
