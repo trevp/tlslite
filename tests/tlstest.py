@@ -117,7 +117,7 @@ def clientTestCmd(argv):
     testConnClient(connection)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     assert(connection.session.serverName == address[0])
-    assert connection.encryptThenMAC == True
+    assert(connection.encryptThenMAC == True)
     connection.close()
 
     print("Test 1.a - good X509, SSLv3")
@@ -453,12 +453,12 @@ def clientTestCmd(argv):
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
-    assert settings.useEncryptThenMAC
+    assert(settings.useEncryptThenMAC)
     connection.handshakeClientCert(serverName=address[0], settings=settings)
     testConnClient(connection)
-    assert isinstance(connection.session.serverCertChain, X509CertChain)
-    assert connection.session.serverName == address[0]
-    assert not connection.encryptThenMAC
+    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(connection.session.serverName == address[0])
+    assert(not connection.encryptThenMAC)
     connection.close()
 
     print("Test 26.b - no EtM client side")
@@ -468,9 +468,9 @@ def clientTestCmd(argv):
     settings.useEncryptThenMAC = False
     connection.handshakeClientCert(serverName=address[0], settings=settings)
     testConnClient(connection)
-    assert isinstance(connection.session.serverCertChain, X509CertChain)
-    assert connection.session.serverName == address[0]
-    assert not connection.encryptThenMAC
+    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(connection.session.serverName == address[0])
+    assert(not connection.encryptThenMAC)
     connection.close()
 
     print("Test 26.c - resumption with EtM")
@@ -478,10 +478,10 @@ def clientTestCmd(argv):
     connection = connect()
     connection.handshakeClientCert(serverName=address[0])
     testConnClient(connection)
-    assert isinstance(connection.session.serverCertChain, X509CertChain)
-    assert connection.session.serverName == address[0]
-    assert not connection.resumed
-    assert connection.encryptThenMAC
+    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(connection.session.serverName == address[0])
+    assert(not connection.resumed)
+    assert(connection.encryptThenMAC)
     connection.close()
     session = connection.session
 
@@ -490,10 +490,10 @@ def clientTestCmd(argv):
     connection = connect()
     connection.handshakeClientCert(serverName=address[0], session=session)
     testConnClient(connection)
-    assert isinstance(connection.session.serverCertChain, X509CertChain)
-    assert connection.session.serverName == address[0]
-    assert connection.resumed
-    assert connection.encryptThenMAC
+    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(connection.session.serverName == address[0])
+    assert(connection.resumed)
+    assert(connection.encryptThenMAC)
     connection.close()
 
     print("Test 26.d - resumption with no EtM in 2nd handshake")
@@ -501,10 +501,10 @@ def clientTestCmd(argv):
     connection = connect()
     connection.handshakeClientCert(serverName=address[0])
     testConnClient(connection)
-    assert isinstance(connection.session.serverCertChain, X509CertChain)
-    assert connection.session.serverName == address[0]
-    assert not connection.resumed
-    assert connection.encryptThenMAC
+    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(connection.session.serverName == address[0])
+    assert(not connection.resumed)
+    assert(connection.encryptThenMAC)
     connection.close()
     session = connection.session
 
@@ -517,7 +517,7 @@ def clientTestCmd(argv):
         connection.handshakeClientCert(serverName=address[0], session=session,
                                        settings=settings)
     except TLSRemoteAlert as e:
-        assert str(e) == "handshake_failure"
+        assert(str(e) == "handshake_failure")
     else:
         raise AssertionError("No exception raised")
     connection.close()
@@ -1009,7 +1009,7 @@ def serverTestCmd(argv):
         connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
                                    sessionCache=sessionCache)
     except TLSLocalAlert as e:
-        assert str(e) == "handshake_failure"
+        assert(str(e) == "handshake_failure")
     else:
         raise AssertionError("no exception raised")
     connection.close()
