@@ -221,6 +221,8 @@ class RecordLayer(object):
     @ivar version: the TLS version to use (tuple encoded as on the wire)
     @ivar sock: underlying socket
     @ivar client: whether the connection should use encryption
+    @ivar encryptThenMAC: use the encrypt-then-MAC mechanism for record
+    integrity
     """
 
     def __init__(self, sock):
@@ -235,6 +237,8 @@ class RecordLayer(object):
         self._pendingWriteState = ConnectionState()
         self._pendingReadState = ConnectionState()
         self.fixedIVBlock = None
+
+        self.encryptThenMAC = False
 
     @property
     def version(self):
@@ -329,6 +333,28 @@ class RecordLayer(object):
 
         return data
 
+    def _encryptThenMAC(self, buf, contentType):
+        """Pad, encrypt and then MAC the data"""
+        if self._writeState.encContext:
+            # add IV for TLS1.1+
+            if self.version >= (3, 2):
+                buf = self.fixedIVBlock + buf
+
+            buf = self._addPadding(buf)
+
+            buf = self._writeState.encContext.encrypt(buf)
+
+        # add MAC
+        if self._writeState.macContext:
+            seqnumBytes = self._writeState.getSeqNumBytes()
+            mac = self._writeState.macContext.copy()
+
+            # append MAC
+            macBytes = self._calculateMAC(mac, seqnumBytes, contentType, buf)
+            buf += macBytes
+
+        return buf
+
     # randomizeFirstBlock will get used once handling of fragmented
     # messages is implemented
     def sendMessage(self, msg, randomizeFirstBlock=True):
@@ -343,7 +369,10 @@ class RecordLayer(object):
         data = msg.write()
         contentType = msg.contentType
 
-        data = self._macThenEncrypt(data, contentType)
+        if self.encryptThenMAC:
+            data = self._encryptThenMAC(data, contentType)
+        else:
+            data = self._macThenEncrypt(data, contentType)
 
         encryptedMessage = Message(contentType, data)
 
@@ -418,6 +447,62 @@ class RecordLayer(object):
 
         return data
 
+    def _macThenDecrypt(self, recordType, buf):
+        """
+        Check MAC of data, then decrypt and remove padding
+
+        @raise TLSBadRecordMAC: when the mac value is invalid
+        @raise TLSDecryptionFailed: when the data to decrypt has invalid size
+        """
+        if self._readState.macContext:
+            macLength = self._readState.macContext.digest_size
+            if len(buf) < macLength:
+                raise TLSBadRecordMAC("Truncated data")
+
+            checkBytes = buf[-macLength:]
+            buf = buf[:-macLength]
+
+            seqnumBytes = self._readState.getSeqNumBytes()
+            mac = self._readState.macContext.copy()
+
+            macBytes = self._calculateMAC(mac, seqnumBytes, recordType, buf)
+
+            if macBytes != checkBytes:
+                raise TLSBadRecordMAC("MAC mismatch")
+
+        if self._readState.encContext:
+            blockLength = self._readState.encContext.block_size
+            if len(buf) % blockLength != 0:
+                raise TLSDecryptionFailed("data length not multiple of "\
+                                          "block size")
+
+            buf = self._readState.encContext.decrypt(buf)
+
+            # remove explicit IV
+            if self.version >= (3, 2):
+                buf = buf[blockLength:]
+
+            # check padding
+            paddingLength = buf[-1]
+            if paddingLength + 1 > len(buf):
+                raise TLSBadRecordMAC("Invalid padding length")
+
+            paddingGood = True
+            totalPaddingLength = paddingLength+1
+            if self.version != (3, 0):
+                paddingBytes = buf[-totalPaddingLength:-1]
+                for byte in paddingBytes:
+                    if byte != paddingLength:
+                        paddingGood = False
+
+            if not paddingGood:
+                raise TLSBadRecordMAC("Invalid padding byte values")
+
+            # remove padding
+            buf = buf[:-totalPaddingLength]
+
+        return buf
+
     def recvMessage(self):
         """
         Read, decrypt and check integrity of message
@@ -437,7 +522,10 @@ class RecordLayer(object):
 
         (header, data) = result
 
-        data = self._decryptThenMAC(header.type, data)
+        if self.encryptThenMAC:
+            data = self._macThenDecrypt(header.type, data)
+        else:
+            data = self._decryptThenMAC(header.type, data)
 
         yield (header, Parser(data))
 

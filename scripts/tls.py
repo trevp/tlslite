@@ -182,6 +182,7 @@ def printGoodConnection(connection, seconds):
         print("  TACK: %s" % emptyStr)
         print(str(connection.session.tackExt))
     print("  Next-Protocol Negotiated: %s" % connection.next_proto) 
+    print("  Encrypt-then-MAC: {0}".format(connection.encryptThenMAC))
     
 
 def clientCmd(argv):
