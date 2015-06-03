@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.5.0-alpha1                                   2015-05-28
+tlslite-ng version 0.5.0-alpha2                                   2015-06-03
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -68,13 +68,10 @@ Options:
 
   * If you have the M2Crypto interface to OpenSSL, this will be used for fast
     RSA operations and fast ciphers.
-
   * If you have pycrypto this will be used for fast RSA operations and fast
     ciphers.
-
   * If you have the GMPY interface to GMP, this will be used for fast RSA and
     SRP operations.
-
   * These modules don't need to be present at installation - you can install
     them any time.
 
@@ -516,6 +513,20 @@ RFC 7366.
 
 12 History
 ===========
+
+0.5.0-alpha - xx/xx/xxxx - Hubert Kario
+ - Implement RFC 7366 - Encrypt-then-MAC
+ - generate minimal padding for CBC ciphers (David Benjamin - Chromium)
+ - implementation of `FALLBACK_SCSV` (David Benjamin - Chromium)
+ - fix issue with handling keys in session cache (Mirko Dziadzka)
+ - coverage measurement for unit tests
+ - introduced Continous Integration, targetting 2.6, 2.7, 3.2, 3.3 and 3.4
+ - support PKCS#8 files with m2crypto installed for loading private keys
+ - fix Writer not to silently overflow integers
+ - fix Parser getFixBytes boundary checking
+ - big code refactors, mainly TLSRecordLayer and TLSConnection, lot of code put
+   under unit test coverage
+
 0.4.8 - 11/12/2014
  - Added more acknowledgements and security considerations
 

@@ -5,11 +5,11 @@
 
 from distutils.core import setup
 
-setup(name="tlslite",
-      version="0.4.8",
-      author="Trevor Perrin",
-      author_email="tlslite@trevp.net",
-      url="http://trevp.net/tlslite/",
+setup(name="tlslite-ng",
+      version="0.5.0-alpha2",
+      author="Hubert Kario",
+      author_email="hkario@redhat.com",
+      url="https://github.com/tomato42/tlslite-ng",
       description="tlslite implements SSL and TLS.",
       license="public domain and BSD",
       scripts=["scripts/tls.py", "scripts/tlsdb.py"],
