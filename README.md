@@ -515,6 +515,8 @@ RFC 7366.
 ===========
 
 0.5.0-alpha - xx/xx/xxxx - Hubert Kario
+ - properly implement record layer fragmentation (previously worked just for
+   Application Data) - RFC 5246 Section 6.2.1
  - Implement RFC 7366 - Encrypt-then-MAC
  - generate minimal padding for CBC ciphers (David Benjamin - Chromium)
  - implementation of `FALLBACK_SCSV` (David Benjamin - Chromium)
