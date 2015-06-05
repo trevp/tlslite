@@ -48,6 +48,7 @@ class TestTLSRecordLayer(unittest.TestCase):
             b'\x00'*4
             ))
         sock = TLSRecordLayer(mockSock)
+        sock.version = (3,3)
 
         # XXX using private method!
         for result in sock._getNextRecord():
@@ -61,29 +62,7 @@ class TestTLSRecordLayer(unittest.TestCase):
         self.assertEqual(data, bytearray(4))
         self.assertEqual(header.type, ContentType.handshake)
         self.assertEqual(header.version, (3, 3))
-        self.assertEqual(header.length, 4)
-
-    def test__getNextRecord_stops_itelf(self):
-        mockSock = MockSocket(bytearray(
-            b'\x16' +           # type - handshake
-            b'\x03\x03' +       # TLSv1.2
-            b'\x00\x04' +       # length
-            b'\x00'*4
-            ))
-        sock = TLSRecordLayer(mockSock)
-
-        # XXX using private method!
-        for result in sock._getNextRecord():
-            if result in (0, 1):
-                self.assertTrue(False, "blocking socket")
-
-        header, data = result
-        data = data.bytes
-
-        self.assertEqual(data, bytearray(4))
-        self.assertEqual(header.type, ContentType.handshake)
-        self.assertEqual(header.version, (3, 3))
-        self.assertEqual(header.length, 4)
+        self.assertEqual(header.length, 0)
 
     def test__getNextRecord_with_trickling_socket(self):
         mockSock = MockSocket(bytearray(
@@ -308,8 +287,8 @@ class TestTLSRecordLayer(unittest.TestCase):
         self.assertEqual(HandshakeType.server_hello, p.bytes[0])
 
         # XXX generator stops as soon as a message was read
-        self.assertEqual(1, len(results))
-        return
+        #self.assertEqual(1, len(results))
+        #return
 
         header, p = results[1]
 
@@ -472,11 +451,7 @@ class TestTLSRecordLayer(unittest.TestCase):
         gen = record_layer._getMsg(ContentType.handshake,
                 HandshakeType.server_hello)
 
-        # XXX record layer doesn't handle fragmented hello messages
-        with self.assertRaises(TLSLocalAlert):
-            message = next(gen)
-
-        return
+        message = next(gen)
 
         if message in (0,1):
             raise Exception("blocking")
@@ -511,7 +486,7 @@ class TestTLSRecordLayer(unittest.TestCase):
                 HandshakeType.server_hello)
 
         # XXX decoder handles messages over the 2**14 limit!
-        # with self.assertRaises(TLSLocalAlert):
+        #with self.assertRaises(TLSLocalAlert):
         message = next(gen)
 
     #

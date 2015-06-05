@@ -4,6 +4,7 @@
 #   Google - minimal padding
 #   Martin von Loewis - python 3 port
 #   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
+#   Hubert Kario
 #
 # See the LICENSE file for legal information regarding use of this file.
 
@@ -18,6 +19,7 @@ from .messages import *
 from .mathtls import *
 from .constants import *
 from .recordlayer import RecordLayer
+from .defragmenter import Defragmenter
 
 import socket
 import traceback
@@ -98,7 +100,10 @@ class TLSRecordLayer(object):
         self.session = None
 
         #Buffers for processing messages
-        self._handshakeBuffer = []
+        self._defragmenter = Defragmenter()
+        self._defragmenter.addStaticSize(ContentType.change_cipher_spec, 1)
+        self._defragmenter.addStaticSize(ContentType.alert, 2)
+        self._defragmenter.addDynamicSize(ContentType.handshake, 1, 3)
         self.clearReadBuffer()
         self.clearWriteBuffer()
 
@@ -589,6 +594,8 @@ class TLSRecordLayer(object):
                 for result in self._getNextRecord():
                     if result in (0, 1):
                         yield result
+                    else:
+                        break
 
                 # Closes the socket
                 self._shutdown(False)
@@ -618,6 +625,8 @@ class TLSRecordLayer(object):
                 for result in self._getNextRecord():
                     if result in (0,1):
                         yield result
+                    else:
+                        break
                 recordHeader, p = result
 
                 #If this is an empty application-data fragment, try again
@@ -762,22 +771,58 @@ class TLSRecordLayer(object):
                                          formatExceptionTrace(e)):
                 yield result
 
-
     #Returns next record or next handshake message
     def _getNextRecord(self):
+        """read next message from socket, defragment message"""
 
-        #If there's a handshake message waiting, return it
-        if self._handshakeBuffer:
-            recordHeader, b = self._handshakeBuffer[0]
-            self._handshakeBuffer = self._handshakeBuffer[1:]
-            yield (recordHeader, Parser(b))
-            return
+        while True:
+            # support for fragmentation
+            # (RFC 5246 Section 6.2.1)
+            # Because the Record Layer is completely separate from the messages
+            # that traverse it, it should handle both application data and
+            # hadshake data in the same way. For that we buffer the handshake
+            # messages until they are completely read.
+            # This makes it possible to handle both handshake data not aligned
+            # to record boundary as well as handshakes longer than single
+            # record.
+            while True:
+                # empty message buffer
+                ret = self._defragmenter.getMessage()
+                if ret is None:
+                    break
+                header = RecordHeader3().create(self.version, ret[0], 0)
+                yield header, Parser(ret[1])
+
+            # when the message buffer is empty, read next record from socket
+            for result in self._getNextRecordFromSocket():
+                if result in (0, 1):
+                    yield result
+                else:
+                    break
+
+            header, parser = result
+
+            # application data isn't made out of messages, pass it through
+            if header.type == ContentType.application_data:
+                yield (header, parser)
+            # If it's an SSLv2 ClientHello, we can return it as well, since
+            # it's the only ssl2 type we support
+            elif header.ssl2:
+                yield (header, parser)
+            else:
+                # other types need to be put into buffers
+                self._defragmenter.addData(header.type, parser.bytes)
+
+    def _getNextRecordFromSocket(self):
+        """Read a record, handle errors"""
 
         try:
+            # otherwise... read the next record
             for result in self._recordLayer.recvMessage():
                 if result in (0, 1):
                     yield result
-                else: break
+                else:
+                    break
         except TLSRecordOverflow:
             for result in self._sendError(AlertDescription.record_overflow):
                 yield result
@@ -794,52 +839,26 @@ class TLSRecordLayer(object):
                     AlertDescription.bad_record_mac,
                     "MAC failure (or padding failure)"):
                 yield result
-        (r, p) = result
-        b = p.bytes
 
-        #Decrypt the record
+        header, parser = result
 
-        #If it doesn't contain handshake messages, we can just return it
-        if r.type != ContentType.handshake:
-            yield (r, p)
-        #If it's an SSLv2 ClientHello, we can return it as well
-        elif r.ssl2:
-            yield (r, p)
-        else:
-            #Otherwise, we loop through and add the handshake messages to the
-            #handshake buffer
-            while 1:
-                if p.index == len(b): #If we're at the end
-                    if not self._handshakeBuffer:
-                        for result in self._sendError(\
-                                AlertDescription.decode_error, \
-                                "Received empty handshake record"):
-                            yield result
-                    break
-                #There needs to be at least 4 bytes to get a header
-                if p.index+4 > len(b):
-                    for result in self._sendError(\
-                            AlertDescription.decode_error,
-                            "A record has a partial handshake message (1)"):
-                        yield result
-                p.get(1) # skip handshake type
-                msgLength = p.get(3)
-                if p.index+msgLength > len(b):
-                    for result in self._sendError(\
-                            AlertDescription.decode_error,
-                            "A record has a partial handshake message (2)"):
-                        yield result
+        # RFC5246 section 5.2.1: Implementations MUST NOT send
+        # zero-length fragments of content types other than Application
+        # Data.
+        if header.type != ContentType.application_data \
+                and parser.getRemainingLength() == 0:
+            for result in self._sendError(\
+                    AlertDescription.decode_error, \
+                    "Received empty non-application data record"):
+                yield result
 
-                handshakePair = (r, b[p.index-4 : p.index+msgLength])
-                self._handshakeBuffer.append(handshakePair)
-                p.index += msgLength
+        if header.type not in ContentType.all:
+            for result in self._sendError(\
+                    AlertDescription.unexpected_message, \
+                    "Received record with unknown ContentType"):
+                yield result
 
-            #We've moved at least one handshake message into the
-            #handshakeBuffer, return the first one
-            recordHeader, b = self._handshakeBuffer[0]
-            self._handshakeBuffer = self._handshakeBuffer[1:]
-            yield (recordHeader, Parser(b))
-
+        yield (header, parser)
 
     def _handshakeStart(self, client):
         if not self.closed:
@@ -848,7 +867,7 @@ class TLSRecordLayer(object):
         self._handshake_md5 = hashlib.md5()
         self._handshake_sha = hashlib.sha1()
         self._handshake_sha256 = hashlib.sha256()
-        self._handshakeBuffer = []
+        self._defragmenter.clearBuffers()
         self.allegedSrpUsername = None
         self._refCount = 1
 
