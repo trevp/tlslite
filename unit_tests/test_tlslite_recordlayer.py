@@ -410,7 +410,7 @@ class TestRecordLayer(unittest.TestCase):
         self.assertIsNotNone(app_data)
         self.assertTrue(len(app_data.write()) > 3)
 
-        for result in recordLayer.sendMessage(app_data, False):
+        for result in recordLayer.sendMessage(app_data):
             if result in (0, 1):
                 self.assertTrue(False, "blocking socket")
             else: break
@@ -452,7 +452,7 @@ class TestRecordLayer(unittest.TestCase):
         self.assertIsNotNone(app_data)
         self.assertTrue(len(app_data.write()) > 3)
 
-        for result in recordLayer.sendMessage(app_data, False):
+        for result in recordLayer.sendMessage(app_data):
             if result in (0, 1):
                 self.assertTrue(False, "blocking socket")
             else: break
@@ -494,7 +494,7 @@ class TestRecordLayer(unittest.TestCase):
         self.assertIsNotNone(app_data)
         self.assertTrue(len(app_data.write()) > 3)
 
-        for result in recordLayer.sendMessage(app_data, False):
+        for result in recordLayer.sendMessage(app_data):
             if result in (0, 1):
                 self.assertTrue(False, "blocking socket")
             else: break
@@ -529,7 +529,7 @@ class TestRecordLayer(unittest.TestCase):
         self.assertIsNotNone(app_data)
         self.assertTrue(len(app_data.write()) > 3)
 
-        for result in recordLayer.sendMessage(app_data, False):
+        for result in recordLayer.sendMessage(app_data):
             if result in (0, 1):
                 self.assertTrue(False, "blocking socket")
             else: break
@@ -563,7 +563,7 @@ class TestRecordLayer(unittest.TestCase):
         self.assertIsNotNone(app_data)
         self.assertTrue(len(app_data.write()) > 3)
 
-        for result in recordLayer.sendMessage(app_data, False):
+        for result in recordLayer.sendMessage(app_data):
             if result in (0, 1):
                 self.assertTrue(False, "blocking socket")
             else: break
@@ -597,7 +597,7 @@ class TestRecordLayer(unittest.TestCase):
         self.assertIsNotNone(app_data)
         self.assertTrue(len(app_data.write()) > 3)
 
-        for result in recordLayer.sendMessage(app_data, False):
+        for result in recordLayer.sendMessage(app_data):
             if result in (0, 1):
                 self.assertTrue(False, "blocking socket")
             else: break
@@ -632,7 +632,7 @@ class TestRecordLayer(unittest.TestCase):
         self.assertIsNotNone(app_data)
         self.assertTrue(len(app_data.write()) > 3)
 
-        for result in recordLayer.sendMessage(app_data, False):
+        for result in recordLayer.sendMessage(app_data):
             if result in (0, 1):
                 self.assertTrue(False, "blocking socket")
             else: break
@@ -669,7 +669,7 @@ class TestRecordLayer(unittest.TestCase):
         self.assertIsNotNone(app_data)
         self.assertTrue(len(app_data.write()) > 3)
 
-        for result in recordLayer.sendMessage(app_data, False):
+        for result in recordLayer.sendMessage(app_data):
             if result in (0, 1):
                 self.assertTrue(False, "blocking socket")
             else: break
@@ -703,7 +703,7 @@ class TestRecordLayer(unittest.TestCase):
         self.assertIsNotNone(app_data)
         self.assertTrue(len(app_data.write()) > 3)
 
-        for result in recordLayer.sendMessage(app_data, False):
+        for result in recordLayer.sendMessage(app_data):
             if result in (0, 1):
                 self.assertTrue(False, "blocking socket")
             else: break

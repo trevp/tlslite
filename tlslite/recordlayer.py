@@ -310,7 +310,7 @@ class RecordLayer(object):
         return bytearray(mac.digest())
 
     def _macThenEncrypt(self, data, contentType):
-        """MAC then encrypt data"""
+        """MAC, pad then encrypt data"""
         if self._writeState.macContext:
             seqnumBytes = self._writeState.getSeqNumBytes()
             mac = self._writeState.macContext.copy()
@@ -355,9 +355,7 @@ class RecordLayer(object):
 
         return buf
 
-    # randomizeFirstBlock will get used once handling of fragmented
-    # messages is implemented
-    def sendMessage(self, msg, randomizeFirstBlock=True):
+    def sendMessage(self, msg):
         """
         Encrypt, MAC and send message through socket.
 
