@@ -329,6 +329,7 @@ class TestRecordLayer(unittest.TestCase):
 
         self.assertIsNone(recordLayer.getCipherName())
         self.assertIsNone(recordLayer.getCipherImplementation())
+        self.assertFalse(recordLayer.isCBCMode())
 
     def test_sendMessage(self):
         sock = MockSocket(bytearray(0))
@@ -365,6 +366,7 @@ class TestRecordLayer(unittest.TestCase):
         recordLayer.changeWriteState()
 
         self.assertEqual('aes128', recordLayer.getCipherName())
+        self.assertTrue(recordLayer.isCBCMode())
 
     def test_getCipherImplementation(self):
         sock = MockSocket(bytearray(0))

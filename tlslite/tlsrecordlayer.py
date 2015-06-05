@@ -88,8 +88,8 @@ class TLSRecordLayer(object):
     construct for CBC cipher suites, will be False also if connection uses
     RC4 or AEAD.
 
-    @type blockSize: int
-    @ivar blockSize: maimum size of data to be sent in a single record layer
+    @type recordSize: int
+    @ivar recordSize: maimum size of data to be sent in a single record layer
     message. Note that after encryption is established (generally after
     handshake protocol has finished) the actual amount of data written to
     network socket will be larger because of the record layer header, padding
@@ -144,7 +144,7 @@ class TLSRecordLayer(object):
         self.fault = None
 
         #Limit the size of outgoing records to following size
-        self.blockSize = 16384 # 2**14
+        self.recordSize = 16384 # 2**14
 
     @property
     def _client(self):
@@ -541,47 +541,43 @@ class TLSRecordLayer(object):
             randomizeFirstBlock = True
 
     def _sendMsg(self, msg, randomizeFirstBlock = True):
+        """Fragment and send message through socket"""
         #Whenever we're connected and asked to send an app data message,
         #we first send the first byte of the message.  This prevents
         #an attacker from launching a chosen-plaintext attack based on
         #knowing the next IV (a la BEAST).
-        # TODO don't reference private fields in _recordLayer
-        # to be fixed with proper message fragmentation implementation
-        if not self.closed and randomizeFirstBlock and self.version <= (3,1) \
-                and self._recordLayer._writeState.encContext \
-                and self._recordLayer._writeState.encContext.isBlockCipher \
-                and isinstance(msg, ApplicationData):
+        if randomizeFirstBlock and self.version <= (3, 1) \
+                and self._recordLayer.isCBCMode() \
+                and msg.contentType == ContentType.application_data:
             msgFirstByte = msg.splitFirstByte()
-            for result in self._sendMsg(msgFirstByte,
-                                       randomizeFirstBlock = False):
-                yield result                                            
-
-        b = msg.write()
-        
-        # If a 1-byte message was passed in, and we "split" the 
-        # first(only) byte off above, we may have a 0-length msg:
-        if len(b) == 0:
-            return
-            
-        contentType = msg.contentType
-
-        #Fragment big messages
-        while len(b) > self.blockSize:
-            newB = b[:self.blockSize]
-            b = b[self.blockSize:]
-
-            msgFragment = Message(contentType, newB)
-            for result in self._sendMsg(msgFragment,
-                                        randomizeFirstBlock=False):
+            for result in self._sendMsgThroughSocket(msgFirstByte):
                 yield result
+            if len(msg.write()) == 0:
+                return
 
+        buf = msg.write()
+        contentType = msg.contentType
         #Update handshake hashes
         if contentType == ContentType.handshake:
-            self._handshake_md5.update(compat26Str(b))
-            self._handshake_sha.update(compat26Str(b))
-            self._handshake_sha256.update(compat26Str(b))
+            self._handshake_md5.update(compat26Str(buf))
+            self._handshake_sha.update(compat26Str(buf))
+            self._handshake_sha256.update(compat26Str(buf))
 
-        msg = Message(contentType, b)
+        #Fragment big messages
+        while len(buf) > self.recordSize:
+            newB = buf[:self.recordSize]
+            buf = buf[self.recordSize:]
+
+            msgFragment = Message(contentType, newB)
+            for result in self._sendMsgThroughSocket(msgFragment):
+                yield result
+
+        msgFragment = Message(contentType, buf)
+        for result in self._sendMsgThroughSocket(msgFragment):
+            yield result
+
+    def _sendMsgThroughSocket(self, msg):
+        """Send message, handle errors"""
 
         try:
             for result in self._recordLayer.sendMessage(msg):
@@ -598,7 +594,7 @@ class TLSRecordLayer(object):
             # However, if we get here DURING handshaking, we take
             # it upon ourselves to see if the next message is an
             # Alert.
-            if contentType == ContentType.handshake:
+            if msg.contentType == ContentType.handshake:
 
                 # See if there's an alert record
                 # Could raise socket.error or TLSAbruptCloseError

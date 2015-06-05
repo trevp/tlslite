@@ -282,6 +282,13 @@ class RecordLayer(object):
         self._pendingWriteState = ConnectionState()
         self._pendingReadState = ConnectionState()
 
+    def isCBCMode(self):
+        """Returns true if cipher uses CBC mode"""
+        if self._writeState and self._writeState.encContext and \
+                self._writeState.encContext.isBlockCipher:
+            return True
+        else:
+            return False
     #
     # sending messages
     #

@@ -382,6 +382,89 @@ class TestTLSRecordLayer(unittest.TestCase):
         for msg in mock_sock.sent:
             self.assertTrue(len(msg) <= 2**14 + 5)
 
+    def test_write_with_BEAST_record_splitting(self):
+        mock_sock = MockSocket(bytearray(0))
+        record_layer = TLSRecordLayer(mock_sock)
+
+        record_layer.version = (3, 1)
+        record_layer.closed = False
+        record_layer._recordLayer.calcPendingStates(
+                CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                bytearray(48),
+                bytearray(32),
+                bytearray(32),
+                None)
+        record_layer._recordLayer.changeWriteState()
+
+        record_layer.write(bytearray(32))
+
+        self.assertEqual(len(mock_sock.sent), 2)
+        msg1 = mock_sock.sent[0]
+        self.assertEqual(bytearray(
+            b'\x17'  +      # application data
+            b'\x03\x01' +   # TLSv1.0
+            b'\x00\x20'     # length 32 bytes = data(1) + MAC(20) + padding(11)
+            ), msg1[:5])
+        self.assertEqual(len(msg1[5:]), 32)
+
+        msg2 = mock_sock.sent[1]
+        self.assertEqual(bytearray(
+            b'\x17'  +      # application data
+            b'\x03\x01' +   # TLSv1.0
+            b'\x00\x40'     # length 64 bytes = data(31) + MAC(20) + padding(13)
+            ), msg2[:5])
+        self.assertEqual(len(msg2[5:]), 64)
+
+    def test_write_with_BEAST_record_splitting_and_small_write(self):
+        mock_sock = MockSocket(bytearray(0))
+        record_layer = TLSRecordLayer(mock_sock)
+
+        record_layer.version = (3, 1)
+        record_layer.closed = False
+        record_layer._recordLayer.calcPendingStates(
+                CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                bytearray(48),
+                bytearray(32),
+                bytearray(32),
+                None)
+        record_layer._recordLayer.changeWriteState()
+
+        record_layer.write(bytearray(1))
+
+        self.assertEqual(len(mock_sock.sent), 1)
+        msg1 = mock_sock.sent[0]
+        self.assertEqual(bytearray(
+            b'\x17'  +      # application data
+            b'\x03\x01' +   # TLSv1.0
+            b'\x00\x20'     # length 32 bytes = data(1) + MAC(20) + padding(11)
+            ), msg1[:5])
+        self.assertEqual(len(msg1[5:]), 32)
+
+    def test_write_with_BEAST_record_splitting_and_empty_write(self):
+        mock_sock = MockSocket(bytearray(0))
+        record_layer = TLSRecordLayer(mock_sock)
+
+        record_layer.version = (3, 1)
+        record_layer.closed = False
+        record_layer._recordLayer.calcPendingStates(
+                CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                bytearray(48),
+                bytearray(32),
+                bytearray(32),
+                None)
+        record_layer._recordLayer.changeWriteState()
+
+        record_layer.write(bytearray(0))
+
+        self.assertEqual(len(mock_sock.sent), 1)
+        msg1 = mock_sock.sent[0]
+        self.assertEqual(bytearray(
+            b'\x17'  +      # application data
+            b'\x03\x01' +   # TLSv1.0
+            b'\x00\x20'     # length 32 bytes = data(0) + MAC(20) + padding(12)
+            ), msg1[:5])
+        self.assertEqual(len(msg1[5:]), 32)
+
     def test__getMsg(self):
 
         mock_sock = MockSocket(
