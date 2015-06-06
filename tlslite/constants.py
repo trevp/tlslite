@@ -112,42 +112,106 @@ class AlertDescription:
 
 
 class CipherSuite:
+
+    """
+    Numeric values of ciphersuites and ciphersuite types
+
+    @cvar tripleDESSuites: ciphersuties which use 3DES symmetric cipher in CBC
+    mode
+    @cvar aes128Suites: ciphersuites which use AES symmetric cipher in CBC mode
+    with 128 bit key
+    @cvar aes256Suites: ciphersuites which use AES symmetric cipher in CBC mode
+    with 128 bit key
+    @cvar rc4Suites: ciphersuites which use RC4 symmetric cipher with 128 bit
+    key
+    @cvar shaSuites: ciphersuites which use SHA-1 HMAC integrity mechanism
+    and protocol default Pseudo Random Function
+    @cvar sha256Suites: ciphersuites which use SHA-256 HMAC integrity mechanism
+    and SHA-256 Pseudo Random Function
+    @cvar md5Suites: ciphersuites which use MD-5 HMAC integrity mechanism and
+    protocol default Pseudo Random Function
+    @cvar srpSuites: ciphersuites which use Secure Remote Password (SRP) key
+    exchange protocol
+    @cvar srpCertSuites: ciphersuites which use Secure Remote Password (SRP)
+    key exchange protocol with RSA server authentication
+    @cvar srpAllSuites: all SRP ciphersuites, pure SRP and with RSA based
+    server authentication
+    @cvar certSuites: ciphersuites which use RSA key exchange with RSA server
+    authentication
+    @cvar certAllSuites: ciphersuites which use RSA server authentication
+    @cvar anonSuites: ciphersuites which use anonymous Finite Field
+    Diffie-Hellman key exchange
+    @cvar ietfNames: dictionary with string names of the ciphersuites
+    """
+
+    ietfNames = {}
+
     # Weird pseudo-ciphersuite from RFC 5746
     # Signals that "secure renegotiation" is supported
     # We actually don't do any renegotiation, but this
     # prevents renegotiation attacks
     TLS_EMPTY_RENEGOTIATION_INFO_SCSV = 0x00FF
+    ietfNames[0x00FF] = 'TLS_EMPTY_RENEGOTIATION_INFO_SCSV'
 
-    # draft-ietf-tls-downgrade-scsv-03
+    # RFC 7507 - Fallback Signaling Cipher Suite Value for Preventing Protocol
+    # Downgrade Attacks
     TLS_FALLBACK_SCSV = 0x5600
+    ietfNames[0x5600] = 'TLS_FALLBACK_SCSV'
     
+    # RFC 5054 - Secure Remote Password (SRP) Protocol for TLS Authentication
     TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA  = 0xC01A
+    ietfNames[0xC01A] = 'TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA'
     TLS_SRP_SHA_WITH_AES_128_CBC_SHA = 0xC01D
+    ietfNames[0xC01D] = 'TLS_SRP_SHA_WITH_AES_128_CBC_SHA'
     TLS_SRP_SHA_WITH_AES_256_CBC_SHA = 0xC020
+    ietfNames[0xC020] = 'TLS_SRP_SHA_WITH_AES_256_CBC_SHA'
 
+    # RFC 5054 - Secure Remote Password (SRP) Protocol for TLS Authentication
     TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA = 0xC01B
+    ietfNames[0xC01B] = 'TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA'
     TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA = 0xC01E
+    ietfNames[0xC01E] = 'TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA'
     TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA = 0xC021
+    ietfNames[0xC021] = 'TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA'
 
 
+    # RFC 5246 - TLS v1.2 Protocol
     TLS_RSA_WITH_3DES_EDE_CBC_SHA = 0x000A
+    ietfNames[0x000A] = 'TLS_RSA_WITH_3DES_EDE_CBC_SHA'
     TLS_RSA_WITH_AES_128_CBC_SHA = 0x002F
+    ietfNames[0x002F] = 'TLS_RSA_WITH_AES_128_CBC_SHA'
     TLS_RSA_WITH_AES_256_CBC_SHA = 0x0035
+    ietfNames[0x0035] = 'TLS_RSA_WITH_AES_256_CBC_SHA'
     TLS_RSA_WITH_RC4_128_SHA = 0x0005
+    ietfNames[0x0005] = 'TLS_RSA_WITH_RC4_128_SHA'
     
+    # RFC 5246 - TLS v1.2 Protocol
     TLS_RSA_WITH_RC4_128_MD5 = 0x0004
+    ietfNames[0x0004] = 'TLS_RSA_WITH_RC4_128_MD5'
 
+    # RFC 5246 - TLS v1.2 Protocol
     TLS_DH_ANON_WITH_AES_128_CBC_SHA = 0x0034
+    ietfNames[0x0034] = 'TLS_DH_ANON_WITH_AES_128_CBC_SHA'
     TLS_DH_ANON_WITH_AES_256_CBC_SHA = 0x003A
+    ietfNames[0x003A] = 'TLS_DH_ANON_WITH_AES_256_CBC_SHA'
 
+    # RFC 5246 - TLS v1.2 Protocol
     TLS_RSA_WITH_AES_128_CBC_SHA256 = 0x003C
+    ietfNames[0x003C] = 'TLS_RSA_WITH_AES_128_CBC_SHA256'
     TLS_RSA_WITH_AES_256_CBC_SHA256 = 0x003D
+    ietfNames[0x003D] = 'TLS_RSA_WITH_AES_256_CBC_SHA256'
 
+    #
+    # Define cipher suite families below
+    #
+
+    # 3DES CBC ciphers
     tripleDESSuites = []
     tripleDESSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
 
+    # AES-128 CBC ciphers
     aes128Suites = []
     aes128Suites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
@@ -155,6 +219,7 @@ class CipherSuite:
     aes128Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
 
+    # AES-256 CBC ciphers
     aes256Suites = []
     aes256Suites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
@@ -162,10 +227,12 @@ class CipherSuite:
     aes256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
 
+    # RC4-128 stream cipher
     rc4Suites = []
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_MD5)
     
+    # SHA-1 HMAC, protocol default PRF
     shaSuites = []
     shaSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     shaSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
@@ -180,10 +247,12 @@ class CipherSuite:
     shaSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
     
+    # SHA-256 HMAC, SHA-256 PRF
     sha256Suites = []
     sha256Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
     sha256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
 
+    # MD-5 HMAC, protocol default PRF
     md5Suites = []
     md5Suites.append(TLS_RSA_WITH_RC4_128_MD5)
 
@@ -211,6 +280,7 @@ class CipherSuite:
 
         return [s for s in suites if s in macSuites and s in cipherSuites]
 
+    # SRP key exchange
     srpSuites = []
     srpSuites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
@@ -220,6 +290,7 @@ class CipherSuite:
     def getSrpSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.srpSuites, settings)
 
+    # SRP key exchange, RSA authentication
     srpCertSuites = []
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
@@ -235,6 +306,7 @@ class CipherSuite:
     def getSrpAllSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.srpAllSuites, settings)
 
+    # RSA key exchange, RSA authentication
     certSuites = []
     certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
     certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
@@ -243,12 +315,14 @@ class CipherSuite:
     certSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_MD5)
+    # RSA authentication
     certAllSuites = srpCertSuites + certSuites
     
     @staticmethod
     def getCertSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.certSuites, settings)
 
+    # anon FFDHE key exchange
     anonSuites = []
     anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
     anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
