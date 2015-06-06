@@ -1007,7 +1007,32 @@ class ServerHelloDone(HandshakeMsg):
         return self.postWrite(w)
 
 class ClientKeyExchange(HandshakeMsg):
+
+    """
+    Handling of TLS Handshake protocol ClientKeyExchange message
+
+    @type cipherSuite: int
+    @ivar cipherSuite: the cipher suite id used for the connection
+    @type version: tuple(int, int)
+    @ivar version: TLS protocol version used for the connection
+    @type srp_A: int
+    @ivar srp_A: SRP protocol client answer value
+    @type dh_Yc: int
+    @ivar dh_Yc: client Finite Field Diffie-Hellman protocol key share
+    @type encryptedPreMasterSecret: bytearray
+    @ivar encryptedPreMasterSecret: client selected PremMaster secret encrypted
+    with server public key (from certificate)
+    """
+
     def __init__(self, cipherSuite, version=None):
+        """
+        Initialise ClientKeyExchange for reading or writing
+
+        @type cipherSuite: int
+        @param cipherSuite: id of the ciphersuite selected by server
+        @type version: tuple(int, int)
+        @param version: protocol version selected by server
+        """
         HandshakeMsg.__init__(self, HandshakeType.client_key_exchange)
         self.cipherSuite = cipherSuite
         self.version = version
@@ -1015,18 +1040,51 @@ class ClientKeyExchange(HandshakeMsg):
         self.encryptedPreMasterSecret = bytearray(0)
 
     def createSRP(self, srp_A):
+        """
+        Set the SRP client answer
+
+        returns self
+
+        @type srp_A: int
+        @param srp_A: client SRP answer
+        @rtype: L{ClientKeyExchange}
+        """
         self.srp_A = srp_A
         return self
 
     def createRSA(self, encryptedPreMasterSecret):
+        """
+        Set the encrypted PreMaster Secret
+
+        returns self
+
+        @type encryptedPreMasterSecret: bytearray
+        @rtype: L{ClientKeyExchange}
+        """
         self.encryptedPreMasterSecret = encryptedPreMasterSecret
         return self
     
     def createDH(self, dh_Yc):
+        """
+        Set the client FFDH key share
+
+        returns self
+
+        @type dh_Yc: int
+        @rtype: L{ClientKeyExchange}
+        """
         self.dh_Yc = dh_Yc
         return self
     
     def parse(self, p):
+        """
+        Deserialise the message from L{Parser}
+
+        returns self
+
+        @type p: L{Parser}
+        @rtype: L{ClientKeyExchange}
+        """
         p.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
             self.srp_A = bytesToNumber(p.getVarBytes(2))
@@ -1046,6 +1104,11 @@ class ClientKeyExchange(HandshakeMsg):
         return self
 
     def write(self):
+        """
+        Serialise the object
+
+        @rtype: bytearray
+        """
         w = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
             w.addVarSeq(numberToByteArray(self.srp_A), 1, 2)

@@ -8,7 +8,7 @@ try:
 except ImportError:
     import unittest
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
-        RecordHeader2, Message
+        RecordHeader2, Message, ClientKeyExchange
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType
@@ -1100,6 +1100,154 @@ class TestAlert(unittest.TestCase):
 
         self.assertEqual(bytearray(
             b'\x02\x16'), alert.write())
+
+class TestClientKeyExchange(unittest.TestCase):
+    def test___init__(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA)
+
+        self.assertIsNotNone(cke)
+        self.assertIsNone(cke.version)
+        self.assertEqual(0, cke.srp_A)
+        self.assertEqual(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                         cke.cipherSuite)
+        self.assertEqual(bytearray(0), cke.encryptedPreMasterSecret)
+
+    def test_createSRP(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
+
+        cke.createSRP(2**128+3)
+
+        bts = cke.write()
+
+        self.assertEqual(bts, bytearray(
+            b'\x10' +           # CKE
+            b'\x00\x00\x13' +   # Handshake message length
+            b'\x00\x11' +       # length of value
+            b'\x01' +           # 2...
+            b'\x00'*15 +        # ...**128...
+            b'\x03'))           # ...+3
+
+    def test_createRSA(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
+                                (3, 3))
+
+        cke.createRSA(bytearray(12))
+
+        bts = cke.write()
+
+        self.assertEqual(bts, bytearray(
+            b'\x10' +           # CKE
+            b'\x00\x00\x0e' +   # Handshake message length
+            b'\x00\x0c' +       # length of encrypted value
+            b'\x00'*12))
+
+    def test_createRSA_with_SSL3(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
+                                (3, 0))
+
+        cke.createRSA(bytearray(12))
+
+        bts = cke.write()
+
+        self.assertEqual(bts, bytearray(
+            b'\x10' +           # CKE
+            b'\x00\x00\x0c' +   # Handshake message length
+            b'\x00'*12))
+
+    def test_createDH(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+
+        cke.createDH(2**64+3)
+
+        bts = cke.write()
+
+        self.assertEqual(bts, bytearray(
+            b'\x10' +
+            b'\x00\x00\x0b' +
+            b'\x00\x09' +
+            b'\x01' + b'\x00'*7 + b'\x03'))
+
+    def test_createRSA_with_unset_protocol(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA)
+
+        cke.createRSA(bytearray(12))
+
+        with self.assertRaises(AssertionError):
+            cke.write()
+
+    def test_write_with_unknown_cipher_suite(self):
+        cke = ClientKeyExchange(0)
+
+        with self.assertRaises(AssertionError):
+            cke.write()
+
+    def test_parse_with_RSA(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+                                (3, 1))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x0e' +
+            b'\x00\x0c' +
+            b'\x00'*12))
+
+        cke.parse(parser)
+
+        self.assertEqual(bytearray(12), cke.encryptedPreMasterSecret)
+
+    def test_parse_with_RSA_in_SSL3(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+                                (3, 0))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x0c' +
+            b'\x00'*12))
+
+        cke.parse(parser)
+
+        self.assertEqual(bytearray(12), cke.encryptedPreMasterSecret)
+
+    def test_parse_with_RSA_and_unset_protocol(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x0c' +
+            b'x\00'*12))
+
+        with self.assertRaises(AssertionError):
+            cke.parse(parser)
+
+    def test_parse_with_SRP(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x0a' +
+            b'\x00\x08' +
+            b'\x00'*7 + b'\xff'))
+
+        cke.parse(parser)
+
+        self.assertEqual(255, cke.srp_A)
+
+    def test_parse_with_DH(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x0a' +
+            b'\x00\x08' +
+            b'\x01' + b'\x00'*7))
+
+        cke.parse(parser)
+
+        self.assertEqual(2**56, cke.dh_Yc)
+
+    def test_parse_with_unknown_cipher(self):
+        cke = ClientKeyExchange(0)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x00'))
+
+        with self.assertRaises(AssertionError):
+            cke.parse(parser)
 
 if __name__ == '__main__':
     unittest.main()
