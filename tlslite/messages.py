@@ -1077,31 +1077,31 @@ class ClientKeyExchange(HandshakeMsg):
         self.dh_Yc = dh_Yc
         return self
     
-    def parse(self, p):
+    def parse(self, parser):
         """
         Deserialise the message from L{Parser}
 
         returns self
 
-        @type p: L{Parser}
+        @type parser: L{Parser}
         @rtype: L{ClientKeyExchange}
         """
-        p.startLengthCheck(3)
+        parser.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
-            self.srp_A = bytesToNumber(p.getVarBytes(2))
+            self.srp_A = bytesToNumber(parser.getVarBytes(2))
         elif self.cipherSuite in CipherSuite.certSuites:
             if self.version in ((3,1), (3,2), (3,3)):
-                self.encryptedPreMasterSecret = p.getVarBytes(2)
+                self.encryptedPreMasterSecret = parser.getVarBytes(2)
             elif self.version == (3,0):
                 self.encryptedPreMasterSecret = \
-                    p.getFixBytes(len(p.bytes)-p.index)
+                    parser.getFixBytes(parser.getRemainingLength())
             else:
                 raise AssertionError()
         elif self.cipherSuite in CipherSuite.anonSuites:
-            self.dh_Yc = bytesToNumber(p.getVarBytes(2))            
+            self.dh_Yc = bytesToNumber(parser.getVarBytes(2))
         else:
             raise AssertionError()
-        p.stopLengthCheck()
+        parser.stopLengthCheck()
         return self
 
     def write(self):
