@@ -1037,6 +1037,7 @@ class ClientKeyExchange(HandshakeMsg):
         self.cipherSuite = cipherSuite
         self.version = version
         self.srp_A = 0
+        self.dh_Yc = 0
         self.encryptedPreMasterSecret = bytearray(0)
 
     def createSRP(self, srp_A):
