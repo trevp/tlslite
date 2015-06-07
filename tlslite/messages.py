@@ -1025,10 +1025,15 @@ class ServerKeyExchange(HandshakeMsg):
     def hash(self, clientRandom, serverRandom):
         """Calculate the signature hash"""
         oldCipherSuite = self.cipherSuite
-        self.cipherSuite = None
+        # temporarily change so serialiser omits signature
+        if self.cipherSuite in CipherSuite.srpAllSuites:
+            self.cipherSuite = CipherSuite.srpSuites[0]
         try:
-            bytes = clientRandom + serverRandom + self.write()[4:]
-            return MD5(bytes) + SHA1(bytes)
+            # skip message type(1 byte) and length(3 bytes)
+            payloadBytes = self.write()[4:]
+            bytesToMAC = clientRandom + serverRandom + payloadBytes
+            # TODO should use protocol dependant values (invalid in TLSv1.2)
+            return MD5(bytesToMAC) + SHA1(bytesToMAC)
         finally:
             self.cipherSuite = oldCipherSuite
 

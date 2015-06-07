@@ -1419,6 +1419,11 @@ class TestServerKeyExchange(unittest.TestCase):
 
         hash1 = ske.hash(bytearray(32), bytearray(32))
 
+        self.assertEqual(hash1, bytearray(
+            b'\xcb\xe6\xd3=\x8b$\xff\x97e&\xb2\x89\x1dA\xab>' +
+            b'\x8e?YW\xcd\xad\xc6\x83\x91\x1d.fe,\x17y' +
+            b'=\xc4T\x89'))
+
         ske2 = ServerKeyExchange(0)
         hash2 = ske2.hash(bytearray(32), bytearray(32))
         self.assertEqual(len(hash2), 36)
@@ -1427,8 +1432,7 @@ class TestServerKeyExchange(unittest.TestCase):
             b'\xc8\xd7\xd0\xef\x0e\xed\xfa\x82\xd2\xea\x1a\xa5\x92\x84[\x9a' +
             b'mK\x02\xb7'))
 
-        # XXX seriously?!
-        self.assertEqual(hash1, hash2)
+        self.assertNotEqual(hash1, hash2)
 
 if __name__ == '__main__':
     unittest.main()
