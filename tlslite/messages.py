@@ -980,25 +980,25 @@ class ServerKeyExchange(HandshakeMsg):
         self.dh_Ys = dh_Ys
         return self
 
-    def parse(self, p):
+    def parse(self, parser):
         """Deserialise message from L{Parser}
 
-        @type p: L{Parser}
-        @param p: parser to read data from
+        @type parser: L{Parser}
+        @param parser: parser to read data from
         """
-        p.startLengthCheck(3)
+        parser.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
-            self.srp_N = bytesToNumber(p.getVarBytes(2))
-            self.srp_g = bytesToNumber(p.getVarBytes(2))
-            self.srp_s = p.getVarBytes(1)
-            self.srp_B = bytesToNumber(p.getVarBytes(2))
+            self.srp_N = bytesToNumber(parser.getVarBytes(2))
+            self.srp_g = bytesToNumber(parser.getVarBytes(2))
+            self.srp_s = parser.getVarBytes(1)
+            self.srp_B = bytesToNumber(parser.getVarBytes(2))
             if self.cipherSuite in CipherSuite.srpCertSuites:
-                self.signature = p.getVarBytes(2)
+                self.signature = parser.getVarBytes(2)
         elif self.cipherSuite in CipherSuite.anonSuites:
-            self.dh_p = bytesToNumber(p.getVarBytes(2))
-            self.dh_g = bytesToNumber(p.getVarBytes(2))
-            self.dh_Ys = bytesToNumber(p.getVarBytes(2))
-        p.stopLengthCheck()
+            self.dh_p = bytesToNumber(parser.getVarBytes(2))
+            self.dh_g = bytesToNumber(parser.getVarBytes(2))
+            self.dh_Ys = bytesToNumber(parser.getVarBytes(2))
+        parser.stopLengthCheck()
         return self
 
     def write(self):
@@ -1006,21 +1006,21 @@ class ServerKeyExchange(HandshakeMsg):
 
         @rtype: bytearray
         """
-        w = Writer()
+        writer = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
-            w.addVarSeq(numberToByteArray(self.srp_N), 1, 2)
-            w.addVarSeq(numberToByteArray(self.srp_g), 1, 2)
-            w.addVarSeq(self.srp_s, 1, 1)
-            w.addVarSeq(numberToByteArray(self.srp_B), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.srp_N), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.srp_g), 1, 2)
+            writer.addVarSeq(self.srp_s, 1, 1)
+            writer.addVarSeq(numberToByteArray(self.srp_B), 1, 2)
             if self.cipherSuite in CipherSuite.srpCertSuites:
-                w.addVarSeq(self.signature, 1, 2)
+                writer.addVarSeq(self.signature, 1, 2)
         elif self.cipherSuite in CipherSuite.anonSuites:
-            w.addVarSeq(numberToByteArray(self.dh_p), 1, 2)
-            w.addVarSeq(numberToByteArray(self.dh_g), 1, 2)
-            w.addVarSeq(numberToByteArray(self.dh_Ys), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.dh_p), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.dh_g), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.dh_Ys), 1, 2)
             if self.cipherSuite in []: # TODO support for signed_params
-                w.addVarSeq(self.signature, 1, 2)
-        return self.postWrite(w)
+                writer.addVarSeq(self.signature, 1, 2)
+        return self.postWrite(writer)
 
     def hash(self, clientRandom, serverRandom):
         """Calculate the signature hash"""
