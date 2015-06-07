@@ -157,7 +157,7 @@ class CipherSuite:
     # Downgrade Attacks
     TLS_FALLBACK_SCSV = 0x5600
     ietfNames[0x5600] = 'TLS_FALLBACK_SCSV'
-    
+
     # RFC 5054 - Secure Remote Password (SRP) Protocol for TLS Authentication
     TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA  = 0xC01A
     ietfNames[0xC01A] = 'TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA'
@@ -184,7 +184,7 @@ class CipherSuite:
     ietfNames[0x0035] = 'TLS_RSA_WITH_AES_256_CBC_SHA'
     TLS_RSA_WITH_RC4_128_SHA = 0x0005
     ietfNames[0x0005] = 'TLS_RSA_WITH_RC4_128_SHA'
-    
+
     # RFC 5246 - TLS v1.2 Protocol
     TLS_RSA_WITH_RC4_128_MD5 = 0x0004
     ietfNames[0x0004] = 'TLS_RSA_WITH_RC4_128_MD5'
@@ -231,7 +231,7 @@ class CipherSuite:
     rc4Suites = []
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_MD5)
-    
+
     # SHA-1 HMAC, protocol default PRF
     shaSuites = []
     shaSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
@@ -246,7 +246,7 @@ class CipherSuite:
     shaSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
-    
+
     # SHA-256 HMAC, SHA-256 PRF
     sha256Suites = []
     sha256Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
@@ -285,7 +285,7 @@ class CipherSuite:
     srpSuites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
-    
+
     @staticmethod
     def getSrpSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.srpSuites, settings)
@@ -295,7 +295,7 @@ class CipherSuite:
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
-    
+
     @staticmethod
     def getSrpCertSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.srpCertSuites, settings)
@@ -317,7 +317,7 @@ class CipherSuite:
     certSuites.append(TLS_RSA_WITH_RC4_128_MD5)
     # RSA authentication
     certAllSuites = srpCertSuites + certSuites
-    
+
     @staticmethod
     def getCertSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.certSuites, settings)
@@ -326,7 +326,7 @@ class CipherSuite:
     anonSuites = []
     anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
     anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
-    
+
     @staticmethod
     def getAnonSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.anonSuites, settings)
