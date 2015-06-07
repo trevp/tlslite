@@ -8,7 +8,7 @@ try:
 except ImportError:
     import unittest
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
-        RecordHeader2, Message, ClientKeyExchange
+        RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType
@@ -1248,6 +1248,187 @@ class TestClientKeyExchange(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             cke.parse(parser)
+
+class TestServerKeyExchange(unittest.TestCase):
+    def test___init__(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA)
+
+        self.assertIsNotNone(ske)
+        self.assertEqual(ske.cipherSuite,
+                         CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA)
+        self.assertEqual(ske.srp_N, 0)
+        self.assertEqual(ske.srp_g, 0)
+        self.assertEqual(ske.srp_s, bytearray(0))
+        self.assertEqual(ske.srp_B, 0)
+        self.assertEqual(ske.dh_p, 0)
+        self.assertEqual(ske.dh_g, 0)
+        self.assertEqual(ske.dh_Ys, 0)
+        self.assertEqual(ske.signature, bytearray(0))
+
+    def test_createSRP(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
+
+        ske.createSRP(srp_N=1,
+                      srp_g=2,
+                      srp_s=bytearray(3),
+                      srp_B=4)
+
+        self.assertEqual(ske.write(), bytearray(
+            b'\x0c' +               # message type
+            b'\x00\x00\x0d' +       # overall length
+            b'\x00\x01' +           # N parameter length
+            b'\x01' +               # N value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x01' +           # B parameter length
+            b'\x04'                 # B value
+            ))
+
+    def test_createSRP_with_signature(self):
+        ske = ServerKeyExchange(
+                CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
+
+        ske.createSRP(srp_N=1,
+                      srp_g=2,
+                      srp_s=bytearray(3),
+                      srp_B=4)
+        ske.signature = bytearray(b'\xc0\xff\xee')
+
+        self.assertEqual(ske.write(), bytearray(
+            b'\x0c' +               # message type
+            b'\x00\x00\x12' +       # overall length
+            b'\x00\x01' +           # N parameter length
+            b'\x01' +               # N value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x01' +           # B parameter length
+            b'\x04'                 # B value
+            b'\x00\x03' +           # signature length
+            b'\xc0\xff\xee'         # signature value
+            ))
+
+    def test_createDH(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+
+        ske.createDH(dh_p=31,
+                     dh_g=2,
+                     dh_Ys=16)
+
+        self.assertEqual(ske.write(), bytearray(
+            b'\x0c' +               # message type
+            b'\x00\x00\x09' +       # overall length
+            b'\x00\x01' +           # p parameter length
+            b'\x1f' +               # p value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x00\x01' +           # Ys parameter length
+            b'\x10'                 # Ys value
+            ))
+
+    def test_parse_with_unknown_cipher(self):
+        ske = ServerKeyExchange(0)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x03' +
+            b'\x00\x01' +
+            b'\xff'
+            ))
+
+        with self.assertRaises(SyntaxError):
+            ske.parse(parser)
+
+    def test_parse_with_SRP(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x0d' +       # overall length
+            b'\x00\x01' +           # N parameter length
+            b'\x01' +               # N value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x01' +           # B parameter length
+            b'\x04'                 # B value
+            ))
+
+        ske.parse(parser)
+
+        self.assertEqual(ske.srp_N, 1)
+        self.assertEqual(ske.srp_g, 2)
+        self.assertEqual(ske.srp_s, bytearray(3))
+        self.assertEqual(ske.srp_B, 4)
+
+    def test_parser_with_SRP_RSA(self):
+        ske = ServerKeyExchange(
+                CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x12' +       # overall length
+            b'\x00\x01' +           # N parameter length
+            b'\x01' +               # N value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x01' +           # B parameter length
+            b'\x04'                 # B value
+            b'\x00\x03' +           # signature length
+            b'\xc0\xff\xee'         # signature value
+            ))
+
+        ske.parse(parser)
+
+        self.assertEqual(ske.srp_N, 1)
+        self.assertEqual(ske.srp_g, 2)
+        self.assertEqual(ske.srp_s, bytearray(3))
+        self.assertEqual(ske.srp_B, 4)
+        self.assertEqual(ske.signature, bytearray(b'\xc0\xff\xee'))
+
+    def test_parser_with_DH(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x09' +       # overall length
+            b'\x00\x01' +           # p parameter length
+            b'\x1f' +               # p value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x00\x01' +           # Ys parameter length
+            b'\x10'                 # Ys value
+            ))
+
+        ske.parse(parser)
+
+        self.assertEqual(ske.dh_p, 31)
+        self.assertEqual(ske.dh_g, 2)
+        self.assertEqual(ske.dh_Ys, 16)
+
+    def test_hash(self):
+        ske = ServerKeyExchange(
+                CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
+
+        ske.createSRP(srp_N=1,
+                      srp_g=2,
+                      srp_s=bytearray(3),
+                      srp_B=4)
+
+        hash1 = ske.hash(bytearray(32), bytearray(32))
+
+        ske2 = ServerKeyExchange(0)
+        hash2 = ske2.hash(bytearray(32), bytearray(32))
+        self.assertEqual(len(hash2), 36)
+        self.assertEqual(hash2, bytearray(
+            b';]<} ~7\xdc\xee\xed\xd3\x01\xe3^.X' +
+            b'\xc8\xd7\xd0\xef\x0e\xed\xfa\x82\xd2\xea\x1a\xa5\x92\x84[\x9a' +
+            b'mK\x02\xb7'))
+
+        # XXX seriously?!
+        self.assertEqual(hash1, hash2)
 
 if __name__ == '__main__':
     unittest.main()

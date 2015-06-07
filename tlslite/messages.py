@@ -922,7 +922,37 @@ class CertificateRequest(HandshakeMsg):
         return self.postWrite(w)
 
 class ServerKeyExchange(HandshakeMsg):
+
+    """
+    Handling TLS Handshake protocol Server Key Exchange messages
+
+    @type cipherSuite: int
+    @cvar cipherSuite: id of ciphersuite selected in Server Hello message
+    @type srp_N: int
+    @cvar srp_N: SRP protocol prime
+    @type srp_g: int
+    @cvar srp_g: SRP protocol generator
+    @type srp_s: bytearray
+    @cvar srp_s: SRP protocol salt value
+    @type srp_B: int
+    @cvar srp_B: SRP protocol server public value
+    @type dh_p: int
+    @cvar dh_p: FFDHE protocol prime
+    @type dh_g: int
+    @cvar dh_g: FFDHE protocol generator
+    @type dh_Ys: int
+    @cvar dh_Ys: FFDH protocol server key share
+    @type signature: bytearray
+    @cvar signature: signature performed over the parameters by server
+    """
+
     def __init__(self, cipherSuite):
+        """
+        Initialise Server Key Exchange for reading or writing
+
+        @type cipherSuite: int
+        @param cipherSuite: id of ciphersuite selected by server
+        """
         HandshakeMsg.__init__(self, HandshakeType.server_key_exchange)
         self.cipherSuite = cipherSuite
         self.srp_N = 0
@@ -936,19 +966,26 @@ class ServerKeyExchange(HandshakeMsg):
         self.signature = bytearray(0)
 
     def createSRP(self, srp_N, srp_g, srp_s, srp_B):
+        """Set SRP protocol parameters"""
         self.srp_N = srp_N
         self.srp_g = srp_g
         self.srp_s = srp_s
         self.srp_B = srp_B
         return self
-    
+
     def createDH(self, dh_p, dh_g, dh_Ys):
+        """Set FFDH protocol parameters"""
         self.dh_p = dh_p
         self.dh_g = dh_g
         self.dh_Ys = dh_Ys
         return self
 
     def parse(self, p):
+        """Deserialise message from L{Parser}
+
+        @type p: L{Parser}
+        @param p: parser to read data from
+        """
         p.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
             self.srp_N = bytesToNumber(p.getVarBytes(2))
@@ -965,6 +1002,10 @@ class ServerKeyExchange(HandshakeMsg):
         return self
 
     def write(self):
+        """Serialise message
+
+        @rtype: bytearray
+        """
         w = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
             w.addVarSeq(numberToByteArray(self.srp_N), 1, 2)
@@ -982,6 +1023,7 @@ class ServerKeyExchange(HandshakeMsg):
         return self.postWrite(w)
 
     def hash(self, clientRandom, serverRandom):
+        """Calculate the signature hash"""
         oldCipherSuite = self.cipherSuite
         self.cipherSuite = None
         try:
