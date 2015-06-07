@@ -282,6 +282,13 @@ class RecordLayer(object):
         self._pendingWriteState = ConnectionState()
         self._pendingReadState = ConnectionState()
 
+    def isCBCMode(self):
+        """Returns true if cipher uses CBC mode"""
+        if self._writeState and self._writeState.encContext and \
+                self._writeState.encContext.isBlockCipher:
+            return True
+        else:
+            return False
     #
     # sending messages
     #
@@ -310,7 +317,7 @@ class RecordLayer(object):
         return bytearray(mac.digest())
 
     def _macThenEncrypt(self, data, contentType):
-        """MAC then encrypt data"""
+        """MAC, pad then encrypt data"""
         if self._writeState.macContext:
             seqnumBytes = self._writeState.getSeqNumBytes()
             mac = self._writeState.macContext.copy()
@@ -355,9 +362,7 @@ class RecordLayer(object):
 
         return buf
 
-    # randomizeFirstBlock will get used once handling of fragmented
-    # messages is implemented
-    def sendMessage(self, msg, randomizeFirstBlock=True):
+    def sendMessage(self, msg):
         """
         Encrypt, MAC and send message through socket.
 
