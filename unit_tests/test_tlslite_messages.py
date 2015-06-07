@@ -8,10 +8,11 @@ try:
 except ImportError:
     import unittest
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
-        RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange
+        RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
+        CertificateRequest
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
-        AlertLevel, AlertDescription, ExtensionType
+        AlertLevel, AlertDescription, ExtensionType, ClientCertificateType
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension
 from tlslite.errors import TLSInternalError
@@ -1433,6 +1434,111 @@ class TestServerKeyExchange(unittest.TestCase):
             b'mK\x02\xb7'))
 
         self.assertNotEqual(hash1, hash2)
+
+class TestCertificateRequest(unittest.TestCase):
+    def test___init__(self):
+        cr = CertificateRequest((3, 0))
+
+        self.assertIsNotNone(cr)
+        self.assertEqual(cr.version, (3, 0))
+        # XXX unset
+        self.assertEqual(cr.certificate_types, [ClientCertificateType.rsa_sign])
+        self.assertEqual(cr.certificate_authorities, [])
+        self.assertEqual(cr.supported_signature_algs, [])
+
+    def test_create(self):
+        cr = CertificateRequest((3, 0))
+        cr.create([ClientCertificateType.rsa_sign], [])
+
+        self.assertEqual(cr.certificate_authorities, [])
+        self.assertEqual(cr.certificate_types, [ClientCertificateType.rsa_sign])
+
+        # XXX type change from array!
+        self.assertEqual(cr.supported_signature_algs, tuple())
+
+    def test_parse(self):
+        cr = CertificateRequest((3, 1))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x04' +       # overall length
+            b'\x01' +               # length of certificate types
+            b'\x01' +               # type rsa_sign
+            b'\x00\x00'             # length of CA list
+            ))
+
+        cr.parse(parser)
+
+        self.assertEqual(cr.certificate_authorities, [])
+        self.assertEqual(cr.certificate_types,
+                         [ClientCertificateType.rsa_sign])
+
+    def test_parse_with_TLSv1_2(self):
+        cr = CertificateRequest((3, 3))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x1a' +       # overall length
+            b'\x01' +               # length of certificate types
+            b'\x01' +               # type rsa_sign
+            b'\x00\x0a' +           # length of signature types
+            b'\x06\x01' +           # SHA512+RSA
+            b'\x05\x01' +           # SHA384+RSA
+            b'\x04\x01' +           # SHA256+RSA
+            b'\x03\x01' +           # SHA224+RSA
+            b'\x02\x01' +           # SHA1+RSA
+            b'\x00\x0a' +           # length of CA list
+            b'\x00'*10              # opaque data type
+            ))
+
+        cr.parse(parser)
+
+        self.assertEqual(cr.certificate_types, [ClientCertificateType.rsa_sign])
+        self.assertEqual(cr.supported_signature_algs,
+                         # XXX should be an array of tuples
+                         [0x0601,
+                          0x0501,
+                          0x0401,
+                          0x0301,
+                          0x0201])
+
+        self.assertEqual(len(cr.certificate_authorities), 5)
+        for cert_auth in cr.certificate_authorities:
+            self.assertEqual(cert_auth, bytearray(0))
+
+    def test_write(self):
+        cr = CertificateRequest((3, 1))
+        cr.create([ClientCertificateType.rsa_sign], [bytearray(b'\xff\xff')])
+
+        self.assertEqual(cr.write(), bytearray(
+            b'\x0d' +               # type
+            b'\x00\x00\x08' +       # overall length
+            b'\x01' +               # length of certificate types
+            b'\x01' +               # type rsa sign
+            b'\x00\x04' +           # length of CA list
+            b'\x00\x02' +           # length of entry
+            b'\xff\xff'             # opaque
+            ))
+
+    def test_write_in_TLS_v1_2(self):
+        cr = CertificateRequest((3, 3))
+        self.assertEqual(cr.version, (3, 3))
+        cr.create([ClientCertificateType.rsa_sign],
+                  [],
+                  # XXX should be an array of tuples
+                  [0x0601, 0x0401, 0x0201],
+                  # XXX version set for the second time!
+                  version=(3, 3))
+
+        self.assertEqual(cr.write(), bytearray(
+            b'\x0d' +               # type
+            b'\x00\x00\x0c' +       # overall length
+            b'\x01' +               # length of certificate types
+            b'\x01' +               # type rsa sign
+            b'\x00\x06' +           # signature types
+            b'\x06\x01' +           # SHA512+RSA
+            b'\x04\x01' +           # SHA256+RSA
+            b'\x02\x01' +           # SHA1+RSA
+            b'\x00\x00'             # length of CA list
+            ))
 
 if __name__ == '__main__':
     unittest.main()
