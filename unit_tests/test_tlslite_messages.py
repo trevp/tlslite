@@ -9,7 +9,7 @@ except ImportError:
     import unittest
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
-        CertificateRequest
+        CertificateRequest, CertificateVerify
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType
@@ -1539,6 +1539,45 @@ class TestCertificateRequest(unittest.TestCase):
             b'\x02\x01' +           # SHA1+RSA
             b'\x00\x00'             # length of CA list
             ))
+
+class TestCertificateVerify(unittest.TestCase):
+    def test___init__(self):
+        cv = CertificateVerify()
+
+        self.assertIsNotNone(cv)
+        self.assertEqual(cv.signature, bytearray(0))
+
+    def test_create(self):
+        cv = CertificateVerify()
+
+        cv.create(bytearray(b'\xf0\x0f'))
+
+        self.assertEqual(cv.signature, bytearray(b'\xf0\x0f'))
+
+    def test_write(self):
+        cv = CertificateVerify()
+
+        cv.create(bytearray(b'\xf0\x0f'))
+
+        self.assertEqual(cv.write(), bytearray(
+            b'\x0f' +               # type
+            b'\x00\x00\x04' +       # overall length
+            b'\x00\x02' +           # length of signature
+            b'\xf0\x0f'             # signature
+            ))
+
+    def test_parse(self):
+        cv = CertificateVerify()
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x04' +       # length
+            b'\x00\x02' +           # length of signature
+            b'\xf0\x0f'             # signature
+            ))
+
+        cv.parse(parser)
+
+        self.assertEqual(cv.signature, bytearray(b'\xf0\x0f'))
 
 if __name__ == '__main__':
     unittest.main()
