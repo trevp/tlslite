@@ -1281,6 +1281,62 @@ class TestServerKeyExchange(unittest.TestCase):
         self.assertEqual(ske.signature, bytearray(0))
         self.assertEqual(ske.version, (3, 1))
 
+    def test___repr__(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA,
+                                (3, 1))
+
+        self.assertEqual("ServerKeyExchange("
+                "cipherSuite=CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA, "
+                "version=(3, 1))",
+                repr(ske))
+
+    def test__repr___with_ADH(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA,
+                                (3, 1))
+
+        ske.createDH(dh_p=31,
+                     dh_g=2,
+                     dh_Ys=16)
+
+        self.assertEqual("ServerKeyExchange("
+                "cipherSuite=CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA, "
+                "version=(3, 1), dh_p=31, dh_g=2, dh_Ys=16)",
+                repr(ske))
+
+    def test___repr___with_DHE(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256,
+                                (3, 3))
+
+        ske.createDH(dh_p=31,
+                     dh_g=2,
+                     dh_Ys=16)
+        ske.signature = bytearray(b'\xff'*4)
+        ske.signAlg = SignatureAlgorithm.rsa
+        ske.hashAlg = HashAlgorithm.sha384
+
+        self.assertEqual("ServerKeyExchange("
+                "cipherSuite=CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256, "
+                "version=(3, 3), dh_p=31, dh_g=2, dh_Ys=16, "
+                "hashAlg=5, signAlg=1, "
+                "signature=bytearray(b'\\xff\\xff\\xff\\xff'))",
+                repr(ske))
+
+    def test___repr___with_SRP(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA,
+                                (3, 3))
+
+        ske.createSRP(srp_N=1,
+                      srp_g=2,
+                      srp_s=bytearray(3),
+                      srp_B=4)
+
+        self.assertEqual("ServerKeyExchange("
+                "cipherSuite=CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA, "
+                "version=(3, 3), "
+                "srp_N=1, srp_g=2, "
+                "srp_s=bytearray(b'\\x00\\x00\\x00'), srp_B=4)",
+                repr(ske))
+
     def test_createSRP(self):
         ske = ServerKeyExchange(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA,
                                 (3, 3))

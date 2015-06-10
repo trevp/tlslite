@@ -976,6 +976,27 @@ class ServerKeyExchange(HandshakeMsg):
         self.hashAlg = 0
         self.signAlg = 0
 
+    def __repr__(self):
+
+        ret = "ServerKeyExchange(cipherSuite=CipherSuite.{0}, version={1}"\
+              "".format(CipherSuite.ietfNames[self.cipherSuite], self.version)
+
+        if self.srp_N != 0:
+            ret += ", srp_N={0}, srp_g={1}, srp_s={2!r}, srp_B={3}".format(\
+                   self.srp_N, self.srp_g, self.srp_s, self.srp_B)
+        if self.dh_p != 0:
+            ret += ", dh_p={0}, dh_g={1}, dh_Ys={2}".format(\
+                   self.dh_p, self.dh_g, self.dh_Ys)
+        if self.signAlg != 0:
+            ret += ", hashAlg={0}, signAlg={1}".format(\
+                   self.hashAlg, self.signAlg)
+        if self.signature != bytearray(0):
+            ret += ", signature={0!r}".format(self.signature)
+        ret += ")"
+
+        return ret
+
+
     def createSRP(self, srp_N, srp_g, srp_s, srp_B):
         """Set SRP protocol parameters"""
         self.srp_N = srp_N
