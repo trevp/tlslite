@@ -1003,7 +1003,7 @@ class ServerKeyExchange(HandshakeMsg):
             self.srp_g = bytesToNumber(parser.getVarBytes(2))
             self.srp_s = parser.getVarBytes(1)
             self.srp_B = bytesToNumber(parser.getVarBytes(2))
-        elif self.cipherSuite in CipherSuite.anonSuites:
+        elif self.cipherSuite in CipherSuite.dhAllSuites:
             self.dh_p = bytesToNumber(parser.getVarBytes(2))
             self.dh_g = bytesToNumber(parser.getVarBytes(2))
             self.dh_Ys = bytesToNumber(parser.getVarBytes(2))
@@ -1042,10 +1042,10 @@ class ServerKeyExchange(HandshakeMsg):
         w = Writer()
         w.bytes += self.write_params()
         if self.cipherSuite in CipherSuite.certAllSuites:
-            if self.version >= (3,3):
-                # TODO: Signature algorithm negotiation not supported.
-                w.add(HashAlgorithm.sha1, 1)
-                w.add(SignatureAlgorithm.rsa, 1)
+            if self.version >= (3, 3):
+                assert self.hashAlg != 0 and self.signAlg != 0
+                w.add(self.hashAlg, 1)
+                w.add(self.signAlg, 1)
             w.addVarSeq(self.signature, 1, 2)
         return self.postWrite(w)
 
@@ -1186,8 +1186,8 @@ class ClientKeyExchange(HandshakeMsg):
                 w.addFixSeq(self.encryptedPreMasterSecret, 1)
             else:
                 raise AssertionError()
-        elif self.cipherSuite in CipherSuite.anonSuites:
-            w.addVarSeq(numberToByteArray(self.dh_Yc), 1, 2)            
+        elif self.cipherSuite in CipherSuite.dhAllSuites:
+            w.addVarSeq(numberToByteArray(self.dh_Yc), 1, 2)
         else:
             raise AssertionError()
         return self.postWrite(w)

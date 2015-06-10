@@ -1183,6 +1183,18 @@ class TestClientKeyExchange(unittest.TestCase):
         with self.assertRaises(AssertionError):
             cke.write()
 
+    def test_write_with_DHE_RSA(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
+                                (3, 1))
+
+        cke.createDH(2**64+3)
+
+        self.assertEqual(cke.write(), bytearray(
+            b'\x10' +
+            b'\x00\x00\x0b' +
+            b'\x00\x09' +
+            b'\x01' + b'\x00'*7 + b'\x03'))
+
     def test_parse_with_RSA(self):
         cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
                                 (3, 1))
@@ -1326,6 +1338,8 @@ class TestServerKeyExchange(unittest.TestCase):
                       srp_g=2,
                       srp_s=bytearray(3),
                       srp_B=4)
+        ske.hashAlg = HashAlgorithm.sha512
+        ske.signAlg = SignatureAlgorithm.rsa
         ske.signature = bytearray(b'\xc0\xff\xee')
 
         self.assertEqual(ske.write(), bytearray(
@@ -1339,7 +1353,7 @@ class TestServerKeyExchange(unittest.TestCase):
             b'\x00'*3 +             # s value
             b'\x00\x01' +           # B parameter length
             b'\x04' +               # B value
-            b'\x02\x01' +           # SHA1+RSA
+            b'\x06\x01' +           # SHA512+RSA
             b'\x00\x03' +           # signature length
             b'\xc0\xff\xee'         # signature value
             ))
@@ -1445,6 +1459,36 @@ class TestServerKeyExchange(unittest.TestCase):
         self.assertEqual(ske.srp_s, bytearray(3))
         self.assertEqual(ske.srp_B, 4)
         self.assertEqual(ske.signature, bytearray(b'\xc0\xff\xee'))
+
+    def test_parser_with_SRP_RSA_in_TLS_v1_2(self):
+        ske = ServerKeyExchange(
+                CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
+                (3, 3))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x14' +       # overall length
+            b'\x00\x01' +           # N parameter length
+            b'\x01' +               # N value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x01' +           # B parameter length
+            b'\x04'                 # B value
+            b'\x06\x01' +           # SHA512+RSA
+            b'\x00\x03' +           # signature length
+            b'\xc0\xff\xee'         # signature value
+            ))
+
+        ske.parse(parser)
+
+        self.assertEqual(ske.srp_N, 1)
+        self.assertEqual(ske.srp_g, 2)
+        self.assertEqual(ske.srp_s, bytearray(3))
+        self.assertEqual(ske.srp_B, 4)
+        self.assertEqual(ske.signature, bytearray(b'\xc0\xff\xee'))
+        self.assertEqual(ske.hashAlg, HashAlgorithm.sha512)
+        self.assertEqual(ske.signAlg, SignatureAlgorithm.rsa)
 
     def test_parser_with_DH(self):
         ske = ServerKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA,

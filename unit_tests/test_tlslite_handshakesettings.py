@@ -169,3 +169,17 @@ class TestHandshakeSettings(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             hs.validate()
+
+    def test_invalid_MAC(self):
+        hs = HandshakeSettings()
+        hs.macNames = ['sha1', 'whirpool']
+
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_invalid_KEX(self):
+        hs = HandshakeSettings()
+        hs.keyExchangeNames = ['rsa', 'ecdhe_rsa', 'gost']
+
+        with self.assertRaises(ValueError):
+            hs.validate()
