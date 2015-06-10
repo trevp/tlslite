@@ -368,8 +368,6 @@ class RecordLayer(object):
 
         @param msg: TLS message to send
         @type msg: ApplicationData, HandshakeMessage, etc.
-        @param randomizeFirstBlock: set to perform 1/n-1 record splitting in
-        SSLv3 and TLSv1.0 in application data
         """
         data = msg.write()
         contentType = msg.contentType

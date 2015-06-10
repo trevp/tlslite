@@ -922,7 +922,37 @@ class CertificateRequest(HandshakeMsg):
         return self.postWrite(w)
 
 class ServerKeyExchange(HandshakeMsg):
+
+    """
+    Handling TLS Handshake protocol Server Key Exchange messages
+
+    @type cipherSuite: int
+    @cvar cipherSuite: id of ciphersuite selected in Server Hello message
+    @type srp_N: int
+    @cvar srp_N: SRP protocol prime
+    @type srp_g: int
+    @cvar srp_g: SRP protocol generator
+    @type srp_s: bytearray
+    @cvar srp_s: SRP protocol salt value
+    @type srp_B: int
+    @cvar srp_B: SRP protocol server public value
+    @type dh_p: int
+    @cvar dh_p: FFDHE protocol prime
+    @type dh_g: int
+    @cvar dh_g: FFDHE protocol generator
+    @type dh_Ys: int
+    @cvar dh_Ys: FFDH protocol server key share
+    @type signature: bytearray
+    @cvar signature: signature performed over the parameters by server
+    """
+
     def __init__(self, cipherSuite):
+        """
+        Initialise Server Key Exchange for reading or writing
+
+        @type cipherSuite: int
+        @param cipherSuite: id of ciphersuite selected by server
+        """
         HandshakeMsg.__init__(self, HandshakeType.server_key_exchange)
         self.cipherSuite = cipherSuite
         self.srp_N = 0
@@ -936,57 +966,74 @@ class ServerKeyExchange(HandshakeMsg):
         self.signature = bytearray(0)
 
     def createSRP(self, srp_N, srp_g, srp_s, srp_B):
+        """Set SRP protocol parameters"""
         self.srp_N = srp_N
         self.srp_g = srp_g
         self.srp_s = srp_s
         self.srp_B = srp_B
         return self
-    
+
     def createDH(self, dh_p, dh_g, dh_Ys):
+        """Set FFDH protocol parameters"""
         self.dh_p = dh_p
         self.dh_g = dh_g
         self.dh_Ys = dh_Ys
         return self
 
-    def parse(self, p):
-        p.startLengthCheck(3)
+    def parse(self, parser):
+        """Deserialise message from L{Parser}
+
+        @type parser: L{Parser}
+        @param parser: parser to read data from
+        """
+        parser.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
-            self.srp_N = bytesToNumber(p.getVarBytes(2))
-            self.srp_g = bytesToNumber(p.getVarBytes(2))
-            self.srp_s = p.getVarBytes(1)
-            self.srp_B = bytesToNumber(p.getVarBytes(2))
+            self.srp_N = bytesToNumber(parser.getVarBytes(2))
+            self.srp_g = bytesToNumber(parser.getVarBytes(2))
+            self.srp_s = parser.getVarBytes(1)
+            self.srp_B = bytesToNumber(parser.getVarBytes(2))
             if self.cipherSuite in CipherSuite.srpCertSuites:
-                self.signature = p.getVarBytes(2)
+                self.signature = parser.getVarBytes(2)
         elif self.cipherSuite in CipherSuite.anonSuites:
-            self.dh_p = bytesToNumber(p.getVarBytes(2))
-            self.dh_g = bytesToNumber(p.getVarBytes(2))
-            self.dh_Ys = bytesToNumber(p.getVarBytes(2))
-        p.stopLengthCheck()
+            self.dh_p = bytesToNumber(parser.getVarBytes(2))
+            self.dh_g = bytesToNumber(parser.getVarBytes(2))
+            self.dh_Ys = bytesToNumber(parser.getVarBytes(2))
+        parser.stopLengthCheck()
         return self
 
     def write(self):
-        w = Writer()
+        """Serialise message
+
+        @rtype: bytearray
+        """
+        writer = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
-            w.addVarSeq(numberToByteArray(self.srp_N), 1, 2)
-            w.addVarSeq(numberToByteArray(self.srp_g), 1, 2)
-            w.addVarSeq(self.srp_s, 1, 1)
-            w.addVarSeq(numberToByteArray(self.srp_B), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.srp_N), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.srp_g), 1, 2)
+            writer.addVarSeq(self.srp_s, 1, 1)
+            writer.addVarSeq(numberToByteArray(self.srp_B), 1, 2)
             if self.cipherSuite in CipherSuite.srpCertSuites:
-                w.addVarSeq(self.signature, 1, 2)
+                writer.addVarSeq(self.signature, 1, 2)
         elif self.cipherSuite in CipherSuite.anonSuites:
-            w.addVarSeq(numberToByteArray(self.dh_p), 1, 2)
-            w.addVarSeq(numberToByteArray(self.dh_g), 1, 2)
-            w.addVarSeq(numberToByteArray(self.dh_Ys), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.dh_p), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.dh_g), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.dh_Ys), 1, 2)
             if self.cipherSuite in []: # TODO support for signed_params
-                w.addVarSeq(self.signature, 1, 2)
-        return self.postWrite(w)
+                writer.addVarSeq(self.signature, 1, 2)
+        return self.postWrite(writer)
 
     def hash(self, clientRandom, serverRandom):
+        """Calculate the signature hash"""
         oldCipherSuite = self.cipherSuite
-        self.cipherSuite = None
+        # temporarily change so serialiser omits signature
+        if self.cipherSuite in CipherSuite.srpAllSuites:
+            self.cipherSuite = CipherSuite.srpSuites[0]
         try:
-            bytes = clientRandom + serverRandom + self.write()[4:]
-            return MD5(bytes) + SHA1(bytes)
+            # skip message type(1 byte) and length(3 bytes)
+            payloadBytes = self.write()[4:]
+            bytesToMAC = clientRandom + serverRandom + payloadBytes
+            # TODO should use protocol dependant values (invalid in TLSv1.2)
+            return MD5(bytesToMAC) + SHA1(bytesToMAC)
         finally:
             self.cipherSuite = oldCipherSuite
 
@@ -1007,45 +1054,109 @@ class ServerHelloDone(HandshakeMsg):
         return self.postWrite(w)
 
 class ClientKeyExchange(HandshakeMsg):
+
+    """
+    Handling of TLS Handshake protocol ClientKeyExchange message
+
+    @type cipherSuite: int
+    @ivar cipherSuite: the cipher suite id used for the connection
+    @type version: tuple(int, int)
+    @ivar version: TLS protocol version used for the connection
+    @type srp_A: int
+    @ivar srp_A: SRP protocol client answer value
+    @type dh_Yc: int
+    @ivar dh_Yc: client Finite Field Diffie-Hellman protocol key share
+    @type encryptedPreMasterSecret: bytearray
+    @ivar encryptedPreMasterSecret: client selected PremMaster secret encrypted
+    with server public key (from certificate)
+    """
+
     def __init__(self, cipherSuite, version=None):
+        """
+        Initialise ClientKeyExchange for reading or writing
+
+        @type cipherSuite: int
+        @param cipherSuite: id of the ciphersuite selected by server
+        @type version: tuple(int, int)
+        @param version: protocol version selected by server
+        """
         HandshakeMsg.__init__(self, HandshakeType.client_key_exchange)
         self.cipherSuite = cipherSuite
         self.version = version
         self.srp_A = 0
+        self.dh_Yc = 0
         self.encryptedPreMasterSecret = bytearray(0)
 
     def createSRP(self, srp_A):
+        """
+        Set the SRP client answer
+
+        returns self
+
+        @type srp_A: int
+        @param srp_A: client SRP answer
+        @rtype: L{ClientKeyExchange}
+        """
         self.srp_A = srp_A
         return self
 
     def createRSA(self, encryptedPreMasterSecret):
+        """
+        Set the encrypted PreMaster Secret
+
+        returns self
+
+        @type encryptedPreMasterSecret: bytearray
+        @rtype: L{ClientKeyExchange}
+        """
         self.encryptedPreMasterSecret = encryptedPreMasterSecret
         return self
     
     def createDH(self, dh_Yc):
+        """
+        Set the client FFDH key share
+
+        returns self
+
+        @type dh_Yc: int
+        @rtype: L{ClientKeyExchange}
+        """
         self.dh_Yc = dh_Yc
         return self
     
-    def parse(self, p):
-        p.startLengthCheck(3)
+    def parse(self, parser):
+        """
+        Deserialise the message from L{Parser}
+
+        returns self
+
+        @type parser: L{Parser}
+        @rtype: L{ClientKeyExchange}
+        """
+        parser.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
-            self.srp_A = bytesToNumber(p.getVarBytes(2))
+            self.srp_A = bytesToNumber(parser.getVarBytes(2))
         elif self.cipherSuite in CipherSuite.certSuites:
             if self.version in ((3,1), (3,2), (3,3)):
-                self.encryptedPreMasterSecret = p.getVarBytes(2)
+                self.encryptedPreMasterSecret = parser.getVarBytes(2)
             elif self.version == (3,0):
                 self.encryptedPreMasterSecret = \
-                    p.getFixBytes(len(p.bytes)-p.index)
+                    parser.getFixBytes(parser.getRemainingLength())
             else:
                 raise AssertionError()
         elif self.cipherSuite in CipherSuite.anonSuites:
-            self.dh_Yc = bytesToNumber(p.getVarBytes(2))            
+            self.dh_Yc = bytesToNumber(parser.getVarBytes(2))
         else:
             raise AssertionError()
-        p.stopLengthCheck()
+        parser.stopLengthCheck()
         return self
 
     def write(self):
+        """
+        Serialise the object
+
+        @rtype: bytearray
+        """
         w = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
             w.addVarSeq(numberToByteArray(self.srp_A), 1, 2)
