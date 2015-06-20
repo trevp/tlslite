@@ -277,13 +277,24 @@ class CipherSuite:
     md5Suites = []
     md5Suites.append(TLS_RSA_WITH_RC4_128_MD5)
 
+    # SSL3, TLS1.0, TLS1.1 and TLS1.2 compatible ciphers
+    ssl3Suites = []
+    ssl3Suites.extend(shaSuites)
+    ssl3Suites.extend(md5Suites)
+
+    # TLS1.2 specific ciphersuites
+    tls12Suites = []
+    tls12Suites.extend(sha256Suites)
+
     @staticmethod
     def filterForVersion(suites, minVersion, maxVersion):
         """Return a copy of suites without ciphers incompatible with version"""
-        excludeSuites = []
-        if maxVersion < (3, 3):
-            excludeSuites += CipherSuite.sha256Suites
-        return [s for s in suites if s not in excludeSuites]
+        includeSuites = set([])
+        if (3, 0) <= minVersion <= (3, 3):
+            includeSuites.update(CipherSuite.ssl3Suites)
+        if maxVersion == (3, 3):
+            includeSuites.update(CipherSuite.tls12Suites)
+        return [s for s in suites if s in includeSuites]
 
     @staticmethod
     def _filterSuites(suites, settings):
