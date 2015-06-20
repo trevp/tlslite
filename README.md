@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.5.0-alpha2                                   2015-06-03
+tlslite-ng version 0.5.0-alpha3                                   2015-06-20
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -515,6 +515,14 @@ RFC 7366.
 ===========
 
 0.5.0-alpha - xx/xx/xxxx - Hubert Kario
+ - implement AES-GCM cipher and AES-128-GCM ciphersuites (David Benjamin -
+   Chromium)
+ - implement client side DHE_RSA key exchange and DHE with certificate based
+   client authentication
+ - implement server side DHE_RSA key exchange (David Benjamin - Chromium)
+ - don't use TLSv1.2 ciphers in earlier protocols (David Benjamin - Chromium)
+ - fix certificate-based client authentication in TLSv1.2 (David Benjamin -
+   Chromium)
  - fix SRP_SHA_RSA ciphersuites
  - properly implement record layer fragmentation (previously worked just for
    Application Data) - RFC 5246 Section 6.2.1
