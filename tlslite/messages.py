@@ -1040,8 +1040,8 @@ class ServerKeyExchange(HandshakeMsg):
         parser.stopLengthCheck()
         return self
 
-    def write_params(self):
-        """Serialise message
+    def writeParams(self):
+        """Serialise the key exchange parameters
 
         @rtype: bytearray
         """
@@ -1060,22 +1060,32 @@ class ServerKeyExchange(HandshakeMsg):
         return writer.bytes
 
     def write(self):
-        w = Writer()
-        w.bytes += self.write_params()
+        """
+        Serialise complete message
+
+        @rtype: bytearray
+        """
+        writer = Writer()
+        writer.bytes += self.writeParams()
         if self.cipherSuite in CipherSuite.certAllSuites:
             if self.version >= (3, 3):
                 assert self.hashAlg != 0 and self.signAlg != 0
-                w.add(self.hashAlg, 1)
-                w.add(self.signAlg, 1)
-            w.addVarSeq(self.signature, 1, 2)
-        return self.postWrite(w)
+                writer.add(self.hashAlg, 1)
+                writer.add(self.signAlg, 1)
+            writer.addVarSeq(self.signature, 1, 2)
+        return self.postWrite(writer)
 
     def hash(self, clientRandom, serverRandom):
-        bytes = clientRandom + serverRandom + self.write_params()
-        if self.version >= (3,3):
+        """
+        Calculate hash of paramters to sign
+
+        @rtype: bytearray
+        """
+        bytesToHash = clientRandom + serverRandom + self.writeParams()
+        if self.version >= (3, 3):
             # TODO: Signature algorithm negotiation not supported.
-            return SHA1(bytes)
-        return MD5(bytes) + SHA1(bytes)
+            return SHA1(bytesToHash)
+        return MD5(bytesToHash) + SHA1(bytesToHash)
 
 class ServerHelloDone(HandshakeMsg):
     def __init__(self):
@@ -1214,32 +1224,56 @@ class ClientKeyExchange(HandshakeMsg):
         return self.postWrite(w)
 
 class CertificateVerify(HandshakeMsg):
+
+    """Serializer for TLS handshake protocol Certificate Verify message"""
+
     def __init__(self, version):
+        """Create message
+
+        @param version: TLS protocol version in use
+        """
         HandshakeMsg.__init__(self, HandshakeType.certificate_verify)
         self.version = version
         self.signature_algorithm = None
         self.signature = bytearray(0)
 
     def create(self, signature, signature_algorithm=None):
+        """
+        Provide data for serialisation of message
+
+        @param signature: signature carried in the message
+        @param signature_algorithm: signature algorithm used to make the
+        signature (TLSv1.2 only)
+        """
         self.signature_algorithm = signature_algorithm
         self.signature = signature
         return self
 
-    def parse(self, p):
-        p.startLengthCheck(3)
-        if self.version >= (3,3):
-            self.signature_algorithm = (p.get(1), p.get(1))
-        self.signature = p.getVarBytes(2)
-        p.stopLengthCheck()
+    def parse(self, parser):
+        """
+        Deserialize message from parser
+
+        @param parser: parser with data to read
+        """
+        parser.startLengthCheck(3)
+        if self.version >= (3, 3):
+            self.signature_algorithm = (parser.get(1), parser.get(1))
+        self.signature = parser.getVarBytes(2)
+        parser.stopLengthCheck()
         return self
 
     def write(self):
-        w = Writer()
-        if self.version >= (3,3):
-            w.add(self.signature_algorithm[0], 1)
-            w.add(self.signature_algorithm[1], 1)
-        w.addVarSeq(self.signature, 1, 2)
-        return self.postWrite(w)
+        """
+        Serialize the data to bytearray
+
+        @rtype: bytearray
+        """
+        writer = Writer()
+        if self.version >= (3, 3):
+            writer.add(self.signature_algorithm[0], 1)
+            writer.add(self.signature_algorithm[1], 1)
+        writer.addVarSeq(self.signature, 1, 2)
+        return self.postWrite(writer)
 
 class ChangeCipherSpec(object):
     def __init__(self):
