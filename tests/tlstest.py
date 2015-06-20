@@ -752,7 +752,7 @@ def serverTestCmd(argv):
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True)
     testConnServer(connection)
-    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(isinstance(connection.session.clientCertChain, X509CertChain))
     connection.close()
 
     print("Test 14a - good mutual X.509, TLSv1.1")
@@ -763,7 +763,7 @@ def serverTestCmd(argv):
     settings.maxVersion = (3,2)
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True, settings=settings)
     testConnServer(connection)
-    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(isinstance(connection.session.clientCertChain, X509CertChain))
     connection.close()
 
     print("Test 14b - good mutual X.509, SSLv3")
@@ -774,7 +774,7 @@ def serverTestCmd(argv):
     settings.maxVersion = (3,0)
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True, settings=settings)
     testConnServer(connection)
-    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(isinstance(connection.session.clientCertChain, X509CertChain))
     connection.close()
 
     print("Test 15 - mutual X.509 faults")
