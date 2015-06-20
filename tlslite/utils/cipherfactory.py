@@ -42,7 +42,7 @@ def createAES(key, IV, implList=None):
     @rtype: L{tlslite.utils.AES}
     @return: An AES object.
     """
-    if implList == None:
+    if implList is None:
         implList = ["openssl", "pycrypto", "python"]
 
     for impl in implList:
@@ -63,7 +63,7 @@ def createAESGCM(key, implList=None):
     @rtype: L{tlslite.utils.AESGCM}
     @return: An AESGCM object.
     """
-    if implList == None:
+    if implList is None:
         implList = ["pycrypto", "python"]
 
     for impl in implList:
@@ -85,7 +85,7 @@ def createRC4(key, IV, implList=None):
     @rtype: L{tlslite.utils.RC4}
     @return: An RC4 object.
     """
-    if implList == None:
+    if implList is None:
         implList = ["openssl", "pycrypto", "python"]
 
     if len(IV) != 0:
@@ -112,7 +112,7 @@ def createTripleDES(key, IV, implList=None):
     @rtype: L{tlslite.utils.TripleDES}
     @return: A 3DES object.
     """
-    if implList == None:
+    if implList is None:
         implList = ["openssl", "pycrypto"]
 
     for impl in implList:
