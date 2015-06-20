@@ -304,7 +304,9 @@ class TLSRecordLayer(object):
         except GeneratorExit:
             raise
         except Exception:
-            self._shutdown(False)
+            # Don't invalidate the session on write failure if abrupt closes are
+            # okay.
+            self._shutdown(self.ignoreAbruptClose)
             raise
 
     def close(self):
@@ -757,9 +759,10 @@ class TLSRecordLayer(object):
                 elif subType == HandshakeType.certificate_request:
                     yield CertificateRequest(self.version).parse(p)
                 elif subType == HandshakeType.certificate_verify:
-                    yield CertificateVerify().parse(p)
+                    yield CertificateVerify(self.version).parse(p)
                 elif subType == HandshakeType.server_key_exchange:
-                    yield ServerKeyExchange(constructorType).parse(p)
+                    yield ServerKeyExchange(constructorType,
+                                            self.version).parse(p)
                 elif subType == HandshakeType.server_hello_done:
                     yield ServerHelloDone().parse(p)
                 elif subType == HandshakeType.client_key_exchange:

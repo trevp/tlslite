@@ -234,7 +234,18 @@ def clientTestCmd(argv):
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
 
-    print("Test 14.a - good mutual X509, SSLv3")
+    print("Test 14.a - good mutual X509, TLSv1.1")
+    synchro.recv(1)
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.minVersion = (3,2)
+    settings.maxVersion = (3,2)
+    connection.handshakeClientCert(x509Chain, x509Key, settings=settings)
+    testConnClient(connection)
+    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    connection.close()
+
+    print("Test 14.b - good mutual X509, SSLv3")
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -344,8 +355,10 @@ def clientTestCmd(argv):
 
     print("Test 23 - throughput test")
     for implementation in implementations:
-        for cipher in ["aes128", "aes256", "3des", "rc4"]:
+        for cipher in ["aes128gcm", "aes128", "aes256", "3des", "rc4"]:
             if cipher == "3des" and implementation not in ("openssl", "pycrypto"):
+                continue
+            if cipher == "aes128gcm" and implementation not in ("pycrypto", "python"):
                 continue
 
             print("Test 23:", end=' ')
@@ -696,11 +709,7 @@ def serverTestCmd(argv):
         synchro.send(b'R')
         connection = connect()
         connection.fault = fault
-        try:
-            connection.handshakeServer(verifierDB=verifierDB)
-            assert()
-        except:
-            pass
+        connection.handshakeServer(verifierDB=verifierDB)
         connection.close()
 
     print("Test 6 - good SRP: with X.509 cert")
@@ -716,12 +725,8 @@ def serverTestCmd(argv):
         synchro.send(b'R')
         connection = connect()
         connection.fault = fault
-        try:
-            connection.handshakeServer(verifierDB=verifierDB, \
-                                       certChain=x509Chain, privateKey=x509Key)
-            assert()
-        except:
-            pass
+        connection.handshakeServer(verifierDB=verifierDB, \
+                                   certChain=x509Chain, privateKey=x509Key)
         connection.close()
 
     print("Test 11 - X.509 faults")
@@ -729,11 +734,7 @@ def serverTestCmd(argv):
         synchro.send(b'R')
         connection = connect()
         connection.fault = fault
-        try:
-            connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
-            assert()
-        except:
-            pass
+        connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
         connection.close()
 
     print("Test 14 - good mutual X.509")
@@ -741,10 +742,21 @@ def serverTestCmd(argv):
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True)
     testConnServer(connection)
-    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(isinstance(connection.session.clientCertChain, X509CertChain))
     connection.close()
 
-    print("Test 14a - good mutual X.509, SSLv3")
+    print("Test 14a - good mutual X.509, TLSv1.1")
+    synchro.send(b'R')
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.minVersion = (3,2)
+    settings.maxVersion = (3,2)
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True, settings=settings)
+    testConnServer(connection)
+    assert(isinstance(connection.session.clientCertChain, X509CertChain))
+    connection.close()
+
+    print("Test 14b - good mutual X.509, SSLv3")
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -752,7 +764,7 @@ def serverTestCmd(argv):
     settings.maxVersion = (3,0)
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True, settings=settings)
     testConnServer(connection)
-    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(isinstance(connection.session.clientCertChain, X509CertChain))
     connection.close()
 
     print("Test 15 - mutual X.509 faults")
@@ -760,11 +772,7 @@ def serverTestCmd(argv):
         synchro.send(b'R')
         connection = connect()
         connection.fault = fault
-        try:
-            connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True)
-            assert()
-        except:
-            pass
+        connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True)
         connection.close()
 
     print("Test 18 - good SRP, prepare to resume")
@@ -858,8 +866,10 @@ def serverTestCmd(argv):
 
     print("Test 23 - throughput test")
     for implementation in implementations:
-        for cipher in ["aes128", "aes256", "3des", "rc4"]:
+        for cipher in ["aes128gcm", "aes128", "aes256", "3des", "rc4"]:
             if cipher == "3des" and implementation not in ("openssl", "pycrypto"):
+                continue
+            if cipher == "aes128gcm" and implementation not in ("pycrypto", "python"):
                 continue
 
             print("Test 23:", end=' ')
