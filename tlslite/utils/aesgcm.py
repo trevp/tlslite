@@ -45,12 +45,12 @@ class AESGCM(object):
         # most significant bit. Thus x^0 * h = h is at index 0b1000 = 8 and
         # x^1 * h is at index 0b0100 = 4.
         self._productTable = [0] * 16
-        self._productTable[_reverseBits(1)] = h
+        self._productTable[self._reverseBits(1)] = h
         for i in range(2, 16, 2):
-            self._productTable[_reverseBits(i)] = \
-                _gcmShift(self._productTable[_reverseBits(i//2)])
-            self._productTable[_reverseBits(i+1)] = \
-                _gcmAdd(self._productTable[_reverseBits(i)], h)
+            self._productTable[self._reverseBits(i)] = \
+                self._gcmShift(self._productTable[self._reverseBits(i//2)])
+            self._productTable[self._reverseBits(i+1)] = \
+                self._gcmAdd(self._productTable[self._reverseBits(i)], h)
 
     def _rawAesCtrEncrypt(self, counter, inp):
         """
@@ -61,7 +61,7 @@ class AESGCM(object):
             mask = self._rawAesEncrypt(counter)
             for j in range(i, min(len(out), i + 16)):
                 out[j] = inp[j] ^ mask[j-i]
-            _inc32(counter)
+            self._inc32(counter)
         return out
 
     def _auth(self, ciphertext, ad, tagMask):
@@ -95,7 +95,7 @@ class AESGCM(object):
             # precomputed.
             retHigh = ret & 0xf
             ret >>= 4
-            ret ^= (_gcmReductionTable[retHigh] << (128-16))
+            ret ^= (AESGCM._gcmReductionTable[retHigh] << (128-16))
 
             # Add in y' * H where y' are the next four terms of y, shifted down
             # to the x^0..x^4. This is one of the pre-computed multiples of
@@ -158,37 +158,41 @@ class AESGCM(object):
         counter[-1] = 2
         return self._rawAesCtrEncrypt(counter, ciphertext)
 
-def _reverseBits(i):
-    assert i < 16
-    i = ((i << 2) & 0xc) | ((i >> 2) & 0x3)
-    i = ((i << 1) & 0xa) | ((i >> 1) & 0x5)
-    return i
+    @staticmethod
+    def _reverseBits(i):
+        assert i < 16
+        i = ((i << 2) & 0xc) | ((i >> 2) & 0x3)
+        i = ((i << 1) & 0xa) | ((i >> 1) & 0x5)
+        return i
 
-def _gcmAdd(x, y):
-    return x ^ y
+    @staticmethod
+    def _gcmAdd(x, y):
+        return x ^ y
 
-def _gcmShift(x):
-    # Multiplying by x is a right shift, due to bit order.
-    highTermSet = x & 1
-    x >>= 1
-    if highTermSet:
-        # The x^127 term was shifted up to x^128, so subtract a 1+x+x^2+x^7
-        # term. This is 0b11100001 or 0xe1 when represented as an 8-bit
-        # polynomial.
-        x ^= 0xe1 << (128-8)
-    return x
+    @staticmethod
+    def _gcmShift(x):
+        # Multiplying by x is a right shift, due to bit order.
+        highTermSet = x & 1
+        x >>= 1
+        if highTermSet:
+            # The x^127 term was shifted up to x^128, so subtract a 1+x+x^2+x^7
+            # term. This is 0b11100001 or 0xe1 when represented as an 8-bit
+            # polynomial.
+            x ^= 0xe1 << (128-8)
+        return x
 
-def _inc32(counter):
-    for i in range(len(counter)-1, len(counter)-5, -1):
-        counter[i] = (counter[i] + 1) % 256
-        if counter[i] != 0:
-            break
-    return counter
+    @staticmethod
+    def _inc32(counter):
+        for i in range(len(counter)-1, len(counter)-5, -1):
+            counter[i] = (counter[i] + 1) % 256
+            if counter[i] != 0:
+                break
+        return counter
 
-# _gcmReductionTable[i] is i * (1+x+x^2+x^7) for all 4-bit polynomials i. The
-# result is stored as a 16-bit polynomial. This is used in the reduction step to
-# multiply elements of GF(2^128) by x^4.
-_gcmReductionTable = [
-    0x0000, 0x1c20, 0x3840, 0x2460, 0x7080, 0x6ca0, 0x48c0, 0x54e0,
-    0xe100, 0xfd20, 0xd940, 0xc560, 0x9180, 0x8da0, 0xa9c0, 0xb5e0,
-]
+    # _gcmReductionTable[i] is i * (1+x+x^2+x^7) for all 4-bit polynomials i. The
+    # result is stored as a 16-bit polynomial. This is used in the reduction step to
+    # multiply elements of GF(2^128) by x^4.
+    _gcmReductionTable = [
+        0x0000, 0x1c20, 0x3840, 0x2460, 0x7080, 0x6ca0, 0x48c0, 0x54e0,
+        0xe100, 0xfd20, 0xd940, 0xc560, 0x9180, 0x8da0, 0xa9c0, 0xb5e0,
+    ]
