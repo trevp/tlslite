@@ -505,10 +505,10 @@ tlslite-ng does NOT verify certificates by default.
 
 tlslite-ng's pure-python ciphers are probably vulnerable to timing attacks.
 
-tlslite-ng is probably vulnerable to the "Lucky 13" timing attack if AES or 3DES
+tlslite-ng **is** vulnerable to the "Lucky 13" timing attack if AES or 3DES
 are used, or the weak cipher RC4 otherwise.  This unhappy situation will remain
 until tlslite-ng implements authenticated-encryption ciphersuites (like GCM), or
-RFC 7366.
+RFC 7366 and allows refusing connections which don't use them.
 
 
 12 History
