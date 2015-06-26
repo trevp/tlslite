@@ -172,6 +172,8 @@ def printGoodConnection(connection, seconds):
     if connection.session.clientCertChain:
         print("  Client X.509 SHA1 fingerprint: %s" % 
             connection.session.clientCertChain.getFingerprint())
+    else:
+        print("  No client certificate provided by peer")
     if connection.session.serverCertChain:
         print("  Server X.509 SHA1 fingerprint: %s" % 
             connection.session.serverCertChain.getFingerprint())
@@ -266,6 +268,8 @@ def serverCmd(argv):
         print("Using verifier DB...")
     if tacks:
         print("Using Tacks...")
+    if reqCert:
+        print("Asking for client certificates...")
         
     #############
     sessionCache = SessionCache()
@@ -291,7 +295,8 @@ def serverCmd(argv):
                                               activationFlags=activationFlags,
                                               sessionCache=sessionCache,
                                               settings=settings,
-                                              nextProtos=[b"http/1.1"])
+                                              nextProtos=[b"http/1.1"],
+                                              reqCert=reqCert)
                                               # As an example (does not work here):
                                               #nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
                 stop = time.clock()
