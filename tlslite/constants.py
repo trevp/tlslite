@@ -195,6 +195,9 @@ class CipherSuite:
     TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA = 0xC021
     ietfNames[0xC021] = 'TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA'
 
+    # RFC 5246 - TLS v1.2 Protocol
+    TLS_RSA_WITH_NULL_MD5 = 0x0001
+    ietfNames[0x0001] = 'TLS_RSA_WITH_NULL_MD5'
 
     # RFC 5246 - TLS v1.2 Protocol
     TLS_RSA_WITH_3DES_EDE_CBC_SHA = 0x000A
@@ -298,6 +301,10 @@ class CipherSuite:
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_MD5)
 
+    # no encryption
+    nullSuites = []
+    nullSuites.append(TLS_RSA_WITH_NULL_MD5)
+
     # SHA-1 HMAC, protocol default PRF
     shaSuites = []
     shaSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
@@ -343,6 +350,7 @@ class CipherSuite:
     md5Suites = []
     md5Suites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
     md5Suites.append(TLS_RSA_WITH_RC4_128_MD5)
+    md5Suites.append(TLS_RSA_WITH_NULL_MD5)
 
     # SSL3, TLS1.0, TLS1.1 and TLS1.2 compatible ciphers
     ssl3Suites = []
@@ -397,6 +405,8 @@ class CipherSuite:
             cipherSuites += CipherSuite.tripleDESSuites
         if "rc4" in cipherNames:
             cipherSuites += CipherSuite.rc4Suites
+        if "null" in cipherNames:
+            cipherSuites += CipherSuite.nullSuites
 
         keyExchangeSuites = []
         if "rsa" in keyExchangeNames:
@@ -450,6 +460,7 @@ class CipherSuite:
     certSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_MD5)
+    certSuites.append(TLS_RSA_WITH_NULL_MD5)
 
     @staticmethod
     def getCertSuites(settings, version=None):
@@ -500,6 +511,8 @@ class CipherSuite:
             return "rc4"
         elif ciphersuite in CipherSuite.tripleDESSuites:
             return "3des"
+        elif ciphersuite in CipherSuite.nullSuites:
+            return "null"
         else:
             return None
 

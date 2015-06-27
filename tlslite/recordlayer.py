@@ -325,10 +325,10 @@ class RecordLayer(object):
             seqnumBytes = self._writeState.getSeqNumBytes()
             mac = self._writeState.macContext.copy()
             macBytes = self._calculateMAC(mac, seqnumBytes, contentType, data)
+            data += macBytes
 
         #Encrypt for Block or Stream Cipher
         if self._writeState.encContext:
-            data += macBytes
             #Add padding (for Block Cipher):
             if self._writeState.encContext.isBlockCipher:
 
@@ -420,6 +420,8 @@ class RecordLayer(object):
 
     def _decryptThenMAC(self, recordType, data):
         """Decrypt data, check padding and MAC"""
+        totalPaddingLength = 0
+        paddingGood = True
         if self._readState.encContext:
             assert self.version in ((3, 0), (3, 1), (3, 2), (3, 3))
 
@@ -450,10 +452,9 @@ class RecordLayer(object):
 
             #Decrypt if it's a stream cipher
             else:
-                paddingGood = True
                 data = self._readState.encContext.decrypt(data)
-                totalPaddingLength = 0
 
+        if self._readState.macContext:
             #Check MAC
             macGood = True
             macLength = self._readState.macContext.digest_size
@@ -647,6 +648,10 @@ class RecordLayer(object):
             keyLength = 24
             ivLength = 8
             createCipherFunc = createTripleDES
+        elif cipherSuite in CipherSuite.nullSuites:
+            keyLength = 0
+            ivLength = 0
+            createCipherFunc = None
         else:
             raise AssertionError()
 
@@ -714,7 +719,6 @@ class RecordLayer(object):
     def calcPendingStates(self, cipherSuite, masterSecret, clientRandom,
                           serverRandom, implementations):
         """Create pending states for encryption and decryption."""
-
         keyLength, ivLength, createCipherFunc = \
                 self._getCipherSettings(cipherSuite)
 
@@ -748,10 +752,13 @@ class RecordLayer(object):
                 compatHMAC(clientMACBlock), digestmod=digestmod)
             serverPendingState.macContext = createMACFunc(
                 compatHMAC(serverMACBlock), digestmod=digestmod)
-            clientPendingState.encContext = createCipherFunc(clientKeyBlock,
+            if createCipherFunc is not None:
+                clientPendingState.encContext = \
+                                            createCipherFunc(clientKeyBlock,
                                                              clientIVBlock,
                                                              implementations)
-            serverPendingState.encContext = createCipherFunc(serverKeyBlock,
+                serverPendingState.encContext = \
+                                            createCipherFunc(serverKeyBlock,
                                                              serverIVBlock,
                                                              implementations)
         else:
