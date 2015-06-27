@@ -1855,9 +1855,9 @@ class TLSConnection(TLSRecordLayer):
     def _serverAnonKeyExchange(self, clientHello, serverHello, cipherSuite, 
                                settings):
         # Calculate DH p, g, Xs, Ys
-        dh_p = getRandomSafePrime(32, False)
-        dh_g = getRandomNumber(2, dh_p)        
-        dh_Xs = bytesToNumber(getRandomBytes(32))        
+        # TODO make configurable
+        dh_g, dh_p = goodGroupParameters[2]
+        dh_Xs = bytesToNumber(getRandomBytes(32))
         dh_Ys = powMod(dh_g, dh_Xs, dh_p)
 
         #Create ServerKeyExchange
