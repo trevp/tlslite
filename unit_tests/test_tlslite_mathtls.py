@@ -13,7 +13,7 @@ from tlslite.mathtls import PRF_1_2, calcMasterSecret
 
 class TestCalcMasterSecret(unittest.TestCase):
     def test_with_empty_values(self):
-        ret = calcMasterSecret((3, 3), bytearray(48), bytearray(32),
+        ret = calcMasterSecret((3, 3), 0, bytearray(48), bytearray(32),
                                bytearray(32))
 
         self.assertEqual(bytearray(

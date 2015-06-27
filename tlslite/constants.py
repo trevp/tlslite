@@ -241,6 +241,10 @@ class CipherSuite:
     ietfNames[0x009C] = 'TLS_RSA_WITH_AES_128_GCM_SHA256'
     TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 = 0x009E
     ietfNames[0x009E] = 'TLS_DHE_RSA_WITH_AES_128_GCM_SHA256'
+    TLS_RSA_WITH_AES_256_GCM_SHA384 = 0x009D
+    ietfNames[0x009D] = 'TLS_RSA_WITH_AES_256_GCM_SHA384'
+    TLS_DHE_RSA_WITH_AES_256_GCM_SHA384 = 0x009F
+    ietfNames[0x009F] = 'TLS_DHE_RSA_WITH_AES_256_GCM_SHA384'
 
     #
     # Define cipher suite families below
@@ -278,6 +282,11 @@ class CipherSuite:
     aes128GcmSuites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
     aes128GcmSuites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
 
+    # AES-256-GCM ciphers (implicit SHA384, see sha384PrfSuites)
+    aes256GcmSuites = []
+    aes256GcmSuites.append(TLS_RSA_WITH_AES_256_GCM_SHA384)
+    aes256GcmSuites.append(TLS_DHE_RSA_WITH_AES_256_GCM_SHA384)
+
     # RC4 128 stream cipher
     rc4Suites = []
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
@@ -310,7 +319,18 @@ class CipherSuite:
     sha256Suites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
     sha256Suites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
 
-    aeadSuites = aes128GcmSuites
+    # SHA-384 HMAC, SHA-384 PRF
+    sha384Suites = []
+
+    # AEAD integrity, any PRF
+    aeadSuites = []
+    aeadSuites.extend(aes128GcmSuites)
+    aeadSuites.extend(aes256GcmSuites)
+
+    # TLS1.2 with SHA384 PRF
+    sha384PrfSuites = []
+    sha384PrfSuites.extend(sha384Suites)
+    sha384PrfSuites.extend(aes256GcmSuites)
 
     # MD-5 HMAC, protocol default PRF
     md5Suites = []
@@ -324,6 +344,7 @@ class CipherSuite:
     # TLS1.2 specific ciphersuites
     tls12Suites = []
     tls12Suites.extend(sha256Suites)
+    tls12Suites.extend(sha384Suites)
     tls12Suites.extend(aeadSuites)
 
     @staticmethod
@@ -346,16 +367,20 @@ class CipherSuite:
         macSuites = []
         if "sha" in macNames:
             macSuites += CipherSuite.shaSuites
-        if "sha256" in macNames and version >= (3,3):
+        if "sha256" in macNames and version >= (3, 3):
             macSuites += CipherSuite.sha256Suites
+        if "sha384" in macNames and version >= (3, 3):
+            macSuites += CipherSuite.sha384Suites
         if "md5" in macNames:
             macSuites += CipherSuite.md5Suites
-        if "aead" in macNames and version >= (3,3):
+        if "aead" in macNames and version >= (3, 3):
             macSuites += CipherSuite.aeadSuites
 
         cipherSuites = []
-        if "aes128gcm" in cipherNames and version >= (3,3):
+        if "aes128gcm" in cipherNames and version >= (3, 3):
             cipherSuites += CipherSuite.aes128GcmSuites
+        if "aes256gcm" in cipherNames and version >= (3, 3):
+            cipherSuites += CipherSuite.aes256GcmSuites
         if "aes128" in cipherNames:
             cipherSuites += CipherSuite.aes128Suites
         if "aes256" in cipherNames:
@@ -408,6 +433,7 @@ class CipherSuite:
 
     # RSA key exchange, RSA authentication
     certSuites = []
+    certSuites.append(TLS_RSA_WITH_AES_256_GCM_SHA384)
     certSuites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
     certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
     certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
@@ -423,6 +449,7 @@ class CipherSuite:
 
     # FFDHE key exchange, RSA authentication
     dheCertSuites = []
+    dheCertSuites.append(TLS_DHE_RSA_WITH_AES_256_GCM_SHA384)
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA256)
@@ -450,8 +477,12 @@ class CipherSuite:
 
     @staticmethod
     def canonicalCipherName(ciphersuite):
-        "Return the canonical name of the cipher whose number is provided."
-        if ciphersuite in CipherSuite.aes128Suites:
+        """Return the canonical name of the cipher whose number is provided."""
+        if ciphersuite in CipherSuite.aes128GcmSuites:
+            return "aes128gcm"
+        elif ciphersuite in CipherSuite.aes256GcmSuites:
+            return "aes256gcm"
+        elif ciphersuite in CipherSuite.aes128Suites:
             return "aes128"
         elif ciphersuite in CipherSuite.aes256Suites:
             return "aes256"
@@ -464,8 +495,12 @@ class CipherSuite:
 
     @staticmethod
     def canonicalMacName(ciphersuite):
-        "Return the canonical name of the MAC whose number is provided."
-        if ciphersuite in CipherSuite.shaSuites:
+        """Return the canonical name of the MAC whose number is provided."""
+        if ciphersuite in CipherSuite.sha384Suites:
+            return "sha384"
+        elif ciphersuite in CipherSuite.sha256Suites:
+            return "sha256"
+        elif ciphersuite in CipherSuite.shaSuites:
             return "sha"
         elif ciphersuite in CipherSuite.md5Suites:
             return "md5"

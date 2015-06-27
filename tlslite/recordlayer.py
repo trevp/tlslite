@@ -16,7 +16,8 @@ from .utils.compat import compatHMAC
 from .utils.cryptomath import getRandomBytes
 from .errors import TLSRecordOverflow, TLSIllegalParameterException,\
         TLSAbruptCloseError, TLSDecryptionFailed, TLSBadRecordMAC
-from .mathtls import createMAC_SSL, createHMAC, PRF_SSL, PRF, PRF_1_2
+from .mathtls import createMAC_SSL, createHMAC, PRF_SSL, PRF, PRF_1_2, \
+        PRF_1_2_SHA384
 
 class RecordSocket(object):
 
@@ -621,7 +622,11 @@ class RecordLayer(object):
     def calcPendingStates(self, cipherSuite, masterSecret, clientRandom,
                           serverRandom, implementations):
         """Create pending states for encryption and decryption."""
-        if cipherSuite in CipherSuite.aes128GcmSuites:
+        if cipherSuite in CipherSuite.aes256GcmSuites:
+            keyLength = 32
+            ivLength = 4
+            createCipherFunc = createAESGCM
+        elif cipherSuite in CipherSuite.aes128GcmSuites:
             keyLength = 16
             ivLength = 4
             createCipherFunc = createAESGCM
@@ -679,10 +684,16 @@ class RecordLayer(object):
                            serverRandom + clientRandom,
                            outputLength)
         elif self.version == (3, 3):
-            keyBlock = PRF_1_2(masterSecret,
-                               b"key expansion",
-                               serverRandom + clientRandom,
-                               outputLength)
+            if cipherSuite in CipherSuite.sha384PrfSuites:
+                keyBlock = PRF_1_2_SHA384(masterSecret,
+                                          b"key expansion",
+                                          serverRandom + clientRandom,
+                                          outputLength)
+            else:
+                keyBlock = PRF_1_2(masterSecret,
+                                   b"key expansion",
+                                   serverRandom + clientRandom,
+                                   outputLength)
         else:
             raise AssertionError()
 

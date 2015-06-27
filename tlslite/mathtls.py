@@ -2,6 +2,7 @@
 #   Trevor Perrin
 #   Dave Baggett (Arcode Corporation) - MD5 support for MAC_SSL
 #   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
+#   Hubert Kario - SHA384 PRF
 #
 # See the LICENSE file for legal information regarding use of this file.
 
@@ -9,6 +10,7 @@
 
 from .utils.compat import *
 from .utils.cryptomath import *
+from .constants import CipherSuite
 
 import hmac
 
@@ -51,7 +53,12 @@ def PRF(secret, label, seed, length):
     return p_md5
 
 def PRF_1_2(secret, label, seed, length):
+    """Pseudo Random Function for TLS1.2 ciphers that use SHA256"""
     return P_hash(HMAC_SHA256, secret, label + seed, length)
+
+def PRF_1_2_SHA384(secret, label, seed, length):
+    """Pseudo Random Function for TLS1.2 ciphers that use SHA384"""
+    return P_hash(HMAC_SHA384, secret, label + seed, length)
 
 def PRF_SSL(secret, seed, length):
     bytes = bytearray(length)
@@ -67,7 +74,9 @@ def PRF_SSL(secret, seed, length):
             index += 1
     return bytes
 
-def calcMasterSecret(version, premasterSecret, clientRandom, serverRandom):
+def calcMasterSecret(version, cipherSuite, premasterSecret, clientRandom,
+                     serverRandom):
+    """Derive Master Secret from premaster secret and random values"""
     if version == (3,0):
         masterSecret = PRF_SSL(premasterSecret,
                             clientRandom + serverRandom, 48)
@@ -75,8 +84,16 @@ def calcMasterSecret(version, premasterSecret, clientRandom, serverRandom):
         masterSecret = PRF(premasterSecret, b"master secret",
                             clientRandom + serverRandom, 48)
     elif version == (3,3):
-        masterSecret = PRF_1_2(premasterSecret, b"master secret",
-                            clientRandom + serverRandom, 48)
+        if cipherSuite in CipherSuite.sha384PrfSuites:
+            masterSecret = PRF_1_2_SHA384(premasterSecret,
+                                          b"master secret",
+                                          clientRandom + serverRandom,
+                                          48)
+        else:
+            masterSecret = PRF_1_2(premasterSecret,
+                                   b"master secret",
+                                   clientRandom + serverRandom,
+                                   48)
     else:
         raise AssertionError()
     return masterSecret

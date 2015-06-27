@@ -750,9 +750,12 @@ class TLSConnection(TLSRecordLayer):
                                     cipherImplementations)                                   
 
             #Exchange ChangeCipherSpec and Finished messages
-            for result in self._getFinished(session.masterSecret):
+            for result in self._getFinished(session.masterSecret,
+                                            session.cipherSuite):
                 yield result
-            for result in self._sendFinished(session.masterSecret, nextProto):
+            for result in self._sendFinished(session.masterSecret,
+                                             session.cipherSuite,
+                                             nextProto):
                 yield result
 
             #Set the session for this connection
@@ -970,9 +973,10 @@ class TLSConnection(TLSRecordLayer):
             signatureAlgorithm = None
             if self.version == (3,0):
                 masterSecret = calcMasterSecret(self.version,
-                                         premasterSecret,
-                                         clientRandom,
-                                         serverRandom)
+                                                cipherSuite,
+                                                premasterSecret,
+                                                clientRandom,
+                                                serverRandom)
                 verifyBytes = self._handshake_hash.digestSSL(masterSecret, b"")
             elif self.version in ((3,1), (3,2)):
                 verifyBytes = self._handshake_hash.digest()
@@ -1139,9 +1143,10 @@ class TLSConnection(TLSRecordLayer):
             signatureAlgorithm = None
             if self.version == (3,0):
                 masterSecret = calcMasterSecret(self.version,
-                                         premasterSecret,
-                                         clientRandom,
-                                         serverRandom)
+                                                cipherSuite,
+                                                premasterSecret,
+                                                clientRandom,
+                                                serverRandom)
                 verifyBytes = self._handshake_hash.digestSSL(masterSecret, b"")
             elif self.version in ((3,1), (3,2)):
                 verifyBytes = self._handshake_hash.digest()
@@ -1163,16 +1168,21 @@ class TLSConnection(TLSRecordLayer):
     def _clientFinished(self, premasterSecret, clientRandom, serverRandom,
                         cipherSuite, cipherImplementations, nextProto):
 
-        masterSecret = calcMasterSecret(self.version, premasterSecret,
-                            clientRandom, serverRandom)
+        masterSecret = calcMasterSecret(self.version,
+                                        cipherSuite,
+                                        premasterSecret,
+                                        clientRandom,
+                                        serverRandom)
         self._calcPendingStates(cipherSuite, masterSecret, 
                                 clientRandom, serverRandom, 
                                 cipherImplementations)
 
         #Exchange ChangeCipherSpec and Finished messages
-        for result in self._sendFinished(masterSecret, nextProto):
+        for result in self._sendFinished(masterSecret, cipherSuite, nextProto):
             yield result
-        for result in self._getFinished(masterSecret, nextProto=nextProto):
+        for result in self._getFinished(masterSecret,
+                                        cipherSuite,
+                                        nextProto=nextProto):
             yield result
         yield masterSecret
 
@@ -1617,9 +1627,11 @@ class TLSConnection(TLSRecordLayer):
                                         settings.cipherImplementations)
 
                 #Exchange ChangeCipherSpec and Finished messages
-                for result in self._sendFinished(session.masterSecret):
+                for result in self._sendFinished(session.masterSecret,
+                                                 session.cipherSuite):
                     yield result
-                for result in self._getFinished(session.masterSecret):
+                for result in self._getFinished(session.masterSecret,
+                                                session.cipherSuite):
                     yield result
 
                 #Set the session
@@ -1818,8 +1830,11 @@ class TLSConnection(TLSRecordLayer):
         #Get and check CertificateVerify, if relevant
         if clientCertChain:
             if self.version == (3,0):
-                masterSecret = calcMasterSecret(self.version, premasterSecret,
-                                         clientHello.random, serverHello.random)
+                masterSecret = calcMasterSecret(self.version,
+                                                cipherSuite,
+                                                premasterSecret,
+                                                clientHello.random,
+                                                serverHello.random)
                 verifyBytes = self._handshake_hash.digestSSL(masterSecret, b"")
             elif self.version in ((3,1), (3,2)):
                 verifyBytes = self._handshake_hash.digest()
@@ -1899,8 +1914,11 @@ class TLSConnection(TLSRecordLayer):
 
     def _serverFinished(self,  premasterSecret, clientRandom, serverRandom,
                         cipherSuite, cipherImplementations, nextProtos):
-        masterSecret = calcMasterSecret(self.version, premasterSecret,
-                                      clientRandom, serverRandom)
+        masterSecret = calcMasterSecret(self.version,
+                                        cipherSuite,
+                                        premasterSecret,
+                                        clientRandom,
+                                        serverRandom)
         
         #Calculate pending connection states
         self._calcPendingStates(cipherSuite, masterSecret, 
@@ -1908,11 +1926,12 @@ class TLSConnection(TLSRecordLayer):
                                 cipherImplementations)
 
         #Exchange ChangeCipherSpec and Finished messages
-        for result in self._getFinished(masterSecret, 
-                        expect_next_protocol=nextProtos is not None):
+        for result in self._getFinished(masterSecret,
+                                        cipherSuite,
+                                   expect_next_protocol=nextProtos is not None):
             yield result
 
-        for result in self._sendFinished(masterSecret):
+        for result in self._sendFinished(masterSecret, cipherSuite):
             yield result
         
         yield masterSecret        
@@ -1923,7 +1942,7 @@ class TLSConnection(TLSRecordLayer):
     #*********************************************************
 
 
-    def _sendFinished(self, masterSecret, nextProto=None):
+    def _sendFinished(self, masterSecret, cipherSuite=None, nextProto=None):
         #Send ChangeCipherSpec
         for result in self._sendMsg(ChangeCipherSpec()):
             yield result
@@ -1937,7 +1956,7 @@ class TLSConnection(TLSRecordLayer):
                 yield result
 
         #Calculate verification data
-        verifyData = self._calcFinished(masterSecret, True)
+        verifyData = self._calcFinished(masterSecret, cipherSuite, True)
         if self.fault == Fault.badFinished:
             verifyData[0] = (verifyData[0]+1)%256
 
@@ -1946,7 +1965,8 @@ class TLSConnection(TLSRecordLayer):
         for result in self._sendMsg(finished):
             yield result
 
-    def _getFinished(self, masterSecret, expect_next_protocol=False, nextProto=None):
+    def _getFinished(self, masterSecret, cipherSuite=None,
+                     expect_next_protocol=False, nextProto=None):
         #Get and check ChangeCipherSpec
         for result in self._getMsg(ContentType.change_cipher_spec):
             if result in (0,1):
@@ -1980,7 +2000,7 @@ class TLSConnection(TLSRecordLayer):
             self.next_proto = nextProto
 
         #Calculate verification data
-        verifyData = self._calcFinished(masterSecret, False)
+        verifyData = self._calcFinished(masterSecret, cipherSuite, False)
 
         #Get and check Finished message under new state
         for result in self._getMsg(ContentType.handshake,
@@ -1993,7 +2013,7 @@ class TLSConnection(TLSRecordLayer):
                                          "Finished message is incorrect"):
                 yield result
 
-    def _calcFinished(self, masterSecret, send=True):
+    def _calcFinished(self, masterSecret, cipherSuite, send=True):
         if self.version == (3,0):
             if (self._client and send) or (not self._client and not send):
                 senderStr = b"\x43\x4C\x4E\x54"
@@ -2018,8 +2038,12 @@ class TLSConnection(TLSRecordLayer):
             else:
                 label = b"server finished"
 
-            handshakeHashes = self._handshake_hash.digest('sha256')
-            verifyData = PRF_1_2(masterSecret, label, handshakeHashes, 12)
+            if cipherSuite in CipherSuite.sha384PrfSuites:
+                handshakeHashes = self._handshake_hash.digest('sha384')
+                verifyData = PRF_1_2_SHA384(masterSecret, label, handshakeHashes, 12)
+            else:
+                handshakeHashes = self._handshake_hash.digest('sha256')
+                verifyData = PRF_1_2(masterSecret, label, handshakeHashes, 12)
             return verifyData
         else:
             raise AssertionError()
