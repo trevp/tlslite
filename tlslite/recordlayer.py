@@ -206,6 +206,7 @@ class ConnectionState(object):
         """Create an instance with empty encryption and MACing contexts"""
         self.macContext = None
         self.encContext = None
+        self.fixedNonce = None
         self.seqnum = 0
 
     def getSeqNumBytes(self):
@@ -619,9 +620,9 @@ class RecordLayer(object):
         self._readState = self._pendingReadState
         self._pendingReadState = ConnectionState()
 
-    def calcPendingStates(self, cipherSuite, masterSecret, clientRandom,
-                          serverRandom, implementations):
-        """Create pending states for encryption and decryption."""
+    @staticmethod
+    def _getCipherSettings(cipherSuite):
+        """Get the settings for cipher suite used"""
         if cipherSuite in CipherSuite.aes256GcmSuites:
             keyLength = 32
             ivLength = 4
@@ -649,6 +650,11 @@ class RecordLayer(object):
         else:
             raise AssertionError()
 
+        return (keyLength, ivLength, createCipherFunc)
+
+    @staticmethod
+    def _getMacSettings(cipherSuite):
+        """Get settings for HMAC used"""
         if cipherSuite in CipherSuite.aeadSuites:
             macLength = 0
             digestmod = None
@@ -664,16 +670,22 @@ class RecordLayer(object):
         else:
             raise AssertionError()
 
-        if not digestmod:
-            createMACFunc = None
-        elif self.version == (3, 0):
+        return macLength, digestmod
+
+    @staticmethod
+    def _getHMACMethod(version):
+        """Get the HMAC method"""
+        assert version in ((3, 0), (3, 1), (3, 2), (3, 3))
+        if version == (3, 0):
             createMACFunc = createMAC_SSL
-        elif self.version in ((3, 1), (3, 2), (3, 3)):
+        elif version in ((3, 1), (3, 2), (3, 3)):
             createMACFunc = createHMAC
 
-        outputLength = (macLength*2) + (keyLength*2) + (ivLength*2)
+        return createMACFunc
 
-        #Calculate Keying Material from Master Secret
+    def _calcKeyBlock(self, cipherSuite, masterSecret, clientRandom,
+                      serverRandom, outputLength):
+        """Calculate the overall key to slice up"""
         if self.version == (3, 0):
             keyBlock = PRF_SSL(masterSecret,
                                serverRandom + clientRandom,
@@ -696,6 +708,28 @@ class RecordLayer(object):
                                    outputLength)
         else:
             raise AssertionError()
+
+        return keyBlock
+
+    def calcPendingStates(self, cipherSuite, masterSecret, clientRandom,
+                          serverRandom, implementations):
+        """Create pending states for encryption and decryption."""
+
+        keyLength, ivLength, createCipherFunc = \
+                self._getCipherSettings(cipherSuite)
+
+        macLength, digestmod = self._getMacSettings(cipherSuite)
+
+        if not digestmod:
+            createMACFunc = None
+        else:
+            createMACFunc = self._getHMACMethod(self.version)
+
+        outputLength = (macLength*2) + (keyLength*2) + (ivLength*2)
+
+        #Calculate Keying Material from Master Secret
+        keyBlock = self._calcKeyBlock(cipherSuite, masterSecret, clientRandom,
+                                      serverRandom, outputLength)
 
         #Slice up Keying Material
         clientPendingState = ConnectionState()
