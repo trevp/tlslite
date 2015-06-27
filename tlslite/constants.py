@@ -219,6 +219,8 @@ class CipherSuite:
     ietfNames[0x0039] = 'TLS_DHE_RSA_WITH_AES_256_CBC_SHA'
 
     # RFC 5246 - TLS v1.2 Protocol
+    TLS_DH_ANON_WITH_RC4_128_MD5 = 0x0018
+    ietfNames[0x0018] = 'TLS_DH_ANON_WITH_RC4_128_MD5'
     TLS_DH_ANON_WITH_AES_128_CBC_SHA = 0x0034
     ietfNames[0x0034] = 'TLS_DH_ANON_WITH_AES_128_CBC_SHA'
     TLS_DH_ANON_WITH_AES_256_CBC_SHA = 0x003A
@@ -289,6 +291,7 @@ class CipherSuite:
 
     # RC4 128 stream cipher
     rc4Suites = []
+    rc4Suites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_MD5)
 
@@ -334,6 +337,7 @@ class CipherSuite:
 
     # MD-5 HMAC, protocol default PRF
     md5Suites = []
+    md5Suites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
     md5Suites.append(TLS_RSA_WITH_RC4_128_MD5)
 
     # SSL3, TLS1.0, TLS1.1 and TLS1.2 compatible ciphers
@@ -468,6 +472,7 @@ class CipherSuite:
     anonSuites = []
     anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
     anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+    anonSuites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
 
     @staticmethod
     def getAnonSuites(settings, version=None):
