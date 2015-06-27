@@ -200,6 +200,8 @@ class CipherSuite:
     ietfNames[0x0001] = 'TLS_RSA_WITH_NULL_MD5'
     TLS_RSA_WITH_NULL_SHA = 0x0002
     ietfNames[0x0002] = 'TLS_RSA_WITH_NULL_SHA'
+    TLS_RSA_WITH_NULL_SHA256 = 0x003B
+    ietfNames[0x003B] = 'TLS_RSA_WITH_NULL_SHA256'
 
     # RFC 5246 - TLS v1.2 Protocol
     TLS_RSA_WITH_3DES_EDE_CBC_SHA = 0x000A
@@ -307,6 +309,7 @@ class CipherSuite:
     nullSuites = []
     nullSuites.append(TLS_RSA_WITH_NULL_MD5)
     nullSuites.append(TLS_RSA_WITH_NULL_SHA)
+    nullSuites.append(TLS_RSA_WITH_NULL_SHA256)
 
     # SHA-1 HMAC, protocol default PRF
     shaSuites = []
@@ -336,6 +339,7 @@ class CipherSuite:
     sha256Suites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
     sha256Suites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
     sha256Suites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
+    sha256Suites.append(TLS_RSA_WITH_NULL_SHA256)
 
     # SHA-384 HMAC, SHA-384 PRF
     sha384Suites = []
@@ -466,6 +470,7 @@ class CipherSuite:
     certSuites.append(TLS_RSA_WITH_RC4_128_MD5)
     certSuites.append(TLS_RSA_WITH_NULL_MD5)
     certSuites.append(TLS_RSA_WITH_NULL_SHA)
+    certSuites.append(TLS_RSA_WITH_NULL_SHA256)
 
     @staticmethod
     def getCertSuites(settings, version=None):
