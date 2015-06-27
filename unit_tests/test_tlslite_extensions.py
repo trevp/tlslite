@@ -111,6 +111,18 @@ class TestTLSExtension(unittest.TestCase):
 
         self.assertEqual(ext.protocols, [b'http/1.1'])
 
+    def test_parse_with_renego_info_server_side(self):
+        p = Parser(bytearray(
+            b'\xff\x01' +   # type of extension - renegotiation_info
+            b'\x00\x01' +   # overall length
+            b'\x00'         # extension length
+            ))
+
+        ext = TLSExtension(server=True).parse(p)
+
+        # XXX not supported
+        self.assertIsInstance(ext, TLSExtension)
+
     def test_parse_with_elliptic_curves(self):
         p = Parser(bytearray(
             b'\x00\x0a' +   # type of extension
