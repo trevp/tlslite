@@ -238,6 +238,8 @@ class CipherSuite:
     ietfNames[0x006C] = 'TLS_DH_ANON_WITH_AES_128_CBC_SHA256'
     TLS_DH_ANON_WITH_AES_256_CBC_SHA256 = 0x006D
     ietfNames[0x006D] = 'TLS_DH_ANON_WITH_AES_256_CBC_SHA256'
+    TLS_DH_ANON_WITH_AES_128_GCM_SHA256 = 0x00A6
+    ietfNames[0x00A6] = 'TLS_DH_ANON_WITH_AES_128_GCM_SHA256'
 
     # RFC 5246 - TLS v1.2 Protocol
     TLS_RSA_WITH_AES_128_CBC_SHA256 = 0x003C
@@ -299,6 +301,7 @@ class CipherSuite:
     aes128GcmSuites = []
     aes128GcmSuites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
     aes128GcmSuites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
+    aes128GcmSuites.append(TLS_DH_ANON_WITH_AES_128_GCM_SHA256)
 
     # AES-256-GCM ciphers (implicit SHA384, see sha384PrfSuites)
     aes256GcmSuites = []
@@ -509,6 +512,7 @@ class CipherSuite:
     anonSuites.append(TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA)
     anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA256)
     anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA256)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_128_GCM_SHA256)
 
     @staticmethod
     def getAnonSuites(settings, version=None):
