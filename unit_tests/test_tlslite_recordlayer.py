@@ -650,6 +650,146 @@ class TestRecordLayer(unittest.TestCase):
             b'}\xcct\x84<j^\xdb\xa68\xd8\x08\x84pm\x97'
             ))
 
+    def test_sendRecord_with_AES128GCM(self):
+        sock = MockSocket(bytearray(0))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 3)
+
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeWriteState()
+
+        app_data = ApplicationData().create(bytearray(b'test'))
+
+        self.assertIsNotNone(app_data)
+
+        for result in recordLayer.sendRecord(app_data):
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+
+        self.assertEqual(len(sock.sent), 1)
+        self.assertEqual(sock.sent[0][:5], bytearray(
+            b'\x17' +           # application data
+            b'\x03\x03' +       # TLSv1.2
+            b'\x00\x1c'         # length
+            ))
+        self.assertEqual(sock.sent[0][5:], bytearray(
+            b'\x00\x00\x00\x00\x00\x00\x00\x00Fy\xc0\x91' +
+            b'A\x85\x82\xffk\x95\x8a51\x1e\xfb\x93e\xdd\xc1\xc7'))
+
+    def test_recvRecord_with_AES128GCM(self):
+        sock = MockSocket(bytearray(
+            b'\x17' +
+            b'\x03\x03' +
+            b'\x00\x1c' +
+            b'\x00\x00\x00\x00\x00\x00\x00\x00Fy\xc0\x91' +
+            b'A\x85\x82\xffk\x95\x8a51\x1e\xfb\x93e\xdd\xc1\xc7'))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 3)
+        recordLayer.client = False
+
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeReadState()
+
+        for result in recordLayer.recvRecord():
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else:
+                break
+
+        head, parser = result
+
+        self.assertEqual((3, 3), head.version)
+        self.assertEqual(head.type, ContentType.application_data)
+        self.assertEqual(bytearray(b'test'), parser.bytes)
+
+    def test_recvRecord_with_AES128GCM_too_short_data(self):
+        sock = MockSocket(bytearray(
+            b'\x17' +
+            b'\x03\x03' +
+            b'\x00\x07' +
+            b'\x00\x00\x00\x00\x00\x00\x00'))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 3)
+        recordLayer.client = False
+
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeReadState()
+
+        with self.assertRaises(TLSBadRecordMAC):
+            for result in recordLayer.recvRecord():
+                if result in (0, 1):
+                    self.assertTrue(False, "blocking socket")
+                else:
+                    break
+
+    def test_recvRecord_with_AES128GCM_too_short_nonce(self):
+        sock = MockSocket(bytearray(
+            b'\x17' +
+            b'\x03\x03' +
+            b'\x00\x0b' +
+            b'\x00\x00\x00\x00\x00\x00\x00\x00Fy\xc0'))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 3)
+        recordLayer.client = False
+
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeReadState()
+
+        with self.assertRaises(TLSBadRecordMAC):
+            for result in recordLayer.recvRecord():
+                if result in (0, 1):
+                    self.assertTrue(False, "blocking socket")
+                else:
+                    break
+
+    def test_recvRecord_with_AES128GCM_invalid_side(self):
+        sock = MockSocket(bytearray(
+            b'\x17' +
+            b'\x03\x03' +
+            b'\x00\x1c' +
+            b'\x00\x00\x00\x00\x00\x00\x00\x00Fy\xc0\x91' +
+            b'A\x85\x82\xffk\x95\x8a51\x1e\xfb\x93e\xdd\xc1\xc7'))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 3)
+        recordLayer.client = True
+
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeReadState()
+
+        with self.assertRaises(TLSBadRecordMAC):
+            for result in recordLayer.recvRecord():
+                if result in (0, 1):
+                    self.assertTrue(False, "blocking socket")
+                else:
+                    break
+
+
     # tlslite has no pure python implementation of 3DES
     @unittest.skipUnless(cryptomath.m2cryptoLoaded or cryptomath.pycryptoLoaded,
                          "requires native 3DES implementation")
