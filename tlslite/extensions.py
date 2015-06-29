@@ -912,9 +912,80 @@ class TACKExtension(TLSExtension):
 
         return self
 
+class SupportedGroupsExtension(TLSExtension):
+
+    """
+    Client side list of supported groups of (EC)DHE key exchage.
+
+    See RFC4492, RFC7027 and RFC-ietf-tls-negotiated-ff-dhe-10
+
+    @type groups: int
+    @ivar groups: list of groups that the client supports
+    """
+
+    def __init__(self):
+        """Create instance of class"""
+        self.groups = None
+
+    @property
+    def ext_type(self):
+        """
+        Type of extension, in this case - 10
+
+        @rtype: int
+        """
+        return ExtensionType.supported_groups
+
+    @property
+    def ext_data(self):
+        """
+        Return raw data encoding of the extension
+
+        @rtype: bytearray
+        """
+        if self.groups is None:
+            return bytearray(0)
+
+        writer = Writer()
+        # encode length of two bytes per group in two bytes
+        writer.add(len(self.groups) * 2, 2)
+        for group in self.groups:
+            writer.add(group, 2)
+        return writer.bytes
+
+    def create(self, groups):
+        """
+        Set the supported groups in the extension
+
+        @type groups: list of int
+        @param groups: list of supported groups
+        """
+        self.groups = groups
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on-the-wire data
+
+        @type parser: L{Parser}
+        @rtype: SupportedGroupsExtension
+        """
+        if parser.getRemainingLength() == 0:
+            self.groups = None
+            return self
+        self.groups = []
+
+        parser.startLengthCheck(2)
+        while not parser.atLengthCheck():
+            self.groups.append(parser.get(2))
+        parser.stopLengthCheck()
+
+        return self
+
 TLSExtension._universal_extensions = {
         ExtensionType.server_name : SNIExtension,
         ExtensionType.cert_type : ClientCertTypeExtension,
+        ExtensionType.supported_groups : SupportedGroupsExtension,
         ExtensionType.srp : SRPExtension,
         ExtensionType.supports_npn : NPNExtension}
 

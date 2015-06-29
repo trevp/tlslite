@@ -10,9 +10,9 @@ except ImportError:
     import unittest
 from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension,\
-        TACKExtension
+        TACKExtension, SupportedGroupsExtension
 from tlslite.utils.codec import Parser
-from tlslite.constants import NameType
+from tlslite.constants import NameType, ExtensionType, GroupName
 from tlslite.errors import TLSInternalError
 
 class TestTLSExtension(unittest.TestCase):
@@ -146,12 +146,11 @@ class TestTLSExtension(unittest.TestCase):
 
         ext = TLSExtension().parse(p)
 
-        # XXX not supported
-        self.assertIsInstance(ext, TLSExtension)
+        self.assertIsInstance(ext, SupportedGroupsExtension)
 
-        #self.assertEqual(ext.curves, [EllipticCurves.secp256r1,
-        #                              EllipticCurves.secp384r1,
-        #                              EllipticCurves.secp521r1])
+        self.assertEqual(ext.groups, [GroupName.secp256r1,
+                                      GroupName.secp384r1,
+                                      GroupName.secp521r1])
 
     def test_parse_with_ec_point_formats(self):
         p = Parser(bytearray(
@@ -1113,6 +1112,69 @@ class TestTACKExtension(unittest.TestCase):
                 "signature=bytearray(b'\\x05'))"\
                 "])",
                 repr(tack_ext))
+
+class TestSupportedGroups(unittest.TestCase):
+    def test___init__(self):
+        ext = SupportedGroupsExtension()
+
+        self.assertIsNotNone(ext)
+        self.assertIsNone(ext.groups)
+
+    def test_write(self):
+        ext = SupportedGroupsExtension()
+        ext.create([19, 21])
+
+        self.assertEqual(bytearray(
+            b'\x00\x0A' +           # type of extension - 10
+            b'\x00\x06' +           # overall length of extension
+            b'\x00\x04' +           # length of extension list array
+            b'\x00\x13' +           # secp192r1
+            b'\x00\x15'             # secp224r1
+            ), ext.write())
+
+    def test_write_empty(self):
+        ext = SupportedGroupsExtension()
+
+        self.assertEqual(bytearray(b'\x00\x0A\x00\x00'), ext.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            b'\x00\x04' +           # length of extension list array
+            b'\x00\x13' +           # secp192r1
+            b'\x00\x15'             # secp224r1
+            ))
+
+        ext = SupportedGroupsExtension().parse(parser)
+
+        self.assertEqual(ext.ext_type, ExtensionType.supported_groups)
+        self.assertEqual(ext.groups,
+                         [GroupName.secp192r1, GroupName.secp224r1])
+        for group in ext.groups:
+            self.assertTrue(group in GroupName.allEC)
+            self.assertFalse(group in GroupName.allFF)
+
+    def test_parse_with_empty_data(self):
+        parser = Parser(bytearray())
+
+        ext = SupportedGroupsExtension().parse(parser)
+
+        self.assertEqual(ext.ext_type, ExtensionType.supported_groups)
+        self.assertIsNone(ext.groups)
+
+    def test_parse_with_empty_array(self):
+        parser = Parser(bytearray(2))
+
+        ext = SupportedGroupsExtension().parse(parser)
+
+        self.assertEqual([], ext.groups)
+
+    def test_parse_with_invalid_data(self):
+        parser = Parser(bytearray(b'\x00\x01\x00'))
+
+        ext = SupportedGroupsExtension()
+
+        with self.assertRaises(SyntaxError):
+            ext.parse(parser)
 
 if __name__ == '__main__':
     unittest.main()
