@@ -982,10 +982,79 @@ class SupportedGroupsExtension(TLSExtension):
 
         return self
 
+class ECPointFormatsExtension(TLSExtension):
+
+    """
+    Client side list of supported ECC point formats.
+
+    See RFC4492.
+    """
+
+    def __init__(self):
+        """Create instance of class"""
+        self.formats = None
+
+    @property
+    def ext_type(self):
+        """
+        Type of extension, in this case - 11
+
+        @rtype: int
+        """
+        return ExtensionType.ec_point_formats
+
+    @property
+    def ext_data(self):
+        """
+        Return raw encoding of the extension
+
+        @rtype: bytearray
+        """
+        if self.formats is None:
+            return bytearray(0)
+
+        writer = Writer()
+        # the length is number of formats encoded in one byte
+        writer.add(len(self.formats), 1)
+        for fmt in self.formats:
+            writer.add(fmt, 1)
+        return writer.bytes
+
+    def create(self, formats):
+        """
+        Set the list of supported EC point formats
+
+        @type formats: list of int
+        @param formats: list of supported EC point formats
+        """
+        self.formats = formats
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on the wire data
+
+        @type parser: L{Parser}
+        @rtype: ECPointFormatsExtension
+        """
+        if parser.getRemainingLength() == 0:
+            self.formats = None
+            return self
+
+        self.formats = []
+
+        parser.startLengthCheck(1)
+        while not parser.atLengthCheck():
+            self.formats.append(parser.get(1))
+        parser.stopLengthCheck()
+
+        return self
+
 TLSExtension._universal_extensions = {
         ExtensionType.server_name : SNIExtension,
         ExtensionType.cert_type : ClientCertTypeExtension,
         ExtensionType.supported_groups : SupportedGroupsExtension,
+        ExtensionType.ec_point_formats : ECPointFormatsExtension,
         ExtensionType.srp : SRPExtension,
         ExtensionType.supports_npn : NPNExtension}
 

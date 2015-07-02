@@ -44,6 +44,7 @@ class ExtensionType:    # RFC 6066 / 4366
     server_name = 0     # RFC 6066 / 4366
     cert_type = 9       # RFC 6091
     supported_groups = 10 # RFC 4492, RFC-ietf-tls-negotiated-ff-dhe-10
+    ec_point_formats = 11 # RFC 4492
     srp = 12            # RFC 5054
     encrypt_then_mac = 22 # RFC 7366
     tack = 0xF300
@@ -117,6 +118,18 @@ class GroupName(object):
     allFF = list(range(256, 261))
 
     all = allEC + allFF
+
+class ECPointFormat(object):
+
+    """Names and ID's of supported EC point formats"""
+
+    uncompressed = 0
+    ansiX962_compressed_prime = 1
+    ansiX962_compressed_char2 = 2
+
+    all = [uncompressed,
+           ansiX962_compressed_prime,
+           ansiX962_compressed_char2]
 
 class NameType:
     host_name = 0

@@ -10,9 +10,9 @@ except ImportError:
     import unittest
 from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension,\
-        TACKExtension, SupportedGroupsExtension
+        TACKExtension, SupportedGroupsExtension, ECPointFormatsExtension
 from tlslite.utils.codec import Parser
-from tlslite.constants import NameType, ExtensionType, GroupName
+from tlslite.constants import NameType, ExtensionType, GroupName, ECPointFormat
 from tlslite.errors import TLSInternalError
 
 class TestTLSExtension(unittest.TestCase):
@@ -162,10 +162,9 @@ class TestTLSExtension(unittest.TestCase):
 
         ext = TLSExtension().parse(p)
 
-        # XXX unsupported
-        self.assertIsInstance(ext, TLSExtension)
+        self.assertIsInstance(ext, ECPointFormatsExtension)
 
-        #self.assertEqual(ext.formats, [PointFormats.uncompressed])
+        self.assertEqual(ext.formats, [ECPointFormat.uncompressed])
 
     def test_parse_with_signature_algorithms(self):
         p = Parser(bytearray(
@@ -1175,6 +1174,41 @@ class TestSupportedGroups(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             ext.parse(parser)
+
+class TestECPointFormatsExtension(unittest.TestCase):
+    def test___init__(self):
+        ext = ECPointFormatsExtension()
+
+        self.assertIsNotNone(ext)
+        self.assertEqual(ext.ext_data, bytearray(0))
+        self.assertEqual(ext.ext_type, 11)
+
+    def test_write(self):
+        ext = ECPointFormatsExtension()
+        ext.create([ECPointFormat.ansiX962_compressed_prime])
+
+        self.assertEqual(bytearray(
+            b'\x00\x0b' +           # type of extension
+            b'\x00\x02' +           # overall length
+            b'\x01' +               # length of list
+            b'\x01'), ext.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(b'\x01\x00'))
+
+        ext = ECPointFormatsExtension()
+        self.assertIsNone(ext.formats)
+        ext.parse(parser)
+        self.assertEqual(ext.formats, [ECPointFormat.uncompressed])
+
+    def test_parse_with_empty_data(self):
+        parser = Parser(bytearray(0))
+
+        ext = ECPointFormatsExtension()
+
+        ext.parse(parser)
+
+        self.assertIsNone(ext.formats)
 
 if __name__ == '__main__':
     unittest.main()
