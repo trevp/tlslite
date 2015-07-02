@@ -50,6 +50,7 @@ class ExtensionType:    # RFC 6066 / 4366
     encrypt_then_mac = 22 # RFC 7366
     tack = 0xF300
     supports_npn = 13172
+    renegotiation_info = 0xff01
 
 class HashAlgorithm:
 

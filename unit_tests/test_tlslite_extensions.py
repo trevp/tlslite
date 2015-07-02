@@ -136,6 +136,9 @@ class TestTLSExtension(unittest.TestCase):
         # XXX not supported
         self.assertIsInstance(ext, TLSExtension)
 
+        self.assertEqual(ext.ext_data, bytearray(b'\x00'))
+        self.assertEqual(ext.ext_type, 0xff01)
+
     def test_parse_with_elliptic_curves(self):
         p = Parser(bytearray(
             b'\x00\x0a' +   # type of extension
