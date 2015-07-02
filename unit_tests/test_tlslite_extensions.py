@@ -10,9 +10,11 @@ except ImportError:
     import unittest
 from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension,\
-        TACKExtension, SupportedGroupsExtension, ECPointFormatsExtension
+        TACKExtension, SupportedGroupsExtension, ECPointFormatsExtension,\
+        SupportedGroupsExtension, SignatureAlgorithmsExtension
 from tlslite.utils.codec import Parser
-from tlslite.constants import NameType, ExtensionType, GroupName, ECPointFormat
+from tlslite.constants import NameType, ExtensionType, GroupName,\
+        ECPointFormat, HashAlgorithm, SignatureAlgorithm
 from tlslite.errors import TLSInternalError
 
 class TestTLSExtension(unittest.TestCase):
@@ -188,8 +190,34 @@ class TestTLSExtension(unittest.TestCase):
 
         ext = TLSExtension().parse(p)
 
-        # XXX unsupported
-        self.assertIsInstance(ext, TLSExtension)
+        self.assertIsInstance(ext, SignatureAlgorithmsExtension)
+
+        self.assertEqual(ext.sigalgs, [(HashAlgorithm.sha256,
+                                        SignatureAlgorithm.rsa),
+                                       (HashAlgorithm.sha256,
+                                        SignatureAlgorithm.dsa),
+                                       (HashAlgorithm.sha256,
+                                        SignatureAlgorithm.ecdsa),
+                                       (HashAlgorithm.sha384,
+                                        SignatureAlgorithm.rsa),
+                                       (HashAlgorithm.sha384,
+                                        SignatureAlgorithm.ecdsa),
+                                       (HashAlgorithm.sha512,
+                                        SignatureAlgorithm.rsa),
+                                       (HashAlgorithm.sha512,
+                                        SignatureAlgorithm.ecdsa),
+                                       (HashAlgorithm.sha224,
+                                        SignatureAlgorithm.rsa),
+                                       (HashAlgorithm.sha224,
+                                        SignatureAlgorithm.dsa),
+                                       (HashAlgorithm.sha224,
+                                        SignatureAlgorithm.ecdsa),
+                                       (HashAlgorithm.sha1,
+                                        SignatureAlgorithm.rsa),
+                                       (HashAlgorithm.sha1,
+                                        SignatureAlgorithm.dsa),
+                                       (HashAlgorithm.sha1,
+                                        SignatureAlgorithm.ecdsa)])
 
     def test_equality(self):
         a = TLSExtension().create(0, bytearray(0))
@@ -1209,6 +1237,48 @@ class TestECPointFormatsExtension(unittest.TestCase):
         ext.parse(parser)
 
         self.assertIsNone(ext.formats)
+
+class TestSignatureAlgorithmsExtension(unittest.TestCase):
+    def test__init__(self):
+        ext = SignatureAlgorithmsExtension()
+
+        self.assertIsNotNone(ext)
+        self.assertIsNone(ext.sigalgs)
+        self.assertEqual(ext.ext_type, 13)
+        self.assertEqual(ext.ext_data, bytearray(0))
+
+    def test_write(self):
+        ext = SignatureAlgorithmsExtension()
+        ext.create([(HashAlgorithm.sha1, SignatureAlgorithm.rsa),
+                    (HashAlgorithm.sha256, SignatureAlgorithm.rsa)])
+
+        self.assertEqual(bytearray(
+            b'\x00\x0d' +           # type of extension
+            b'\x00\x06' +           # overall length of extension
+            b'\x00\x04' +           # array length
+            b'\x02\x01' +           # SHA1+RSA
+            b'\x04\x01'             # SHA256+RSA
+            ), ext.write())
+
+    def test_parse_with_empty_data(self):
+        parser = Parser(bytearray(0))
+
+        ext = SignatureAlgorithmsExtension()
+
+        ext.parse(parser)
+
+        self.assertIsNone(ext.sigalgs)
+
+    def test_parse_with_extra_data_at_end(self):
+        parser = Parser(bytearray(
+            b'\x00\x02' +           # array length
+            b'\x04\x01' +           # SHA256+RSA
+            b'\xff\xff'))           # padding
+
+        ext = SignatureAlgorithmsExtension()
+
+        with self.assertRaises(SyntaxError):
+            ext.parse(parser)
 
 if __name__ == '__main__':
     unittest.main()

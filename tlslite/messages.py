@@ -909,12 +909,7 @@ class CertificateRequest(HandshakeMsg):
         w = Writer()
         w.addVarSeq(self.certificate_types, 1, 1)
         if self.version >= (3,3):
-            w2 = Writer()
-            for (hash_alg, signature) in self.supported_signature_algs:
-                w2.add(hash_alg, 1)
-                w2.add(signature, 1)
-            w.add(len(w2.bytes), 2)
-            w.bytes += w2.bytes
+            w.addVarTupleSeq(self.supported_signature_algs, 1, 2)
         caLength = 0
         #determine length
         for ca_dn in self.certificate_authorities:

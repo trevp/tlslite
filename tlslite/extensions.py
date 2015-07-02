@@ -1050,12 +1050,81 @@ class ECPointFormatsExtension(TLSExtension):
 
         return self
 
+class SignatureAlgorithmsExtension(TLSExtension):
+
+    """
+    Client side list of supported signature algorithms.
+
+    Should be used by server to select certificate and signing method for
+    Server Key Exchange messages. In practice used only for the latter.
+
+    See RFC5246.
+    """
+
+    def __init__(self):
+        """Create instance of class"""
+        self.sigalgs = None
+
+    @property
+    def ext_type(self):
+        """
+        Type of extension, in this case - 13
+
+        @rtype: int
+        """
+        return ExtensionType.signature_algorithms
+
+    @property
+    def ext_data(self):
+        """
+        Return raw encoding of the exteion
+
+        @rtype: bytearray
+        """
+        if self.sigalgs is None:
+            return bytearray(0)
+
+        writer = Writer()
+        # elements 1 byte each, overall length encoded in 2 bytes
+        writer.addVarTupleSeq(self.sigalgs, 1, 2)
+        return writer.bytes
+
+    def create(self, sigalgs):
+        """
+        Set the list of supported algorithm types
+
+        @type sigalgs: list of tuples
+        @param sigalgs: list of pairs of a hash algorithm and signature
+        algorithm
+        """
+        self.sigalgs = sigalgs
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on the wire data
+
+        @type parser: L{Parser}
+        @rtype: SignatureAlgorithmsExtension
+        """
+        if parser.getRemainingLength() == 0:
+            self.sigalgs = None
+            return self
+
+        self.sigalgs = parser.getVarTupleList(1, 2, 2)
+
+        if parser.getRemainingLength() != 0:
+            raise SyntaxError()
+
+        return self
+
 TLSExtension._universal_extensions = {
         ExtensionType.server_name : SNIExtension,
         ExtensionType.cert_type : ClientCertTypeExtension,
         ExtensionType.supported_groups : SupportedGroupsExtension,
         ExtensionType.ec_point_formats : ECPointFormatsExtension,
         ExtensionType.srp : SRPExtension,
+        ExtensionType.signature_algorithms : SignatureAlgorithmsExtension,
         ExtensionType.supports_npn : NPNExtension}
 
 TLSExtension._server_extensions = {
