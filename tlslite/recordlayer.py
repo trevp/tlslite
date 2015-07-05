@@ -418,41 +418,73 @@ class RecordLayer(object):
     # receiving messages
     #
 
+    def _decryptStreamThenMAC(self, recordType, data):
+        """Decrypt a stream cipher and check MAC"""
+        if self._readState.encContext:
+            assert self.version in ((3, 0), (3, 1), (3, 2), (3, 3))
+
+            data = self._readState.encContext.decrypt(data)
+
+        if self._readState.macContext:
+            #Check MAC
+            macGood = True
+            macLength = self._readState.macContext.digest_size
+            endLength = macLength
+            if endLength > len(data):
+                macGood = False
+            else:
+                #Read MAC
+                startIndex = len(data) - endLength
+                endIndex = startIndex + macLength
+                checkBytes = data[startIndex : endIndex]
+
+                #Calculate MAC
+                seqnumBytes = self._readState.getSeqNumBytes()
+                data = data[:-endLength]
+                mac = self._readState.macContext.copy()
+                macBytes = self._calculateMAC(mac, seqnumBytes, recordType,
+                                              data)
+
+                #Compare MACs
+                if macBytes != checkBytes:
+                    macGood = False
+
+            if not macGood:
+                raise TLSBadRecordMAC()
+
+        return data
+
+
     def _decryptThenMAC(self, recordType, data):
         """Decrypt data, check padding and MAC"""
         totalPaddingLength = 0
         paddingGood = True
         if self._readState.encContext:
             assert self.version in ((3, 0), (3, 1), (3, 2), (3, 3))
+            assert self._readState.encContext.isBlockCipher
 
-            #Decrypt if it's a block cipher
-            if self._readState.encContext.isBlockCipher:
-                blockLength = self._readState.encContext.block_size
-                if len(data) % blockLength != 0:
-                    raise TLSDecryptionFailed()
-                data = self._readState.encContext.decrypt(data)
-                if self.version >= (3, 2): #For TLS 1.1, remove explicit IV
-                    data = data[self._readState.encContext.block_size : ]
+            blockLength = self._readState.encContext.block_size
+            if len(data) % blockLength != 0:
+                raise TLSDecryptionFailed()
+            data = self._readState.encContext.decrypt(data)
+            if self.version >= (3, 2): #For TLS 1.1, remove explicit IV
+                data = data[self._readState.encContext.block_size : ]
 
-                #Check padding
-                paddingGood = True
-                paddingLength = data[-1]
-                if (paddingLength+1) > len(data):
-                    paddingGood = False
-                    totalPaddingLength = 0
-                else:
-                    totalPaddingLength = paddingLength+1
-                    if self.version != (3, 0):
-                        # check if all padding bytes have correct value
-                        paddingBytes = data[-totalPaddingLength:-1]
-                        for byte in paddingBytes:
-                            if byte != paddingLength:
-                                paddingGood = False
-                                totalPaddingLength = 0
-
-            #Decrypt if it's a stream cipher
+            #Check padding
+            paddingGood = True
+            paddingLength = data[-1]
+            if (paddingLength+1) > len(data):
+                paddingGood = False
+                totalPaddingLength = 0
             else:
-                data = self._readState.encContext.decrypt(data)
+                totalPaddingLength = paddingLength+1
+                if self.version != (3, 0):
+                    # check if all padding bytes have correct value
+                    paddingBytes = data[-totalPaddingLength:-1]
+                    for byte in paddingBytes:
+                        if byte != paddingLength:
+                            paddingGood = False
+                            totalPaddingLength = 0
 
         if self._readState.macContext:
             #Check MAC
@@ -592,8 +624,12 @@ class RecordLayer(object):
             data = self._decryptAndUnseal(header.type, data)
         elif self.encryptThenMAC:
             data = self._macThenDecrypt(header.type, data)
-        else:
+        elif self._readState and \
+                self._readState.encContext and \
+                self._readState.encContext.isBlockCipher:
             data = self._decryptThenMAC(header.type, data)
+        else:
+            data = self._decryptStreamThenMAC(header.type, data)
 
         yield (header, Parser(data))
 
