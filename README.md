@@ -515,6 +515,7 @@ RFC 7366 and allows refusing connections which don't use them.
 ===========
 
 0.5.0-alpha - xx/xx/xxxx - Hubert Kario
+ - implement AES-256-GCM ciphersuites and SHA384 PRF
  - implement AES-GCM cipher and AES-128-GCM ciphersuites (David Benjamin -
    Chromium)
  - implement client side DHE_RSA key exchange and DHE with certificate based

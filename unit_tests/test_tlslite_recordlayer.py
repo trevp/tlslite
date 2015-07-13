@@ -789,6 +789,37 @@ class TestRecordLayer(unittest.TestCase):
                 else:
                     break
 
+    def test_sendRecord_with_AES256GCM(self):
+        sock = MockSocket(bytearray(0))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 3)
+
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeWriteState()
+
+        app_data = ApplicationData().create(bytearray(b'test'))
+
+        self.assertIsNotNone(app_data)
+
+        for result in recordLayer.sendRecord(app_data):
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+
+        self.assertEqual(len(sock.sent), 1)
+        self.assertEqual(sock.sent[0][:5], bytearray(
+            b'\x17' +           # application data
+            b'\x03\x03' +       # TLSv1.2
+            b'\x00\x1c'         # length
+            ))
+        self.assertEqual(sock.sent[0][5:], bytearray(
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\xb5c\x15\x8c' +
+            b'\xe3\x92H6l\x90\x19\xef\x96\xbfT}\xe8\xbaE\xa3'))
 
     # tlslite has no pure python implementation of 3DES
     @unittest.skipUnless(cryptomath.m2cryptoLoaded or cryptomath.pycryptoLoaded,

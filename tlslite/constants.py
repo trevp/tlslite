@@ -195,6 +195,13 @@ class CipherSuite:
     TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA = 0xC021
     ietfNames[0xC021] = 'TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA'
 
+    # RFC 5246 - TLS v1.2 Protocol
+    TLS_RSA_WITH_NULL_MD5 = 0x0001
+    ietfNames[0x0001] = 'TLS_RSA_WITH_NULL_MD5'
+    TLS_RSA_WITH_NULL_SHA = 0x0002
+    ietfNames[0x0002] = 'TLS_RSA_WITH_NULL_SHA'
+    TLS_RSA_WITH_NULL_SHA256 = 0x003B
+    ietfNames[0x003B] = 'TLS_RSA_WITH_NULL_SHA256'
 
     # RFC 5246 - TLS v1.2 Protocol
     TLS_RSA_WITH_3DES_EDE_CBC_SHA = 0x000A
@@ -219,10 +226,22 @@ class CipherSuite:
     ietfNames[0x0039] = 'TLS_DHE_RSA_WITH_AES_256_CBC_SHA'
 
     # RFC 5246 - TLS v1.2 Protocol
+    TLS_DH_ANON_WITH_RC4_128_MD5 = 0x0018
+    ietfNames[0x0018] = 'TLS_DH_ANON_WITH_RC4_128_MD5'
+    TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA = 0x001B
+    ietfNames[0x001B] = 'TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA'
     TLS_DH_ANON_WITH_AES_128_CBC_SHA = 0x0034
     ietfNames[0x0034] = 'TLS_DH_ANON_WITH_AES_128_CBC_SHA'
     TLS_DH_ANON_WITH_AES_256_CBC_SHA = 0x003A
     ietfNames[0x003A] = 'TLS_DH_ANON_WITH_AES_256_CBC_SHA'
+    TLS_DH_ANON_WITH_AES_128_CBC_SHA256 = 0x006C
+    ietfNames[0x006C] = 'TLS_DH_ANON_WITH_AES_128_CBC_SHA256'
+    TLS_DH_ANON_WITH_AES_256_CBC_SHA256 = 0x006D
+    ietfNames[0x006D] = 'TLS_DH_ANON_WITH_AES_256_CBC_SHA256'
+    TLS_DH_ANON_WITH_AES_128_GCM_SHA256 = 0x00A6
+    ietfNames[0x00A6] = 'TLS_DH_ANON_WITH_AES_128_GCM_SHA256'
+    TLS_DH_ANON_WITH_AES_256_GCM_SHA384 = 0x00A7
+    ietfNames[0x00A7] = 'TLS_DH_ANON_WITH_AES_256_GCM_SHA384'
 
     # RFC 5246 - TLS v1.2 Protocol
     TLS_RSA_WITH_AES_128_CBC_SHA256 = 0x003C
@@ -241,6 +260,10 @@ class CipherSuite:
     ietfNames[0x009C] = 'TLS_RSA_WITH_AES_128_GCM_SHA256'
     TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 = 0x009E
     ietfNames[0x009E] = 'TLS_DHE_RSA_WITH_AES_128_GCM_SHA256'
+    TLS_RSA_WITH_AES_256_GCM_SHA384 = 0x009D
+    ietfNames[0x009D] = 'TLS_RSA_WITH_AES_256_GCM_SHA384'
+    TLS_DHE_RSA_WITH_AES_256_GCM_SHA384 = 0x009F
+    ietfNames[0x009F] = 'TLS_DHE_RSA_WITH_AES_256_GCM_SHA384'
 
     #
     # Define cipher suite families below
@@ -252,6 +275,7 @@ class CipherSuite:
     tripleDESSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA)
+    tripleDESSuites.append(TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA)
 
     # AES-128 CBC ciphers
     aes128Suites = []
@@ -262,6 +286,7 @@ class CipherSuite:
     aes128Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
     aes128Suites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA256)
+    aes128Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA256)
 
     # AES-256 CBC ciphers
     aes256Suites = []
@@ -272,16 +297,31 @@ class CipherSuite:
     aes256Suites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
     aes256Suites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
+    aes256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA256)
 
     # AES-128 GCM ciphers
     aes128GcmSuites = []
     aes128GcmSuites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
     aes128GcmSuites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
+    aes128GcmSuites.append(TLS_DH_ANON_WITH_AES_128_GCM_SHA256)
+
+    # AES-256-GCM ciphers (implicit SHA384, see sha384PrfSuites)
+    aes256GcmSuites = []
+    aes256GcmSuites.append(TLS_RSA_WITH_AES_256_GCM_SHA384)
+    aes256GcmSuites.append(TLS_DHE_RSA_WITH_AES_256_GCM_SHA384)
+    aes256GcmSuites.append(TLS_DH_ANON_WITH_AES_256_GCM_SHA384)
 
     # RC4 128 stream cipher
     rc4Suites = []
+    rc4Suites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_MD5)
+
+    # no encryption
+    nullSuites = []
+    nullSuites.append(TLS_RSA_WITH_NULL_MD5)
+    nullSuites.append(TLS_RSA_WITH_NULL_SHA)
+    nullSuites.append(TLS_RSA_WITH_NULL_SHA256)
 
     # SHA-1 HMAC, protocol default PRF
     shaSuites = []
@@ -300,6 +340,8 @@ class CipherSuite:
     shaSuites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
+    shaSuites.append(TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA)
+    shaSuites.append(TLS_RSA_WITH_NULL_SHA)
 
     # SHA-256 HMAC, SHA-256 PRF
     sha256Suites = []
@@ -309,12 +351,28 @@ class CipherSuite:
     sha256Suites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
     sha256Suites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
     sha256Suites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
+    sha256Suites.append(TLS_RSA_WITH_NULL_SHA256)
+    sha256Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA256)
+    sha256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA256)
 
-    aeadSuites = aes128GcmSuites
+    # SHA-384 HMAC, SHA-384 PRF
+    sha384Suites = []
+
+    # AEAD integrity, any PRF
+    aeadSuites = []
+    aeadSuites.extend(aes128GcmSuites)
+    aeadSuites.extend(aes256GcmSuites)
+
+    # TLS1.2 with SHA384 PRF
+    sha384PrfSuites = []
+    sha384PrfSuites.extend(sha384Suites)
+    sha384PrfSuites.extend(aes256GcmSuites)
 
     # MD-5 HMAC, protocol default PRF
     md5Suites = []
+    md5Suites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
     md5Suites.append(TLS_RSA_WITH_RC4_128_MD5)
+    md5Suites.append(TLS_RSA_WITH_NULL_MD5)
 
     # SSL3, TLS1.0, TLS1.1 and TLS1.2 compatible ciphers
     ssl3Suites = []
@@ -324,6 +382,7 @@ class CipherSuite:
     # TLS1.2 specific ciphersuites
     tls12Suites = []
     tls12Suites.extend(sha256Suites)
+    tls12Suites.extend(sha384Suites)
     tls12Suites.extend(aeadSuites)
 
     @staticmethod
@@ -346,16 +405,20 @@ class CipherSuite:
         macSuites = []
         if "sha" in macNames:
             macSuites += CipherSuite.shaSuites
-        if "sha256" in macNames and version >= (3,3):
+        if "sha256" in macNames and version >= (3, 3):
             macSuites += CipherSuite.sha256Suites
+        if "sha384" in macNames and version >= (3, 3):
+            macSuites += CipherSuite.sha384Suites
         if "md5" in macNames:
             macSuites += CipherSuite.md5Suites
-        if "aead" in macNames and version >= (3,3):
+        if "aead" in macNames and version >= (3, 3):
             macSuites += CipherSuite.aeadSuites
 
         cipherSuites = []
-        if "aes128gcm" in cipherNames and version >= (3,3):
+        if "aes128gcm" in cipherNames and version >= (3, 3):
             cipherSuites += CipherSuite.aes128GcmSuites
+        if "aes256gcm" in cipherNames and version >= (3, 3):
+            cipherSuites += CipherSuite.aes256GcmSuites
         if "aes128" in cipherNames:
             cipherSuites += CipherSuite.aes128Suites
         if "aes256" in cipherNames:
@@ -364,6 +427,8 @@ class CipherSuite:
             cipherSuites += CipherSuite.tripleDESSuites
         if "rc4" in cipherNames:
             cipherSuites += CipherSuite.rc4Suites
+        if "null" in cipherNames:
+            cipherSuites += CipherSuite.nullSuites
 
         keyExchangeSuites = []
         if "rsa" in keyExchangeNames:
@@ -408,6 +473,7 @@ class CipherSuite:
 
     # RSA key exchange, RSA authentication
     certSuites = []
+    certSuites.append(TLS_RSA_WITH_AES_256_GCM_SHA384)
     certSuites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
     certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
     certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
@@ -416,6 +482,9 @@ class CipherSuite:
     certSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_MD5)
+    certSuites.append(TLS_RSA_WITH_NULL_MD5)
+    certSuites.append(TLS_RSA_WITH_NULL_SHA)
+    certSuites.append(TLS_RSA_WITH_NULL_SHA256)
 
     @staticmethod
     def getCertSuites(settings, version=None):
@@ -423,6 +492,7 @@ class CipherSuite:
 
     # FFDHE key exchange, RSA authentication
     dheCertSuites = []
+    dheCertSuites.append(TLS_DHE_RSA_WITH_AES_256_GCM_SHA384)
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA256)
@@ -441,6 +511,12 @@ class CipherSuite:
     anonSuites = []
     anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
     anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+    anonSuites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
+    anonSuites.append(TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA256)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA256)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_128_GCM_SHA256)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_256_GCM_SHA384)
 
     @staticmethod
     def getAnonSuites(settings, version=None):
@@ -450,8 +526,12 @@ class CipherSuite:
 
     @staticmethod
     def canonicalCipherName(ciphersuite):
-        "Return the canonical name of the cipher whose number is provided."
-        if ciphersuite in CipherSuite.aes128Suites:
+        """Return the canonical name of the cipher whose number is provided."""
+        if ciphersuite in CipherSuite.aes128GcmSuites:
+            return "aes128gcm"
+        elif ciphersuite in CipherSuite.aes256GcmSuites:
+            return "aes256gcm"
+        elif ciphersuite in CipherSuite.aes128Suites:
             return "aes128"
         elif ciphersuite in CipherSuite.aes256Suites:
             return "aes256"
@@ -459,13 +539,19 @@ class CipherSuite:
             return "rc4"
         elif ciphersuite in CipherSuite.tripleDESSuites:
             return "3des"
+        elif ciphersuite in CipherSuite.nullSuites:
+            return "null"
         else:
             return None
 
     @staticmethod
     def canonicalMacName(ciphersuite):
-        "Return the canonical name of the MAC whose number is provided."
-        if ciphersuite in CipherSuite.shaSuites:
+        """Return the canonical name of the MAC whose number is provided."""
+        if ciphersuite in CipherSuite.sha384Suites:
+            return "sha384"
+        elif ciphersuite in CipherSuite.sha256Suites:
+            return "sha256"
+        elif ciphersuite in CipherSuite.shaSuites:
             return "sha"
         elif ciphersuite in CipherSuite.md5Suites:
             return "md5"

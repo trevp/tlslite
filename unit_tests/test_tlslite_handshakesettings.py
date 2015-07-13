@@ -69,7 +69,7 @@ class TestHandshakeSettings(unittest.TestCase):
 
     def test_cipherNames_with_unknown_name(self):
         hs = HandshakeSettings()
-        hs.cipherNames = ["aes256gcm", "aes256"]
+        hs.cipherNames = ["camellia256gcm", "aes256"]
 
         with self.assertRaises(ValueError):
             hs.validate()

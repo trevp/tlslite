@@ -11,7 +11,8 @@ from .constants import CertificateType
 from .utils import cryptomath
 from .utils import cipherfactory
 
-CIPHER_NAMES = ["aes128gcm", "rc4", "aes256", "aes128", "3des"]
+CIPHER_NAMES = ["aes256gcm", "aes128gcm", "rc4", "aes256", "aes128", "3des"]
+ALL_CIPHER_NAMES = CIPHER_NAMES + ["null"] # require encryption by default
 MAC_NAMES = ["sha", "sha256", "aead"] # Don't allow "md5" by default.
 ALL_MAC_NAMES = MAC_NAMES + ["md5"]
 KEY_EXCHANGE_NAMES = ["rsa", "dhe_rsa", "srp_sha", "srp_sha_rsa", "dh_anon"]
@@ -161,7 +162,7 @@ class HandshakeSettings(object):
         if other.maxKeySize < other.minKeySize:
             raise ValueError("maxKeySize smaller than minKeySize")
         for s in other.cipherNames:
-            if s not in CIPHER_NAMES:
+            if s not in ALL_CIPHER_NAMES:
                 raise ValueError("Unknown cipher name: '%s'" % s)
         for s in other.macNames:
             if s not in ALL_MAC_NAMES:
@@ -186,8 +187,9 @@ class HandshakeSettings(object):
             raise ValueError("maxVersion set incorrectly")
 
         if other.maxVersion < (3,3):
-            # No sha256 pre TLS 1.2
-            other.macNames = [e for e in self.macNames if e != "sha256"]
+            # No sha-2 and AEAD pre TLS 1.2
+            other.macNames = [e for e in self.macNames if \
+                              e == "sha" or e == "md5"]
 
         if other.useEncryptThenMAC not in (True, False):
             raise ValueError("useEncryptThenMAC can only be True or False")
