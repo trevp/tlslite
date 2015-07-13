@@ -1118,7 +1118,8 @@ class SignatureAlgorithmsExtension(TLSExtension):
 
         return self
 
-TLSExtension._universal_extensions = {
+TLSExtension._universal_extensions = \
+    {
         ExtensionType.server_name : SNIExtension,
         ExtensionType.cert_type : ClientCertTypeExtension,
         ExtensionType.supported_groups : SupportedGroupsExtension,
@@ -1127,6 +1128,7 @@ TLSExtension._universal_extensions = {
         ExtensionType.signature_algorithms : SignatureAlgorithmsExtension,
         ExtensionType.supports_npn : NPNExtension}
 
-TLSExtension._server_extensions = {
+TLSExtension._server_extensions = \
+    {
         ExtensionType.cert_type : ServerCertTypeExtension,
         ExtensionType.tack : TACKExtension}
