@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.5.0-alpha3                                   2015-06-20
+tlslite-ng version 0.5.0-alpha4                                   2015-07-13
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -501,20 +501,35 @@ may not work with all asyncore.dispatcher subclasses.
 tlslite-ng is beta-quality code. It hasn't received much security analysis. Use
 at your own risk.
 
-tlslite-ng does NOT verify certificates by default.
+tlslite-ng **CANNOT** verify certificates - you must use external means to
+check if the certificate is the expected one.
 
-tlslite-ng's pure-python ciphers are probably vulnerable to timing attacks.
+Because python execution environmnet uses hash tables to store variables (that
+includes functions, objects and classes) it's very hard to create
+implementations that are timing attack resistant. This includes both the
+pure-python implementation of ciphers (i.e. AES or 3DES) and the HMAC and
+padding check of ciphers working in CBC MAC-then-encrypt mode.
 
-tlslite-ng **is** vulnerable to the "Lucky 13" timing attack if AES or 3DES
-are used, or the weak cipher RC4 otherwise.  This unhappy situation will remain
-until tlslite-ng implements authenticated-encryption ciphersuites (like GCM), or
-RFC 7366 and allows refusing connections which don't use them.
-
+In other words, pure-python (tlslite-ng internal) implementations of all
+ciphers, as well as all CBC mode ciphers working in MAC-then-encrypt mode
+are **NOT** secure. Don't use them. Prefer AEAD ciphersuites (AES-GCM) or
+encrypt-then-MAC mode for CBC ciphers.
 
 12 History
 ===========
 
 0.5.0-alpha - xx/xx/xxxx - Hubert Kario
+ - remove most CBC MAC-ing and padding timing side-channel leaks (should fix
+   CVE-2013-0169, a.k.a. Lucky13)
+ - add support for NULL encryption - TLS_RSA_WITH_NULL_MD5,
+   TLS_RSA_WITH_NULL_SHA and TLS_RSA_WITH_NULL_SHA256 ciphersuites
+ - add more ADH ciphers (TLS_DH_ANON_WITH_RC4_128_MD5,
+   TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA, TLS_DH_ANON_WITH_AES_128_CBC_SHA256,
+   TLS_DH_ANON_WITH_AES_256_CBC_SHA256, TLS_DH_ANON_WITH_AES_128_GCM_SHA256,
+   TLS_DH_ANON_WITH_AES_256_GCM_SHA384)
+ - implement a TLS record layer abstraction that makes it very easy to handle
+   TLS handshake and alert protocol messages (MessageSocket)
+ - fix reqCert option in tls.py server
  - implement AES-256-GCM ciphersuites and SHA384 PRF
  - implement AES-GCM cipher and AES-128-GCM ciphersuites (David Benjamin -
    Chromium)
