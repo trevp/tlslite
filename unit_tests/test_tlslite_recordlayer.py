@@ -1170,6 +1170,61 @@ class TestRecordLayer(unittest.TestCase):
         self.assertEqual((3, 1), header.version)
         self.assertEqual(bytearray(b'test'), parser.bytes)
 
+    def test_recvRecord_with_stream_cipher_and_tls1_0_and_incorrect_data(self):
+        sock = MockSocket(bytearray(
+            b'\x17' +           # application data
+            b'\x03\x01' +       # TLSv1.0
+            b'\x00\x18' +       # length (24 bytes)
+            # data from test_sendRecord_with_stream_cipher_and_tls1_0
+            # last byte changed from \x1e to \x0e
+            b'B\xb8H\xc6\xd7\\\x01\xe27\xa9\x86\xf2\xfdm!\x1d' +
+            b'\xa1\xaf]Q%y5\x0e'
+            ))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.client = False
+        recordLayer.version = (3, 1)
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_RC4_128_SHA,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeReadState()
+
+        with self.assertRaises(TLSBadRecordMAC):
+            for result in recordLayer.recvRecord():
+                if result in (0, 1):
+                    self.assertTrue(False, "Blocking read")
+                else:
+                    break
+
+    def test_recvRecord_with_stream_cipher_and_tls1_0_and_too_short_data(self):
+        sock = MockSocket(bytearray(
+            b'\x17' +           # application data
+            b'\x03\x01' +       # TLSv1.0
+            b'\x00\x13' +       # length (19 bytes)
+            # data from test_sendRecord_with_stream_cipher_and_tls1_0
+            b'B\xb8H\xc6\xd7\\\x01\xe27\xa9\x86\xf2\xfdm!\x1d' +
+            b'\xa1\xaf]'
+            ))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.client = False
+        recordLayer.version = (3, 1)
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_RC4_128_SHA,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeReadState()
+
+        with self.assertRaises(TLSBadRecordMAC):
+            for result in recordLayer.recvRecord():
+                if result in (0, 1):
+                    self.assertTrue(False, "Blocking read")
+                else:
+                    break
+
     def test_recvRecord_with_invalid_length_payload(self):
         sock = MockSocket(bytearray(
             b'\x17' +           # application data

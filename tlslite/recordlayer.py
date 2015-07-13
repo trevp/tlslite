@@ -14,6 +14,7 @@ from .utils.cipherfactory import createAESGCM, createAES, createRC4, \
 from .utils.codec import Parser, Writer
 from .utils.compat import compatHMAC
 from .utils.cryptomath import getRandomBytes
+from .utils.constanttime import ct_compare_digest, ct_check_cbc_mac_and_pad
 from .errors import TLSRecordOverflow, TLSIllegalParameterException,\
         TLSAbruptCloseError, TLSDecryptionFailed, TLSBadRecordMAC
 from .mathtls import createMAC_SSL, createHMAC, PRF_SSL, PRF, PRF_1_2, \
@@ -418,47 +419,18 @@ class RecordLayer(object):
     # receiving messages
     #
 
-    def _decryptThenMAC(self, recordType, data):
-        """Decrypt data, check padding and MAC"""
-        totalPaddingLength = 0
-        paddingGood = True
+    def _decryptStreamThenMAC(self, recordType, data):
+        """Decrypt a stream cipher and check MAC"""
         if self._readState.encContext:
             assert self.version in ((3, 0), (3, 1), (3, 2), (3, 3))
 
-            #Decrypt if it's a block cipher
-            if self._readState.encContext.isBlockCipher:
-                blockLength = self._readState.encContext.block_size
-                if len(data) % blockLength != 0:
-                    raise TLSDecryptionFailed()
-                data = self._readState.encContext.decrypt(data)
-                if self.version >= (3, 2): #For TLS 1.1, remove explicit IV
-                    data = data[self._readState.encContext.block_size : ]
-
-                #Check padding
-                paddingGood = True
-                paddingLength = data[-1]
-                if (paddingLength+1) > len(data):
-                    paddingGood = False
-                    totalPaddingLength = 0
-                else:
-                    totalPaddingLength = paddingLength+1
-                    if self.version != (3, 0):
-                        # check if all padding bytes have correct value
-                        paddingBytes = data[-totalPaddingLength:-1]
-                        for byte in paddingBytes:
-                            if byte != paddingLength:
-                                paddingGood = False
-                                totalPaddingLength = 0
-
-            #Decrypt if it's a stream cipher
-            else:
-                data = self._readState.encContext.decrypt(data)
+            data = self._readState.encContext.decrypt(data)
 
         if self._readState.macContext:
             #Check MAC
             macGood = True
             macLength = self._readState.macContext.digest_size
-            endLength = macLength + totalPaddingLength
+            endLength = macLength
             if endLength > len(data):
                 macGood = False
             else:
@@ -475,11 +447,51 @@ class RecordLayer(object):
                                               data)
 
                 #Compare MACs
-                if macBytes != checkBytes:
+                if not ct_compare_digest(macBytes, checkBytes):
                     macGood = False
 
-            if not (paddingGood and macGood):
+            if not macGood:
                 raise TLSBadRecordMAC()
+
+        return data
+
+
+    def _decryptThenMAC(self, recordType, data):
+        """Decrypt data, check padding and MAC"""
+        if self._readState.encContext:
+            assert self.version in ((3, 0), (3, 1), (3, 2), (3, 3))
+            assert self._readState.encContext.isBlockCipher
+            assert self._readState.macContext
+
+            #
+            # decrypt the record
+            #
+            blockLength = self._readState.encContext.block_size
+            if len(data) % blockLength != 0:
+                raise TLSDecryptionFailed()
+            data = self._readState.encContext.decrypt(data)
+            if self.version >= (3, 2): #For TLS 1.1, remove explicit IV
+                data = data[self._readState.encContext.block_size : ]
+
+            #
+            # check padding and MAC
+            #
+            seqnumBytes = self._readState.getSeqNumBytes()
+
+            if not ct_check_cbc_mac_and_pad(data,
+                                            self._readState.macContext,
+                                            seqnumBytes,
+                                            recordType,
+                                            self.version):
+                raise TLSBadRecordMAC()
+
+            #
+            # strip padding and MAC
+            #
+
+            endLength = data[-1] + 1 + self._readState.macContext.digest_size
+
+            data = data[:-endLength]
 
         return data
 
@@ -503,7 +515,7 @@ class RecordLayer(object):
 
             macBytes = self._calculateMAC(mac, seqnumBytes, recordType, buf)
 
-            if macBytes != checkBytes:
+            if not ct_compare_digest(macBytes, checkBytes):
                 raise TLSBadRecordMAC("MAC mismatch")
 
         if self._readState.encContext:
@@ -592,8 +604,12 @@ class RecordLayer(object):
             data = self._decryptAndUnseal(header.type, data)
         elif self.encryptThenMAC:
             data = self._macThenDecrypt(header.type, data)
-        else:
+        elif self._readState and \
+                self._readState.encContext and \
+                self._readState.encContext.isBlockCipher:
             data = self._decryptThenMAC(header.type, data)
+        else:
+            data = self._decryptStreamThenMAC(header.type, data)
 
         yield (header, Parser(data))
 

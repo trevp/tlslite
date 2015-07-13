@@ -131,7 +131,9 @@ def makeK(N, g):
   return bytesToNumber(SHA1(numberToByteArray(N) + PAD(N, g)))
 
 def createHMAC(k, digestmod=hashlib.sha1):
-    return hmac.HMAC(k, digestmod=digestmod)
+    h = hmac.HMAC(k, digestmod=digestmod)
+    h.block_size = digestmod().block_size
+    return h
 
 def createMAC_SSL(k, digestmod=None):
     mac = MAC_SSL()
@@ -142,6 +144,7 @@ def createMAC_SSL(k, digestmod=None):
 class MAC_SSL(object):
     def create(self, k, digestmod=None):
         self.digestmod = digestmod or hashlib.sha1
+        self.block_size = self.digestmod().block_size
         # Repeat pad bytes 48 times for MD5; 40 times for other hash functions.
         self.digest_size = 16 if (self.digestmod is hashlib.md5) else 20
         repeat = 40 if self.digest_size == 20 else 48
@@ -160,6 +163,7 @@ class MAC_SSL(object):
         new.ohash = self.ohash.copy()
         new.digestmod = self.digestmod
         new.digest_size = self.digest_size
+        new.block_size = self.block_size
         return new
 
     def digest(self):
