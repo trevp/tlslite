@@ -973,14 +973,13 @@ class TLSConnection(TLSRecordLayer):
                                          premasterSecret,
                                          clientRandom,
                                          serverRandom)
-                verifyBytes = self._calcSSLHandshakeHash(masterSecret, b"")
+                verifyBytes = self._handshake_hash.digestSSL(masterSecret, b"")
             elif self.version in ((3,1), (3,2)):
-                verifyBytes = self._handshake_md5.digest() + \
-                                self._handshake_sha.digest()
+                verifyBytes = self._handshake_hash.digest()
             elif self.version == (3,3):
                 # TODO: Signature algorithm negotiation not supported.
                 signatureAlgorithm = (HashAlgorithm.sha1, SignatureAlgorithm.rsa)
-                verifyBytes = self._handshake_sha.digest()
+                verifyBytes = self._handshake_hash.digest('sha1')
                 verifyBytes = RSAKey.addPKCS1SHA1Prefix(verifyBytes)
             if self.fault == Fault.badVerifyMessage:
                 verifyBytes[0] = ((verifyBytes[0]+1) % 256)
@@ -1143,14 +1142,13 @@ class TLSConnection(TLSRecordLayer):
                                          premasterSecret,
                                          clientRandom,
                                          serverRandom)
-                verifyBytes = self._calcSSLHandshakeHash(masterSecret, b"")
+                verifyBytes = self._handshake_hash.digestSSL(masterSecret, b"")
             elif self.version in ((3,1), (3,2)):
-                verifyBytes = self._handshake_md5.digest() + \
-                                self._handshake_sha.digest()
+                verifyBytes = self._handshake_hash.digest()
             else: # self.version == (3,3):
                 # TODO: Signature algorithm negotiation not supported.
                 signatureAlgorithm = (HashAlgorithm.sha1, SignatureAlgorithm.rsa)
-                verifyBytes = self._handshake_sha.digest()
+                verifyBytes = self._handshake_hash.digest('sha1')
                 verifyBytes = RSAKey.addPKCS1SHA1Prefix(verifyBytes)
             if self.fault == Fault.badVerifyMessage:
                 verifyBytes[0] = ((verifyBytes[0]+1) % 256)
@@ -1822,12 +1820,11 @@ class TLSConnection(TLSRecordLayer):
             if self.version == (3,0):
                 masterSecret = calcMasterSecret(self.version, premasterSecret,
                                          clientHello.random, serverHello.random)
-                verifyBytes = self._calcSSLHandshakeHash(masterSecret, b"")
+                verifyBytes = self._handshake_hash.digestSSL(masterSecret, b"")
             elif self.version in ((3,1), (3,2)):
-                verifyBytes = self._handshake_md5.digest() + \
-                                self._handshake_sha.digest()
+                verifyBytes = self._handshake_hash.digest()
             elif self.version == (3,3):
-                verifyBytes = self._handshake_sha.digest()
+                verifyBytes = self._handshake_hash.digest('sha1')
                 verifyBytes = RSAKey.addPKCS1SHA1Prefix(verifyBytes)
             for result in self._getMsg(ContentType.handshake,
                                       HandshakeType.certificate_verify):
@@ -2003,7 +2000,7 @@ class TLSConnection(TLSRecordLayer):
             else:
                 senderStr = b"\x53\x52\x56\x52"
 
-            verifyData = self._calcSSLHandshakeHash(masterSecret, senderStr)
+            verifyData = self._handshake_hash.digestSSL(masterSecret, senderStr)
             return verifyData
 
         elif self.version in ((3,1), (3,2)):
@@ -2012,8 +2009,7 @@ class TLSConnection(TLSRecordLayer):
             else:
                 label = b"server finished"
 
-            handshakeHashes = self._handshake_md5.digest() + \
-                                self._handshake_sha.digest()
+            handshakeHashes = self._handshake_hash.digest()
             verifyData = PRF(masterSecret, label, handshakeHashes, 12)
             return verifyData
         elif self.version == (3,3):
@@ -2022,7 +2018,7 @@ class TLSConnection(TLSRecordLayer):
             else:
                 label = b"server finished"
 
-            handshakeHashes = self._handshake_sha256.digest()
+            handshakeHashes = self._handshake_hash.digest('sha256')
             verifyData = PRF_1_2(masterSecret, label, handshakeHashes, 12)
             return verifyData
         else:

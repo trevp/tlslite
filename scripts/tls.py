@@ -28,6 +28,7 @@ if __name__ != "__main__":
     raise "This must be run as a command, not used as a module!"
 
 from tlslite.api import *
+from tlslite.constants import CipherSuite
 from tlslite import __version__
 
 try:
@@ -164,11 +165,15 @@ def printGoodConnection(connection, seconds):
     print("  Version: %s" % connection.getVersionName())
     print("  Cipher: %s %s" % (connection.getCipherName(), 
         connection.getCipherImplementation()))
+    print("  Ciphersuite: {0}".\
+            format(CipherSuite.ietfNames[connection.session.cipherSuite]))
     if connection.session.srpUsername:
         print("  Client SRP username: %s" % connection.session.srpUsername)
     if connection.session.clientCertChain:
         print("  Client X.509 SHA1 fingerprint: %s" % 
             connection.session.clientCertChain.getFingerprint())
+    else:
+        print("  No client certificate provided by peer")
     if connection.session.serverCertChain:
         print("  Server X.509 SHA1 fingerprint: %s" % 
             connection.session.serverCertChain.getFingerprint())
@@ -263,6 +268,8 @@ def serverCmd(argv):
         print("Using verifier DB...")
     if tacks:
         print("Using Tacks...")
+    if reqCert:
+        print("Asking for client certificates...")
         
     #############
     sessionCache = SessionCache()
@@ -288,7 +295,8 @@ def serverCmd(argv):
                                               activationFlags=activationFlags,
                                               sessionCache=sessionCache,
                                               settings=settings,
-                                              nextProtos=[b"http/1.1"])
+                                              nextProtos=[b"http/1.1"],
+                                              reqCert=reqCert)
                                               # As an example (does not work here):
                                               #nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
                 stop = time.clock()

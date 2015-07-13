@@ -20,6 +20,7 @@ from .mathtls import *
 from .constants import *
 from .recordlayer import RecordLayer
 from .defragmenter import Defragmenter
+from .handshakehashes import HandshakeHashes
 
 import socket
 import traceback
@@ -119,9 +120,7 @@ class TLSRecordLayer(object):
         self.clearWriteBuffer()
 
         #Handshake digests
-        self._handshake_md5 = hashlib.md5()
-        self._handshake_sha = hashlib.sha1()
-        self._handshake_sha256 = hashlib.sha256()
+        self._handshake_hash = HandshakeHashes()
 
         #Is the connection open?
         self.closed = True #read-only
@@ -561,9 +560,7 @@ class TLSRecordLayer(object):
         contentType = msg.contentType
         #Update handshake hashes
         if contentType == ContentType.handshake:
-            self._handshake_md5.update(compat26Str(buf))
-            self._handshake_sha.update(compat26Str(buf))
-            self._handshake_sha256.update(compat26Str(buf))
+            self._handshake_hash.update(buf)
 
         #Fragment big messages
         while len(buf) > self.recordSize:
@@ -582,7 +579,7 @@ class TLSRecordLayer(object):
         """Send message, handle errors"""
 
         try:
-            for result in self._recordLayer.sendMessage(msg):
+            for result in self._recordLayer.sendRecord(msg):
                 if result in (0, 1):
                     yield result
         except socket.error:
@@ -745,9 +742,7 @@ class TLSRecordLayer(object):
                             yield result
 
                 #Update handshake hashes
-                self._handshake_md5.update(compat26Str(p.bytes))
-                self._handshake_sha.update(compat26Str(p.bytes))
-                self._handshake_sha256.update(compat26Str(p.bytes))
+                self._handshake_hash.update(p.bytes)
 
                 #Parse based on handshake type
                 if subType == HandshakeType.client_hello:
@@ -828,7 +823,7 @@ class TLSRecordLayer(object):
 
         try:
             # otherwise... read the next record
-            for result in self._recordLayer.recvMessage():
+            for result in self._recordLayer.recvRecord():
                 if result in (0, 1):
                     yield result
                 else:
@@ -874,9 +869,7 @@ class TLSRecordLayer(object):
         if not self.closed:
             raise ValueError("Renegotiation disallowed for security reasons")
         self._client = client
-        self._handshake_md5 = hashlib.md5()
-        self._handshake_sha = hashlib.sha1()
-        self._handshake_sha256 = hashlib.sha256()
+        self._handshake_hash = HandshakeHashes()
         self._defragmenter.clearBuffers()
         self.allegedSrpUsername = None
         self._refCount = 1
@@ -896,19 +889,3 @@ class TLSRecordLayer(object):
 
     def _changeReadState(self):
         self._recordLayer.changeReadState()
-
-    #Used for Finished messages and CertificateVerify messages in SSL v3
-    def _calcSSLHandshakeHash(self, masterSecret, label):
-        imac_md5 = self._handshake_md5.copy()
-        imac_sha = self._handshake_sha.copy()
-
-        imac_md5.update(compatHMAC(label + masterSecret + bytearray([0x36]*48)))
-        imac_sha.update(compatHMAC(label + masterSecret + bytearray([0x36]*40)))
-
-        md5Bytes = MD5(masterSecret + bytearray([0x5c]*48) + \
-                         bytearray(imac_md5.digest()))
-        shaBytes = SHA1(masterSecret + bytearray([0x5c]*40) + \
-                         bytearray(imac_sha.digest()))
-
-        return md5Bytes + shaBytes
-
