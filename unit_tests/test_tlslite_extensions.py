@@ -122,7 +122,7 @@ class TestTLSExtension(unittest.TestCase):
         ext = TLSExtension(server=True).parse(p)
 
         self.assertIsInstance(ext, SNIExtension)
-        self.assertEqual(ext.server_names, None)
+        self.assertIsNone(ext.server_names)
 
     def test_parse_with_renego_info_server_side(self):
         p = Parser(bytearray(
@@ -286,7 +286,7 @@ class TestSNIExtension(unittest.TestCase):
     def test___init__(self):
         server_name = SNIExtension()
 
-        self.assertEqual(None, server_name.server_names)
+        self.assertIsNone(server_name.server_names)
         self.assertEqual(tuple(), server_name.host_names)
         # properties inherited from TLSExtension:
         self.assertEqual(0, server_name.ext_type)
@@ -296,7 +296,7 @@ class TestSNIExtension(unittest.TestCase):
         server_name = SNIExtension()
         server_name = server_name.create()
 
-        self.assertEqual(None, server_name.server_names)
+        self.assertIsNone(server_name.server_names)
         self.assertEqual(tuple(), server_name.host_names)
 
     def test_create_with_hostname(self):
@@ -633,7 +633,7 @@ class TestClientCertTypeExtension(unittest.TestCase):
 
         self.assertEqual(9, cert_type.ext_type)
         self.assertEqual(bytearray(0), cert_type.ext_data)
-        self.assertEqual(None, cert_type.cert_types)
+        self.assertIsNone(cert_type.cert_types)
 
     def test_create(self):
         cert_type = ClientCertTypeExtension()
@@ -641,7 +641,7 @@ class TestClientCertTypeExtension(unittest.TestCase):
 
         self.assertEqual(9, cert_type.ext_type)
         self.assertEqual(bytearray(0), cert_type.ext_data)
-        self.assertEqual(None, cert_type.cert_types)
+        self.assertIsNone(cert_type.cert_types)
 
     def test_create_with_empty_list(self):
         cert_type = ClientCertTypeExtension()
@@ -707,7 +707,7 @@ class TestServerCertTypeExtension(unittest.TestCase):
 
         self.assertEqual(9, cert_type.ext_type)
         self.assertEqual(bytearray(0), cert_type.ext_data)
-        self.assertEqual(None, cert_type.cert_type)
+        self.assertIsNone(cert_type.cert_type)
 
     def test_create(self):
         cert_type = ServerCertTypeExtension().create(0)
@@ -760,7 +760,7 @@ class TestSRPExtension(unittest.TestCase):
     def test___init___(self):
         srp_extension = SRPExtension()
 
-        self.assertEqual(None, srp_extension.identity)
+        self.assertIsNone(srp_extension.identity)
         self.assertEqual(12, srp_extension.ext_type)
         self.assertEqual(bytearray(0), srp_extension.ext_data)
 
@@ -768,7 +768,7 @@ class TestSRPExtension(unittest.TestCase):
         srp_extension = SRPExtension()
         srp_extension = srp_extension.create()
 
-        self.assertEqual(None, srp_extension.identity)
+        self.assertIsNone(srp_extension.identity)
         self.assertEqual(12, srp_extension.ext_type)
         self.assertEqual(bytearray(0), srp_extension.ext_data)
 
@@ -836,7 +836,7 @@ class TestNPNExtension(unittest.TestCase):
     def test___init___(self):
         npn_extension = NPNExtension()
 
-        self.assertEqual(None, npn_extension.protocols)
+        self.assertIsNone(npn_extension.protocols)
         self.assertEqual(13172, npn_extension.ext_type)
         self.assertEqual(bytearray(0), npn_extension.ext_data)
 
@@ -844,7 +844,7 @@ class TestNPNExtension(unittest.TestCase):
         npn_extension = NPNExtension()
         npn_extension = npn_extension.create()
 
-        self.assertEqual(None, npn_extension.protocols)
+        self.assertIsNone(npn_extension.protocols)
         self.assertEqual(13172, npn_extension.ext_type)
         self.assertEqual(bytearray(0), npn_extension.ext_data)
 
