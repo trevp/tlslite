@@ -350,8 +350,8 @@ class SNIExtension(TLSExtension):
         return w.bytes
 
     def parse(self, p):
-        """ Parses the on the wire extension data and returns an object that
-        represents it.
+        """
+        Deserialise the extension from on-the-wire data
 
         The parser should not include the type or length of extension!
 
@@ -362,6 +362,9 @@ class SNIExtension(TLSExtension):
         @raise SyntaxError: when the internal sizes don't match the attached
             data
         """
+        if p.getRemainingLength() == 0:
+            return self
+
         self.server_names = []
 
         p.startLengthCheck(2)
