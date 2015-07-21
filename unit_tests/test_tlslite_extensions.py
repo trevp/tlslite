@@ -83,6 +83,17 @@ class TestTLSExtension(unittest.TestCase):
 
         self.assertEqual(bytearray(b'example.com'), tls_extension.host_names[0])
 
+    def test_parse_with_SNI_server_side(self):
+        p = Parser(bytearray(
+            b'\x00\x00' +   # type of extension - SNI
+            b'\x00\x00'     # overall length - 0 bytes
+            ))
+
+        ext = TLSExtension(server=True).parse(p)
+
+        self.assertIsInstance(ext, SNIExtension)
+        self.assertEqual(ext.server_names, None)
+
     def test_parse_with_SRP_ext(self):
         p = Parser(bytearray(
             b'\x00\x0c' +           # ext type - 12
@@ -402,13 +413,22 @@ class TestSNIExtension(unittest.TestCase):
             b'\x00\x00'    # length of array of names - 0 bytes
             ), server_name.write())
 
-    def test_parse(self):
+    def tes_parse_with_invalid_data(self):
+        server_name = SNIExtension()
+
+        p = Parser(bytearray(b'\x00\x01'))
+
+        with self.assertRaises(SyntaxError):
+            server_name.parse(p)
+
+    def test_parse_of_server_side_version(self):
         server_name = SNIExtension()
 
         p = Parser(bytearray(0))
 
-        with self.assertRaises(SyntaxError):
-            server_name = server_name.parse(p)
+        server_name = server_name.parse(p)
+
+        self.assertIsNone(server_name.server_names)
 
     def test_parse_null_length_array(self):
         server_name = SNIExtension()
