@@ -11,10 +11,10 @@ from .constants import CertificateType
 from .utils import cryptomath
 from .utils import cipherfactory
 
-# RC4 is preferred as faster in Python, works in SSL3, and immune to CBC
-# issues such as timing attacks
-CIPHER_NAMES = ["rc4", "aes256", "aes128", "3des"]
-MAC_NAMES = ["sha", "sha256"] # "md5" is allowed
+CIPHER_NAMES = ["aes128gcm", "rc4", "aes256", "aes128", "3des"]
+MAC_NAMES = ["sha", "sha256", "aead"] # Don't allow "md5" by default.
+ALL_MAC_NAMES = MAC_NAMES + ["md5"]
+KEY_EXCHANGE_NAMES = ["rsa", "dhe_rsa", "srp_sha", "srp_sha_rsa", "dh_anon"]
 CIPHER_IMPLEMENTATIONS = ["openssl", "pycrypto", "python"]
 CERTIFICATE_TYPES = ["x509"]
 
@@ -39,7 +39,7 @@ class HandshakeSettings(object):
     The default is 8193.
 
     @type cipherNames: list
-    @ivar cipherNames: The allowed ciphers, in order of preference.
+    @ivar cipherNames: The allowed ciphers.
 
     The allowed values in this list are 'aes256', 'aes128', '3des', and
     'rc4'.  If these settings are used with a client handshake, they
@@ -65,8 +65,7 @@ class HandshakeSettings(object):
 
 
     @type certificateTypes: list
-    @ivar certificateTypes: The allowed certificate types, in order of
-    preference.
+    @ivar certificateTypes: The allowed certificate types.
 
     The only allowed certificate type is 'x509'.  This list is only used with a
     client handshake.  The client will advertise to the server which certificate
@@ -104,6 +103,7 @@ class HandshakeSettings(object):
         self.maxKeySize = 8193
         self.cipherNames = CIPHER_NAMES
         self.macNames = MAC_NAMES
+        self.keyExchangeNames = KEY_EXCHANGE_NAMES
         self.cipherImplementations = CIPHER_IMPLEMENTATIONS
         self.certificateTypes = CERTIFICATE_TYPES
         self.minVersion = (3,1)
@@ -125,6 +125,7 @@ class HandshakeSettings(object):
         other.maxKeySize = self.maxKeySize
         other.cipherNames = self.cipherNames
         other.macNames = self.macNames
+        other.keyExchangeNames = self.keyExchangeNames
         other.cipherImplementations = self.cipherImplementations
         other.certificateTypes = self.certificateTypes
         other.minVersion = self.minVersion
@@ -160,6 +161,12 @@ class HandshakeSettings(object):
         for s in other.cipherNames:
             if s not in CIPHER_NAMES:
                 raise ValueError("Unknown cipher name: '%s'" % s)
+        for s in other.macNames:
+            if s not in ALL_MAC_NAMES:
+                raise ValueError("Unknown MAC name: '%s'" % s)
+        for s in other.keyExchangeNames:
+            if s not in KEY_EXCHANGE_NAMES:
+                raise ValueError("Unknown key exchange name: '%s'" % s)
         for s in other.cipherImplementations:
             if s not in CIPHER_IMPLEMENTATIONS:
                 raise ValueError("Unknown cipher implementation: '%s'" % s)
@@ -175,10 +182,6 @@ class HandshakeSettings(object):
 
         if not other.maxVersion in ((3,0), (3,1), (3,2), (3,3)):
             raise ValueError("maxVersion set incorrectly")
-
-        if other.maxVersion < (3,3):
-            # No sha256 pre TLS 1.2
-            other.macNames = [e for e in self.macNames if e != "sha256"]
 
         return other
 

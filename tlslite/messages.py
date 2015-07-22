@@ -841,17 +841,14 @@ class Certificate(HandshakeMsg):
 class CertificateRequest(HandshakeMsg):
     def __init__(self, version):
         HandshakeMsg.__init__(self, HandshakeType.certificate_request)
-        #Apple's Secure Transport library rejects empty certificate_types, so
-        #default to rsa_sign.
-        self.certificate_types = [ClientCertificateType.rsa_sign]
+        self.certificate_types = []
         self.certificate_authorities = []
         self.version = version
         self.supported_signature_algs = []
 
-    def create(self, certificate_types, certificate_authorities, sig_algs=(), version=(3,0)):
+    def create(self, certificate_types, certificate_authorities, sig_algs):
         self.certificate_types = certificate_types
         self.certificate_authorities = certificate_authorities
-        self.version = version
         self.supported_signature_algs = sig_algs
         return self
 
@@ -859,7 +856,8 @@ class CertificateRequest(HandshakeMsg):
         p.startLengthCheck(3)
         self.certificate_types = p.getVarList(1, 1)
         if self.version >= (3,3):
-            self.supported_signature_algs = p.getVarList(2, 2)
+            self.supported_signature_algs = \
+                [(b >> 8, b & 0xff) for b in p.getVarList(2, 2)]
         ca_list_length = p.get(2)
         index = 0
         self.certificate_authorities = []
@@ -874,7 +872,10 @@ class CertificateRequest(HandshakeMsg):
         w = Writer()
         w.addVarSeq(self.certificate_types, 1, 1)
         if self.version >= (3,3):
-            w.addVarSeq(self.supported_signature_algs, 2, 2)
+            w.add(2 * len(self.supported_signature_algs), 2)
+            for (hash, signature) in self.supported_signature_algs:
+                w.add(hash, 1)
+                w.add(signature, 1)
         caLength = 0
         #determine length
         for ca_dn in self.certificate_authorities:
@@ -886,9 +887,10 @@ class CertificateRequest(HandshakeMsg):
         return self.postWrite(w)
 
 class ServerKeyExchange(HandshakeMsg):
-    def __init__(self, cipherSuite):
+    def __init__(self, cipherSuite, version):
         HandshakeMsg.__init__(self, HandshakeType.server_key_exchange)
         self.cipherSuite = cipherSuite
+        self.version = version
         self.srp_N = 0
         self.srp_g = 0
         self.srp_s = bytearray(0)
@@ -928,31 +930,38 @@ class ServerKeyExchange(HandshakeMsg):
         p.stopLengthCheck()
         return self
 
-    def write(self):
+    def write_params(self):
         w = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
             w.addVarSeq(numberToByteArray(self.srp_N), 1, 2)
             w.addVarSeq(numberToByteArray(self.srp_g), 1, 2)
             w.addVarSeq(self.srp_s, 1, 1)
             w.addVarSeq(numberToByteArray(self.srp_B), 1, 2)
-            if self.cipherSuite in CipherSuite.srpCertSuites:
-                w.addVarSeq(self.signature, 1, 2)
-        elif self.cipherSuite in CipherSuite.anonSuites:
+        elif self.cipherSuite in CipherSuite.dhAllSuites:
             w.addVarSeq(numberToByteArray(self.dh_p), 1, 2)
             w.addVarSeq(numberToByteArray(self.dh_g), 1, 2)
             w.addVarSeq(numberToByteArray(self.dh_Ys), 1, 2)
-            if self.cipherSuite in []: # TODO support for signed_params
-                w.addVarSeq(self.signature, 1, 2)
+        else:
+            assert(False)
+        return w.bytes
+
+    def write(self):
+        w = Writer()
+        w.bytes += self.write_params()
+        if self.cipherSuite in CipherSuite.certAllSuites:
+            if self.version >= (3,3):
+                # TODO: Signature algorithm negotiation not supported.
+                w.add(HashAlgorithm.sha1, 1)
+                w.add(SignatureAlgorithm.rsa, 1)
+            w.addVarSeq(self.signature, 1, 2)
         return self.postWrite(w)
 
     def hash(self, clientRandom, serverRandom):
-        oldCipherSuite = self.cipherSuite
-        self.cipherSuite = None
-        try:
-            bytes = clientRandom + serverRandom + self.write()[4:]
-            return MD5(bytes) + SHA1(bytes)
-        finally:
-            self.cipherSuite = oldCipherSuite
+        bytes = clientRandom + serverRandom + self.write_params()
+        if self.version >= (3,3):
+            # TODO: Signature algorithm negotiation not supported.
+            return SHA1(bytes)
+        return MD5(bytes) + SHA1(bytes)
 
 class ServerHelloDone(HandshakeMsg):
     def __init__(self):
@@ -1002,7 +1011,7 @@ class ClientKeyExchange(HandshakeMsg):
                     p.getFixBytes(len(p.bytes)-p.index)
             else:
                 raise AssertionError()
-        elif self.cipherSuite in CipherSuite.anonSuites:
+        elif self.cipherSuite in CipherSuite.dhAllSuites:
             self.dh_Yc = bytesToNumber(p.getVarBytes(2))            
         else:
             raise AssertionError()
@@ -1027,22 +1036,30 @@ class ClientKeyExchange(HandshakeMsg):
         return self.postWrite(w)
 
 class CertificateVerify(HandshakeMsg):
-    def __init__(self):
+    def __init__(self, version):
         HandshakeMsg.__init__(self, HandshakeType.certificate_verify)
+        self.version = version
+        self.signature_algorithm = None
         self.signature = bytearray(0)
 
-    def create(self, signature):
+    def create(self, signature_algorithm, signature):
+        self.signature_algorithm = signature_algorithm
         self.signature = signature
         return self
 
     def parse(self, p):
         p.startLengthCheck(3)
+        if self.version >= (3,3):
+            self.signature_algorithm = (p.get(1), p.get(1))
         self.signature = p.getVarBytes(2)
         p.stopLengthCheck()
         return self
 
     def write(self):
         w = Writer()
+        if self.version >= (3,3):
+            w.add(self.signature_algorithm[0], 1)
+            w.add(self.signature_algorithm[1], 1)
         w.addVarSeq(self.signature, 1, 2)
         return self.postWrite(w)
 
