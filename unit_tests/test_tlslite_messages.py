@@ -1776,8 +1776,8 @@ class TestCertificateVerify(unittest.TestCase):
         cv.parse(parser)
 
         self.assertEqual(cv.signature, bytearray(b'\xab\xcd'))
-        self.assertEqual(cv.signature_algorithm, (HashAlgorithm.sha1,
-                                                  SignatureAlgorithm.rsa))
+        self.assertEqual(cv.signatureAlgorithm, (HashAlgorithm.sha1,
+                                                 SignatureAlgorithm.rsa))
 
     def test_write_with_TLSv1_2(self):
         cv = CertificateVerify((3, 3))

@@ -1231,18 +1231,18 @@ class CertificateVerify(HandshakeMsg):
         """
         HandshakeMsg.__init__(self, HandshakeType.certificate_verify)
         self.version = version
-        self.signature_algorithm = None
+        self.signatureAlgorithm = None
         self.signature = bytearray(0)
 
-    def create(self, signature, signature_algorithm=None):
+    def create(self, signature, signatureAlgorithm=None):
         """
         Provide data for serialisation of message
 
         @param signature: signature carried in the message
-        @param signature_algorithm: signature algorithm used to make the
+        @param signatureAlgorithm: signature algorithm used to make the
         signature (TLSv1.2 only)
         """
-        self.signature_algorithm = signature_algorithm
+        self.signatureAlgorithm = signatureAlgorithm
         self.signature = signature
         return self
 
@@ -1254,7 +1254,7 @@ class CertificateVerify(HandshakeMsg):
         """
         parser.startLengthCheck(3)
         if self.version >= (3, 3):
-            self.signature_algorithm = (parser.get(1), parser.get(1))
+            self.signatureAlgorithm = (parser.get(1), parser.get(1))
         self.signature = parser.getVarBytes(2)
         parser.stopLengthCheck()
         return self
@@ -1267,8 +1267,8 @@ class CertificateVerify(HandshakeMsg):
         """
         writer = Writer()
         if self.version >= (3, 3):
-            writer.add(self.signature_algorithm[0], 1)
-            writer.add(self.signature_algorithm[1], 1)
+            writer.add(self.signatureAlgorithm[0], 1)
+            writer.add(self.signatureAlgorithm[1], 1)
         writer.addVarSeq(self.signature, 1, 2)
         return self.postWrite(writer)
 
