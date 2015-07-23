@@ -283,7 +283,7 @@ class TestTLSExtension(unittest.TestCase):
 
         self.assertIsInstance(ext, ClientCertTypeExtension)
 
-        self.assertEqual([1], ext.cert_types)
+        self.assertEqual([1], ext.certTypes)
 
     def test___repr__(self):
         ext = TLSExtension()
@@ -644,7 +644,7 @@ class TestClientCertTypeExtension(unittest.TestCase):
 
         self.assertEqual(9, cert_type.extType)
         self.assertEqual(bytearray(0), cert_type.extData)
-        self.assertIsNone(cert_type.cert_types)
+        self.assertIsNone(cert_type.certTypes)
 
     def test_create(self):
         cert_type = ClientCertTypeExtension()
@@ -652,21 +652,21 @@ class TestClientCertTypeExtension(unittest.TestCase):
 
         self.assertEqual(9, cert_type.extType)
         self.assertEqual(bytearray(0), cert_type.extData)
-        self.assertIsNone(cert_type.cert_types)
+        self.assertIsNone(cert_type.certTypes)
 
     def test_create_with_empty_list(self):
         cert_type = ClientCertTypeExtension()
         cert_type = cert_type.create([])
 
         self.assertEqual(bytearray(b'\x00'), cert_type.extData)
-        self.assertEqual([], cert_type.cert_types)
+        self.assertEqual([], cert_type.certTypes)
 
     def test_create_with_list(self):
         cert_type = ClientCertTypeExtension()
         cert_type = cert_type.create([0])
 
         self.assertEqual(bytearray(b'\x01\x00'), cert_type.extData)
-        self.assertEqual([0], cert_type.cert_types)
+        self.assertEqual([0], cert_type.certTypes)
 
     def test_write(self):
         cert_type = ClientCertTypeExtension()
@@ -686,7 +686,7 @@ class TestClientCertTypeExtension(unittest.TestCase):
         cert_type = cert_type.parse(p)
 
         self.assertEqual(9, cert_type.extType)
-        self.assertEqual([], cert_type.cert_types)
+        self.assertEqual([], cert_type.certTypes)
 
     def test_parse_with_list(self):
         cert_type = ClientCertTypeExtension()
@@ -695,7 +695,7 @@ class TestClientCertTypeExtension(unittest.TestCase):
 
         cert_type = cert_type.parse(p)
 
-        self.assertEqual([1, 0], cert_type.cert_types)
+        self.assertEqual([1, 0], cert_type.certTypes)
 
     def test_parse_with_length_long_by_one(self):
         cert_type = ClientCertTypeExtension()
@@ -709,7 +709,7 @@ class TestClientCertTypeExtension(unittest.TestCase):
         cert_type = ClientCertTypeExtension()
         cert_type = cert_type.create([0, 1])
 
-        self.assertEqual("ClientCertTypeExtension(cert_types=[0, 1])",
+        self.assertEqual("ClientCertTypeExtension(certTypes=[0, 1])",
                 repr(cert_type))
 
 class TestServerCertTypeExtension(unittest.TestCase):

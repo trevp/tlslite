@@ -295,7 +295,7 @@ class ClientHello(HandshakeMsg):
             # depends on a default value of this property
             return [CertificateType.x509]
         else:
-            return cert_type.cert_types
+            return cert_type.certTypes
 
     @certificate_types.setter
     def certificate_types(self, val):
@@ -314,7 +314,7 @@ class ClientHello(HandshakeMsg):
             ext = ClientCertTypeExtension().create(val)
             self.addExtension(ext)
         else:
-            cert_type.cert_types = val
+            cert_type.certTypes = val
 
     @property
     def srp_username(self):
