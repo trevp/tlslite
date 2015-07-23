@@ -34,8 +34,8 @@ class TLSExtension(object):
         specific parser, otherwise it used universal or ClientHello specific
         parser
 
-    @type _universal_extensions: dict
-    @cvar _universal_extensions: dictionary with concrete implementations of
+    @type _universalExtensions: dict
+    @cvar _universalExtensions: dictionary with concrete implementations of
         specific TLS extensions where key is the numeric value of the extension
         ID. Contains ClientHello version of extensions or universal
         implementations
@@ -47,7 +47,7 @@ class TLSExtension(object):
         ServerHello versions.
     """
     # actual definition at the end of file, after definitions of all classes
-    _universal_extensions = {}
+    _universalExtensions = {}
     _server_extensions = {}
 
     def __init__(self, server=False):
@@ -124,8 +124,8 @@ class TLSExtension(object):
             return ext
 
         # then fallback to universal/ClientHello-specific parsers
-        if extType in self._universal_extensions:
-            ext = self._universal_extensions[extType]()
+        if extType in self._universalExtensions:
+            ext = self._universalExtensions[extType]()
             ext_parser = Parser(p.getFixBytes(ext_length))
             ext = ext.parse(ext_parser)
             return ext
@@ -912,7 +912,7 @@ class TACKExtension(TLSExtension):
 
         return self
 
-TLSExtension._universal_extensions = {
+TLSExtension._universalExtensions = {
         ExtensionType.server_name : SNIExtension,
         ExtensionType.cert_type : ClientCertTypeExtension,
         ExtensionType.srp : SRPExtension,
