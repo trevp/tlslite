@@ -185,8 +185,8 @@ class SNIExtension(TLSExtension):
            sni_extension.host_names = names
 
 
-    @type server_names: list of L{ServerName}
-    @ivar server_names: list of all names advertised in extension.
+    @type serverNames: list of L{ServerName}
+    @ivar serverNames: list of all names advertised in extension.
         L{ServerName} is a namedtuple with two elements, the first
         element (type) defines the type of the name (encoded as int)
         while the other (name) is a bytearray that carries the value.
@@ -209,7 +209,7 @@ class SNIExtension(TLSExtension):
 
         See also: L{create} and L{parse}.
         """
-        self.server_names = None
+        self.serverNames = None
 
     def __repr__(self):
         """
@@ -217,20 +217,20 @@ class SNIExtension(TLSExtension):
 
         @rtype: str
         """
-        return "SNIExtension(server_names={0!r})".format(self.server_names)
+        return "SNIExtension(serverNames={0!r})".format(self.serverNames)
 
-    def create(self, hostname=None, host_names=None, server_names=None):
+    def create(self, hostname=None, host_names=None, serverNames=None):
         """
         Initializes an instance with provided hostname, host names or
         raw server names.
 
         Any of the parameters may be None, in that case the list inside the
-        extension won't be defined, if either host_names or server_names is
+        extension won't be defined, if either host_names or serverNames is
         an empty list, then the extension will define a list of lenght 0.
 
         If multiple parameters are specified at the same time, then the
         resulting list of names will be concatenated in order of hostname,
-        host_names and server_names last.
+        host_names and serverNames last.
 
         @type  hostname: bytearray
         @param hostname: raw UTF-8 encoding of the host name
@@ -238,28 +238,28 @@ class SNIExtension(TLSExtension):
         @type  host_names: list of bytearrays
         @param host_names: list of raw UTF-8 encoded host names
 
-        @type  server_names: list of L{ServerName}
-        @param server_names: pairs of name_type and name encoded as a namedtuple
+        @type  serverNames: list of L{ServerName}
+        @param serverNames: pairs of name_type and name encoded as a namedtuple
 
         @rtype: L{SNIExtension}
         """
-        if hostname is None and host_names is None and server_names is None:
-            self.server_names = None
+        if hostname is None and host_names is None and serverNames is None:
+            self.serverNames = None
             return self
         else:
-            self.server_names = []
+            self.serverNames = []
 
         if hostname:
-            self.server_names += [SNIExtension.ServerName(NameType.host_name,\
+            self.serverNames += [SNIExtension.ServerName(NameType.host_name,\
                     hostname)]
 
         if host_names:
-            self.server_names +=\
+            self.serverNames +=\
                     [SNIExtension.ServerName(NameType.host_name, x) for x in\
                     host_names]
 
-        if server_names:
-            self.server_names += server_names
+        if serverNames:
+            self.serverNames += serverNames
 
         return self
 
@@ -279,10 +279,10 @@ class SNIExtension(TLSExtension):
         """
         # because we can't simulate assignments to array elements we return
         # an immutable type
-        if self.server_names is None:
+        if self.serverNames is None:
             return tuple()
         else:
-            return tuple([x.name for x in self.server_names if \
+            return tuple([x.name for x in self.serverNames if \
                 x.name_type == NameType.host_name])
 
     @host_names.setter
@@ -297,10 +297,10 @@ class SNIExtension(TLSExtension):
         @param host_names: host names to replace the old server names of type 0
         """
 
-        self.server_names = \
+        self.serverNames = \
                 [SNIExtension.ServerName(NameType.host_name, x) for x in \
                     host_names] + \
-                [x for x in self.server_names if \
+                [x for x in self.serverNames if \
                     x.name_type != NameType.host_name]
 
     @host_names.deleter
@@ -308,7 +308,7 @@ class SNIExtension(TLSExtension):
         """ Remove all host names from extension, leaves other name types
         unmodified
         """
-        self.server_names = [x for x in self.server_names if \
+        self.serverNames = [x for x in self.serverNames if \
                 x.name_type != NameType.host_name]
 
     @property
@@ -317,11 +317,11 @@ class SNIExtension(TLSExtension):
 
         @rtype: bytearray
         """
-        if self.server_names is None:
+        if self.serverNames is None:
             return bytearray(0)
 
         w2 = Writer()
-        for server_name in self.server_names:
+        for server_name in self.serverNames:
             w2.add(server_name.name_type, 1)
             w2.add(len(server_name.name), 2)
             w2.bytes += server_name.name
@@ -365,13 +365,13 @@ class SNIExtension(TLSExtension):
         if p.getRemainingLength() == 0:
             return self
 
-        self.server_names = []
+        self.serverNames = []
 
         p.startLengthCheck(2)
         while not p.atLengthCheck():
             sn_type = p.get(1)
             sn_name = p.getVarBytes(2)
-            self.server_names += [SNIExtension.ServerName(sn_type, sn_name)]
+            self.serverNames += [SNIExtension.ServerName(sn_type, sn_name)]
         p.stopLengthCheck()
 
         return self

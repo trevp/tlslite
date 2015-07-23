@@ -133,7 +133,7 @@ class TestTLSExtension(unittest.TestCase):
         ext = TLSExtension(server=True).parse(p)
 
         self.assertIsInstance(ext, SNIExtension)
-        self.assertIsNone(ext.server_names)
+        self.assertIsNone(ext.serverNames)
 
     def test_parse_with_renego_info_server_side(self):
         p = Parser(bytearray(
@@ -241,7 +241,7 @@ class TestTLSExtension(unittest.TestCase):
 
     def test_equality_with_empty_array_in_sni_extension(self):
         a = TLSExtension().create(0, bytearray(b'\x00\x00'))
-        b = SNIExtension().create(server_names=[])
+        b = SNIExtension().create(serverNames=[])
 
         self.assertTrue(a == b)
 
@@ -297,7 +297,7 @@ class TestSNIExtension(unittest.TestCase):
     def test___init__(self):
         server_name = SNIExtension()
 
-        self.assertIsNone(server_name.server_names)
+        self.assertIsNone(server_name.serverNames)
         self.assertEqual(tuple(), server_name.host_names)
         # properties inherited from TLSExtension:
         self.assertEqual(0, server_name.extType)
@@ -307,7 +307,7 @@ class TestSNIExtension(unittest.TestCase):
         server_name = SNIExtension()
         server_name = server_name.create()
 
-        self.assertIsNone(server_name.server_names)
+        self.assertIsNone(server_name.serverNames)
         self.assertEqual(tuple(), server_name.host_names)
 
     def test_create_with_hostname(self):
@@ -318,7 +318,7 @@ class TestSNIExtension(unittest.TestCase):
         self.assertEqual([SNIExtension.ServerName(
             NameType.host_name,
             bytearray(b'example.com')
-            )], server_name.server_names)
+            )], server_name.serverNames)
 
     def test_create_with_host_names(self):
         server_name = SNIExtension()
@@ -336,11 +336,11 @@ class TestSNIExtension(unittest.TestCase):
             SNIExtension.ServerName(
                 NameType.host_name,
                 bytearray(b'www.example.com'))],
-            server_name.server_names)
+            server_name.serverNames)
 
-    def test_create_with_server_names(self):
+    def test_create_with_serverNames(self):
         server_name = SNIExtension()
-        server_name = server_name.create(server_names=[
+        server_name = server_name.create(serverNames=[
             SNIExtension.ServerName(1, bytearray(b'example.com')),
             SNIExtension.ServerName(4, bytearray(b'www.example.com')),
             SNIExtension.ServerName(0, bytearray(b'example.net'))])
@@ -353,11 +353,11 @@ class TestSNIExtension(unittest.TestCase):
                 4, bytearray(b'www.example.com')),
             SNIExtension.ServerName(
                 0, bytearray(b'example.net'))],
-            server_name.server_names)
+            server_name.serverNames)
 
     def test_host_names(self):
         server_name = SNIExtension()
-        server_name = server_name.create(server_names=[
+        server_name = server_name.create(serverNames=[
             SNIExtension.ServerName(0, bytearray(b'example.net')),
             SNIExtension.ServerName(1, bytearray(b'example.com')),
             SNIExtension.ServerName(4, bytearray(b'www.example.com'))
@@ -371,11 +371,11 @@ class TestSNIExtension(unittest.TestCase):
             SNIExtension.ServerName(0, bytearray(b'example.com')),
             SNIExtension.ServerName(1, bytearray(b'example.com')),
             SNIExtension.ServerName(4, bytearray(b'www.example.com'))],
-            server_name.server_names)
+            server_name.serverNames)
 
     def test_host_names_delete(self):
         server_name = SNIExtension()
-        server_name = server_name.create(server_names=[
+        server_name = server_name.create(serverNames=[
             SNIExtension.ServerName(0, bytearray(b'example.net')),
             SNIExtension.ServerName(1, bytearray(b'example.com')),
             SNIExtension.ServerName(4, bytearray(b'www.example.com'))
@@ -387,7 +387,7 @@ class TestSNIExtension(unittest.TestCase):
         self.assertEqual([
             SNIExtension.ServerName(1, bytearray(b'example.com')),
             SNIExtension.ServerName(4, bytearray(b'www.example.com'))],
-            server_name.server_names)
+            server_name.serverNames)
 
     def test_write(self):
         server_name = SNIExtension()
@@ -453,7 +453,7 @@ class TestSNIExtension(unittest.TestCase):
 
     def test_write_of_empty_list_of_names(self):
         server_name = SNIExtension()
-        server_name = server_name.create(server_names=[])
+        server_name = server_name.create(serverNames=[])
 
         self.assertEqual(bytearray(
             b'\x00\x00'    # length of array - 0 bytes
@@ -480,7 +480,7 @@ class TestSNIExtension(unittest.TestCase):
 
         server_name = server_name.parse(p)
 
-        self.assertIsNone(server_name.server_names)
+        self.assertIsNone(server_name.serverNames)
 
     def test_parse_null_length_array(self):
         server_name = SNIExtension()
@@ -489,7 +489,7 @@ class TestSNIExtension(unittest.TestCase):
 
         server_name = server_name.parse(p)
 
-        self.assertEqual([], server_name.server_names)
+        self.assertEqual([], server_name.serverNames)
 
     def test_parse_with_host_name(self):
         server_name = SNIExtension()
@@ -532,7 +532,7 @@ class TestSNIExtension(unittest.TestCase):
         self.assertEqual([
             SN(10, bytearray(b'example.org')),
             SN(0, bytearray(b'example.com'))
-            ], server_name.server_names)
+            ], server_name.serverNames)
 
     def test_parse_with_array_length_long_by_one(self):
         server_name = SNIExtension()
@@ -629,11 +629,11 @@ class TestSNIExtension(unittest.TestCase):
     def test___repr__(self):
         server_name = SNIExtension()
         server_name = server_name.create(
-                server_names=[
+                serverNames=[
                     SNIExtension.ServerName(0, bytearray(b'example.com')),
                     SNIExtension.ServerName(1, bytearray(b'\x04\x01'))])
 
-        self.assertEqual("SNIExtension(server_names=["\
+        self.assertEqual("SNIExtension(serverNames=["\
                 "ServerName(name_type=0, name=bytearray(b'example.com')), "\
                 "ServerName(name_type=1, name=bytearray(b'\\x04\\x01'))])",
                 repr(server_name))
