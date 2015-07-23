@@ -25,8 +25,8 @@ class TLSExtension(object):
     @ivar extType: a 2^16-1 limited integer specifying the type of the
         extension that it contains, e.g. 0 indicates server name extension
 
-    @type ext_data: bytearray
-    @ivar ext_data: a byte array containing the value of the extension as
+    @type extData: bytearray
+    @ivar extData: a byte array containing the value of the extension as
         to be written on the wire
 
     @type server_type: boolean
@@ -63,7 +63,7 @@ class TLSExtension(object):
             for parsing
         """
         self.extType = None
-        self.ext_data = bytearray(0)
+        self.extData = bytearray(0)
         self.server_type = server
 
     def create(self, extType, data):
@@ -79,7 +79,7 @@ class TLSExtension(object):
         @rtype: L{TLSExtension}
         """
         self.extType = extType
-        self.ext_data = data
+        self.extData = data
         return self
 
     def write(self):
@@ -97,8 +97,8 @@ class TLSExtension(object):
 
         w = Writer()
         w.add(self.extType, 2)
-        w.add(len(self.ext_data), 2)
-        w.addFixSeq(self.ext_data, 1)
+        w.add(len(self.extData), 2)
+        w.addFixSeq(self.extData, 1)
         return w.bytes
 
     def parse(self, p):
@@ -133,8 +133,8 @@ class TLSExtension(object):
         # finally, just save the extension data as there are extensions which
         # don't require specific handlers and indicate option by mere presence
         self.extType = extType
-        self.ext_data = p.getFixBytes(ext_length)
-        assert len(self.ext_data) == ext_length
+        self.extData = p.getFixBytes(ext_length)
+        assert len(self.extData) == ext_length
         return self
 
     def __eq__(self, that):
@@ -143,9 +143,9 @@ class TLSExtension(object):
 
         Will return False for every object that's not an extension.
         """
-        if hasattr(that, 'extType') and hasattr(that, 'ext_data'):
+        if hasattr(that, 'extType') and hasattr(that, 'extData'):
             return self.extType == that.extType and \
-                    self.ext_data == that.ext_data
+                    self.extData == that.extData
         else:
             return False
 
@@ -154,8 +154,8 @@ class TLSExtension(object):
 
         @rtype: str
         """
-        return "TLSExtension(extType={0!r}, ext_data={1!r},"\
-                " server_type={2!r})".format(self.extType, self.ext_data,
+        return "TLSExtension(extType={0!r}, extData={1!r},"\
+                " server_type={2!r})".format(self.extType, self.extData,
                                              self.server_type)
 
 class SNIExtension(TLSExtension):
@@ -197,8 +197,8 @@ class SNIExtension(TLSExtension):
     @type extType: int
     @ivar extType: numeric type of SNIExtension, i.e. 0
 
-    @type ext_data: bytearray
-    @ivar ext_data: raw representation of the extension
+    @type extData: bytearray
+    @ivar extData: raw representation of the extension
     """
 
     ServerName = namedtuple('ServerName', 'name_type name')
@@ -312,7 +312,7 @@ class SNIExtension(TLSExtension):
                 x.name_type != NameType.host_name]
 
     @property
-    def ext_data(self):
+    def extData(self):
         """ raw encoding of extension data, without type and length header
 
         @rtype: bytearray
@@ -340,7 +340,7 @@ class SNIExtension(TLSExtension):
             on the wire, including the type, length and extension data
         """
 
-        raw_data = self.ext_data
+        raw_data = self.extData
 
         w = Writer()
         w.add(self.extType, 2)
@@ -384,8 +384,8 @@ class ClientCertTypeExtension(TLSExtension):
     @type extType: int
     @ivar extType: numeric type of Certificate Type extension, i.e. 9
 
-    @type ext_data: bytearray
-    @ivar ext_data: raw representation of the extension data
+    @type extData: bytearray
+    @ivar extData: raw representation of the extension data
 
     @type cert_types: list of int
     @ivar cert_types: list of certificate type identifiers (each one byte long)
@@ -419,7 +419,7 @@ class ClientCertTypeExtension(TLSExtension):
         return ExtensionType.cert_type
 
     @property
-    def ext_data(self):
+    def extData(self):
         """
         Return the raw encoding of this extension
 
@@ -474,8 +474,8 @@ class ServerCertTypeExtension(TLSExtension):
     @type extType: int
     @ivar extType: byneruc ttoe if Certificate Type extension, i.e. 9
 
-    @type ext_data: bytearray
-    @ivar ext_data: raw representation of the extension data
+    @type extData: bytearray
+    @ivar extData: raw representation of the extension data
 
     @type cert_type: int
     @ivar cert_type: the certificate type selected by server
@@ -507,7 +507,7 @@ class ServerCertTypeExtension(TLSExtension):
         return ExtensionType.cert_type
 
     @property
-    def ext_data(self):
+    def extData(self):
         """
         Return the raw encoding of the extension data
 
@@ -550,8 +550,8 @@ class SRPExtension(TLSExtension):
     @type extType: int
     @ivar extType: numeric type of SRPExtension, i.e. 12
 
-    @type ext_data: bytearray
-    @ivar ext_data: raw representation of extension data
+    @type extData: bytearray
+    @ivar extData: raw representation of extension data
 
     @type identity: bytearray
     @ivar identity: UTF-8 encoding of user name
@@ -585,7 +585,7 @@ class SRPExtension(TLSExtension):
         return ExtensionType.srp
 
     @property
-    def ext_data(self):
+    def extData(self):
         """
         Return raw data encoding of the extension
 
@@ -646,8 +646,8 @@ class NPNExtension(TLSExtension):
     @type extType: int
     @ivar extType: numeric type of NPNExtension, i.e. 13172
 
-    @type ext_data: bytearray
-    @ivar ext_data: raw representation of extension data
+    @type extData: bytearray
+    @ivar extData: raw representation of extension data
     """
 
     def __init__(self):
@@ -676,7 +676,7 @@ class NPNExtension(TLSExtension):
         return ExtensionType.supports_npn
 
     @property
-    def ext_data(self):
+    def extData(self):
         """ Return the raw data encoding of the extension
 
         @rtype: bytearray
@@ -865,7 +865,7 @@ class TACKExtension(TLSExtension):
         return ExtensionType.tack
 
     @property
-    def ext_data(self):
+    def extData(self):
         """
         Return the raw data encoding of the extension
 
@@ -937,7 +937,7 @@ class SupportedGroupsExtension(TLSExtension):
         return ExtensionType.supported_groups
 
     @property
-    def ext_data(self):
+    def extData(self):
         """
         Return raw data encoding of the extension
 
@@ -1004,7 +1004,7 @@ class ECPointFormatsExtension(TLSExtension):
         return ExtensionType.ec_point_formats
 
     @property
-    def ext_data(self):
+    def extData(self):
         """
         Return raw encoding of the extension
 
@@ -1075,7 +1075,7 @@ class SignatureAlgorithmsExtension(TLSExtension):
         return ExtensionType.signature_algorithms
 
     @property
-    def ext_data(self):
+    def extData(self):
         """
         Return raw encoding of the exteion
 
