@@ -421,7 +421,7 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual("client_hello,version(3.0),random(...),"\
                 "session ID(bytearray(b'')),cipher suites([]),"\
                 "compression methods([0]),extensions(["\
-                "TLSExtension(ext_type=0, ext_data=bytearray(b'\\x00'), "\
+                "TLSExtension(extType=0, ext_data=bytearray(b'\\x00'), "\
                 "server_type=False)])",
                 str(client_hello))
 
@@ -432,7 +432,7 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual("ClientHello(ssl2=False, client_version=(3.3), "\
                 "random=bytearray(b'\\x00'), session_id=bytearray(b''), "\
                 "cipher_suites=[], compression_methods=[0], "\
-                "extensions=[TLSExtension(ext_type=0, "\
+                "extensions=[TLSExtension(extType=0, "\
                 "ext_data=bytearray(b''), server_type=False)])",
                 repr(client_hello))
 
