@@ -21,8 +21,8 @@ class TLSExtension(object):
     It is used as a base class for specific users and as a way to store
     extensions that are not implemented in library.
 
-    @type ext_type: int
-    @ivar ext_type: a 2^16-1 limited integer specifying the type of the
+    @type extType: int
+    @ivar extType: a 2^16-1 limited integer specifying the type of the
         extension that it contains, e.g. 0 indicates server name extension
 
     @type ext_data: bytearray
@@ -62,23 +62,23 @@ class TLSExtension(object):
         @param server: whatever to select ClientHello or ServerHello version
             for parsing
         """
-        self.ext_type = None
+        self.extType = None
         self.ext_data = bytearray(0)
         self.server_type = server
 
-    def create(self, ext_type, data):
+    def create(self, extType, data):
         """
         Initializes a generic TLS extension that can later be used in
         client hello or server hello messages
 
-        @type  ext_type: int
-        @param ext_type: type of the extension encoded as an integer between
+        @type  extType: int
+        @param extType: type of the extension encoded as an integer between
             M{0} and M{2^16-1}
         @type  data: bytearray
         @param data: raw data representing extension on the wire
         @rtype: L{TLSExtension}
         """
-        self.ext_type = ext_type
+        self.extType = extType
         self.ext_data = data
         return self
 
@@ -93,10 +93,10 @@ class TLSExtension(object):
         @raise AssertionError: when the object was not initialized
         """
 
-        assert self.ext_type is not None
+        assert self.extType is not None
 
         w = Writer()
-        w.add(self.ext_type, 2)
+        w.add(self.extType, 2)
         w.add(len(self.ext_data), 2)
         w.addFixSeq(self.ext_data, 1)
         return w.bytes
@@ -113,26 +113,26 @@ class TLSExtension(object):
         @rtype: L{TLSExtension}
         """
 
-        ext_type = p.get(2)
+        extType = p.get(2)
         ext_length = p.get(2)
 
         # first check if we shouldn't use server side parser
-        if self.server_type and ext_type in self._server_extensions:
-            ext = self._server_extensions[ext_type]()
+        if self.server_type and extType in self._server_extensions:
+            ext = self._server_extensions[extType]()
             ext_parser = Parser(p.getFixBytes(ext_length))
             ext = ext.parse(ext_parser)
             return ext
 
         # then fallback to universal/ClientHello-specific parsers
-        if ext_type in self._universal_extensions:
-            ext = self._universal_extensions[ext_type]()
+        if extType in self._universal_extensions:
+            ext = self._universal_extensions[extType]()
             ext_parser = Parser(p.getFixBytes(ext_length))
             ext = ext.parse(ext_parser)
             return ext
 
         # finally, just save the extension data as there are extensions which
         # don't require specific handlers and indicate option by mere presence
-        self.ext_type = ext_type
+        self.extType = extType
         self.ext_data = p.getFixBytes(ext_length)
         assert len(self.ext_data) == ext_length
         return self
@@ -143,8 +143,8 @@ class TLSExtension(object):
 
         Will return False for every object that's not an extension.
         """
-        if hasattr(that, 'ext_type') and hasattr(that, 'ext_data'):
-            return self.ext_type == that.ext_type and \
+        if hasattr(that, 'extType') and hasattr(that, 'ext_data'):
+            return self.extType == that.extType and \
                     self.ext_data == that.ext_data
         else:
             return False
@@ -154,9 +154,9 @@ class TLSExtension(object):
 
         @rtype: str
         """
-        return "TLSExtension(ext_type={0!r}, ext_data={1!r},"\
-                " server_type={2!r})".format(
-                        self.ext_type, self.ext_data, self.server_type)
+        return "TLSExtension(extType={0!r}, ext_data={1!r},"\
+                " server_type={2!r})".format(self.extType, self.ext_data,
+                                             self.server_type)
 
 class SNIExtension(TLSExtension):
     """
@@ -194,8 +194,8 @@ class SNIExtension(TLSExtension):
         The list will be empty if the on the wire extension had and empty
         list while it will be None if the extension was empty.
 
-    @type ext_type: int
-    @ivar ext_type: numeric type of SNIExtension, i.e. 0
+    @type extType: int
+    @ivar extType: numeric type of SNIExtension, i.e. 0
 
     @type ext_data: bytearray
     @ivar ext_data: raw representation of the extension
@@ -264,7 +264,7 @@ class SNIExtension(TLSExtension):
         return self
 
     @property
-    def ext_type(self):
+    def extType(self):
         """ Return the type of TLS extension, in this case - 0
 
         @rtype: int
@@ -343,7 +343,7 @@ class SNIExtension(TLSExtension):
         raw_data = self.ext_data
 
         w = Writer()
-        w.add(self.ext_type, 2)
+        w.add(self.extType, 2)
         w.add(len(raw_data), 2)
         w.bytes += raw_data
 
@@ -381,8 +381,8 @@ class ClientCertTypeExtension(TLSExtension):
     This class handles the Certificate Type extension (variant sent by client)
     defined in RFC 6091.
 
-    @type ext_type: int
-    @ivar ext_type: numeric type of Certificate Type extension, i.e. 9
+    @type extType: int
+    @ivar extType: numeric type of Certificate Type extension, i.e. 9
 
     @type ext_data: bytearray
     @ivar ext_data: raw representation of the extension data
@@ -409,7 +409,7 @@ class ClientCertTypeExtension(TLSExtension):
                 .format(self.cert_types)
 
     @property
-    def ext_type(self):
+    def extType(self):
         """
         Return the type of TLS extension, in this case - 9
 
@@ -471,8 +471,8 @@ class ServerCertTypeExtension(TLSExtension):
     This class handles the Certificate Type extension (variant sent by server)
     defined in RFC 6091.
 
-    @type ext_type: int
-    @ivar ext_type: byneruc ttoe if Certificate Type extension, i.e. 9
+    @type extType: int
+    @ivar extType: byneruc ttoe if Certificate Type extension, i.e. 9
 
     @type ext_data: bytearray
     @ivar ext_data: raw representation of the extension data
@@ -498,7 +498,7 @@ class ServerCertTypeExtension(TLSExtension):
         return "ServerCertTypeExtension(cert_type={0!r})".format(self.cert_type)
 
     @property
-    def ext_type(self):
+    def extType(self):
         """
         Return the type of TLS extension, in this case - 9
 
@@ -547,8 +547,8 @@ class SRPExtension(TLSExtension):
     This class handles the Secure Remote Password protocol TLS extension
     defined in RFC 5054.
 
-    @type ext_type: int
-    @ivar ext_type: numeric type of SRPExtension, i.e. 12
+    @type extType: int
+    @ivar extType: numeric type of SRPExtension, i.e. 12
 
     @type ext_data: bytearray
     @ivar ext_data: raw representation of extension data
@@ -575,7 +575,7 @@ class SRPExtension(TLSExtension):
         return "SRPExtension(identity={0!r})".format(self.identity)
 
     @property
-    def ext_type(self):
+    def extType(self):
         """
         Return the type of TLS extension, in this case - 12
 
@@ -643,8 +643,8 @@ class NPNExtension(TLSExtension):
     @type protocols: list of bytearrays
     @ivar protocols: list of protocol names supported by the server
 
-    @type ext_type: int
-    @ivar ext_type: numeric type of NPNExtension, i.e. 13172
+    @type extType: int
+    @ivar extType: numeric type of NPNExtension, i.e. 13172
 
     @type ext_data: bytearray
     @ivar ext_data: raw representation of extension data
@@ -668,7 +668,7 @@ class NPNExtension(TLSExtension):
         return "NPNExtension(protocols={0!r})".format(self.protocols)
 
     @property
-    def ext_type(self):
+    def extType(self):
         """ Return the type of TLS extension, in this case - 13172
 
         @rtype: int
@@ -856,7 +856,7 @@ class TACKExtension(TLSExtension):
                 self.activation_flags, self.tacks)
 
     @property
-    def ext_type(self):
+    def extType(self):
         """
         Returns the type of TLS extension, in this case - 62208
 

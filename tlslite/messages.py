@@ -214,7 +214,7 @@ class ClientHello(HandshakeMsg):
                 self.ssl2, self.client_version, self.random, self.session_id,
                 self.cipher_suites, self.compression_methods, self.extensions)
 
-    def getExtension(self, ext_type):
+    def getExtension(self, extType):
         """
         Returns extension of given type if present, None otherwise
 
@@ -225,7 +225,7 @@ class ClientHello(HandshakeMsg):
         if self.extensions is None:
             return None
 
-        exts = [x for x in self.extensions if x.ext_type == ext_type]
+        exts = [ext for ext in self.extensions if ext.extType == extType]
         if len(exts) > 1:
             raise TLSInternalError(
                     "Multiple extensions of the same type present")
@@ -345,8 +345,8 @@ class ClientHello(HandshakeMsg):
             if self.extensions is None:
                 return
             # remove all extensions of this type without changing reference
-            self.extensions[:] = [x for x in self.extensions if
-                    x.ext_type != ExtensionType.tack]
+            self.extensions[:] = [ext for ext in self.extensions if
+                                  ext.extType != ExtensionType.tack]
 
     @property
     def supports_npn(self):
@@ -385,8 +385,8 @@ class ClientHello(HandshakeMsg):
             if self.extensions is None:
                 return
             #remove all extension of this type without changing reference
-            self.extensions[:] = [x for x in self.extensions if
-                    x.ext_type != ExtensionType.supports_npn]
+            self.extensions[:] = [ext for ext in self.extensions if
+                                  ext.extType != ExtensionType.supports_npn]
 
     @property
     def server_name(self):
@@ -598,7 +598,7 @@ class ServerHello(HandshakeMsg):
                 self.cipher_suite, self.compression_method, self._tack_ext,
                 self.extensions)
 
-    def getExtension(self, ext_type):
+    def getExtension(self, extType):
         """Return extension of a given type, None if extension of given type
         is not present
 
@@ -608,7 +608,7 @@ class ServerHello(HandshakeMsg):
         if self.extensions is None:
             return None
 
-        exts = [x for x in self.extensions if x.ext_type == ext_type]
+        exts = [ext for ext in self.extensions if ext.extType == extType]
         if len(exts) > 1:
             raise TLSInternalError(
                     "Multiple extensions of the same type present")
