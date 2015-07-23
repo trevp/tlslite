@@ -152,9 +152,9 @@ class TLSConnection(TLSRecordLayer):
     # Client Handshake Functions
     #*********************************************************
 
-    def handshakeClientAnonymous(self, session=None, settings=None, 
-                                checker=None, serverName="",
-                                async=False):
+    def handshakeClientAnonymous(self, session=None, settings=None,
+                                 checker=None, serverName=None,
+                                 async=False):
         """Perform an anonymous handshake in the role of client.
 
         This function performs an SSL or TLS handshake using an
@@ -218,8 +218,8 @@ class TLSConnection(TLSRecordLayer):
             pass
 
     def handshakeClientSRP(self, username, password, session=None,
-                           settings=None, checker=None, 
-                           reqTack=True, serverName="",
+                           settings=None, checker=None,
+                           reqTack=True, serverName=None,
                            async=False):
         """Perform an SRP handshake in the role of client.
 
@@ -301,7 +301,7 @@ class TLSConnection(TLSRecordLayer):
 
     def handshakeClientCert(self, certChain=None, privateKey=None,
                             session=None, settings=None, checker=None,
-                            nextProtos=None, reqTack=True, serverName="",
+                            nextProtos=None, reqTack=True, serverName=None,
                             async=False):
         """Perform a certificate-based handshake in the role of client.
 
@@ -378,10 +378,13 @@ class TLSConnection(TLSRecordLayer):
         @raise tlslite.errors.TLSAuthenticationError: If the checker
         doesn't like the other party's authentication credentials.
         """
-        handshaker = self._handshakeClientAsync(certParams=(certChain,
-                        privateKey), session=session, settings=settings,
-                        checker=checker, serverName=serverName, 
-                        nextProtos=nextProtos, reqTack=reqTack)
+        handshaker = \
+                self._handshakeClientAsync(certParams=(certChain, privateKey),
+                                           session=session, settings=settings,
+                                           checker=checker,
+                                           serverName=serverName,
+                                           nextProtos=nextProtos,
+                                           reqTack=reqTack)
         # The handshaker is a Python Generator which executes the handshake.
         # It allows the handshake to be run in a "piecewise", asynchronous
         # fashion, returning 1 when it is waiting to able to write, 0 when
@@ -396,8 +399,8 @@ class TLSConnection(TLSRecordLayer):
 
 
     def _handshakeClientAsync(self, srpParams=(), certParams=(), anonParams=(),
-                             session=None, settings=None, checker=None,
-                             nextProtos=None, serverName="", reqTack=True):
+                              session=None, settings=None, checker=None,
+                              nextProtos=None, serverName=None, reqTack=True):
 
         handshaker = self._handshakeClientAsyncHelper(srpParams=srpParams,
                 certParams=certParams,

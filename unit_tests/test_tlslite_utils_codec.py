@@ -251,5 +251,37 @@ class TestWriter(unittest.TestCase):
 
         self.assertEqual(bytearray(b'\xbe\xef\x0f'), w.bytes)
 
+    def test_addVarTupleSeq(self):
+        w = Writer()
+        w.addVarTupleSeq([(1, 2), (2, 9)], 1, 2)
+
+        self.assertEqual(bytearray(
+            b'\x00\x04' + # length
+            b'\x01\x02' + # first tuple
+            b'\x02\x09'   # second tuple
+            ), w.bytes)
+
+    def test_addVarTupleSeq_with_single_element_tuples(self):
+        w = Writer()
+        w.addVarTupleSeq([[1], [9], [12]], 2, 3)
+
+        self.assertEqual(bytearray(
+            b'\x00\x00\x06' + # length
+            b'\x00\x01' + # 1st element
+            b'\x00\x09' + # 2nd element
+            b'\x00\x0c'), w.bytes)
+
+    def test_addVarTupleSeq_with_empty_array(self):
+        w = Writer()
+        w.addVarTupleSeq([], 1, 2)
+
+        self.assertEqual(bytearray(
+            b'\x00\x00'), w.bytes)
+
+    def test_addVarTupleSeq_with_invalid_sized_tuples(self):
+        w = Writer()
+        with self.assertRaises(ValueError):
+            w.addVarTupleSeq([(1, 2), (2, 3, 9)], 1, 2)
+
 if __name__ == '__main__':
     unittest.main()

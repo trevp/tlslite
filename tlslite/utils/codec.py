@@ -28,6 +28,35 @@ class Writer(object):
         for e in seq:
             self.add(e, length)
 
+    def addVarTupleSeq(self, seq, length, lengthLength):
+        """
+        Add a variable length list of same-sized element tuples.
+
+        Note that all tuples must have the same size.
+
+        Inverse of Parser.getVarTupleList()
+
+        @type seq: enumerable
+        @param seq: list of tuples
+
+        @type length: int
+        @param length: length of single element in tuple
+
+        @type lengthLength: int
+        @param lengthLength: length in bytes of overall length field
+        """
+        if len(seq) == 0:
+            self.add(0, lengthLength)
+        else:
+            tupleSize = len(seq[0])
+            tupleLength = tupleSize*length
+            self.add(len(seq)*tupleLength, lengthLength)
+            for elemTuple in seq:
+                if len(elemTuple) != tupleSize:
+                    raise ValueError("Tuples of different sizes")
+                for elem in elemTuple:
+                    self.add(elem, length)
+
 class Parser(object):
     def __init__(self, bytes):
         self.bytes = bytes

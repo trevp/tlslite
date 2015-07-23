@@ -912,12 +912,223 @@ class TACKExtension(TLSExtension):
 
         return self
 
-TLSExtension._universal_extensions = {
+class SupportedGroupsExtension(TLSExtension):
+
+    """
+    Client side list of supported groups of (EC)DHE key exchage.
+
+    See RFC4492, RFC7027 and RFC-ietf-tls-negotiated-ff-dhe-10
+
+    @type groups: int
+    @ivar groups: list of groups that the client supports
+    """
+
+    def __init__(self):
+        """Create instance of class"""
+        self.groups = None
+
+    @property
+    def ext_type(self):
+        """
+        Type of extension, in this case - 10
+
+        @rtype: int
+        """
+        return ExtensionType.supported_groups
+
+    @property
+    def ext_data(self):
+        """
+        Return raw data encoding of the extension
+
+        @rtype: bytearray
+        """
+        if self.groups is None:
+            return bytearray(0)
+
+        writer = Writer()
+        # encode length of two bytes per group in two bytes
+        writer.add(len(self.groups) * 2, 2)
+        for group in self.groups:
+            writer.add(group, 2)
+        return writer.bytes
+
+    def create(self, groups):
+        """
+        Set the supported groups in the extension
+
+        @type groups: list of int
+        @param groups: list of supported groups
+        """
+        self.groups = groups
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on-the-wire data
+
+        @type parser: L{Parser}
+        @rtype: SupportedGroupsExtension
+        """
+        if parser.getRemainingLength() == 0:
+            self.groups = None
+            return self
+        self.groups = []
+
+        parser.startLengthCheck(2)
+        while not parser.atLengthCheck():
+            self.groups.append(parser.get(2))
+        parser.stopLengthCheck()
+
+        return self
+
+class ECPointFormatsExtension(TLSExtension):
+
+    """
+    Client side list of supported ECC point formats.
+
+    See RFC4492.
+    """
+
+    def __init__(self):
+        """Create instance of class"""
+        self.formats = None
+
+    @property
+    def ext_type(self):
+        """
+        Type of extension, in this case - 11
+
+        @rtype: int
+        """
+        return ExtensionType.ec_point_formats
+
+    @property
+    def ext_data(self):
+        """
+        Return raw encoding of the extension
+
+        @rtype: bytearray
+        """
+        if self.formats is None:
+            return bytearray(0)
+
+        writer = Writer()
+        # the length is number of formats encoded in one byte
+        writer.add(len(self.formats), 1)
+        for fmt in self.formats:
+            writer.add(fmt, 1)
+        return writer.bytes
+
+    def create(self, formats):
+        """
+        Set the list of supported EC point formats
+
+        @type formats: list of int
+        @param formats: list of supported EC point formats
+        """
+        self.formats = formats
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on the wire data
+
+        @type parser: L{Parser}
+        @rtype: ECPointFormatsExtension
+        """
+        if parser.getRemainingLength() == 0:
+            self.formats = None
+            return self
+
+        self.formats = []
+
+        parser.startLengthCheck(1)
+        while not parser.atLengthCheck():
+            self.formats.append(parser.get(1))
+        parser.stopLengthCheck()
+
+        return self
+
+class SignatureAlgorithmsExtension(TLSExtension):
+
+    """
+    Client side list of supported signature algorithms.
+
+    Should be used by server to select certificate and signing method for
+    Server Key Exchange messages. In practice used only for the latter.
+
+    See RFC5246.
+    """
+
+    def __init__(self):
+        """Create instance of class"""
+        self.sigalgs = None
+
+    @property
+    def ext_type(self):
+        """
+        Type of extension, in this case - 13
+
+        @rtype: int
+        """
+        return ExtensionType.signature_algorithms
+
+    @property
+    def ext_data(self):
+        """
+        Return raw encoding of the exteion
+
+        @rtype: bytearray
+        """
+        if self.sigalgs is None:
+            return bytearray(0)
+
+        writer = Writer()
+        # elements 1 byte each, overall length encoded in 2 bytes
+        writer.addVarTupleSeq(self.sigalgs, 1, 2)
+        return writer.bytes
+
+    def create(self, sigalgs):
+        """
+        Set the list of supported algorithm types
+
+        @type sigalgs: list of tuples
+        @param sigalgs: list of pairs of a hash algorithm and signature
+        algorithm
+        """
+        self.sigalgs = sigalgs
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on the wire data
+
+        @type parser: L{Parser}
+        @rtype: SignatureAlgorithmsExtension
+        """
+        if parser.getRemainingLength() == 0:
+            self.sigalgs = None
+            return self
+
+        self.sigalgs = parser.getVarTupleList(1, 2, 2)
+
+        if parser.getRemainingLength() != 0:
+            raise SyntaxError()
+
+        return self
+
+TLSExtension._universal_extensions = \
+    {
         ExtensionType.server_name : SNIExtension,
         ExtensionType.cert_type : ClientCertTypeExtension,
+        ExtensionType.supported_groups : SupportedGroupsExtension,
+        ExtensionType.ec_point_formats : ECPointFormatsExtension,
         ExtensionType.srp : SRPExtension,
+        ExtensionType.signature_algorithms : SignatureAlgorithmsExtension,
         ExtensionType.supports_npn : NPNExtension}
 
-TLSExtension._server_extensions = {
+TLSExtension._server_extensions = \
+    {
         ExtensionType.cert_type : ServerCertTypeExtension,
         ExtensionType.tack : TACKExtension}
