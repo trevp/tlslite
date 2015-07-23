@@ -29,8 +29,8 @@ class TLSExtension(object):
     @ivar extData: a byte array containing the value of the extension as
         to be written on the wire
 
-    @type server_type: boolean
-    @ivar server_type: indicates that the extension was parsed with ServerHello
+    @type serverType: boolean
+    @ivar serverType: indicates that the extension was parsed with ServerHello
         specific parser, otherwise it used universal or ClientHello specific
         parser
 
@@ -64,7 +64,7 @@ class TLSExtension(object):
         """
         self.extType = None
         self.extData = bytearray(0)
-        self.server_type = server
+        self.serverType = server
 
     def create(self, extType, data):
         """
@@ -117,7 +117,7 @@ class TLSExtension(object):
         ext_length = p.get(2)
 
         # first check if we shouldn't use server side parser
-        if self.server_type and extType in self._server_extensions:
+        if self.serverType and extType in self._server_extensions:
             ext = self._server_extensions[extType]()
             ext_parser = Parser(p.getFixBytes(ext_length))
             ext = ext.parse(ext_parser)
@@ -155,8 +155,8 @@ class TLSExtension(object):
         @rtype: str
         """
         return "TLSExtension(extType={0!r}, extData={1!r},"\
-                " server_type={2!r})".format(self.extType, self.extData,
-                                             self.server_type)
+                " serverType={2!r})".format(self.extType, self.extData,
+                                            self.serverType)
 
 class SNIExtension(TLSExtension):
     """

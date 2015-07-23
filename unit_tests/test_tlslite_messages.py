@@ -422,7 +422,7 @@ class TestClientHello(unittest.TestCase):
                 "session ID(bytearray(b'')),cipher suites([]),"\
                 "compression methods([0]),extensions(["\
                 "TLSExtension(extType=0, extData=bytearray(b'\\x00'), "\
-                "server_type=False)])",
+                "serverType=False)])",
                 str(client_hello))
 
     def test___repr__(self):
@@ -433,7 +433,7 @@ class TestClientHello(unittest.TestCase):
                 "random=bytearray(b'\\x00'), session_id=bytearray(b''), "\
                 "cipher_suites=[], compression_methods=[0], "\
                 "extensions=[TLSExtension(extType=0, "\
-                "extData=bytearray(b''), server_type=False)])",
+                "extData=bytearray(b''), serverType=False)])",
                 repr(client_hello))
 
     def test_getExtension(self):
