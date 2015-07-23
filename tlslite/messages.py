@@ -637,7 +637,7 @@ class ServerHello(HandshakeMsg):
             if ext is None or not tackpyLoaded:
                 return None
             else:
-                self._tack_ext = TackExtension(ext.ext_data)
+                self._tack_ext = TackExtension(ext.extData)
         return self._tack_ext
 
     @tackExt.setter
