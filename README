@@ -1,0 +1,20 @@
+tlslite-ng is a pure python implementation of SSLv3.0, TLS 1.0, TLS 1.1 and
+TLS 1.2 protocols.
+
+It can use pycrypto, m2crypto and gmp for acceleration of cryptographic
+operations but is not dependant upon them.
+
+Functionality implemented include:
+ - RC4, 3DES-CBC, AES-CBC and AES-GCM ciphers
+ - MD5, SHA1, SHA256 and SHA384 HMACs as well as AEAD mode of operation
+ - RSA and DHE_RSA key exchange
+ - anonymous DHE key exchange
+ - NULL encryption ciphersuites
+ - FALLBACK_SCSV
+ - encrypt-then-MAC mode of operation for CBC ciphersuites
+ - client certificates
+ - TACK certificate pinning
+ - SRP_SHA_RSA ciphersuites
+
+tlslite-ng aims to be a drop-in replacement for tlslite while providing more
+comprehensive set of features and more secure defautls.
