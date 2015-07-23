@@ -22,15 +22,15 @@ class TestTLSExtension(unittest.TestCase):
         tls_extension = TLSExtension()
 
         assert(tls_extension)
-        self.assertIsNone(tls_extension.ext_type)
-        self.assertEqual(bytearray(0), tls_extension.ext_data)
+        self.assertIsNone(tls_extension.extType)
+        self.assertEqual(bytearray(0), tls_extension.extData)
 
     def test_create(self):
         tls_extension = TLSExtension().create(1, bytearray(b'\x01\x00'))
 
         assert tls_extension
-        self.assertEqual(1, tls_extension.ext_type)
-        self.assertEqual(bytearray(b'\x01\x00'), tls_extension.ext_data)
+        self.assertEqual(1, tls_extension.extType)
+        self.assertEqual(bytearray(b'\x01\x00'), tls_extension.extData)
 
     def test_write(self):
         tls_extension = TLSExtension()
@@ -56,8 +56,8 @@ class TestTLSExtension(unittest.TestCase):
             ))
         tls_extension = TLSExtension().parse(p)
 
-        self.assertEqual(66, tls_extension.ext_type)
-        self.assertEqual(bytearray(b'\xff'), tls_extension.ext_data)
+        self.assertEqual(66, tls_extension.extType)
+        self.assertEqual(bytearray(b'\xff'), tls_extension.extData)
 
     def test_parse_with_length_long_by_one(self):
         p = Parser(bytearray(
@@ -83,7 +83,7 @@ class TestTLSExtension(unittest.TestCase):
 
         self.assertIsInstance(tls_extension, SNIExtension)
 
-        self.assertEqual(bytearray(b'example.com'), tls_extension.host_names[0])
+        self.assertEqual(bytearray(b'example.com'), tls_extension.hostNames[0])
 
     def test_parse_with_SNI_server_side(self):
         p = Parser(bytearray(
@@ -133,7 +133,7 @@ class TestTLSExtension(unittest.TestCase):
         ext = TLSExtension(server=True).parse(p)
 
         self.assertIsInstance(ext, SNIExtension)
-        self.assertIsNone(ext.server_names)
+        self.assertIsNone(ext.serverNames)
 
     def test_parse_with_renego_info_server_side(self):
         p = Parser(bytearray(
@@ -147,8 +147,8 @@ class TestTLSExtension(unittest.TestCase):
         # XXX not supported
         self.assertIsInstance(ext, TLSExtension)
 
-        self.assertEqual(ext.ext_data, bytearray(b'\x00'))
-        self.assertEqual(ext.ext_type, 0xff01)
+        self.assertEqual(ext.extData, bytearray(b'\x00'))
+        self.assertEqual(ext.extType, 0xff01)
 
     def test_parse_with_elliptic_curves(self):
         p = Parser(bytearray(
@@ -241,14 +241,14 @@ class TestTLSExtension(unittest.TestCase):
 
     def test_equality_with_empty_array_in_sni_extension(self):
         a = TLSExtension().create(0, bytearray(b'\x00\x00'))
-        b = SNIExtension().create(server_names=[])
+        b = SNIExtension().create(serverNames=[])
 
         self.assertTrue(a == b)
 
     def test_equality_with_nearly_good_object(self):
         class TestClass(object):
             def __init__(self):
-                self.ext_type = 0
+                self.extType = 0
 
         a = TLSExtension().create(0, bytearray(b'\x00\x00'))
         b = TestClass()
@@ -283,52 +283,52 @@ class TestTLSExtension(unittest.TestCase):
 
         self.assertIsInstance(ext, ClientCertTypeExtension)
 
-        self.assertEqual([1], ext.cert_types)
+        self.assertEqual([1], ext.certTypes)
 
     def test___repr__(self):
         ext = TLSExtension()
         ext = ext.create(0, bytearray(b'\x00\x00'))
 
-        self.assertEqual("TLSExtension(ext_type=0, "\
-                "ext_data=bytearray(b'\\x00\\x00'), server_type=False)",
+        self.assertEqual("TLSExtension(extType=0, "\
+                "extData=bytearray(b'\\x00\\x00'), serverType=False)",
                 repr(ext))
 
 class TestSNIExtension(unittest.TestCase):
     def test___init__(self):
         server_name = SNIExtension()
 
-        self.assertIsNone(server_name.server_names)
-        self.assertEqual(tuple(), server_name.host_names)
+        self.assertIsNone(server_name.serverNames)
+        self.assertEqual(tuple(), server_name.hostNames)
         # properties inherited from TLSExtension:
-        self.assertEqual(0, server_name.ext_type)
-        self.assertEqual(bytearray(0), server_name.ext_data)
+        self.assertEqual(0, server_name.extType)
+        self.assertEqual(bytearray(0), server_name.extData)
 
     def test_create(self):
         server_name = SNIExtension()
         server_name = server_name.create()
 
-        self.assertIsNone(server_name.server_names)
-        self.assertEqual(tuple(), server_name.host_names)
+        self.assertIsNone(server_name.serverNames)
+        self.assertEqual(tuple(), server_name.hostNames)
 
     def test_create_with_hostname(self):
         server_name = SNIExtension()
         server_name = server_name.create(bytearray(b'example.com'))
 
-        self.assertEqual((bytearray(b'example.com'),), server_name.host_names)
+        self.assertEqual((bytearray(b'example.com'),), server_name.hostNames)
         self.assertEqual([SNIExtension.ServerName(
             NameType.host_name,
             bytearray(b'example.com')
-            )], server_name.server_names)
+            )], server_name.serverNames)
 
-    def test_create_with_host_names(self):
+    def test_create_with_hostNames(self):
         server_name = SNIExtension()
-        server_name = server_name.create(host_names=[bytearray(b'example.com'),
+        server_name = server_name.create(hostNames=[bytearray(b'example.com'),
             bytearray(b'www.example.com')])
 
         self.assertEqual((
             bytearray(b'example.com'),
             bytearray(b'www.example.com')
-            ), server_name.host_names)
+            ), server_name.hostNames)
         self.assertEqual([
             SNIExtension.ServerName(
                 NameType.host_name,
@@ -336,16 +336,16 @@ class TestSNIExtension(unittest.TestCase):
             SNIExtension.ServerName(
                 NameType.host_name,
                 bytearray(b'www.example.com'))],
-            server_name.server_names)
+            server_name.serverNames)
 
-    def test_create_with_server_names(self):
+    def test_create_with_serverNames(self):
         server_name = SNIExtension()
-        server_name = server_name.create(server_names=[
+        server_name = server_name.create(serverNames=[
             SNIExtension.ServerName(1, bytearray(b'example.com')),
             SNIExtension.ServerName(4, bytearray(b'www.example.com')),
             SNIExtension.ServerName(0, bytearray(b'example.net'))])
 
-        self.assertEqual((bytearray(b'example.net'),), server_name.host_names)
+        self.assertEqual((bytearray(b'example.net'),), server_name.hostNames)
         self.assertEqual([
             SNIExtension.ServerName(
                 1, bytearray(b'example.com')),
@@ -353,41 +353,41 @@ class TestSNIExtension(unittest.TestCase):
                 4, bytearray(b'www.example.com')),
             SNIExtension.ServerName(
                 0, bytearray(b'example.net'))],
-            server_name.server_names)
+            server_name.serverNames)
 
-    def test_host_names(self):
+    def test_hostNames(self):
         server_name = SNIExtension()
-        server_name = server_name.create(server_names=[
+        server_name = server_name.create(serverNames=[
             SNIExtension.ServerName(0, bytearray(b'example.net')),
             SNIExtension.ServerName(1, bytearray(b'example.com')),
             SNIExtension.ServerName(4, bytearray(b'www.example.com'))
             ])
 
-        server_name.host_names = \
+        server_name.hostNames = \
                 [bytearray(b'example.com')]
 
-        self.assertEqual((bytearray(b'example.com'),), server_name.host_names)
+        self.assertEqual((bytearray(b'example.com'),), server_name.hostNames)
         self.assertEqual([
             SNIExtension.ServerName(0, bytearray(b'example.com')),
             SNIExtension.ServerName(1, bytearray(b'example.com')),
             SNIExtension.ServerName(4, bytearray(b'www.example.com'))],
-            server_name.server_names)
+            server_name.serverNames)
 
-    def test_host_names_delete(self):
+    def test_hostNames_delete(self):
         server_name = SNIExtension()
-        server_name = server_name.create(server_names=[
+        server_name = server_name.create(serverNames=[
             SNIExtension.ServerName(0, bytearray(b'example.net')),
             SNIExtension.ServerName(1, bytearray(b'example.com')),
             SNIExtension.ServerName(4, bytearray(b'www.example.com'))
             ])
 
-        del server_name.host_names
+        del server_name.hostNames
 
-        self.assertEqual(tuple(), server_name.host_names)
+        self.assertEqual(tuple(), server_name.hostNames)
         self.assertEqual([
             SNIExtension.ServerName(1, bytearray(b'example.com')),
             SNIExtension.ServerName(4, bytearray(b'www.example.com'))],
-            server_name.server_names)
+            server_name.serverNames)
 
     def test_write(self):
         server_name = SNIExtension()
@@ -399,7 +399,7 @@ class TestSNIExtension(unittest.TestCase):
             b'\x00\x0b' +   # length of element - 11 bytes
             # UTF-8 encoding of example.com
             b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d'
-            ), server_name.ext_data)
+            ), server_name.extData)
 
         self.assertEqual(bytearray(
             b'\x00\x00' +   # type of extension - SNI (0)
@@ -413,7 +413,7 @@ class TestSNIExtension(unittest.TestCase):
 
     def test_write_with_multiple_hostnames(self):
         server_name = SNIExtension()
-        server_name = server_name.create(host_names=[
+        server_name = server_name.create(hostNames=[
             bytearray(b'example.com'),
             bytearray(b'example.org')])
 
@@ -427,7 +427,7 @@ class TestSNIExtension(unittest.TestCase):
             b'\x00\x0b' +   # length of elemnet - 11 bytes
             # utf-8 encoding of example.org
             b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x6f\x72\x67'
-            ), server_name.ext_data)
+            ), server_name.extData)
 
         self.assertEqual(bytearray(
             b'\x00\x00' +   # type of extension - SNI (0)
@@ -453,11 +453,11 @@ class TestSNIExtension(unittest.TestCase):
 
     def test_write_of_empty_list_of_names(self):
         server_name = SNIExtension()
-        server_name = server_name.create(server_names=[])
+        server_name = server_name.create(serverNames=[])
 
         self.assertEqual(bytearray(
             b'\x00\x00'    # length of array - 0 bytes
-            ), server_name.ext_data)
+            ), server_name.extData)
 
         self.assertEqual(bytearray(
             b'\x00\x00' +  # type of extension - SNI 0
@@ -480,7 +480,7 @@ class TestSNIExtension(unittest.TestCase):
 
         server_name = server_name.parse(p)
 
-        self.assertIsNone(server_name.server_names)
+        self.assertIsNone(server_name.serverNames)
 
     def test_parse_null_length_array(self):
         server_name = SNIExtension()
@@ -489,7 +489,7 @@ class TestSNIExtension(unittest.TestCase):
 
         server_name = server_name.parse(p)
 
-        self.assertEqual([], server_name.server_names)
+        self.assertEqual([], server_name.serverNames)
 
     def test_parse_with_host_name(self):
         server_name = SNIExtension()
@@ -503,11 +503,11 @@ class TestSNIExtension(unittest.TestCase):
 
         server_name = server_name.parse(p)
 
-        self.assertEqual(bytearray(b'example.com'), server_name.host_names[0])
+        self.assertEqual(bytearray(b'example.com'), server_name.hostNames[0])
         self.assertEqual(tuple([bytearray(b'example.com')]),
-                server_name.host_names)
+                server_name.hostNames)
 
-    def test_parse_with_multiple_host_names(self):
+    def test_parse_with_multiple_hostNames(self):
         server_name = SNIExtension()
 
         p = Parser(bytearray(
@@ -523,16 +523,16 @@ class TestSNIExtension(unittest.TestCase):
 
         server_name = server_name.parse(p)
 
-        self.assertEqual(bytearray(b'example.com'), server_name.host_names[0])
+        self.assertEqual(bytearray(b'example.com'), server_name.hostNames[0])
         self.assertEqual(tuple([bytearray(b'example.com')]),
-                server_name.host_names)
+                server_name.hostNames)
 
         SN = SNIExtension.ServerName
 
         self.assertEqual([
             SN(10, bytearray(b'example.org')),
             SN(0, bytearray(b'example.com'))
-            ], server_name.server_names)
+            ], server_name.serverNames)
 
     def test_parse_with_array_length_long_by_one(self):
         server_name = SNIExtension()
@@ -629,11 +629,11 @@ class TestSNIExtension(unittest.TestCase):
     def test___repr__(self):
         server_name = SNIExtension()
         server_name = server_name.create(
-                server_names=[
+                serverNames=[
                     SNIExtension.ServerName(0, bytearray(b'example.com')),
                     SNIExtension.ServerName(1, bytearray(b'\x04\x01'))])
 
-        self.assertEqual("SNIExtension(server_names=["\
+        self.assertEqual("SNIExtension(serverNames=["\
                 "ServerName(name_type=0, name=bytearray(b'example.com')), "\
                 "ServerName(name_type=1, name=bytearray(b'\\x04\\x01'))])",
                 repr(server_name))
@@ -642,31 +642,31 @@ class TestClientCertTypeExtension(unittest.TestCase):
     def test___init___(self):
         cert_type = ClientCertTypeExtension()
 
-        self.assertEqual(9, cert_type.ext_type)
-        self.assertEqual(bytearray(0), cert_type.ext_data)
-        self.assertIsNone(cert_type.cert_types)
+        self.assertEqual(9, cert_type.extType)
+        self.assertEqual(bytearray(0), cert_type.extData)
+        self.assertIsNone(cert_type.certTypes)
 
     def test_create(self):
         cert_type = ClientCertTypeExtension()
         cert_type = cert_type.create()
 
-        self.assertEqual(9, cert_type.ext_type)
-        self.assertEqual(bytearray(0), cert_type.ext_data)
-        self.assertIsNone(cert_type.cert_types)
+        self.assertEqual(9, cert_type.extType)
+        self.assertEqual(bytearray(0), cert_type.extData)
+        self.assertIsNone(cert_type.certTypes)
 
     def test_create_with_empty_list(self):
         cert_type = ClientCertTypeExtension()
         cert_type = cert_type.create([])
 
-        self.assertEqual(bytearray(b'\x00'), cert_type.ext_data)
-        self.assertEqual([], cert_type.cert_types)
+        self.assertEqual(bytearray(b'\x00'), cert_type.extData)
+        self.assertEqual([], cert_type.certTypes)
 
     def test_create_with_list(self):
         cert_type = ClientCertTypeExtension()
         cert_type = cert_type.create([0])
 
-        self.assertEqual(bytearray(b'\x01\x00'), cert_type.ext_data)
-        self.assertEqual([0], cert_type.cert_types)
+        self.assertEqual(bytearray(b'\x01\x00'), cert_type.extData)
+        self.assertEqual([0], cert_type.certTypes)
 
     def test_write(self):
         cert_type = ClientCertTypeExtension()
@@ -685,8 +685,8 @@ class TestClientCertTypeExtension(unittest.TestCase):
 
         cert_type = cert_type.parse(p)
 
-        self.assertEqual(9, cert_type.ext_type)
-        self.assertEqual([], cert_type.cert_types)
+        self.assertEqual(9, cert_type.extType)
+        self.assertEqual([], cert_type.certTypes)
 
     def test_parse_with_list(self):
         cert_type = ClientCertTypeExtension()
@@ -695,7 +695,7 @@ class TestClientCertTypeExtension(unittest.TestCase):
 
         cert_type = cert_type.parse(p)
 
-        self.assertEqual([1, 0], cert_type.cert_types)
+        self.assertEqual([1, 0], cert_type.certTypes)
 
     def test_parse_with_length_long_by_one(self):
         cert_type = ClientCertTypeExtension()
@@ -709,22 +709,22 @@ class TestClientCertTypeExtension(unittest.TestCase):
         cert_type = ClientCertTypeExtension()
         cert_type = cert_type.create([0, 1])
 
-        self.assertEqual("ClientCertTypeExtension(cert_types=[0, 1])",
+        self.assertEqual("ClientCertTypeExtension(certTypes=[0, 1])",
                 repr(cert_type))
 
 class TestServerCertTypeExtension(unittest.TestCase):
     def test___init__(self):
         cert_type = ServerCertTypeExtension()
 
-        self.assertEqual(9, cert_type.ext_type)
-        self.assertEqual(bytearray(0), cert_type.ext_data)
+        self.assertEqual(9, cert_type.extType)
+        self.assertEqual(bytearray(0), cert_type.extData)
         self.assertIsNone(cert_type.cert_type)
 
     def test_create(self):
         cert_type = ServerCertTypeExtension().create(0)
 
-        self.assertEqual(9, cert_type.ext_type)
-        self.assertEqual(bytearray(b'\x00'), cert_type.ext_data)
+        self.assertEqual(9, cert_type.extType)
+        self.assertEqual(bytearray(b'\x00'), cert_type.extData)
         self.assertEqual(0, cert_type.cert_type)
 
     def test_parse(self):
@@ -772,16 +772,16 @@ class TestSRPExtension(unittest.TestCase):
         srp_extension = SRPExtension()
 
         self.assertIsNone(srp_extension.identity)
-        self.assertEqual(12, srp_extension.ext_type)
-        self.assertEqual(bytearray(0), srp_extension.ext_data)
+        self.assertEqual(12, srp_extension.extType)
+        self.assertEqual(bytearray(0), srp_extension.extData)
 
     def test_create(self):
         srp_extension = SRPExtension()
         srp_extension = srp_extension.create()
 
         self.assertIsNone(srp_extension.identity)
-        self.assertEqual(12, srp_extension.ext_type)
-        self.assertEqual(bytearray(0), srp_extension.ext_data)
+        self.assertEqual(12, srp_extension.extType)
+        self.assertEqual(bytearray(0), srp_extension.extData)
 
     def test_create_with_name(self):
         srp_extension = SRPExtension()
@@ -790,7 +790,7 @@ class TestSRPExtension(unittest.TestCase):
         self.assertEqual(bytearray(b'username'), srp_extension.identity)
         self.assertEqual(bytearray(
             b'\x08' + # length of string - 8 bytes
-            b'username'), srp_extension.ext_data)
+            b'username'), srp_extension.extData)
 
     def test_create_with_too_long_name(self):
         srp_extension = SRPExtension()
@@ -848,16 +848,16 @@ class TestNPNExtension(unittest.TestCase):
         npn_extension = NPNExtension()
 
         self.assertIsNone(npn_extension.protocols)
-        self.assertEqual(13172, npn_extension.ext_type)
-        self.assertEqual(bytearray(0), npn_extension.ext_data)
+        self.assertEqual(13172, npn_extension.extType)
+        self.assertEqual(bytearray(0), npn_extension.extData)
 
     def test_create(self):
         npn_extension = NPNExtension()
         npn_extension = npn_extension.create()
 
         self.assertIsNone(npn_extension.protocols)
-        self.assertEqual(13172, npn_extension.ext_type)
-        self.assertEqual(bytearray(0), npn_extension.ext_data)
+        self.assertEqual(13172, npn_extension.extType)
+        self.assertEqual(bytearray(0), npn_extension.extData)
 
     def test_create_with_list_of_protocols(self):
         npn_extension = NPNExtension()
@@ -875,7 +875,7 @@ class TestNPNExtension(unittest.TestCase):
             b'\x06' +   # length of name of protocol
             # utf-8 encoding of "http/1.1"
             b'\x73\x70\x64\x79\x2f\x33'
-            ), npn_extension.ext_data)
+            ), npn_extension.extData)
 
     def test_write(self):
         npn_extension = NPNExtension().create()
@@ -909,7 +909,7 @@ class TestNPNExtension(unittest.TestCase):
 
         npn_extension = npn_extension.parse(p)
 
-        self.assertEqual(bytearray(0), npn_extension.ext_data)
+        self.assertEqual(bytearray(0), npn_extension.extData)
         self.assertEqual([], npn_extension.protocols)
 
     def test_parse_with_procotol(self):
@@ -955,8 +955,8 @@ class TestTACKExtension(unittest.TestCase):
 
         self.assertEqual([], tack_ext.tacks)
         self.assertEqual(0, tack_ext.activation_flags)
-        self.assertEqual(62208, tack_ext.ext_type)
-        self.assertEqual(bytearray(b'\x00\x00\x00'), tack_ext.ext_data)
+        self.assertEqual(62208, tack_ext.extType)
+        self.assertEqual(bytearray(b'\x00\x00\x00'), tack_ext.extData)
 
     def test_create(self):
         tack_ext = TACKExtension().create([], 1)
@@ -1084,7 +1084,7 @@ class TestTACKExtension(unittest.TestCase):
 
         self.assertFalse(a == b)
 
-    def test_ext_data(self):
+    def test_extData(self):
         tack = TACKExtension.TACK().create(
                 bytearray(b'\x01'*64),
                 2,
@@ -1104,7 +1104,7 @@ class TestTACKExtension(unittest.TestCase):
             b'\x05'*32 +            # target_hash
             b'\x06'*64 +            # signature
             b'\x01'                 # activation flag
-            ), tack_ext.ext_data)
+            ), tack_ext.extData)
 
     def test_parse(self):
         p = Parser(bytearray(3))
@@ -1187,7 +1187,7 @@ class TestSupportedGroups(unittest.TestCase):
 
         ext = SupportedGroupsExtension().parse(parser)
 
-        self.assertEqual(ext.ext_type, ExtensionType.supported_groups)
+        self.assertEqual(ext.extType, ExtensionType.supported_groups)
         self.assertEqual(ext.groups,
                          [GroupName.secp192r1, GroupName.secp224r1])
         for group in ext.groups:
@@ -1199,7 +1199,7 @@ class TestSupportedGroups(unittest.TestCase):
 
         ext = SupportedGroupsExtension().parse(parser)
 
-        self.assertEqual(ext.ext_type, ExtensionType.supported_groups)
+        self.assertEqual(ext.extType, ExtensionType.supported_groups)
         self.assertIsNone(ext.groups)
 
     def test_parse_with_empty_array(self):
@@ -1222,8 +1222,8 @@ class TestECPointFormatsExtension(unittest.TestCase):
         ext = ECPointFormatsExtension()
 
         self.assertIsNotNone(ext)
-        self.assertEqual(ext.ext_data, bytearray(0))
-        self.assertEqual(ext.ext_type, 11)
+        self.assertEqual(ext.extData, bytearray(0))
+        self.assertEqual(ext.extType, 11)
 
     def test_write(self):
         ext = ECPointFormatsExtension()
@@ -1258,8 +1258,8 @@ class TestSignatureAlgorithmsExtension(unittest.TestCase):
 
         self.assertIsNotNone(ext)
         self.assertIsNone(ext.sigalgs)
-        self.assertEqual(ext.ext_type, 13)
-        self.assertEqual(ext.ext_data, bytearray(0))
+        self.assertEqual(ext.extType, 13)
+        self.assertEqual(ext.extData, bytearray(0))
 
     def test_write(self):
         ext = SignatureAlgorithmsExtension()
