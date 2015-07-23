@@ -159,7 +159,7 @@ class TestClientHello(unittest.TestCase):
             b'\x00'*2 +           # cipher suites length
             b'\x00' +             # compression methods length
             b'\x00\x07' +         # extensions length - 7 bytes
-            b'\x00\x09' +         # extension type - cert_types (9)
+            b'\x00\x09' +         # extension type - certTypes (9)
             b'\x00\x03' +         # extension length - 3 bytes
             b'\x02' +             # length of array - 2 bytes
             b'\x00' +             # type - x509 (0)
@@ -174,8 +174,8 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual([], client_hello.cipher_suites)
         self.assertEqual([], client_hello.compression_methods)
         self.assertEqual([0,1], client_hello.certificate_types)
-        cert_types = ClientCertTypeExtension().create([0,1])
-        self.assertEqual([cert_types], client_hello.extensions)
+        certTypes = ClientCertTypeExtension().create([0,1])
+        self.assertEqual([certTypes], client_hello.extensions)
 
     def test_parse_with_SRP_extension(self):
         p = Parser(bytearray(
@@ -461,7 +461,7 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual(client_hello.certificate_types, [0, 1, 2])
 
         ext = client_hello.getExtension(ExtensionType.cert_type)
-        self.assertEqual(ext.cert_types, [0, 1, 2])
+        self.assertEqual(ext.certTypes, [0, 1, 2])
 
     def test_srp_username(self):
         client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),

@@ -387,8 +387,8 @@ class ClientCertTypeExtension(TLSExtension):
     @type extData: bytearray
     @ivar extData: raw representation of the extension data
 
-    @type cert_types: list of int
-    @ivar cert_types: list of certificate type identifiers (each one byte long)
+    @type certTypes: list of int
+    @ivar certTypes: list of certificate type identifiers (each one byte long)
     """
 
     def __init__(self):
@@ -398,15 +398,15 @@ class ClientCertTypeExtension(TLSExtension):
         See also: L{create} and L{parse}
         """
 
-        self.cert_types = None
+        self.certTypes = None
 
     def __repr__(self):
         """ Return programmer-centric representation of extension
 
         @rtype: str
         """
-        return "ClientCertTypeExtension(cert_types={0!r})"\
-                .format(self.cert_types)
+        return "ClientCertTypeExtension(certTypes={0!r})"\
+                .format(self.certTypes)
 
     @property
     def extType(self):
@@ -426,27 +426,27 @@ class ClientCertTypeExtension(TLSExtension):
         @rtype: bytearray
         """
 
-        if self.cert_types is None:
+        if self.certTypes is None:
             return bytearray(0)
 
         w = Writer()
-        w.add(len(self.cert_types), 1)
-        for c_type in self.cert_types:
+        w.add(len(self.certTypes), 1)
+        for c_type in self.certTypes:
             w.add(c_type, 1)
 
         return w.bytes
 
-    def create(self, cert_types=None):
+    def create(self, certTypes=None):
         """
         Return instance of this extension with specified certificate types
 
-        @type cert_types: iterable list of int
-        @param cert_types: list of certificate types to advertise, all values
+        @type certTypes: iterable list of int
+        @param certTypes: list of certificate types to advertise, all values
             should be between 0 and 2^8-1 inclusive
 
         @raises ValueError: when the list includes too big or negative integers
         """
-        self.cert_types = cert_types
+        self.certTypes = certTypes
         return self
 
     def parse(self, p):
@@ -462,7 +462,7 @@ class ClientCertTypeExtension(TLSExtension):
         @rtype: L{ClientCertTypeExtension}
         """
 
-        self.cert_types = p.getVarList(1, 1)
+        self.certTypes = p.getVarList(1, 1)
 
         return self
 
