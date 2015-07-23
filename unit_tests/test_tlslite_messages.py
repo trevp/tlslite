@@ -1022,11 +1022,11 @@ class TestRecordHeader3(unittest.TestCase):
         self.assertEqual((3, 3), rh.version)
         self.assertEqual(15, rh.length)
 
-    def test_type_name(self):
+    def test_typeName(self):
         rh = RecordHeader3()
         rh = rh.create((3,0), ContentType.application_data, 0)
 
-        self.assertEqual("application_data", rh.type_name)
+        self.assertEqual("application_data", rh.typeName)
 
     def test___str__(self):
         rh = RecordHeader3()

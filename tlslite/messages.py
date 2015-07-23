@@ -64,7 +64,7 @@ class RecordHeader3(RecordHeader):
         return self
 
     @property
-    def type_name(self):
+    def typeName(self):
         matching = [x[0] for x in ContentType.__dict__.items()
                     if x[1] == self.type]
         if len(matching) == 0:
@@ -75,7 +75,7 @@ class RecordHeader3(RecordHeader):
     def __str__(self):
         return "SSLv3 record,version({0[0]}.{0[1]}),"\
                 "content type({1}),length({2})".format(self.version,
-                        self.type_name, self.length)
+                        self.typeName, self.length)
 
     def __repr__(self):
         return "RecordHeader3(type={0}, version=({1[0]}.{1[1]}), length={2})".\
