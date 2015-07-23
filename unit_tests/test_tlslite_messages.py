@@ -1069,16 +1069,16 @@ class TestAlert(unittest.TestCase):
 
         self.assertEqual("unknown(11)", alert.levelName)
 
-    def test_description_name(self):
+    def test_descriptionName(self):
         alert = Alert().create(AlertDescription.record_overflow,
                 AlertLevel.fatal)
 
-        self.assertEqual("record_overflow", alert.description_name)
+        self.assertEqual("record_overflow", alert.descriptionName)
 
-    def test_description_name_with_wrong_id(self):
+    def test_descriptionName_with_wrong_id(self):
         alert = Alert().create(1)
 
-        self.assertEqual("unknown(1)", alert.description_name)
+        self.assertEqual("unknown(1)", alert.descriptionName)
 
     def test___str__(self):
         alert = Alert().create(AlertDescription.record_overflow,
