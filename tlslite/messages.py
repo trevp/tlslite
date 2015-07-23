@@ -400,8 +400,8 @@ class ClientHello(HandshakeMsg):
         if sni_ext is None:
             return bytearray(0)
         else:
-            if len(sni_ext.host_names) > 0:
-                return sni_ext.host_names[0]
+            if len(sni_ext.hostNames) > 0:
+                return sni_ext.hostNames[0]
             else:
                 return bytearray(0)
 
@@ -418,9 +418,9 @@ class ClientHello(HandshakeMsg):
             sni_ext = SNIExtension().create(hostname)
             self.addExtension(sni_ext)
         else:
-            names = list(sni_ext.host_names)
+            names = list(sni_ext.hostNames)
             names[0] = hostname
-            sni_ext.host_names = names
+            sni_ext.hostNames = names
 
     def create(self, version, random, session_id, cipher_suites,
                certificate_types=None, srpUsername=None,
