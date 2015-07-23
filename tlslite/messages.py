@@ -108,7 +108,7 @@ class Alert(object):
         return w.bytes
 
     @property
-    def level_name(self):
+    def levelName(self):
         matching = [x[0] for x in AlertLevel.__dict__.items()
                 if x[1] == self.level]
         if len(matching) == 0:
@@ -126,7 +126,7 @@ class Alert(object):
             return str(matching[0])
 
     def __str__(self):
-        return "Alert, level:{0}, description:{1}".format(self.level_name,
+        return "Alert, level:{0}, description:{1}".format(self.levelName,
                 self.description_name)
 
     def __repr__(self):
