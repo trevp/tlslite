@@ -117,7 +117,7 @@ class Alert(object):
             return str(matching[0])
 
     @property
-    def description_name(self):
+    def descriptionName(self):
         matching = [x[0] for x in AlertDescription.__dict__.items()
                 if x[1] == self.description]
         if len(matching) == 0:
@@ -127,7 +127,7 @@ class Alert(object):
 
     def __str__(self):
         return "Alert, level:{0}, description:{1}".format(self.levelName,
-                self.description_name)
+                self.descriptionName)
 
     def __repr__(self):
         return "Alert(level={0}, description={1})".format(self.level,
