@@ -519,6 +519,8 @@ encrypt-then-MAC mode for CBC ciphers.
 ===========
 
 0.5.0-alpha - xx/xx/xxxx - Hubert Kario
+ - add supported_groups, supported_point_formats, signature_algorithms and
+   renegotiation_info extensions
  - remove most CBC MAC-ing and padding timing side-channel leaks (should fix
    CVE-2013-0169, a.k.a. Lucky13)
  - add support for NULL encryption - TLS_RSA_WITH_NULL_MD5,
