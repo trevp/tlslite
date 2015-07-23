@@ -136,6 +136,7 @@ def clientTestCmd(argv):
     connection = connect()
     settings = HandshakeSettings()
     settings.macNames = ["md5"]
+    settings.cipherNames = ["rc4"]
     connection.handshakeClientCert(settings=settings)
     testConnClient(connection)    
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
