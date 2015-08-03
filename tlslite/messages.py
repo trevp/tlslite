@@ -928,31 +928,26 @@ class ServerKeyExchange(HandshakeMsg):
         p.stopLengthCheck()
         return self
 
-    def write(self):
+    def write(self, writeSig=True):
         w = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
             w.addVarSeq(numberToByteArray(self.srp_N), 1, 2)
             w.addVarSeq(numberToByteArray(self.srp_g), 1, 2)
             w.addVarSeq(self.srp_s, 1, 1)
             w.addVarSeq(numberToByteArray(self.srp_B), 1, 2)
-            if self.cipherSuite in CipherSuite.srpCertSuites:
+            if self.cipherSuite in CipherSuite.srpCertSuites and writeSig:
                 w.addVarSeq(self.signature, 1, 2)
         elif self.cipherSuite in CipherSuite.anonSuites:
             w.addVarSeq(numberToByteArray(self.dh_p), 1, 2)
             w.addVarSeq(numberToByteArray(self.dh_g), 1, 2)
             w.addVarSeq(numberToByteArray(self.dh_Ys), 1, 2)
-            if self.cipherSuite in []: # TODO support for signed_params
+            if self.cipherSuite in [] and writeSig: # TODO support for signed_params
                 w.addVarSeq(self.signature, 1, 2)
         return self.postWrite(w)
 
     def hash(self, clientRandom, serverRandom):
-        oldCipherSuite = self.cipherSuite
-        self.cipherSuite = None
-        try:
-            bytes = clientRandom + serverRandom + self.write()[4:]
-            return MD5(bytes) + SHA1(bytes)
-        finally:
-            self.cipherSuite = oldCipherSuite
+        bytes = clientRandom + serverRandom + self.write(False)[4:]
+        return MD5(bytes) + SHA1(bytes)
 
 class ServerHelloDone(HandshakeMsg):
     def __init__(self):
