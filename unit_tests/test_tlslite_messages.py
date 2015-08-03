@@ -547,7 +547,7 @@ class TestClientHello(unittest.TestCase):
         client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),
                 [])
 
-        sni_ext = SNIExtension().create(server_names=[\
+        sni_ext = SNIExtension().create(serverNames=[\
                 SNIExtension.ServerName(1, b'test')])
 
         client_hello.extensions = [sni_ext]
