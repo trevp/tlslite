@@ -159,7 +159,7 @@ class TestClientHello(unittest.TestCase):
             b'\x00'*2 +           # cipher suites length
             b'\x00' +             # compression methods length
             b'\x00\x07' +         # extensions length - 7 bytes
-            b'\x00\x09' +         # extension type - cert_types (9)
+            b'\x00\x09' +         # extension type - certTypes (9)
             b'\x00\x03' +         # extension length - 3 bytes
             b'\x02' +             # length of array - 2 bytes
             b'\x00' +             # type - x509 (0)
@@ -174,8 +174,8 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual([], client_hello.cipher_suites)
         self.assertEqual([], client_hello.compression_methods)
         self.assertEqual([0,1], client_hello.certificate_types)
-        cert_types = ClientCertTypeExtension().create([0,1])
-        self.assertEqual([cert_types], client_hello.extensions)
+        certTypes = ClientCertTypeExtension().create([0,1])
+        self.assertEqual([certTypes], client_hello.extensions)
 
     def test_parse_with_SRP_extension(self):
         p = Parser(bytearray(
@@ -407,8 +407,8 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual("client_hello,version(3.0),random(...),"\
                 "session ID(bytearray(b'')),cipher suites([]),"\
                 "compression methods([0]),extensions(["\
-                "TLSExtension(ext_type=0, ext_data=bytearray(b'\\x00'), "\
-                "server_type=False)])",
+                "TLSExtension(extType=0, extData=bytearray(b'\\x00'), "\
+                "serverType=False)])",
                 str(client_hello))
 
     def test___repr__(self):
@@ -418,8 +418,8 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual("ClientHello(ssl2=False, client_version=(3.3), "\
                 "random=bytearray(b'\\x00'), session_id=bytearray(b''), "\
                 "cipher_suites=[], compression_methods=[0], "\
-                "extensions=[TLSExtension(ext_type=0, "\
-                "ext_data=bytearray(b''), server_type=False)])",
+                "extensions=[TLSExtension(extType=0, "\
+                "extData=bytearray(b''), serverType=False)])",
                 repr(client_hello))
 
     def test_getExtension(self):
@@ -461,7 +461,7 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual(client_hello.certificate_types, [0, 1, 2])
 
         ext = client_hello.getExtension(ExtensionType.cert_type)
-        self.assertEqual(ext.cert_types, [0, 1, 2])
+        self.assertEqual(ext.certTypes, [0, 1, 2])
 
     def test_srp_username(self):
         client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),
@@ -547,7 +547,7 @@ class TestClientHello(unittest.TestCase):
         client_hello = ClientHello().create((3, 3), bytearray(1), bytearray(0),
                 [])
 
-        sni_ext = SNIExtension().create(server_names=[\
+        sni_ext = SNIExtension().create(serverNames=[\
                 SNIExtension.ServerName(1, b'test')])
 
         client_hello.extensions = [sni_ext]
@@ -990,11 +990,11 @@ class TestRecordHeader3(unittest.TestCase):
         self.assertEqual((3, 3), rh.version)
         self.assertEqual(15, rh.length)
 
-    def test_type_name(self):
+    def test_typeName(self):
         rh = RecordHeader3()
         rh = rh.create((3,0), ContentType.application_data, 0)
 
-        self.assertEqual("application_data", rh.type_name)
+        self.assertEqual("application_data", rh.typeName)
 
     def test___str__(self):
         rh = RecordHeader3()
@@ -1026,27 +1026,27 @@ class TestAlert(unittest.TestCase):
         self.assertEqual(alert.level, 0)
         self.assertEqual(alert.description, 0)
 
-    def test_level_name(self):
+    def test_levelName(self):
         alert = Alert().create(AlertDescription.record_overflow,
                 AlertLevel.fatal)
 
-        self.assertEqual("fatal", alert.level_name)
+        self.assertEqual("fatal", alert.levelName)
 
-    def test_level_name_with_wrong_level(self):
+    def test_levelName_with_wrong_level(self):
         alert = Alert().create(AlertDescription.close_notify, 11)
 
-        self.assertEqual("unknown(11)", alert.level_name)
+        self.assertEqual("unknown(11)", alert.levelName)
 
-    def test_description_name(self):
+    def test_descriptionName(self):
         alert = Alert().create(AlertDescription.record_overflow,
                 AlertLevel.fatal)
 
-        self.assertEqual("record_overflow", alert.description_name)
+        self.assertEqual("record_overflow", alert.descriptionName)
 
-    def test_description_name_with_wrong_id(self):
+    def test_descriptionName_with_wrong_id(self):
         alert = Alert().create(1)
 
-        self.assertEqual("unknown(1)", alert.description_name)
+        self.assertEqual("unknown(1)", alert.descriptionName)
 
     def test___str__(self):
         alert = Alert().create(AlertDescription.record_overflow,

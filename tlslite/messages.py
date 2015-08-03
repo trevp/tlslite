@@ -49,7 +49,7 @@ class RecordHeader3(object):
         return self
 
     @property
-    def type_name(self):
+    def typeName(self):
         matching = [x[0] for x in ContentType.__dict__.items()
                 if x[1] == self.type]
         if len(matching) == 0:
@@ -60,7 +60,7 @@ class RecordHeader3(object):
     def __str__(self):
         return "SSLv3 record,version({0[0]}.{0[1]}),"\
                 "content type({1}),length({2})".format(self.version,
-                        self.type_name, self.length)
+                        self.typeName, self.length)
 
     def __repr__(self):
         return "RecordHeader3(type={0}, version=({1[0]}.{1[1]}), length={2})".\
@@ -108,7 +108,7 @@ class Alert(object):
         return w.bytes
 
     @property
-    def level_name(self):
+    def levelName(self):
         matching = [x[0] for x in AlertLevel.__dict__.items()
                 if x[1] == self.level]
         if len(matching) == 0:
@@ -117,7 +117,7 @@ class Alert(object):
             return str(matching[0])
 
     @property
-    def description_name(self):
+    def descriptionName(self):
         matching = [x[0] for x in AlertDescription.__dict__.items()
                 if x[1] == self.description]
         if len(matching) == 0:
@@ -126,8 +126,8 @@ class Alert(object):
             return str(matching[0])
 
     def __str__(self):
-        return "Alert, level:{0}, description:{1}".format(self.level_name,
-                self.description_name)
+        return "Alert, level:{0}, description:{1}".format(self.levelName,
+                self.descriptionName)
 
     def __repr__(self):
         return "Alert(level={0}, description={1})".format(self.level,
@@ -214,7 +214,7 @@ class ClientHello(HandshakeMsg):
                 self.ssl2, self.client_version, self.random, self.session_id,
                 self.cipher_suites, self.compression_methods, self.extensions)
 
-    def getExtension(self, ext_type):
+    def getExtension(self, extType):
         """
         Returns extension of given type if present, None otherwise
 
@@ -225,7 +225,7 @@ class ClientHello(HandshakeMsg):
         if self.extensions is None:
             return None
 
-        exts = [x for x in self.extensions if x.ext_type == ext_type]
+        exts = [ext for ext in self.extensions if ext.extType == extType]
         if len(exts) > 1:
             raise TLSInternalError(
                     "Multiple extensions of the same type present")
@@ -259,7 +259,7 @@ class ClientHello(HandshakeMsg):
             # depends on a default value of this property
             return [CertificateType.x509]
         else:
-            return cert_type.cert_types
+            return cert_type.certTypes
 
     @certificate_types.setter
     def certificate_types(self, val):
@@ -278,7 +278,7 @@ class ClientHello(HandshakeMsg):
             ext = ClientCertTypeExtension().create(val)
             self.addExtension(ext)
         else:
-            cert_type.cert_types = val
+            cert_type.certTypes = val
 
     @property
     def srp_username(self):
@@ -345,8 +345,8 @@ class ClientHello(HandshakeMsg):
             if self.extensions is None:
                 return
             # remove all extensions of this type without changing reference
-            self.extensions[:] = [x for x in self.extensions if
-                    x.ext_type != ExtensionType.tack]
+            self.extensions[:] = [ext for ext in self.extensions if
+                                  ext.extType != ExtensionType.tack]
 
     @property
     def supports_npn(self):
@@ -385,8 +385,8 @@ class ClientHello(HandshakeMsg):
             if self.extensions is None:
                 return
             #remove all extension of this type without changing reference
-            self.extensions[:] = [x for x in self.extensions if
-                    x.ext_type != ExtensionType.supports_npn]
+            self.extensions[:] = [ext for ext in self.extensions if
+                                  ext.extType != ExtensionType.supports_npn]
 
     @property
     def server_name(self):
@@ -400,8 +400,8 @@ class ClientHello(HandshakeMsg):
         if sni_ext is None:
             return bytearray(0)
         else:
-            if len(sni_ext.host_names) > 0:
-                return sni_ext.host_names[0]
+            if len(sni_ext.hostNames) > 0:
+                return sni_ext.hostNames[0]
             else:
                 return bytearray(0)
 
@@ -418,9 +418,9 @@ class ClientHello(HandshakeMsg):
             sni_ext = SNIExtension().create(hostname)
             self.addExtension(sni_ext)
         else:
-            names = list(sni_ext.host_names)
+            names = list(sni_ext.hostNames)
             names[0] = hostname
-            sni_ext.host_names = names
+            sni_ext.hostNames = names
 
     def create(self, version, random, session_id, cipher_suites,
                certificate_types=None, srpUsername=None,
@@ -598,7 +598,7 @@ class ServerHello(HandshakeMsg):
                 self.cipher_suite, self.compression_method, self._tack_ext,
                 self.extensions)
 
-    def getExtension(self, ext_type):
+    def getExtension(self, extType):
         """Return extension of a given type, None if extension of given type
         is not present
 
@@ -608,7 +608,7 @@ class ServerHello(HandshakeMsg):
         if self.extensions is None:
             return None
 
-        exts = [x for x in self.extensions if x.ext_type == ext_type]
+        exts = [ext for ext in self.extensions if ext.extType == extType]
         if len(exts) > 1:
             raise TLSInternalError(
                     "Multiple extensions of the same type present")
@@ -637,7 +637,7 @@ class ServerHello(HandshakeMsg):
             if ext is None or not tackpyLoaded:
                 return None
             else:
-                self._tack_ext = TackExtension(ext.ext_data)
+                self._tack_ext = TackExtension(ext.extData)
         return self._tack_ext
 
     @tackExt.setter
