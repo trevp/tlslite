@@ -131,6 +131,9 @@ class HandshakeSettings(object):
         other.maxVersion = self.maxVersion
         other.sendFallbackSCSV = self.sendFallbackSCSV
 
+        if other.maxVersion < (3,3):
+            other.macNames = [e for e in self.macNames if e != "sha256"]
+
         if not cipherfactory.tripleDESPresent:
             other.cipherNames = [e for e in self.cipherNames if e != "3des"]
         if len(other.cipherNames)==0:
