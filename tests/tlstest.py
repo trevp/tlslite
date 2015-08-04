@@ -233,7 +233,18 @@ def clientTestCmd(argv):
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
 
-    print("Test 14.a - good mutual X509, SSLv3")
+    print("Test 14.a - good mutual X509, TLSv1.1")
+    synchro.recv(1)
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.minVersion = (3,2)
+    settings.maxVersion = (3,2)
+    connection.handshakeClientCert(x509Chain, x509Key, settings=settings)
+    testConnClient(connection)
+    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    connection.close()
+
+    print("Test 14.b - good mutual X509, SSLv3")
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -448,7 +459,32 @@ def clientTestCmd(argv):
             raise
     connection.close()
 
-    print('Test 26 - good standard XMLRPC https client')
+    print("Test 26.a - server checks cipher version")
+    synchro.recv(1)
+    connection = connect()
+    # Configure the ClientHello to only advertise SHA-256 ciphers, but not
+    # support TLS 1.2.
+    connection.fault = Fault.ignoreVersionForCipher
+    settings = HandshakeSettings()
+    settings.maxVersion = (3, 2)
+    settings.macNames = ["sha256"]
+    connection.handshakeClientCert(settings=settings)
+    connection.close()
+
+    print("Test 26.b - client checks cipher version")
+    synchro.recv(1)
+    connection = connect()
+    try:
+        connection.handshakeClientCert()
+        assert()
+    except TLSLocalAlert as alert:
+        # The client should reject the ServerHello because it selected an
+        # invalid cipher for the version.
+        if alert.description != AlertDescription.illegal_parameter:
+            raise
+    connection.close()
+
+    print('Test 27 - good standard XMLRPC https client')
     address = address[0], address[1]+1
     synchro.recv(1)
     try:
@@ -465,7 +501,7 @@ def clientTestCmd(argv):
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print('Test 27 - good tlslite XMLRPC client')
+    print('Test 28 - good tlslite XMLRPC client')
     transport = XMLRPCTransport(ignoreAbruptClose=True)
     server = xmlrpclib.Server('https://%s:%s' % address, transport)
     synchro.recv(1)
@@ -473,14 +509,14 @@ def clientTestCmd(argv):
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print('Test 28 - good XMLRPC ignored protocol')
+    print('Test 29 - good XMLRPC ignored protocol')
     server = xmlrpclib.Server('http://%s:%s' % address, transport)
     synchro.recv(1)
     assert server.add(1,2) == 3
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print("Test 29 - Internet servers test")
+    print("Test 30 - Internet servers test")
     try:
         i = IMAP4_TLS("cyrus.andrew.cmu.edu")
         i.login("anonymous", "anonymous@anonymous.net")
@@ -622,11 +658,7 @@ def serverTestCmd(argv):
         synchro.send(b'R')
         connection = connect()
         connection.fault = fault
-        try:
-            connection.handshakeServer(verifierDB=verifierDB)
-            assert()
-        except:
-            pass
+        connection.handshakeServer(verifierDB=verifierDB)
         connection.close()
 
     print("Test 6 - good SRP: with X.509 cert")
@@ -642,12 +674,8 @@ def serverTestCmd(argv):
         synchro.send(b'R')
         connection = connect()
         connection.fault = fault
-        try:
-            connection.handshakeServer(verifierDB=verifierDB, \
-                                       certChain=x509Chain, privateKey=x509Key)
-            assert()
-        except:
-            pass
+        connection.handshakeServer(verifierDB=verifierDB, \
+                                   certChain=x509Chain, privateKey=x509Key)
         connection.close()
 
     print("Test 11 - X.509 faults")
@@ -655,11 +683,7 @@ def serverTestCmd(argv):
         synchro.send(b'R')
         connection = connect()
         connection.fault = fault
-        try:
-            connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
-            assert()
-        except:
-            pass
+        connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
         connection.close()
 
     print("Test 14 - good mutual X.509")
@@ -670,7 +694,18 @@ def serverTestCmd(argv):
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
 
-    print("Test 14a - good mutual X.509, SSLv3")
+    print("Test 14a - good mutual X.509, TLSv1.1")
+    synchro.send(b'R')
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.minVersion = (3,2)
+    settings.maxVersion = (3,2)
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True, settings=settings)
+    testConnServer(connection)
+    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    connection.close()
+
+    print("Test 14b - good mutual X.509, SSLv3")
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -686,11 +721,7 @@ def serverTestCmd(argv):
         synchro.send(b'R')
         connection = connect()
         connection.fault = fault
-        try:
-            connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True)
-            assert()
-        except:
-            pass
+        connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True)
         connection.close()
 
     print("Test 18 - good SRP, prepare to resume")
@@ -885,7 +916,31 @@ def serverTestCmd(argv):
             raise
     connection.close()
 
-    print("Tests 26-28 - XMLRPXC server")
+    print("Test 26.a - server checks cipher version")
+    synchro.send(b'R')
+    connection = connect()
+    try:
+        connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
+        assert()
+    except TLSLocalAlert as alert:
+        # The server should reject the connection with a handshake_failure
+        # because, after taking the version into account, no ciphers match.
+        if alert.description != AlertDescription.handshake_failure:
+            raise
+    connection.close()
+
+    print("Test 26.b - client checks cipher version")
+    synchro.send(b'R')
+    connection = connect()
+    # Configure the server to illegally select SHA-256 ciphers at TLS 1.1.
+    connection.fault = Fault.ignoreVersionForCipher
+    settings = HandshakeSettings()
+    settings.maxVersion = (3, 2)
+    settings.macNames = ["sha256"]
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
+    connection.close()
+
+    print("Tests 27-29 - XMLRPXC server")
     address = address[0], address[1]+1
     class Server(TLSXMLRPCServer):
 

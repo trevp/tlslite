@@ -176,10 +176,6 @@ class HandshakeSettings(object):
         if not other.maxVersion in ((3,0), (3,1), (3,2), (3,3)):
             raise ValueError("maxVersion set incorrectly")
 
-        if other.maxVersion < (3,3):
-            # No sha256 pre TLS 1.2
-            other.macNames = [e for e in self.macNames if e != "sha256"]
-
         return other
 
     def getCertificateTypes(self):
