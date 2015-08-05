@@ -970,6 +970,12 @@ class TLSRecordLayer(object):
                 if self.version >= (3,2): #For TLS 1.1, remove explicit IV
                     b = b[self._readState.encContext.block_size : ]
 
+                if len(b) == 0:
+                    for result in self._sendError(\
+                            AlertDescription.decryption_failed,
+                            "No data left after decryption and IV removal"):
+                        yield result
+
                 #Check padding
                 paddingGood = True
                 paddingLength = b[-1]
