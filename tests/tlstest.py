@@ -8,6 +8,7 @@
 #   Martin von Loewis - python 3 port
 #   Hubert Kario - several improvements
 #   Google - FALLBACK_SCSV test
+#   Fiach Antaw - TLS-PSK ciphersuites
 #
 # See the LICENSE file for legal information regarding use of this file.
 from __future__ import print_function
@@ -25,7 +26,7 @@ except ImportError:
 
 from tlslite import TLSConnection, Fault, HandshakeSettings, \
     X509, X509CertChain, IMAP4_TLS, VerifierDB, Session, SessionCache, \
-    parsePEMKey, constants, \
+    parsePEMKey, constants, PskDB, \
     AlertDescription, HTTPTLSConnection, TLSSocketServerMixIn, \
     POP3_TLS, m2cryptoLoaded, pycryptoLoaded, gmpyLoaded, tackpyLoaded, \
     Checker, __version__
@@ -296,8 +297,105 @@ def clientTestCmd(argv):
         if alert.description != AlertDescription.bad_record_mac:
             raise
     connection.close()
-    
-    print("Test 21 - HTTPS test X.509")
+
+    print("Test 21 - good PSK")
+    synchro.recv(1)
+    connection = connect()
+    connection.handshakeClientPSK(lambda i: (i, "TEST_PSK"))
+    testConnClient(connection)
+    connection.close()
+
+    print("Test 22 - PSK faults")
+    for fault in Fault.clientPskFaults + Fault.genericFaults:
+        synchro.recv(1)
+        connection = connect()
+        connection.fault = fault
+        try:
+            connection.handshakeClientPSK(lambda i: (i, "TEST_PSK"))
+            print("  Good Fault %s" % (Fault.faultNames[fault]))
+        except TLSFaultError as e:
+            print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
+            badFault = True
+
+    print("Test 23 - good PSK: with X.509 certificate, TLSv1.0")
+    settings = HandshakeSettings()
+    settings.minVersion = (3,1)
+    settings.maxVersion = (3,1)
+    synchro.recv(1)
+    connection = connect()
+    connection.handshakeClientPSK(lambda i: (i, "TEST_PSK"), settings=settings)
+    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    testConnClient(connection)
+    connection.close()
+
+    print("Test 24 - X.509 with PSK faults")
+    for fault in Fault.clientPskFaults + Fault.genericFaults:
+        synchro.recv(1)
+        connection = connect()
+        connection.fault = fault
+        try:
+            connection.handshakeClientPSK(lambda i: (i, "TEST_PSK"))
+            print("  Good Fault %s" % (Fault.faultNames[fault]))
+        except TLSFaultError as e:
+            print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
+            badFault = True
+
+    print("Test 25 - good PSK with no hint")
+    synchro.recv(1)
+    connection = connect()
+    connection.handshakeClientPSK(lambda: ("test_id", "TEST_PSK"))
+    testConnClient(connection)
+    connection.close()
+
+    print("Test 26 - PSK faults with no hint")
+    for fault in Fault.clientPskFaults + Fault.genericFaults:
+        synchro.recv(1)
+        connection = connect()
+        connection.fault = fault
+        try:
+            connection.handshakeClientPSK(lambda: ("test_id", "TEST_PSK"))
+            print("  Good Fault %s" % (Fault.faultNames[fault]))
+        except TLSFaultError as e:
+            print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
+            badFault = True
+
+    print("Test 27 - good PSK with no hint: with X.509 cert, TLSv1.0")
+    settings = HandshakeSettings()
+    settings.minVersion = (3,1)
+    settings.maxVersion = (3,1)
+    synchro.recv(1)
+    connection = connect()
+    connection.handshakeClientPSK(lambda: ("test_id", "TEST_PSK"),
+                                  settings=settings)
+    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    testConnClient(connection)
+    connection.close()
+
+    print("Test 28 - X.509 with PSK faults (no hint)")
+    for fault in Fault.clientPskFaults + Fault.genericFaults:
+        synchro.recv(1)
+        connection = connect()
+        connection.fault = fault
+        try:
+            connection.handshakeClientPSK(lambda: ("test_id", "TEST_PSK"))
+            print("  Good Fault %s" % (Fault.faultNames[fault]))
+        except TLSFaultError as e:
+            print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
+            badFault = True
+
+    print("Test 29 - Internet servers test")
+    try:
+        i = IMAP4_TLS("cyrus.andrew.cmu.edu")
+        i.login("anonymous", "anonymous@anonymous.net")
+        i.logout()
+        print("Test 30: IMAP4 good")
+        p = POP3_TLS("pop.gmail.com")
+        p.quit()
+        print("Test 31: POP3 good")
+    except socket.error as e:
+        print("Non-critical error: socket error trying to reach internet server: ", e)
+
+    print("Test 32 - HTTPS test X.509")
     address = address[0], address[1]+1
     if hasattr(socket, "timeout"):
         timeoutEx = socket.timeout
@@ -334,11 +432,11 @@ def clientTestCmd(argv):
         implementations.append("pycrypto")
     implementations.append("python")
 
-    print("Test 22 - different ciphers, TLSv1.0")
+    print("Test 33 - different ciphers, TLSv1.0")
     for implementation in implementations:
         for cipher in ["aes128", "aes256", "rc4"]:
 
-            print("Test 22:", end=' ')
+            print("Test 33:", end=' ')
             synchro.recv(1)
             connection = connect()
 
@@ -352,13 +450,13 @@ def clientTestCmd(argv):
             print("%s %s" % (connection.getCipherName(), connection.getCipherImplementation()))
             connection.close()
 
-    print("Test 23 - throughput test")
+    print("Test 34 - throughput test")
     for implementation in implementations:
         for cipher in ["aes128", "aes256", "3des", "rc4"]:
             if cipher == "3des" and implementation not in ("openssl", "pycrypto"):
                 continue
 
-            print("Test 23:", end=' ')
+            print("Test 34:", end=' ')
             synchro.recv(1)
             connection = connect()
 
@@ -380,7 +478,7 @@ def clientTestCmd(argv):
             assert(h == b"hello"*10000)
             connection.close()
     
-    print("Test 24.a - Next-Protocol Client Negotiation")
+    print("Test 35.a - Next-Protocol Client Negotiation")
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"http/1.1"])
@@ -388,7 +486,7 @@ def clientTestCmd(argv):
     assert(connection.next_proto == b'http/1.1')
     connection.close()
 
-    print("Test 24.b - Next-Protocol Client Negotiation")
+    print("Test 35.b - Next-Protocol Client Negotiation")
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"spdy/2", b"http/1.1"])
@@ -396,7 +494,7 @@ def clientTestCmd(argv):
     assert(connection.next_proto == b'spdy/2')
     connection.close()
     
-    print("Test 24.c - Next-Protocol Client Negotiation")
+    print("Test 35.c - Next-Protocol Client Negotiation")
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"spdy/2", b"http/1.1"])
@@ -404,7 +502,7 @@ def clientTestCmd(argv):
     assert(connection.next_proto == b'spdy/2')
     connection.close()
     
-    print("Test 24.d - Next-Protocol Client Negotiation")
+    print("Test 35.d - Next-Protocol Client Negotiation")
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
@@ -412,7 +510,7 @@ def clientTestCmd(argv):
     assert(connection.next_proto == b'spdy/2')
     connection.close()
     
-    print("Test 24.e - Next-Protocol Client Negotiation")
+    print("Test 35.e - Next-Protocol Client Negotiation")
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
@@ -420,7 +518,7 @@ def clientTestCmd(argv):
     assert(connection.next_proto == b'spdy/3')
     connection.close()
 
-    print("Test 24.f - Next-Protocol Client Negotiation")
+    print("Test 35.f - Next-Protocol Client Negotiation")
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"http/1.1"])
@@ -428,7 +526,7 @@ def clientTestCmd(argv):
     assert(connection.next_proto == b'http/1.1')
     connection.close()
 
-    print("Test 24.g - Next-Protocol Client Negotiation")
+    print("Test 35.g - Next-Protocol Client Negotiation")
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"spdy/2", b"http/1.1"])
@@ -436,7 +534,7 @@ def clientTestCmd(argv):
     assert(connection.next_proto == b'spdy/2')
     connection.close()
 
-    print("Test 25.a - FALLBACK_SCSV")
+    print("Test 36.a - FALLBACK_SCSV")
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -445,7 +543,7 @@ def clientTestCmd(argv):
     testConnClient(connection)
     connection.close()
 
-    print("Test 25.b - FALLBACK_SCSV")
+    print("Test 36.b - FALLBACK_SCSV")
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -459,7 +557,7 @@ def clientTestCmd(argv):
             raise
     connection.close()
 
-    print("Test 26.a - server checks cipher version")
+    print("Test 37.a - server checks cipher version")
     synchro.recv(1)
     connection = connect()
     # Configure the ClientHello to only advertise SHA-256 ciphers, but not
@@ -471,7 +569,7 @@ def clientTestCmd(argv):
     connection.handshakeClientCert(settings=settings)
     connection.close()
 
-    print("Test 26.b - client checks cipher version")
+    print("Test 37.b - client checks cipher version")
     synchro.recv(1)
     connection = connect()
     try:
@@ -484,7 +582,7 @@ def clientTestCmd(argv):
             raise
     connection.close()
 
-    print('Test 27 - good standard XMLRPC https client')
+    print('Test 38 - good standard XMLRPC https client')
     address = address[0], address[1]+1
     synchro.recv(1)
     try:
@@ -501,7 +599,7 @@ def clientTestCmd(argv):
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print('Test 28 - good tlslite XMLRPC client')
+    print('Test 39 - good tlslite XMLRPC client')
     transport = XMLRPCTransport(ignoreAbruptClose=True)
     server = xmlrpclib.Server('https://%s:%s' % address, transport)
     synchro.recv(1)
@@ -509,24 +607,12 @@ def clientTestCmd(argv):
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print('Test 29 - good XMLRPC ignored protocol')
+    print('Test 40 - good XMLRPC ignored protocol')
     server = xmlrpclib.Server('http://%s:%s' % address, transport)
     synchro.recv(1)
     assert server.add(1,2) == 3
     synchro.recv(1)
     assert server.pow(2,4) == 16
-
-    print("Test 30 - Internet servers test")
-    try:
-        i = IMAP4_TLS("cyrus.andrew.cmu.edu")
-        i.login("anonymous", "anonymous@anonymous.net")
-        i.logout()
-        print("Test 30: IMAP4 good")
-        p = POP3_TLS("pop.gmail.com")
-        p.quit()
-        print("Test 31: POP3 good")
-    except socket.error as e:
-        print("Non-critical error: socket error trying to reach internet server: ", e)   
 
     synchro.close()
 
@@ -757,7 +843,91 @@ def serverTestCmd(argv):
             raise
     connection.close()
 
-    print("Test 21 - HTTPS test X.509")
+    print("Test 21 - good PSK")
+    pskDB = PskDB()
+    pskDB.create()
+    pskDB["test_id"] = "TEST_PSK"
+
+    synchro.send(b'R')
+    connection = connect()
+    connection.handshakeServer(pskDB=pskDB, pskIdentityHint="test_id")
+    testConnServer(connection)
+    connection.close()
+
+    print("Test 22 - PSK faults")
+    for fault in Fault.clientPskFaults + Fault.genericFaults:
+        synchro.send(b'R')
+        connection = connect()
+        connection.fault = fault
+        try:
+            connection.handshakeServer(pskDB=pskDB, pskIdentityHint="test_id")
+            assert()
+        except:
+            pass
+        connection.close()
+
+    print("Test 23 - good PSK: with X.509 cert")
+    synchro.send(b'R')
+    connection = connect()
+    connection.handshakeServer(pskDB=pskDB, pskIdentityHint="test_id",
+                               certChain=x509Chain, privateKey=x509Key)
+    testConnServer(connection)
+    connection.close()
+
+    print("Test 24 - X.509 with PSK faults")
+    for fault in Fault.clientPskFaults + Fault.genericFaults:
+        synchro.send(b'R')
+        connection = connect()
+        connection.fault = fault
+        try:
+            connection.handshakeServer(pskDB=pskDB, pskIdentityHint="test_id",
+                                       certChain=x509Chain, privateKey=x509Key)
+            assert()
+        except:
+            pass
+        connection.close()
+
+    print("Test 25 - good PSK with no hint")
+    synchro.send(b'R')
+    connection = connect()
+    connection.handshakeServer(pskDB=pskDB)
+    testConnServer(connection)
+    connection.close()
+
+    print("Test 26 - PSK faults with no hint")
+    for fault in Fault.clientPskFaults + Fault.genericFaults:
+        synchro.send(b'R')
+        connection = connect()
+        connection.fault = fault
+        try:
+            connection.handshakeServer(pskDB=pskDB)
+            assert()
+        except:
+            pass
+        connection.close()
+
+    print("Test 27 - good PSK with no hint: with X.509 cert")
+    synchro.send(b'R')
+    connection = connect()
+    connection.handshakeServer(pskDB=pskDB,
+                               certChain=x509Chain, privateKey=x509Key)
+    testConnServer(connection)
+    connection.close()
+
+    print("Test 28 - X.509 with PSK faults (no hint)")
+    for fault in Fault.clientPskFaults + Fault.genericFaults:
+        synchro.send(b'R')
+        connection = connect()
+        connection.fault = fault
+        try:
+            connection.handshakeServer(pskDB=pskDB,
+                                       certChain=x509Chain, privateKey=x509Key)
+            assert()
+        except:
+            pass
+        connection.close()
+
+    print("Test 32 - HTTPS test X.509")
 
     #Close the current listening socket
     lsock.close()
@@ -795,11 +965,11 @@ def serverTestCmd(argv):
         implementations.append("pycrypto")
     implementations.append("python")
 
-    print("Test 22 - different ciphers")
+    print("Test 33 - different ciphers")
     for implementation in ["python"] * len(implementations):
         for cipher in ["aes128", "aes256", "rc4"]:
 
-            print("Test 22:", end=' ')
+            print("Test 33:", end=' ')
             synchro.send(b'R')
             connection = connect()
 
@@ -813,13 +983,13 @@ def serverTestCmd(argv):
             testConnServer(connection)
             connection.close()
 
-    print("Test 23 - throughput test")
+    print("Test 34 - throughput test")
     for implementation in implementations:
         for cipher in ["aes128", "aes256", "3des", "rc4"]:
             if cipher == "3des" and implementation not in ("openssl", "pycrypto"):
                 continue
 
-            print("Test 23:", end=' ')
+            print("Test 34:", end=' ')
             synchro.send(b'R')
             connection = connect()
 
@@ -835,77 +1005,77 @@ def serverTestCmd(argv):
             connection.write(h)
             connection.close()
 
-    print("Test 24.a - Next-Protocol Server Negotiation")
+    print("Test 35.a - Next-Protocol Server Negotiation")
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
                                settings=settings, nextProtos=[b"http/1.1"])
     testConnServer(connection)
     connection.close()
 
-    print("Test 24.b - Next-Protocol Server Negotiation")
+    print("Test 35.b - Next-Protocol Server Negotiation")
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
                                settings=settings, nextProtos=[b"spdy/2", b"http/1.1"])
     testConnServer(connection)
     connection.close()
     
-    print("Test 24.c - Next-Protocol Server Negotiation")
+    print("Test 35.c - Next-Protocol Server Negotiation")
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
                                settings=settings, nextProtos=[b"http/1.1", b"spdy/2"])
     testConnServer(connection)
     connection.close()
 
-    print("Test 24.d - Next-Protocol Server Negotiation")
+    print("Test 35.d - Next-Protocol Server Negotiation")
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
                                settings=settings, nextProtos=[b"spdy/2", b"http/1.1"])
     testConnServer(connection)
     connection.close()
     
-    print("Test 24.e - Next-Protocol Server Negotiation")
+    print("Test 35.e - Next-Protocol Server Negotiation")
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
                                settings=settings, nextProtos=[b"http/1.1", b"spdy/2", b"spdy/3"])
     testConnServer(connection)
     connection.close()
     
-    print("Test 24.f - Next-Protocol Server Negotiation")
+    print("Test 35.f - Next-Protocol Server Negotiation")
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
                                settings=settings, nextProtos=[b"spdy/3", b"spdy/2"])
     testConnServer(connection)
     connection.close()
     
-    print("Test 24.g - Next-Protocol Server Negotiation")
+    print("Test 35.g - Next-Protocol Server Negotiation")
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
-    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, 
+    connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
                                settings=settings, nextProtos=[])
     testConnServer(connection)
     connection.close()
 
-    print("Test 25.a - FALLBACK_SCSV")
+    print("Test 36.a - FALLBACK_SCSV")
     synchro.send(b'R')
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
     testConnServer(connection)
     connection.close()
 
-    print("Test 25.b - FALLBACK_SCSV")
+    print("Test 36.b - FALLBACK_SCSV")
     synchro.send(b'R')
     connection = connect()
     try:
@@ -916,7 +1086,7 @@ def serverTestCmd(argv):
             raise
     connection.close()
 
-    print("Test 26.a - server checks cipher version")
+    print("Test 37.a - server checks cipher version")
     synchro.send(b'R')
     connection = connect()
     try:
@@ -929,7 +1099,7 @@ def serverTestCmd(argv):
             raise
     connection.close()
 
-    print("Test 26.b - client checks cipher version")
+    print("Test 37.b - client checks cipher version")
     synchro.send(b'R')
     connection = connect()
     # Configure the server to illegally select SHA-256 ciphers at TLS 1.1.
@@ -940,7 +1110,7 @@ def serverTestCmd(argv):
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
     connection.close()
 
-    print("Tests 27-29 - XMLRPXC server")
+    print("Tests 38-40 - XMLRPXC server")
     address = address[0], address[1]+1
     class Server(TLSXMLRPCServer):
 

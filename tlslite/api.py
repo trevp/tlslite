@@ -10,6 +10,7 @@ from .session import Session
 from .sessioncache import SessionCache
 from .tlsconnection import TLSConnection
 from .verifierdb import VerifierDB
+from .pskdb import PskDB
 from .x509 import X509
 from .x509certchain import X509CertChain
 
