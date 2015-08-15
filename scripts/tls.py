@@ -4,6 +4,7 @@
 #   Trevor Perrin
 #   Marcelo Fernandez - bugfix and NPN support
 #   Martin von Loewis - python 3 port
+#   Fiach Antaw - TLS-PSK ciphersuites
 #
 # See the LICENSE file for legal information regarding use of this file.
 from __future__ import print_function
@@ -13,6 +14,7 @@ import os.path
 import socket
 import time
 import getopt
+import binascii
 try:
     import httplib
     from SocketServer import *
@@ -67,11 +69,11 @@ def printUsage(s=None):
     print("""Commands:
 
   server  
-    [-k KEY] [-c CERT] [-t TACK] [-v VERIFIERDB] [-d DIR]
+    [-k KEY] [-c CERT] [-t TACK] [-v VERIFIERDB] [-w PSKDB] [-d DIR]
     [--reqcert] HOST:PORT
 
   client
-    [-k KEY] [-c CERT] [-u USER] [-p PASS]
+    [-k KEY] [-c CERT] [-u USER] [-p PASS] [-i PSKID] [-s PSK]
     HOST:PORT
 """)
     sys.exit(-1)
@@ -97,6 +99,9 @@ def handleArgs(argv, argString, flagsList=[]):
     password = None
     tacks = None
     verifierDB = None
+    pskDB = None
+    pskID = None
+    psk = None
     reqCert = False
     directory = None
     
@@ -120,6 +125,13 @@ def handleArgs(argv, argString, flagsList=[]):
         elif opt == "-v":
             verifierDB = VerifierDB(arg)
             verifierDB.open()
+        elif opt == "-w":
+            pskDB = PskDB(arg)
+            pskDB.open()
+        elif opt == "-i":
+            pskID = arg
+        elif opt == "-s":
+            psk = binascii.unhexlify(arg)
         elif opt == "-d":
             directory = arg
         elif opt == "--reqcert":
@@ -152,6 +164,12 @@ def handleArgs(argv, argString, flagsList=[]):
         retList.append(tacks)
     if "v" in argString:
         retList.append(verifierDB)
+    if "w" in argString:
+        retList.append(pskDB)
+    if "i" in argString:
+        retList.append(pskID)
+    if "s" in argString:
+        retList.append(psk)
     if "d" in argString:
         retList.append(directory)
     if "reqcert" in flagsList:
@@ -185,13 +203,15 @@ def printGoodConnection(connection, seconds):
     
 
 def clientCmd(argv):
-    (address, privateKey, certChain, username, password) = \
-        handleArgs(argv, "kcup")
+    (address, privateKey, certChain, username, password, pskID, psk) = \
+        handleArgs(argv, "kcupis")
         
     if (certChain and not privateKey) or (not certChain and privateKey):
         raise SyntaxError("Must specify CERT and KEY together")
     if (username and not password) or (not username and password):
         raise SyntaxError("Must specify USER with PASS")
+    if (pskID and not psk) or (not pskID and psk):
+        raise SyntaxError("Must specify PSKID with PSK")
     if certChain and username:
         raise SyntaxError("Can use SRP or client cert for auth, not both")
 
@@ -209,6 +229,8 @@ def clientCmd(argv):
         if username and password:
             connection.handshakeClientSRP(username, password, 
                 settings=settings, serverName=address[0])
+        elif pskID and psk:
+            connection.handshakeClientPSK(lambda i=None: (pskID, psk))
         else:
             connection.handshakeClientCert(certChain, privateKey,
                 settings=settings, serverName=address[0])
@@ -224,11 +246,15 @@ def clientCmd(argv):
         if a.description == AlertDescription.unknown_psk_identity:
             if username:
                 print("Unknown username")
+            elif pskID:
+                print("Bad PSK identity")
             else:
                 raise
         elif a.description == AlertDescription.bad_record_mac:
             if username:
                 print("Bad username or password")
+            elif pskID:
+                print("Bad PSK identity or PSK")
             else:
                 raise
         elif a.description == AlertDescription.handshake_failure:
@@ -242,7 +268,8 @@ def clientCmd(argv):
 
 def serverCmd(argv):
     (address, privateKey, certChain, tacks, 
-        verifierDB, directory, reqCert) = handleArgs(argv, "kctbvd", ["reqcert"])
+        verifierDB, pskDB, directory, reqCert) = \
+        handleArgs(argv, "kctbvwd", ["reqcert"])
 
 
     if (certChain and not privateKey) or (not certChain and privateKey):
@@ -260,6 +287,8 @@ def serverCmd(argv):
         print("Using certificate and private key...")
     if verifierDB:
         print("Using verifier DB...")
+    if pskDB:
+        print("Using psk DB...")
     if tacks:
         print("Using Tacks...")
         
@@ -283,6 +312,7 @@ def serverCmd(argv):
                 connection.handshakeServer(certChain=certChain,
                                               privateKey=privateKey,
                                               verifierDB=verifierDB,
+                                              pskDB=pskDB,
                                               tacks=tacks,
                                               activationFlags=activationFlags,
                                               sessionCache=sessionCache,
@@ -298,19 +328,7 @@ def serverCmd(argv):
                 else:
                     raise
             except TLSLocalAlert as a:
-                if a.description == AlertDescription.unknown_psk_identity:
-                    if username:
-                        print("Unknown username")
-                        return False
-                    else:
-                        raise
-                elif a.description == AlertDescription.bad_record_mac:
-                    if username:
-                        print("Bad username or password")
-                        return False
-                    else:
-                        raise
-                elif a.description == AlertDescription.handshake_failure:
+                if a.description == AlertDescription.handshake_failure:
                     print("Unable to negotiate mutually acceptable parameters")
                     return False
                 else:

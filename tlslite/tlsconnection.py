@@ -6,6 +6,7 @@
 #   Dimitris Moraitis - Anon ciphersuites
 #   Martin von Loewis - python 3 port
 #   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
+#   Fiach Antaw - TLS-PSK ciphersuites
 #
 # See the LICENSE file for legal information regarding use of this file.
 
@@ -301,8 +302,92 @@ class TLSConnection(TLSRecordLayer):
         # fashion, returning 1 when it is waiting to able to write, 0 when
         # it is waiting to read.
         #
-        # If 'async' is True, the generator is returned to the caller, 
-        # otherwise it is executed to completion here.                        
+        # If 'async' is True, the generator is returned to the caller,
+        # otherwise it is executed to completion here.
+        if async:
+            return handshaker
+        for result in handshaker:
+            pass
+
+    def handshakeClientPSK(self, callback, session=None,
+                           settings=None, checker=None,
+                           reqTack=True, serverName="",
+                           async=False):
+        """Perform a PSK handshake in the role of client.
+
+        This function performs a TLS/PSK handshake.  PSK mutually
+        authenticates both parties to each other using a symmetric pre-shared
+        key and associated PSK identity. The server may elect to provide a PSK
+        identity hint, indicating which pre-shared keys and identities are
+        supported. This function may also perform a combined PSK and
+        server-certificate handshake, if the chosen ciphersuite supports server
+        authentication with a certificate chain in addition to the pre-shared
+        key.
+
+        If the function completes without raising an exception, the
+        TLS connection will be open and available for data transfer.
+
+        If an exception is raised, the connection will have been
+        automatically closed (if it was ever open).
+
+        @type callback: function
+        @param callback: Called during the handshake to determine the PSK and
+        PSK identity to use for this handshake, returned as a tuple of the form
+        (identity, psk). If the server provides a PSK identity hint, it will be
+        given as the argument to this function.
+
+        @type session: L{tlslite.session.Session}
+        @param session: A TLS session to attempt to resume.  If the
+        resumption does not succeed, a full handshake will be
+        performed.
+
+        @type settings: L{tlslite.handshakesettings.HandshakeSettings}
+        @param settings: Various settings which can be used to control
+        the ciphersuites, certificate types, and SSL/TLS versions
+        offered by the client.
+
+        @type checker: L{tlslite.checker.Checker}
+        @param checker: A Checker instance.  This instance will be
+        invoked to examine the other party's authentication
+        credentials, if the handshake completes succesfully.
+
+        @type reqTack: bool
+        @param reqTack: Whether or not to send a "tack" TLS Extension,
+        requesting the server return a TackExtension if it has one.
+
+        @type serverName: string
+        @param serverName: The ServerNameIndication TLS Extension.
+
+        @type async: bool
+        @param async: If False, this function will block until the
+        handshake is completed.  If True, this function will return a
+        generator.  Successive invocations of the generator will
+        return 0 if it is waiting to read from the socket, 1 if it is
+        waiting to write to the socket, or will raise StopIteration if
+        the handshake operation is completed.
+
+        @rtype: None or an iterable
+        @return: If 'async' is True, a generator object will be
+        returned.
+
+        @raise socket.error: If a socket error occurs.
+        @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
+        without a preceding alert.
+        @raise tlslite.errors.TLSAlert: If a TLS alert is signalled.
+        @raise tlslite.errors.TLSAuthenticationError: If the checker
+        doesn't like the other party's authentication credentials.
+        """
+        handshaker = self._handshakeClientAsync(pskParams=(callback,),
+                        session=session, settings=settings,
+                        checker=checker, reqTack=reqTack,
+                        serverName=serverName)
+        # The handshaker is a Python Generator which executes the handshake.
+        # It allows the handshake to be run in a "piecewise", asynchronous
+        # fashion, returning 1 when it is waiting to able to write, 0 when
+        # it is waiting to read.
+        #
+        # If 'async' is True, the generator is returned to the caller,
+        # otherwise it is executed to completion here.
         if async:
             return handshaker
         for result in handshaker:
@@ -310,12 +395,14 @@ class TLSConnection(TLSRecordLayer):
 
 
     def _handshakeClientAsync(self, srpParams=(), certParams=(), anonParams=(),
-                             session=None, settings=None, checker=None,
-                             nextProtos=None, serverName="", reqTack=True):
+                             pskParams=(), session=None, settings=None,
+                             checker=None, nextProtos=None, serverName="",
+                             reqTack=True):
 
         handshaker = self._handshakeClientAsyncHelper(srpParams=srpParams,
                 certParams=certParams,
                 anonParams=anonParams,
+                pskParams=pskParams,
                 session=session,
                 settings=settings,
                 serverName=serverName,
@@ -326,7 +413,8 @@ class TLSConnection(TLSRecordLayer):
 
 
     def _handshakeClientAsyncHelper(self, srpParams, certParams, anonParams,
-                               session, settings, serverName, nextProtos, reqTack):
+                                   pskParams, session, settings, serverName,
+                                   nextProtos, reqTack):
         
         self._handshakeStart(client=True)
 
@@ -335,19 +423,28 @@ class TLSConnection(TLSRecordLayer):
         password = None         # srpParams[1]
         clientCertChain = None  # certParams[0]
         privateKey = None       # certParams[1]
+        pskCallback = None      # pskParams[0]
 
-        # Allow only one of (srpParams, certParams, anonParams)
+        # Allow only one of (srpParams, certParams, anonParams, pskParams)
         if srpParams:
             assert(not certParams)
             assert(not anonParams)
+            assert(not pskParams)
             srpUsername, password = srpParams
         if certParams:
             assert(not srpParams)
             assert(not anonParams)            
+            assert(not pskParams)
             clientCertChain, privateKey = certParams
         if anonParams:
             assert(not srpParams)         
             assert(not certParams)
+            assert(not pskParams)
+        if pskParams:
+            assert(not srpParams)
+            assert(not certParams)
+            assert(not anonParams)
+            pskCallback, = pskParams
 
         #Validate parameters
         if srpUsername and not password:
@@ -408,8 +505,8 @@ class TLSConnection(TLSRecordLayer):
         # Send the ClientHello.
         for result in self._clientSendClientHello(settings, session, 
                                         srpUsername, srpParams, certParams,
-                                        anonParams, serverName, nextProtos,
-                                        reqTack):
+                                        anonParams, pskParams, serverName,
+                                        nextProtos, reqTack):
             if result in (0,1): yield result
             else: break
         clientHello = result
@@ -436,7 +533,7 @@ class TLSConnection(TLSRecordLayer):
             self._handshakeDone(resumed=True)
             return
 
-        #If the server selected an SRP ciphersuite, the client finishes
+        #If the server selected an SRP or PSK ciphersuite, the client finishes
         #reading the post-ServerHello messages, then derives a
         #premasterSecret and sends a corresponding ClientKeyExchange.
         if cipherSuite in CipherSuite.srpAllSuites:
@@ -447,6 +544,15 @@ class TLSConnection(TLSRecordLayer):
                     serverHello.tackExt):                
                 if result in (0,1): yield result
                 else: break                
+            (premasterSecret, serverCertChain, tackExt) = result
+
+        elif cipherSuite in CipherSuite.pskAllSuites:
+            for result in self._clientPSKKeyExchange(\
+                    settings, cipherSuite, serverHello.certificate_type,
+                    pskCallback, clientHello.random, serverHello.random,
+                    serverHello.tackExt):
+                if result in (0,1): yield result
+                else: break
             (premasterSecret, serverCertChain, tackExt) = result
 
         #If the server selected an anonymous ciphersuite, the client
@@ -496,7 +602,8 @@ class TLSConnection(TLSRecordLayer):
 
     def _clientSendClientHello(self, settings, session, srpUsername,
                                 srpParams, certParams, anonParams, 
-                                serverName, nextProtos, reqTack):
+                                pskParams, serverName, nextProtos,
+                                reqTack):
         #Initialize acceptable ciphersuites
         cipherSuites = [CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
         if srpParams:
@@ -505,6 +612,8 @@ class TLSConnection(TLSRecordLayer):
             cipherSuites += CipherSuite.getCertSuites(settings)
         elif anonParams:
             cipherSuites += CipherSuite.getAnonSuites(settings)
+        elif pskParams:
+            cipherSuites += CipherSuite.getPskAllSuites(settings)
         else:
             assert(False)
 
@@ -930,6 +1039,99 @@ class TLSConnection(TLSRecordLayer):
                      
         yield (premasterSecret, None, None)
         
+    def _clientPSKKeyExchange(self, settings, cipherSuite, certificateType,
+            pskCallback, clientRandom, serverRandom, tackExt):
+
+        # If the server chose an PSK+RSA suite...
+        if cipherSuite in CipherSuite.pskCertSuites:
+            # Get Certificate
+            for result in self._getMsg(ContentType.handshake,
+                    HandshakeType.certificate, certificateType):
+                if result in (0,1): yield result
+                else: break
+            serverCertificate = result
+        else:
+            serverCertificate = None
+
+        # Get ServerKeyExchange or ServerHelloDone
+        for result in self._getMsg(ContentType.handshake,
+                (HandshakeType.server_key_exchange,
+                HandshakeType.server_hello_done), cipherSuite):
+            if result in (0,1): yield result
+            else: break
+        msg = result
+        serverKeyExchange = None
+        if isinstance(msg, ServerKeyExchange):
+            serverKeyExchange = msg
+            # We got ServerKeyExchange, so this must be ServerHelloDone
+            for result in self._getMsg(ContentType.handshake,
+                    HandshakeType.server_hello_done):
+                if result in (0,1): yield result
+                else: break
+            serverHelloDone = result
+        elif isinstance(msg, ServerHelloDone):
+            serverHelloDone = msg
+
+        # Generate premaster secret
+        # 1) Get PSK identity/key
+        if serverKeyExchange is not None:
+            pskIdentity, psk = pskCallback(
+                serverKeyExchange.psk_identity_hint.decode("utf-8"))
+        else:
+            pskIdentity, psk = pskCallback()
+
+        if self.fault == Fault.badIdentity:
+            pskIdentity += "GARBAGE"
+        elif self.fault == Fault.badPSK:
+            psk += b"GARBAGE"
+
+        clientKeyExchange = ClientKeyExchange(cipherSuite)
+        clientKeyExchange.createPSK(bytearray(pskIdentity, "utf-8"))
+
+        # 2) Get other secret, based on chosen cipher suite
+        serverCertChain = None
+        if cipherSuite in CipherSuite.pskSuites:
+            # a) Standard PSK, other secret is all-zero
+            otherSecret = bytearray([0] * len(psk))
+        elif cipherSuite in CipherSuite.pskDHSuites:
+            # b) DHE-PSK, other secret is the calculated Z
+            dh_p = serverKeyExchange.dh_p
+            dh_g = serverKeyExchange.dh_g
+            dh_Xc = bytesToNumber(getRandomBytes(32))
+            dh_Ys = serverKeyExchange.dh_Ys
+            dh_Yc = powMod(dh_g, dh_Xc, dh_p)
+            clientKeyExchange.createDH(dh_Yc)
+            otherSecret = numberToByteArray(powMod(dh_Ys, dh_Xc, dh_p))
+        elif cipherSuite in CipherSuite.pskCertSuites:
+            # c) RSA-PSK, other secret is is the RSA premaster secret
+            # Get server's public key from the Certificate message
+            for result in self._clientGetKeyFromChain(serverCertificate,
+                                            settings, tackExt):
+                if result in (0,1): yield result
+                else: break
+            publicKey, serverCertChain, tackExt = result
+
+            #Calculate other secret
+            otherSecret = getRandomBytes(48)
+            otherSecret[0] = settings.maxVersion[0]
+            otherSecret[1] = settings.maxVersion[1]
+
+            # Encrypt other secret to server's public key and include it in
+            # ClientKeyExchange
+            encryptedRsaPremasterSecret = publicKey.encrypt(otherSecret)
+            clientKeyExchange.createRSA(encryptedRsaPremasterSecret)
+        else:
+            assert(False)
+
+        #Calculate premaster secret
+        premasterSecret = numberToByteArray(len(otherSecret), 2) + \
+            otherSecret + numberToByteArray(len(psk), 2) + psk
+
+        #Send ClientKeyExchange
+        for result in self._sendMsg(clientKeyExchange):
+            yield result
+        yield (premasterSecret, serverCertChain, tackExt)
+
     def _clientFinished(self, premasterSecret, clientRandom, serverRandom,
                         cipherSuite, cipherImplementations, nextProto):
 
@@ -994,7 +1196,8 @@ class TLSConnection(TLSRecordLayer):
                         sessionCache=None, settings=None, checker=None,
                         reqCAs = None, 
                         tacks=None, activationFlags=0,
-                        nextProtos=None, anon=False):
+                        nextProtos=None, anon=False, pskDB=None,
+                        pskIdentityHint=None):
         """Perform a handshake in the role of server.
 
         This function performs an SSL or TLS handshake.  Depending on
@@ -1058,6 +1261,14 @@ class TLSConnection(TLSRecordLayer):
         will be sent along with a certificate request. This does not affect
         verification.        
 
+        @type pskDB: L{tlslite.pskdb.PskDB}
+        @param pskDB: A database of pre-shared keys associated with
+        identities, to be used if the client chooses PSK authentication.
+
+        @type pskIdentityHint: string
+        @param pskIdentityHint: A PSK identity hint to provide,
+        if the client chooses PSK authentication.
+
         @type nextProtos: list of strings.
         @param nextProtos: A list of upper layer protocols to expose to the
         clients through the Next-Protocol Negotiation Extension, 
@@ -1074,7 +1285,8 @@ class TLSConnection(TLSRecordLayer):
                 certChain, privateKey, reqCert, sessionCache, settings,
                 checker, reqCAs, 
                 tacks=tacks, activationFlags=activationFlags, 
-                nextProtos=nextProtos, anon=anon):
+                nextProtos=nextProtos, anon=anon,
+                pskDB=pskDB, pskIdentityHint=pskIdentityHint):
             pass
 
 
@@ -1083,7 +1295,8 @@ class TLSConnection(TLSRecordLayer):
                              sessionCache=None, settings=None, checker=None,
                              reqCAs=None, 
                              tacks=None, activationFlags=0,
-                             nextProtos=None, anon=False
+                             nextProtos=None, anon=False, pskDB=None,
+                             pskIdentityHint=None
                              ):
         """Start a server handshake operation on the TLS connection.
 
@@ -1102,7 +1315,8 @@ class TLSConnection(TLSRecordLayer):
             sessionCache=sessionCache, settings=settings, 
             reqCAs=reqCAs, 
             tacks=tacks, activationFlags=activationFlags, 
-            nextProtos=nextProtos, anon=anon)
+            nextProtos=nextProtos, anon=anon,
+            pskDB=pskDB, pskIdentityHint=pskIdentityHint)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
@@ -1111,11 +1325,12 @@ class TLSConnection(TLSRecordLayer):
                              certChain, privateKey, reqCert, sessionCache,
                              settings, reqCAs, 
                              tacks, activationFlags, 
-                             nextProtos, anon):
+                             nextProtos, anon,
+                             pskDB, pskIdentityHint):
 
         self._handshakeStart(client=False)
 
-        if (not verifierDB) and (not certChain) and not anon:
+        if (not verifierDB) and (not certChain) and (not pskDB) and not anon:
             raise ValueError("Caller passed no authentication credentials")
         if certChain and not privateKey:
             raise ValueError("Caller passed a certChain but no privateKey")
@@ -1123,6 +1338,8 @@ class TLSConnection(TLSRecordLayer):
             raise ValueError("Caller passed a privateKey but no certChain")
         if reqCAs and not reqCert:
             raise ValueError("Caller passed reqCAs but not reqCert")            
+        if pskIdentityHint and not pskDB:
+            raise ValueError("Caller passed pskIdentityHint but not pskDB")
         if certChain and not isinstance(certChain, X509CertChain):
             raise ValueError("Unrecognized certificate type")
         if activationFlags and not tacks:
@@ -1143,7 +1360,7 @@ class TLSConnection(TLSRecordLayer):
         # Handle ClientHello and resumption
         for result in self._serverGetClientHello(settings, certChain,\
                                             verifierDB, sessionCache,
-                                            anon):
+                                            anon, pskDB):
             if result in (0,1): yield result
             elif result == None:
                 self._handshakeDone(resumed=True)                
@@ -1204,6 +1421,16 @@ class TLSConnection(TLSRecordLayer):
                 else: break
             premasterSecret = result
         
+        # Perform the PSK key exchange
+        elif cipherSuite in CipherSuite.pskAllSuites:
+            for result in self._serverPSKKeyExchange(clientHello, serverHello,
+                                    pskDB, pskIdentityHint, cipherSuite,
+                                    privateKey, certChain,
+                                    settings):
+                if result in (0,1): yield result
+                else: break
+            premasterSecret = result
+
         else:
             assert(False)
                         
@@ -1240,7 +1467,7 @@ class TLSConnection(TLSRecordLayer):
 
 
     def _serverGetClientHello(self, settings, certChain, verifierDB,
-                                sessionCache, anon):
+                                sessionCache, anon, pskDB):
         #Initialize acceptable cipher suites
         cipherSuites = []
         if verifierDB:
@@ -1248,6 +1475,11 @@ class TLSConnection(TLSRecordLayer):
                 cipherSuites += \
                     CipherSuite.getSrpCertSuites(settings)
             cipherSuites += CipherSuite.getSrpSuites(settings)
+        elif pskDB:
+            if certChain:
+                cipherSuites += \
+                    CipherSuite.getPskCertSuites(settings)
+            cipherSuites += CipherSuite.getPskSuites(settings)
         elif certChain:
             cipherSuites += CipherSuite.getCertSuites(settings)
         elif anon:
@@ -1640,6 +1872,99 @@ class TLSConnection(TLSRecordLayer):
         S = powMod(dh_Yc,dh_Xs,dh_p)
         premasterSecret = numberToByteArray(S)
         
+        yield premasterSecret
+
+    def _serverPSKKeyExchange(self, clientHello, serverHello, pskDB,
+                              pskIdentityHint, cipherSuite,
+                              privateKey, serverCertChain,
+                              settings):
+
+        #Create ServerKeyExchange, if not omitted
+        serverKeyExchange = None
+        if cipherSuite in CipherSuite.pskDHSuites:
+            serverKeyExchange = ServerKeyExchange(cipherSuite)
+            # Calculate DH p, g, Xs, Ys
+            dh_p = getRandomSafePrime(32, False)
+            dh_g = getRandomNumber(2, dh_p)
+            dh_Xs = bytesToNumber(getRandomBytes(32))
+            dh_Ys = powMod(dh_g, dh_Xs, dh_p)
+            serverKeyExchange.createDH(dh_p, dh_g, dh_Ys)
+            if pskIdentityHint is not None:
+                serverKeyExchange.createPSK(bytearray(pskIdentityHint, "utf-8"))
+            else:
+                serverKeyExchange.createPSK(bytearray("", "utf-8"))
+        elif pskIdentityHint is not None:
+            serverKeyExchange = ServerKeyExchange(cipherSuite)
+            serverKeyExchange.createPSK(bytearray(pskIdentityHint, "utf-8"))
+
+        #Send ServerHello[, Certificate], ServerKeyExchange,
+        #ServerHelloDone
+        msgs = []
+        msgs.append(serverHello)
+        if cipherSuite in CipherSuite.pskCertSuites:
+            certificateMsg = Certificate(CertificateType.x509)
+            certificateMsg.create(serverCertChain)
+            msgs.append(certificateMsg)
+        if serverKeyExchange is not None:
+            msgs.append(serverKeyExchange)
+        msgs.append(ServerHelloDone())
+        for result in self._sendMsgs(msgs):
+            yield result
+
+        #From here on, the client's messages must have the right version
+        self._versionCheck = True
+
+        #Get and check ClientKeyExchange
+        for result in self._getMsg(ContentType.handshake,
+                                  HandshakeType.client_key_exchange,
+                                  cipherSuite):
+            if result in (0,1): yield result
+            else: break
+        clientKeyExchange = result
+        pskIdentity = clientKeyExchange.psk_identity
+        try:
+            psk = pskDB[bytes(clientKeyExchange.psk_identity)]
+        except KeyError:
+            for result in self._sendError(\
+                    AlertDescription.unknown_psk_identity):
+                yield result
+
+        if cipherSuite in CipherSuite.pskSuites:
+            # Standard PSK, other secret is all-zero
+            otherSecret = bytearray([0] * len(psk))
+        elif cipherSuite in CipherSuite.pskDHSuites:
+            # DHE-PSK, other secret is dh_Yc
+            otherSecret = clientKeyExchange.dh_Yc
+            if otherSecret % dh_p == 0:
+                for result in self._sendError(
+                        AlertDescription.illegal_parameter,
+                        "Suspicious dh_Yc value"):
+                    yield result
+                assert(False) # Just to ensure we don't fall through somehow
+        elif cipherSuite in CipherSuite.pskCertSuites:
+            # RSA-PSK, other secret is same as RSA premaster secret
+            rsaPremasterSecret = privateKey.decrypt(\
+                clientKeyExchange.encryptedPreMasterSecret)
+
+            # On decryption failure randomize premaster secret to avoid
+            # Bleichenbacher's "million message" attack
+            randomRsaPreMasterSecret = getRandomBytes(48)
+            versionCheck = (rsaPremasterSecret[0], rsaPremasterSecret[1])
+            if not rsaPremasterSecret:
+                rsaPremasterSecret = randomRsaPreMasterSecret
+            elif len(rsaPremasterSecret)!=48:
+                rsaPremasterSecret = randomRsaPreMasterSecret
+            elif versionCheck != clientHello.client_version:
+                if versionCheck != self.version: #Tolerate buggy IE clients
+                    rsaPremasterSecret = randomRsaPreMasterSecret
+            otherSecret = rsaPremasterSecret
+        else:
+            assert(False)
+
+        # Calculate premaster secret
+        premasterSecret = numberToByteArray(len(otherSecret), 2) + \
+            otherSecret + numberToByteArray(len(psk), 2) + psk
+
         yield premasterSecret
 
 

@@ -5,6 +5,7 @@
 #   Dimitris Moraitis - Anon ciphersuites
 #   Dave Baggett (Arcode Corporation) - canonicalCipherName
 #   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
+#   Fiach Antaw - TLS-PSK ciphersuites
 #
 # See the LICENSE file for legal information regarding use of this file.
 
@@ -142,6 +143,21 @@ class CipherSuite:
     TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA = 0xC01E
     TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA = 0xC021
 
+    TLS_PSK_WITH_RC4_128_SHA = 0x008A
+    TLS_PSK_WITH_3DES_EDE_CBC_SHA = 0x008B
+    TLS_PSK_WITH_AES_128_CBC_SHA = 0x008C
+    TLS_PSK_WITH_AES_256_CBC_SHA = 0x008D
+
+    TLS_DHE_PSK_WITH_RC4_128_SHA = 0x008E
+    TLS_DHE_PSK_WITH_3DES_EDE_CBC_SHA = 0x008F
+    TLS_DHE_PSK_WITH_AES_128_CBC_SHA = 0x0090
+    TLS_DHE_PSK_WITH_AES_256_CBC_SHA = 0x0091
+
+    TLS_RSA_PSK_WITH_RC4_128_SHA = 0x0092
+    TLS_RSA_PSK_WITH_3DES_EDE_CBC_SHA = 0x0093
+    TLS_RSA_PSK_WITH_AES_128_CBC_SHA = 0x0094
+    TLS_RSA_PSK_WITH_AES_256_CBC_SHA = 0x0095
+
 
     TLS_RSA_WITH_3DES_EDE_CBC_SHA = 0x000A
     TLS_RSA_WITH_AES_128_CBC_SHA = 0x002F
@@ -159,11 +175,17 @@ class CipherSuite:
     tripleDESSuites = []
     tripleDESSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
+    tripleDESSuites.append(TLS_PSK_WITH_3DES_EDE_CBC_SHA)
+    tripleDESSuites.append(TLS_DHE_PSK_WITH_3DES_EDE_CBC_SHA)
+    tripleDESSuites.append(TLS_RSA_PSK_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
 
     aes128Suites = []
     aes128Suites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
+    aes128Suites.append(TLS_PSK_WITH_AES_128_CBC_SHA)
+    aes128Suites.append(TLS_DHE_PSK_WITH_AES_128_CBC_SHA)
+    aes128Suites.append(TLS_RSA_PSK_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
@@ -171,6 +193,9 @@ class CipherSuite:
     aes256Suites = []
     aes256Suites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
+    aes256Suites.append(TLS_PSK_WITH_AES_256_CBC_SHA)
+    aes256Suites.append(TLS_DHE_PSK_WITH_AES_256_CBC_SHA)
+    aes256Suites.append(TLS_RSA_PSK_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
@@ -178,6 +203,9 @@ class CipherSuite:
     rc4Suites = []
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_MD5)
+    rc4Suites.append(TLS_PSK_WITH_RC4_128_SHA)
+    rc4Suites.append(TLS_DHE_PSK_WITH_RC4_128_SHA)
+    rc4Suites.append(TLS_RSA_PSK_WITH_RC4_128_SHA)
     
     shaSuites = []
     shaSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
@@ -186,6 +214,18 @@ class CipherSuite:
     shaSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
     shaSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
     shaSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
+    shaSuites.append(TLS_PSK_WITH_RC4_128_SHA)
+    shaSuites.append(TLS_PSK_WITH_3DES_EDE_CBC_SHA)
+    shaSuites.append(TLS_PSK_WITH_AES_128_CBC_SHA)
+    shaSuites.append(TLS_PSK_WITH_AES_256_CBC_SHA)
+    shaSuites.append(TLS_DHE_PSK_WITH_RC4_128_SHA)
+    shaSuites.append(TLS_DHE_PSK_WITH_3DES_EDE_CBC_SHA)
+    shaSuites.append(TLS_DHE_PSK_WITH_AES_128_CBC_SHA)
+    shaSuites.append(TLS_DHE_PSK_WITH_AES_256_CBC_SHA)
+    shaSuites.append(TLS_RSA_PSK_WITH_RC4_128_SHA)
+    shaSuites.append(TLS_RSA_PSK_WITH_3DES_EDE_CBC_SHA)
+    shaSuites.append(TLS_RSA_PSK_WITH_AES_128_CBC_SHA)
+    shaSuites.append(TLS_RSA_PSK_WITH_AES_256_CBC_SHA)
     shaSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
     shaSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA)
     shaSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA)
@@ -257,6 +297,42 @@ class CipherSuite:
     def getSrpAllSuites(settings):
         return CipherSuite._filterSuites(CipherSuite.srpAllSuites, settings)
 
+    pskSuites = []
+    pskSuites.append(TLS_PSK_WITH_RC4_128_SHA)
+    pskSuites.append(TLS_PSK_WITH_3DES_EDE_CBC_SHA)
+    pskSuites.append(TLS_PSK_WITH_AES_128_CBC_SHA)
+    pskSuites.append(TLS_PSK_WITH_AES_256_CBC_SHA)
+
+    @staticmethod
+    def getPskSuites(settings):
+        return CipherSuite._filterSuites(CipherSuite.pskSuites, settings)
+
+    pskDHSuites = []
+    pskDHSuites.append(TLS_DHE_PSK_WITH_RC4_128_SHA)
+    pskDHSuites.append(TLS_DHE_PSK_WITH_3DES_EDE_CBC_SHA)
+    pskDHSuites.append(TLS_DHE_PSK_WITH_AES_128_CBC_SHA)
+    pskDHSuites.append(TLS_DHE_PSK_WITH_AES_256_CBC_SHA)
+
+    @staticmethod
+    def getPskDHSuites(settings):
+        return CipherSuite._filterSuites(CipherSuite.pskDHSuites, settings)
+
+    pskCertSuites = []
+    pskCertSuites.append(TLS_RSA_PSK_WITH_RC4_128_SHA)
+    pskCertSuites.append(TLS_RSA_PSK_WITH_3DES_EDE_CBC_SHA)
+    pskCertSuites.append(TLS_RSA_PSK_WITH_AES_128_CBC_SHA)
+    pskCertSuites.append(TLS_RSA_PSK_WITH_AES_256_CBC_SHA)
+
+    @staticmethod
+    def getPskCertSuites(settings):
+        return CipherSuite._filterSuites(CipherSuite.pskCertSuites, settings)
+
+    pskAllSuites = pskSuites + pskDHSuites + pskCertSuites
+
+    @staticmethod
+    def getPskAllSuites(settings):
+        return CipherSuite._filterSuites(CipherSuite.pskAllSuites, settings)
+
     certSuites = []
     certSuites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
     certSuites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
@@ -265,7 +341,7 @@ class CipherSuite:
     certSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_SHA)
     certSuites.append(TLS_RSA_WITH_RC4_128_MD5)
-    certAllSuites = srpCertSuites + certSuites
+    certAllSuites = srpCertSuites + pskCertSuites + certSuites
     
     @staticmethod
     def getCertSuites(settings):
@@ -316,6 +392,10 @@ class Fault:
     badVerifyMessage = 601
     clientCertFaults = list(range(601,602))
 
+    badIdentity = 701
+    badPSK = 702
+    clientPskFaults = list(range(701,702))
+
     badPremasterPadding = 501
     shortPremasterSecret = 502
     clientNoAuthFaults = list(range(501,503))
@@ -338,6 +418,9 @@ class Fault:
         badPremasterPadding: (AlertDescription.bad_record_mac,),\
         shortPremasterSecret: (AlertDescription.bad_record_mac,),\
         badVerifyMessage: (AlertDescription.decrypt_error,),\
+        badIdentity: (AlertDescription.unknown_psk_identity,\
+                      AlertDescription.decrypt_error),\
+        badPSK: (AlertDescription.decrypt_error,),\
         badFinished: (AlertDescription.decrypt_error,),\
         badMAC: (AlertDescription.bad_record_mac,),\
         badPadding: (AlertDescription.bad_record_mac,),\
@@ -353,6 +436,8 @@ class Fault:
         shortPremasterSecret: "short premaster secret",\
         badVerifyMessage: "bad verify message",\
         badFinished: "bad finished message",\
+        badIdentity: "bad PSK identity",\
+        badPSK: "bad PSK",\
         badMAC: "bad MAC",\
         badPadding: "bad padding",\
         ignoreVersionForCipher: "ignore version for cipher"

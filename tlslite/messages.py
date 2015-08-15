@@ -5,6 +5,7 @@
 #   Dimitris Moraitis - Anon ciphersuites
 #   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
 #   Hubert Kario - 'extensions' cleanup
+#   Fiach Antaw - TLS-PSK ciphersuites
 #
 # See the LICENSE file for legal information regarding use of this file.
 
@@ -896,6 +897,8 @@ class ServerKeyExchange(HandshakeMsg):
         self.srp_g = 0
         self.srp_s = bytearray(0)
         self.srp_B = 0
+        # PSK params:
+        self.psk_identity_hint = bytearray(0)
         # Anon DH params:
         self.dh_p = 0
         self.dh_g = 0
@@ -909,6 +912,10 @@ class ServerKeyExchange(HandshakeMsg):
         self.srp_B = srp_B
         return self
     
+    def createPSK(self, psk_identity_hint):
+        self.psk_identity_hint = psk_identity_hint
+        return self
+
     def createDH(self, dh_p, dh_g, dh_Ys):
         self.dh_p = dh_p
         self.dh_g = dh_g
@@ -924,6 +931,12 @@ class ServerKeyExchange(HandshakeMsg):
             self.srp_B = bytesToNumber(p.getVarBytes(2))
             if self.cipherSuite in CipherSuite.srpCertSuites:
                 self.signature = p.getVarBytes(2)
+        elif self.cipherSuite in CipherSuite.pskAllSuites:
+            self.psk_identity_hint = p.getVarBytes(2)
+            if self.cipherSuite in CipherSuite.pskDHSuites:
+                self.dh_p = bytesToNumber(p.getVarBytes(2))
+                self.dh_g = bytesToNumber(p.getVarBytes(2))
+                self.dh_Ys = bytesToNumber(p.getVarBytes(2))
         elif self.cipherSuite in CipherSuite.anonSuites:
             self.dh_p = bytesToNumber(p.getVarBytes(2))
             self.dh_g = bytesToNumber(p.getVarBytes(2))
@@ -940,6 +953,12 @@ class ServerKeyExchange(HandshakeMsg):
             w.addVarSeq(numberToByteArray(self.srp_B), 1, 2)
             if self.cipherSuite in CipherSuite.srpCertSuites and writeSig:
                 w.addVarSeq(self.signature, 1, 2)
+        elif self.cipherSuite in CipherSuite.pskAllSuites:
+            w.addVarSeq(self.psk_identity_hint, 1, 2)
+            if self.cipherSuite in CipherSuite.pskDHSuites:
+                w.addVarSeq(numberToByteArray(self.dh_p), 1, 2)
+                w.addVarSeq(numberToByteArray(self.dh_g), 1, 2)
+                w.addVarSeq(numberToByteArray(self.dh_Ys), 1, 2)
         elif self.cipherSuite in CipherSuite.anonSuites:
             w.addVarSeq(numberToByteArray(self.dh_p), 1, 2)
             w.addVarSeq(numberToByteArray(self.dh_g), 1, 2)
@@ -974,10 +993,16 @@ class ClientKeyExchange(HandshakeMsg):
         self.cipherSuite = cipherSuite
         self.version = version
         self.srp_A = 0
+        self.psk_identity = bytearray(0)
         self.encryptedPreMasterSecret = bytearray(0)
+        self.dh_Yc = 0
 
     def createSRP(self, srp_A):
         self.srp_A = srp_A
+        return self
+
+    def createPSK(self, psk_identity):
+        self.psk_identity = psk_identity
         return self
 
     def createRSA(self, encryptedPreMasterSecret):
@@ -992,6 +1017,14 @@ class ClientKeyExchange(HandshakeMsg):
         p.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
             self.srp_A = bytesToNumber(p.getVarBytes(2))
+        elif self.cipherSuite in CipherSuite.pskAllSuites:
+            self.psk_identity = p.getVarBytes(2)
+            if self.cipherSuite in CipherSuite.pskDHSuites:
+                self.dh_Yc = bytesToNumber(p.getVarBytes(2))
+            elif self.cipherSuite in CipherSuite.pskCertSuites:
+                # TLS-PSK is not supported by SSLv3, so no version
+                # check is needed
+                self.encryptedPreMasterSecret = p.getVarBytes(2)
         elif self.cipherSuite in CipherSuite.certSuites:
             if self.version in ((3,1), (3,2), (3,3)):
                 self.encryptedPreMasterSecret = p.getVarBytes(2)
@@ -1011,6 +1044,14 @@ class ClientKeyExchange(HandshakeMsg):
         w = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
             w.addVarSeq(numberToByteArray(self.srp_A), 1, 2)
+        elif self.cipherSuite in CipherSuite.pskAllSuites:
+            w.addVarSeq(self.psk_identity, 1, 2)
+            if self.cipherSuite in CipherSuite.pskDHSuites:
+                w.addVarSeq(numberToByteArray(self.dh_Yc), 1, 2)
+            elif self.cipherSuite in CipherSuite.pskCertSuites:
+                # TLS-PSK is not supported by SSLv3, so no version
+                # check is needed
+                w.addVarSeq(self.encryptedPreMasterSecret, 1, 2)
         elif self.cipherSuite in CipherSuite.certSuites:
             if self.version in ((3,1), (3,2), (3,3)):
                 w.addVarSeq(self.encryptedPreMasterSecret, 1, 2)
