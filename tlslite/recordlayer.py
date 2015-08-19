@@ -530,6 +530,9 @@ class RecordLayer(object):
             if self.version >= (3, 2):
                 buf = buf[blockLength:]
 
+            if len(buf) == 0:
+                raise TLSBadRecordMAC("No data left after IV removal")
+
             # check padding
             paddingLength = buf[-1]
             if paddingLength + 1 > len(buf):
