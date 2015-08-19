@@ -1250,6 +1250,52 @@ class TestRecordLayer(unittest.TestCase):
         with self.assertRaises(TLSDecryptionFailed):
             next(gen)
 
+    def test_recvRecord_with_zero_length_payload(self):
+        sock = MockSocket(bytearray(
+            b'\x17' +           # application data
+            b'\x03\x02' +       # TLSv1.1
+            b'\x00\x00'         # length
+            ))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.client = False
+        recordLayer.version = (3, 2)
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeReadState()
+
+        gen = recordLayer.recvRecord()
+
+        with self.assertRaises(TLSBadRecordMAC):
+            next(gen)
+
+    def test_recvRecord_with_zero_length_payload_EtM(self):
+        sock = MockSocket(bytearray(
+            b'\x17' +           # application data
+            b'\x03\x01' +       # TLSv1.0
+            b'\x00\x14' +       # length (just MAC alone, no data)
+            b'A~\x1c\x88s\xdf\xa2sQ\xca\xdd\xb2\xd0\xdc\n\x94\x8e\xc8W\x04'
+            ))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.client = False
+        recordLayer.version = (3, 1)
+        recordLayer.encryptThenMAC = True
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeReadState()
+
+        gen = recordLayer.recvRecord()
+
+        with self.assertRaises(TLSBadRecordMAC):
+            next(gen)
+
     def test_recvRecord_with_zero_filled_padding_in_SSLv3(self):
         # make sure the IV is predictible (all zero)
         patcher = mock.patch.object(os,
