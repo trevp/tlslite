@@ -519,6 +519,9 @@ encrypt-then-MAC mode for CBC ciphers.
 12 History
 ===========
 
+0.5.0-X - xx/xx/xxxx
+ - fix CVE-2015-3220 - remote DoS caused by incorrect malformed packet handling
+
 0.5.0-beta4 - 23/07/2015 - Hubert Kario
  - removed RC4 from ciphers supported by default
  - add supported_groups, supported_point_formats, signature_algorithms and
