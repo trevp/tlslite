@@ -484,7 +484,44 @@ def clientTestCmd(argv):
             raise
     connection.close()
 
-    print('Test 27 - good standard XMLRPC https client')
+    print("Test 27.a - client checks DH length > min")
+    synchro.recv(1)
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.minKeySize = 2048
+    try:
+        connection.handshakeClientAnonymous(settings=settings)
+        assert()
+    except TLSLocalAlert as alert:
+        if alert.description != AlertDescription.insufficient_security:
+            raise
+    connection.close()
+
+    print("Test 27.b - client checks DH length < max")
+    synchro.recv(1)
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.maxKeySize = 2048
+    try:
+        connection.handshakeClientAnonymous(settings=settings)
+        assert()
+    except TLSLocalAlert as alert:
+        if alert.description != AlertDescription.insufficient_security:
+            raise
+    connection.close()
+
+    print("Test 28 - server allows explicit DH group")
+    synchro.recv(1)
+    connection = connect()
+    settings = HandshakeSettings()
+    # Server will send parameters for a deliberately insecure DH group if
+    # explicit DH selection is working.
+    settings.minKeySize = 1234
+    settings.maxKeySize = 1234
+    connection.handshakeClientAnonymous(settings=settings)
+    connection.close()
+
+    print('Test 29 - good standard XMLRPC https client')
     address = address[0], address[1]+1
     synchro.recv(1)
     try:
@@ -501,7 +538,7 @@ def clientTestCmd(argv):
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print('Test 28 - good tlslite XMLRPC client')
+    print('Test 30 - good tlslite XMLRPC client')
     transport = XMLRPCTransport(ignoreAbruptClose=True)
     server = xmlrpclib.Server('https://%s:%s' % address, transport)
     synchro.recv(1)
@@ -509,22 +546,22 @@ def clientTestCmd(argv):
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print('Test 29 - good XMLRPC ignored protocol')
+    print('Test 31 - good XMLRPC ignored protocol')
     server = xmlrpclib.Server('http://%s:%s' % address, transport)
     synchro.recv(1)
     assert server.add(1,2) == 3
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print("Test 30 - Internet servers test")
+    print("Test 32 - Internet servers test")
     try:
         i = IMAP4_TLS("cyrus.andrew.cmu.edu")
         i.login("anonymous", "anonymous@anonymous.net")
         i.logout()
-        print("Test 30: IMAP4 good")
+        print("Test 33: IMAP4 good")
         p = POP3_TLS("pop.gmail.com")
         p.quit()
-        print("Test 31: POP3 good")
+        print("Test 34: POP3 good")
     except socket.error as e:
         print("Non-critical error: socket error trying to reach internet server: ", e)   
 
@@ -940,7 +977,42 @@ def serverTestCmd(argv):
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
     connection.close()
 
-    print("Tests 27-29 - XMLRPXC server")
+    print("Test 27.a - client checks DH length > min")
+    synchro.send(b'R')
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.dhGroup = 1
+    try:
+        connection.handshakeServer(anon=True, settings=settings)
+        assert(False)
+    except TLSRemoteAlert as alert:
+        if alert.description != AlertDescription.insufficient_security:
+            raise
+    connection.close()
+
+    print("Test 27.b - client checks DH length < max")
+    synchro.send(b'R')
+    connection = connect()
+    settings = HandshakeSettings()
+    settings.dhGroup = 18
+    try:
+        connection.handshakeServer(anon=True, settings=settings)
+        assert(False)
+    except TLSRemoteAlert as alert:
+        if alert.description != AlertDescription.insufficient_security:
+            raise
+    connection.close()
+
+    print("Test 28 - server allows explicit DH group")
+    synchro.send(b'R')
+    connection = connect()
+    settings = HandshakeSettings()
+    # Configure a randomly generated (see getRandomSafePrime) 1234-bit prime
+    settings.dhGroup = (2, 0x37BD1627DC2859D0E75B7D1ABFA161207E00712EC4E7E398E00339CD6D6CD4685FB336B1E33F9A5F3B44F6EA0DB4ED2C75EE400745B4A600A523394F9D39DB8BDB70E64D737CB368FF857FB0184CCCEF7C1636D79B68F73B3DEC8BC3E3C494B2FA5C3B7B06DCC0D8A039046FCA52DECFE236BCF8CEF6627827BDC27CB012E57A511CBE780A375CFB3581BE38C102279ADD9E84491A88127D67BAB)
+    connection.handshakeServer(anon=True, settings=settings)
+    connection.close()
+
+    print("Tests 29-31 - XMLRPXC server")
     address = address[0], address[1]+1
     class Server(TLSXMLRPCServer):
 

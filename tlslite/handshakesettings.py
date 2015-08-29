@@ -10,6 +10,7 @@
 from .constants import CertificateType
 from .utils import cryptomath
 from .utils import cipherfactory
+from .mathtls import goodMODPGroupParameters
 
 # RC4 is preferred as faster in Python, works in SSL3, and immune to CBC
 # issues such as timing attacks
@@ -98,6 +99,15 @@ class HandshakeSettings(object):
 
     @type sendFallbackSCSV: bool
     @ivar sendFallbackSCSV: Whether to, as a client, send FALLBACK_SCSV.
+
+    @type dhGroup: int or tuple
+    @ivar dhGroup: For a server, the IKE ID of the group to use for
+    Diffie-Hellman key exchange, or a tuple of the form (generator, prime).
+
+    Note that this has no effect on client behaviour, as the server is
+    responsible for selecting the Diffie-Hellman parameters in all currently
+    supported suites. The default is 14 (corresponding to the 2048-bit prime
+    defined in RFC 3526).
     """
     def __init__(self):
         self.minKeySize = 1023
@@ -110,6 +120,7 @@ class HandshakeSettings(object):
         self.maxVersion = (3,3)
         self.useExperimentalTackExtension = False
         self.sendFallbackSCSV = False
+        self.dhGroup = 14
 
     def validate(self):
         """
@@ -130,6 +141,7 @@ class HandshakeSettings(object):
         other.minVersion = self.minVersion
         other.maxVersion = self.maxVersion
         other.sendFallbackSCSV = self.sendFallbackSCSV
+        other.dhGroup = self.dhGroup
 
         if other.maxVersion < (3,3):
             other.macNames = [e for e in self.macNames if e != "sha256"]
@@ -178,6 +190,21 @@ class HandshakeSettings(object):
 
         if not other.maxVersion in ((3,0), (3,1), (3,2), (3,3)):
             raise ValueError("maxVersion set incorrectly")
+
+        if isinstance(other.dhGroup, int):
+            if not other.dhGroup in goodMODPGroupParameters:
+                raise ValueError("Unrecognized dhGroup ID: %d" % other.dhGroup)
+        else:
+            try:
+                if len(other.dhGroup) != 2:
+                    raise ValueError("Explicit dhGroup set incorrectly: "
+                                     "expected 2 elements got %d" %
+                                     len(other.dhGroup))
+                elif not (isinstance(other.dhGroup[0], (int, long)) and
+                          isinstance(other.dhGroup[1], (int, long))):
+                    raise ValueError("Explicit dhGroup parameters not ints")
+            except TypeError:
+                raise ValueError("dhGroup not int nor collection")
 
         return other
 

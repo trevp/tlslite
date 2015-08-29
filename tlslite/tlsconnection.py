@@ -700,7 +700,7 @@ class TLSConnection(TLSRecordLayer):
         s = serverKeyExchange.srp_s
         B = serverKeyExchange.srp_B
 
-        if (g,N) not in goodGroupParameters:
+        if (g,N) not in goodSRPGroupParameters:
             for result in self._sendError(\
                     AlertDescription.insufficient_security,
                     "Unknown group parameters"):
@@ -781,6 +781,21 @@ class TLSConnection(TLSRecordLayer):
             yield result
         yield (premasterSecret, serverCertChain, tackExt)
                    
+    def _clientRSAGeneratePremasterSecret(self, settings, publicKey):
+        #Calculate premaster secret
+        premasterSecret = getRandomBytes(48)
+        premasterSecret[0] = settings.maxVersion[0]
+        premasterSecret[1] = settings.maxVersion[1]
+
+        if self.fault == Fault.badPremasterPadding:
+            premasterSecret[0] = 5
+        if self.fault == Fault.shortPremasterSecret:
+            premasterSecret = premasterSecret[:-1]
+
+        #Encrypt premaster secret to server's public key
+        encryptedPreMasterSecret = publicKey.encrypt(premasterSecret)
+
+        yield premasterSecret, encryptedPreMasterSecret
 
     def _clientRSAKeyExchange(self, settings, cipherSuite, 
                                 clientCertChain, privateKey,
@@ -823,18 +838,12 @@ class TLSConnection(TLSRecordLayer):
             else: break
         publicKey, serverCertChain, tackExt = result
 
-        #Calculate premaster secret
-        premasterSecret = getRandomBytes(48)
-        premasterSecret[0] = settings.maxVersion[0]
-        premasterSecret[1] = settings.maxVersion[1]
-
-        if self.fault == Fault.badPremasterPadding:
-            premasterSecret[0] = 5
-        if self.fault == Fault.shortPremasterSecret:
-            premasterSecret = premasterSecret[:-1]
-
-        #Encrypt premaster secret to server's public key
-        encryptedPreMasterSecret = publicKey.encrypt(premasterSecret)
+        #Generate premaster secret
+        for result in self._clientRSAGeneratePremasterSecret(settings,
+                                                             publicKey):
+                if result in (0,1): yield result
+                else: break
+        premasterSecret, encryptedPreMasterSecret = result
 
         #If client authentication was requested, send Certificate
         #message, either with certificates or empty
@@ -898,6 +907,29 @@ class TLSConnection(TLSRecordLayer):
                 yield result
         yield (premasterSecret, serverCertChain, clientCertChain, tackExt)
 
+    def _clientDHEGeneratePremasterSecret(self, settings, dh_p, dh_g, dh_Ys):
+        # Verify DHE prime size
+        if numBits(dh_p) < settings.minKeySize:
+            for result in self._sendError(\
+                    AlertDescription.insufficient_security,
+                    "dh_p value is too small: %d" % numBits(dh_p)):
+                yield result
+        if numBits(dh_p) > settings.maxKeySize:
+            for result in self._sendError(\
+                    AlertDescription.insufficient_security,
+                    "dh_p value is too large: %d" % numBits(dh_p)):
+                yield result
+
+        #calculate Yc
+        dh_Xc = bytesToNumber(getRandomBytes(32))
+        dh_Yc = powMod(dh_g, dh_Xc, dh_p)
+
+        #Calculate premaster secret
+        S = powMod(dh_Ys, dh_Xc, dh_p)
+        premasterSecret = numberToByteArray(S)
+
+        yield premasterSecret, dh_Yc
+
     def _clientAnonKeyExchange(self, settings, cipherSuite, clientRandom, 
                                serverRandom):
         for result in self._getMsg(ContentType.handshake,
@@ -911,23 +943,20 @@ class TLSConnection(TLSRecordLayer):
             if result in (0,1): yield result
             else: break
         serverHelloDone = result
-            
-        #calculate Yc
-        dh_p = serverKeyExchange.dh_p
-        dh_g = serverKeyExchange.dh_g
-        dh_Xc = bytesToNumber(getRandomBytes(32))
-        dh_Ys = serverKeyExchange.dh_Ys
-        dh_Yc = powMod(dh_g, dh_Xc, dh_p)
-        
+
+        #Generate premaster secret/dh_Yc
+        for result in self._clientDHEGeneratePremasterSecret(settings,
+                serverKeyExchange.dh_p, serverKeyExchange.dh_g,
+                serverKeyExchange.dh_Ys):
+            if result in (0,1): yield result
+            else: break
+        premasterSecret, dh_Yc = result
+
         #Send ClientKeyExchange
         for result in self._sendMsg(\
                 ClientKeyExchange(cipherSuite, self.version).createDH(dh_Yc)):
             yield result
-            
-        #Calculate premaster secret
-        S = powMod(dh_Ys, dh_Xc, dh_p)
-        premasterSecret = numberToByteArray(S)
-                     
+
         yield (premasterSecret, None, None)
         
     def _clientFinished(self, premasterSecret, clientRandom, serverRandom,
@@ -1464,6 +1493,24 @@ class TLSConnection(TLSRecordLayer):
         
         yield premasterSecret
 
+    def _serverRSAGetPremasterSecret(self, encryptedPreMasterSecret,
+                                     privateKey, client_version):
+        #Decrypt premaster secret
+        premasterSecret = privateKey.decrypt(encryptedPreMasterSecret)
+
+        # On decryption failure randomize premaster secret to avoid
+        # Bleichenbacher's "million message" attack
+        randomPreMasterSecret = getRandomBytes(48)
+        versionCheck = (premasterSecret[0], premasterSecret[1])
+        if not premasterSecret:
+            premasterSecret = randomPreMasterSecret
+        elif len(premasterSecret)!=48:
+            premasterSecret = randomPreMasterSecret
+        elif versionCheck != client_version:
+            if versionCheck != self.version: #Tolerate buggy IE clients
+                premasterSecret = randomPreMasterSecret
+
+        yield premasterSecret
 
     def _serverCertKeyExchange(self, clientHello, serverHello, 
                                 serverCertChain, privateKey,
@@ -1541,21 +1588,13 @@ class TLSConnection(TLSRecordLayer):
             else: break
         clientKeyExchange = result
 
-        #Decrypt ClientKeyExchange
-        premasterSecret = privateKey.decrypt(\
-            clientKeyExchange.encryptedPreMasterSecret)
-
-        # On decryption failure randomize premaster secret to avoid
-        # Bleichenbacher's "million message" attack
-        randomPreMasterSecret = getRandomBytes(48)
-        versionCheck = (premasterSecret[0], premasterSecret[1])
-        if not premasterSecret:
-            premasterSecret = randomPreMasterSecret
-        elif len(premasterSecret)!=48:
-            premasterSecret = randomPreMasterSecret
-        elif versionCheck != clientHello.client_version:
-            if versionCheck != self.version: #Tolerate buggy IE clients
-                premasterSecret = randomPreMasterSecret
+        #Get premaster secret
+        for result in self._serverRSAGetPremasterSecret(\
+                clientKeyExchange.encryptedPreMasterSecret, privateKey,
+                clientHello.client_version):
+            if result in (0,1): yield result
+            else: break
+        premasterSecret = result
 
         #Get and check CertificateVerify, if relevant
         if clientCertChain:
@@ -1594,14 +1633,35 @@ class TLSConnection(TLSRecordLayer):
                     yield result
         yield (premasterSecret, clientCertChain)
 
-
-    def _serverAnonKeyExchange(self, clientHello, serverHello, cipherSuite, 
-                               settings):
+    def _serverGenerateDHEParameters(self, settings):
+        # Get the configured group
+        if type(settings.dhGroup) is int:
+            groupParameters = goodMODPGroupParameters[settings.dhGroup]
+        else:
+            groupParameters = settings.dhGroup
         # Calculate DH p, g, Xs, Ys
-        dh_p = getRandomSafePrime(32, False)
-        dh_g = getRandomNumber(2, dh_p)        
-        dh_Xs = bytesToNumber(getRandomBytes(32))        
+        dh_p = groupParameters[1]
+        dh_g = groupParameters[0]
+        dh_Xs = bytesToNumber(getRandomBytes(32))
         dh_Ys = powMod(dh_g, dh_Xs, dh_p)
+        return dh_p, dh_g, dh_Xs, dh_Ys
+
+    def _serverDHEGetPremasterSecret(self, dh_Yc, dh_Xs, dh_p):
+        if dh_Yc % dh_p == 0:
+            for result in self._sendError(AlertDescription.illegal_parameter,
+                    "Suspicious dh_Yc value"):
+                yield result
+            assert(False) # Just to ensure we don't fall through somehow
+
+        #Calculate premaster secret
+        S = powMod(dh_Yc,dh_Xs,dh_p)
+        premasterSecret = numberToByteArray(S)
+        yield premasterSecret
+
+    def _serverAnonKeyExchange(self, clientHello, serverHello, cipherSuite,
+                               settings):
+        # Generate DH parameters
+        dh_p, dh_g, dh_Xs, dh_Ys = self._serverGenerateDHEParameters(settings)
 
         #Create ServerKeyExchange
         serverKeyExchange = ServerKeyExchange(cipherSuite)
@@ -1628,18 +1688,14 @@ class TLSConnection(TLSRecordLayer):
             else:
                 break
         clientKeyExchange = result
-        dh_Yc = clientKeyExchange.dh_Yc
-        
-        if dh_Yc % dh_p == 0:
-            for result in self._sendError(AlertDescription.illegal_parameter,
-                    "Suspicious dh_Yc value"):
-                yield result
-            assert(False) # Just to ensure we don't fall through somehow            
 
-        #Calculate premaster secre
-        S = powMod(dh_Yc,dh_Xs,dh_p)
-        premasterSecret = numberToByteArray(S)
-        
+        # Get premaster secret
+        for result in self._serverDHEGetPremasterSecret(\
+                clientKeyExchange.dh_Yc, dh_Xs, dh_p):
+            if result in (0,1): yield result
+            else: break
+        premasterSecret = result
+
         yield premasterSecret
 
 
