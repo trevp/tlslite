@@ -907,7 +907,19 @@ class TLSConnection(TLSRecordLayer):
                 yield result
         yield (premasterSecret, serverCertChain, clientCertChain, tackExt)
 
-    def _clientDHEGeneratePremasterSecret(self, dh_p, dh_g, dh_Ys):
+    def _clientDHEGeneratePremasterSecret(self, settings, dh_p, dh_g, dh_Ys):
+        # Verify DHE prime size
+        if numBits(dh_p) < settings.minKeySize:
+            for result in self._sendError(\
+                    AlertDescription.insufficient_security,
+                    "dh_p value is too small: %d" % numBits(dh_p)):
+                yield result
+        if numBits(dh_p) > settings.maxKeySize:
+            for result in self._sendError(\
+                    AlertDescription.insufficient_security,
+                    "dh_p value is too large: %d" % numBits(dh_p)):
+                yield result
+
         #calculate Yc
         dh_Xc = bytesToNumber(getRandomBytes(32))
         dh_Yc = powMod(dh_g, dh_Xc, dh_p)
