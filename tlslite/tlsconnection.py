@@ -700,7 +700,7 @@ class TLSConnection(TLSRecordLayer):
         s = serverKeyExchange.srp_s
         B = serverKeyExchange.srp_B
 
-        if (g,N) not in goodGroupParameters:
+        if (g,N) not in goodSRPGroupParameters:
             for result in self._sendError(\
                     AlertDescription.insufficient_security,
                     "Unknown group parameters"):
@@ -945,7 +945,7 @@ class TLSConnection(TLSRecordLayer):
         serverHelloDone = result
 
         #Generate premaster secret/dh_Yc
-        for result in self._clientDHEGeneratePremasterSecret(\
+        for result in self._clientDHEGeneratePremasterSecret(settings,
                 serverKeyExchange.dh_p, serverKeyExchange.dh_g,
                 serverKeyExchange.dh_Ys):
             if result in (0,1): yield result
@@ -1633,11 +1633,16 @@ class TLSConnection(TLSRecordLayer):
                     yield result
         yield (premasterSecret, clientCertChain)
 
-    def _serverGenerateDHEParameters(self):
+    def _serverGenerateDHEParameters(self, settings):
+        # Get the configured group
+        if type(settings.dhGroup) is int:
+            groupParameters = goodMODPGroupParameters[settings.dhGroup]
+        else:
+            groupParameters = settings.dhGroup
         # Calculate DH p, g, Xs, Ys
-        dh_p = getRandomSafePrime(32, False)
-        dh_g = getRandomNumber(2, dh_p)        
-        dh_Xs = bytesToNumber(getRandomBytes(32))        
+        dh_p = groupParameters[1]
+        dh_g = groupParameters[0]
+        dh_Xs = bytesToNumber(getRandomBytes(32))
         dh_Ys = powMod(dh_g, dh_Xs, dh_p)
         return dh_p, dh_g, dh_Xs, dh_Ys
 
@@ -1656,7 +1661,7 @@ class TLSConnection(TLSRecordLayer):
     def _serverAnonKeyExchange(self, clientHello, serverHello, cipherSuite,
                                settings):
         # Generate DH parameters
-        dh_p, dh_g, dh_Xs, dh_Ys = self._serverGenerateDHEParameters()
+        dh_p, dh_g, dh_Xs, dh_Ys = self._serverGenerateDHEParameters(settings)
 
         #Create ServerKeyExchange
         serverKeyExchange = ServerKeyExchange(cipherSuite)
