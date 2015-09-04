@@ -117,29 +117,25 @@ def calcFinished(version, masterSecret, cipherSuite, handshakeHashes,
             senderStr = b"\x53\x52\x56\x52"
 
         verifyData = handshakeHashes.digestSSL(masterSecret, senderStr)
-        return verifyData
-    elif version in ((3,1), (3,2)):
+    else:
         if isClient:
             label = b"client finished"
         else:
             label = b"server finished"
 
-        handshakeHash = handshakeHashes.digest()
-        verifyData = PRF(masterSecret, label, handshakeHash, 12)
-        return verifyData
-    else: # version == (3,3):
-        if isClient:
-            label = b"client finished"
-        else:
-            label = b"server finished"
+        if version in ((3,1), (3,2)):
+            handshakeHash = handshakeHashes.digest()
+            verifyData = PRF(masterSecret, label, handshakeHash, 12)
+        else: # version == (3,3):
+            if cipherSuite in CipherSuite.sha384PrfSuites:
+                handshakeHash = handshakeHashes.digest('sha384')
+                verifyData = PRF_1_2_SHA384(masterSecret, label,
+                                            handshakeHash, 12)
+            else:
+                handshakeHash = handshakeHashes.digest('sha256')
+                verifyData = PRF_1_2(masterSecret, label, handshakeHash, 12)
 
-        if cipherSuite in CipherSuite.sha384PrfSuites:
-            handshakeHash = handshakeHashes.digest('sha384')
-            verifyData = PRF_1_2_SHA384(masterSecret, label, handshakeHash, 12)
-        else:
-            handshakeHash = handshakeHashes.digest('sha256')
-            verifyData = PRF_1_2(masterSecret, label, handshakeHash, 12)
-        return verifyData
+    return verifyData
 
 def makeX(salt, username, password):
     if len(username)>=256:
