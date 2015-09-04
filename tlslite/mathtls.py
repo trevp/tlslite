@@ -98,6 +98,48 @@ def calcMasterSecret(version, cipherSuite, premasterSecret, clientRandom,
         raise AssertionError()
     return masterSecret
 
+def calcFinished(version, masterSecret, cipherSuite, handshakeHashes,
+                 isClient):
+    """Calculate the Handshake protocol Finished value
+
+    @param version: TLS protocol version tuple
+    @param masterSecret: negotiated master secret of the connection
+    @param cipherSuite: negotiated cipher suite of the connection,
+    @param handshakeHashes: running hash of the handshake messages
+    @param isClient: whether the calculation should be performed for message
+    sent by client (True) or by server (False) side of connection
+    """
+    assert version in ((3, 0), (3, 1), (3, 2), (3, 3))
+    if version == (3,0):
+        if isClient:
+            senderStr = b"\x43\x4C\x4E\x54"
+        else:
+            senderStr = b"\x53\x52\x56\x52"
+
+        verifyData = handshakeHashes.digestSSL(masterSecret, senderStr)
+        return verifyData
+    elif version in ((3,1), (3,2)):
+        if isClient:
+            label = b"client finished"
+        else:
+            label = b"server finished"
+
+        handshakeHash = handshakeHashes.digest()
+        verifyData = PRF(masterSecret, label, handshakeHash, 12)
+        return verifyData
+    else: # version == (3,3):
+        if isClient:
+            label = b"client finished"
+        else:
+            label = b"server finished"
+
+        if cipherSuite in CipherSuite.sha384PrfSuites:
+            handshakeHash = handshakeHashes.digest('sha384')
+            verifyData = PRF_1_2_SHA384(masterSecret, label, handshakeHash, 12)
+        else:
+            handshakeHash = handshakeHashes.digest('sha256')
+            verifyData = PRF_1_2(masterSecret, label, handshakeHash, 12)
+        return verifyData
 
 def makeX(salt, username, password):
     if len(username)>=256:

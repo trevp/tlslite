@@ -1959,7 +1959,11 @@ class TLSConnection(TLSRecordLayer):
                 yield result
 
         #Calculate verification data
-        verifyData = self._calcFinished(masterSecret, cipherSuite, True)
+        verifyData = calcFinished(self.version,
+                                  masterSecret,
+                                  cipherSuite,
+                                  self._handshake_hash,
+                                  self._client)
         if self.fault == Fault.badFinished:
             verifyData[0] = (verifyData[0]+1)%256
 
@@ -2003,7 +2007,11 @@ class TLSConnection(TLSRecordLayer):
             self.next_proto = nextProto
 
         #Calculate verification data
-        verifyData = self._calcFinished(masterSecret, cipherSuite, False)
+        verifyData = calcFinished(self.version,
+                                  masterSecret,
+                                  cipherSuite,
+                                  self._handshake_hash,
+                                  not self._client)
 
         #Get and check Finished message under new state
         for result in self._getMsg(ContentType.handshake,
@@ -2015,42 +2023,6 @@ class TLSConnection(TLSRecordLayer):
             for result in self._sendError(AlertDescription.decrypt_error,
                                          "Finished message is incorrect"):
                 yield result
-
-    def _calcFinished(self, masterSecret, cipherSuite, send=True):
-        if self.version == (3,0):
-            if (self._client and send) or (not self._client and not send):
-                senderStr = b"\x43\x4C\x4E\x54"
-            else:
-                senderStr = b"\x53\x52\x56\x52"
-
-            verifyData = self._handshake_hash.digestSSL(masterSecret, senderStr)
-            return verifyData
-
-        elif self.version in ((3,1), (3,2)):
-            if (self._client and send) or (not self._client and not send):
-                label = b"client finished"
-            else:
-                label = b"server finished"
-
-            handshakeHashes = self._handshake_hash.digest()
-            verifyData = PRF(masterSecret, label, handshakeHashes, 12)
-            return verifyData
-        elif self.version == (3,3):
-            if (self._client and send) or (not self._client and not send):
-                label = b"client finished"
-            else:
-                label = b"server finished"
-
-            if cipherSuite in CipherSuite.sha384PrfSuites:
-                handshakeHashes = self._handshake_hash.digest('sha384')
-                verifyData = PRF_1_2_SHA384(masterSecret, label, handshakeHashes, 12)
-            else:
-                handshakeHashes = self._handshake_hash.digest('sha256')
-                verifyData = PRF_1_2(masterSecret, label, handshakeHashes, 12)
-            return verifyData
-        else:
-            raise AssertionError()
-
 
     def _handshakeWrapperAsync(self, handshaker, checker):
         try:
