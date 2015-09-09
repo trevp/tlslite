@@ -23,6 +23,7 @@ except ImportError:
     from http import client as httplib
     from socketserver import *
     from http.server import *
+    from http.server import SimpleHTTPRequestHandler
 
 if __name__ != "__main__":
     raise "This must be run as a command, not used as a module!"
@@ -104,9 +105,13 @@ def handleArgs(argv, argString, flagsList=[]):
     for opt, arg in opts:
         if opt == "-k":
             s = open(arg, "rb").read()
+            if sys.version_info[0] >= 3:
+                s = str(s, 'utf-8')
             privateKey = parsePEMKey(s, private=True)            
         elif opt == "-c":
             s = open(arg, "rb").read()
+            if sys.version_info[0] >= 3:
+                s = str(s, 'utf-8')
             x509 = X509()
             x509.parse(s)
             certChain = X509CertChain([x509])
@@ -273,6 +278,7 @@ def serverCmd(argv):
         
     #############
     sessionCache = SessionCache()
+    username = None
 
     class MyHTTPServer(ThreadingMixIn, TLSSocketServerMixIn, HTTPServer):
         def handshake(self, connection):
