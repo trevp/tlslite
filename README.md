@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.5.0-beta4                                    2015-07-23
+tlslite-ng version 0.5.0-beta6                                    2015-09-09
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -519,10 +519,8 @@ encrypt-then-MAC mode for CBC ciphers.
 12 History
 ===========
 
-0.5.0-X - xx/xx/xxxx
+0.5.0-beta6 - 09/09/2015
  - fix CVE-2015-3220 - remote DoS caused by incorrect malformed packet handling
-
-0.5.0-beta4 - 23/07/2015 - Hubert Kario
  - removed RC4 from ciphers supported by default
  - add supported_groups, supported_point_formats, signature_algorithms and
    renegotiation_info extensions
