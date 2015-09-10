@@ -1418,7 +1418,8 @@ class TLSConnection(TLSRecordLayer):
         # Prepare other extensions if requested
         if settings.useEncryptThenMAC and \
                 clientHello.getExtension(ExtensionType.encrypt_then_mac) and \
-                cipherSuite not in CipherSuite.rc4Suites:
+                cipherSuite not in CipherSuite.streamSuites and \
+                cipherSuite not in CipherSuite.aeadSuites:
             extensions = [TLSExtension().create(ExtensionType.encrypt_then_mac,
                                                 bytearray(0))]
             self._recordLayer.encryptThenMAC = True

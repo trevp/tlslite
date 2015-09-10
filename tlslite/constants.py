@@ -413,14 +413,17 @@ class CipherSuite:
     sha256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
     sha256Suites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA256)
     sha256Suites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
-    sha256Suites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
-    sha256Suites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
     sha256Suites.append(TLS_RSA_WITH_NULL_SHA256)
     sha256Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA256)
     sha256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA256)
 
     # SHA-384 HMAC, SHA-384 PRF
     sha384Suites = []
+
+    # stream cipher construction
+    streamSuites = []
+    streamSuites.extend(rc4Suites)
+    streamSuites.extend(nullSuites)
 
     # AEAD integrity, any PRF
     aeadSuites = []
