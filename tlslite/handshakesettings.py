@@ -102,13 +102,13 @@ class HandshakeSettings(object):
     def __init__(self):
         self.minKeySize = 1023
         self.maxKeySize = 8193
-        self.cipherNames = CIPHER_NAMES
-        self.macNames = MAC_NAMES
-        self.keyExchangeNames = KEY_EXCHANGE_NAMES
-        self.cipherImplementations = CIPHER_IMPLEMENTATIONS
-        self.certificateTypes = CERTIFICATE_TYPES
-        self.minVersion = (3,1)
-        self.maxVersion = (3,3)
+        self.cipherNames = list(CIPHER_NAMES)
+        self.macNames = list(MAC_NAMES)
+        self.keyExchangeNames = list(KEY_EXCHANGE_NAMES)
+        self.cipherImplementations = list(CIPHER_IMPLEMENTATIONS)
+        self.certificateTypes = list(CERTIFICATE_TYPES)
+        self.minVersion = (3, 1)
+        self.maxVersion = (3, 3)
         self.useExperimentalTackExtension = False
         self.sendFallbackSCSV = False
         self.useEncryptThenMAC = True
