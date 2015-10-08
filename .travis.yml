@@ -73,6 +73,7 @@ install:
   - if [[ $M2CRYPTO == 'true' ]]; then travis_retry pip install M2Crypto; fi
   - if [[ $PYCRYPTO == 'true' ]]; then travis_retry pip install pycrypto; fi
   - if [[ $GMPY == 'true' ]]; then travis_retry pip install gmpy; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.2' ]]; then travis_retry pip install 'coverage<4'; else travis_retry pip install coverage; fi
   - travis_retry pip install -r build-requirements.txt
 
 script:
