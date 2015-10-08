@@ -22,6 +22,11 @@ class AsyncStateMachine:
     """
 
     def __init__(self):
+        self.result = None
+        self.handshaker = None
+        self.closer = None
+        self.reader = None
+        self.writer = None
         self._clear()
 
     def _clear(self):
