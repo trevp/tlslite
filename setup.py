@@ -8,7 +8,7 @@ from distutils.core import setup
 
 
 setup(name="tlslite-ng",
-      version="0.5.0-beta6",
+      version="0.5.0",
       author="Hubert Kario",
       author_email="hkario@redhat.com",
       url="https://github.com/tomato42/tlslite-ng",
@@ -22,7 +22,7 @@ setup(name="tlslite-ng",
       classifiers=[
             'Development Status :: 4 - Beta',
             'Intended Audience :: Developers',
-            'License :: OSI Approved :: GNU General Public License v2 (GPLv2)',
+            'License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)',
             'Operating System :: OS Independent',
             'Programming Language :: Python',
             'Programming Language :: Python :: 2.6',

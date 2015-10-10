@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.5.0-beta6                                    2015-09-09
+tlslite-ng version 0.5.0                                           2015-10-10
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -519,7 +519,8 @@ encrypt-then-MAC mode for CBC ciphers.
 12 History
 ===========
 
-0.5.0-beta6 - 09/09/2015
+0.5.0 - 10/10/2015
+ - fix generators in AsyncStateMachine to work on Python3 (Theron Lewis)
  - fix CVE-2015-3220 - remote DoS caused by incorrect malformed packet handling
  - removed RC4 from ciphers supported by default
  - add supported_groups, supported_point_formats, signature_algorithms and
