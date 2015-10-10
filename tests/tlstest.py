@@ -117,7 +117,8 @@ def clientTestCmd(argv):
     testConnClient(connection)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     assert(connection.session.serverName == address[0])
-    assert(connection.encryptThenMAC == True)
+    assert(connection.session.cipherSuite in constants.CipherSuite.aeadSuites)
+    assert(connection.encryptThenMAC == False)
     connection.close()
 
     print("Test 1.a - good X509, SSLv3")
@@ -141,6 +142,7 @@ def clientTestCmd(argv):
     testConnClient(connection)    
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     assert(connection.session.cipherSuite == constants.CipherSuite.TLS_RSA_WITH_RC4_128_MD5)
+    assert(connection.encryptThenMAC == False)
     connection.close()
 
     if tackpyLoaded:
@@ -471,6 +473,7 @@ def clientTestCmd(argv):
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
+    settings.macNames.remove("aead")
     assert(settings.useEncryptThenMAC)
     connection.handshakeClientCert(serverName=address[0], settings=settings)
     testConnClient(connection)
@@ -483,6 +486,7 @@ def clientTestCmd(argv):
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
+    settings.macNames.remove("aead")
     settings.useEncryptThenMAC = False
     connection.handshakeClientCert(serverName=address[0], settings=settings)
     testConnClient(connection)
@@ -494,7 +498,9 @@ def clientTestCmd(argv):
     print("Test 26.c - resumption with EtM")
     synchro.recv(1)
     connection = connect()
-    connection.handshakeClientCert(serverName=address[0])
+    settings = HandshakeSettings()
+    settings.macNames.remove("aead")
+    connection.handshakeClientCert(serverName=address[0], settings=settings)
     testConnClient(connection)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     assert(connection.session.serverName == address[0])
@@ -517,7 +523,9 @@ def clientTestCmd(argv):
     print("Test 26.d - resumption with no EtM in 2nd handshake")
     synchro.recv(1)
     connection = connect()
-    connection.handshakeClientCert(serverName=address[0])
+    settings = HandshakeSettings()
+    settings.macNames.remove("aead")
+    connection.handshakeClientCert(serverName=address[0], settings=settings)
     testConnClient(connection)
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     assert(connection.session.serverName == address[0])
@@ -530,6 +538,7 @@ def clientTestCmd(argv):
     synchro.recv(1)
     settings = HandshakeSettings()
     settings.useEncryptThenMAC = False
+    settings.macNames.remove("aead")
     connection = connect()
     try:
         connection.handshakeClientCert(serverName=address[0], session=session,
