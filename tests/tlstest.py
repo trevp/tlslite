@@ -99,18 +99,20 @@ def clientTestCmd(argv):
         c = TLSConnection(sock)
         return c
 
-    test = 0
+    test_no = 0
 
     badFault = False
 
-    print("Test 0 - anonymous handshake")
+    print("Test {0} - anonymous handshake".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientAnonymous()
     testConnClient(connection)
     connection.close()
-        
-    print("Test 1 - good X509 (plus SNI)")
+
+    test_no += 1
+
+    print("Test {0} - good X509 (plus SNI)".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(serverName=address[0])
@@ -121,7 +123,9 @@ def clientTestCmd(argv):
     assert(connection.encryptThenMAC == False)
     connection.close()
 
-    print("Test 1.a - good X509, SSLv3")
+    test_no += 1
+
+    print("Test {0} - good X509, SSLv3".format(test_no))
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -130,9 +134,11 @@ def clientTestCmd(argv):
     connection.handshakeClientCert(settings=settings)
     testConnClient(connection)    
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
-    connection.close()    
+    connection.close()
 
-    print("Test 1.b - good X509, RC4-MD5")
+    test_no += 1
+
+    print("Test {0} - good X509, RC4-MD5".format(test_no))
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -146,20 +152,25 @@ def clientTestCmd(argv):
     connection.close()
 
     if tackpyLoaded:
-                    
+
         settings = HandshakeSettings()
         settings.useExperimentalTackExtension = True
 
-        print("Test 2.a - good X.509, TACK")
+        test_no += 1
+
+        print("Test {0} - good X.509, TACK".format(test_no))
         synchro.recv(1)
         connection = connect()
         connection.handshakeClientCert(settings=settings)
         assert(connection.session.tackExt.tacks[0].getTackId() == "5lcbe.eyweo.yxuan.rw6xd.jtoz7")
         assert(connection.session.tackExt.activation_flags == 1)        
         testConnClient(connection)    
-        connection.close()    
+        connection.close()
 
-        print("Test 2.b - good X.509, TACK unrelated to cert chain")
+        test_no += 1
+
+        print("Test {0} - good X.509, TACK unrelated to cert chain".\
+              format(test_no))
         synchro.recv(1)
         connection = connect()
         try:
@@ -169,15 +180,30 @@ def clientTestCmd(argv):
             if alert.description != AlertDescription.illegal_parameter:
                 raise        
         connection.close()
+    else:
+        test_no += 1
 
-    print("Test 3 - good SRP")
+        print("Test {0} - good X.509, TACK...skipped (no tackpy)".\
+              format(test_no))
+
+        test_no += 1
+
+        print("Test {0} - good X.509, TACK unrelated to cert chain...skipped"
+              " (no tackpy)".\
+              format(test_no))
+
+    test_no += 1
+
+    print("Test {0} - good SRP".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientSRP("test", "password")
     testConnClient(connection)
     connection.close()
 
-    print("Test 4 - SRP faults")
+    test_no += 1
+
+    print("Test {0} - SRP faults".format(test_no))
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
         synchro.recv(1)
         connection = connect()
@@ -189,7 +215,9 @@ def clientTestCmd(argv):
             print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
             badFault = True
 
-    print("Test 6 - good SRP: with X.509 certificate, TLSv1.0")
+    test_no += 1
+
+    print("Test {0} - good SRP: with X.509 certificate, TLSv1.0".format(test_no))
     settings = HandshakeSettings()
     settings.minVersion = (3,1)
     settings.maxVersion = (3,1)    
@@ -200,7 +228,9 @@ def clientTestCmd(argv):
     testConnClient(connection)
     connection.close()
 
-    print("Test 7 - X.509 with SRP faults")
+    test_no += 1
+
+    print("Test {0} - X.509 with SRP faults".format(test_no))
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
         synchro.recv(1)
         connection = connect()
@@ -212,7 +242,9 @@ def clientTestCmd(argv):
             print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
             badFault = True
 
-    print("Test 11 - X.509 faults")
+    test_no += 1
+
+    print("Test {0} - X.509 faults".format(test_no))
     for fault in Fault.clientNoAuthFaults + Fault.genericFaults:
         synchro.recv(1)
         connection = connect()
@@ -224,7 +256,9 @@ def clientTestCmd(argv):
             print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
             badFault = True
 
-    print("Test 14 - good mutual X509")
+    test_no += 1
+
+    print("Test {0} - good mutual X509".format(test_no))
     x509Cert = X509().parse(open(os.path.join(dir, "clientX509Cert.pem")).read())
     x509Chain = X509CertChain([x509Cert])
     s = open(os.path.join(dir, "clientX509Key.pem")).read()
@@ -237,7 +271,9 @@ def clientTestCmd(argv):
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
 
-    print("Test 14.a - good mutual X509, TLSv1.1")
+    test_no += 1
+
+    print("Test {0} - good mutual X509, TLSv1.1".format(test_no))
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -248,7 +284,9 @@ def clientTestCmd(argv):
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
 
-    print("Test 14.b - good mutual X509, SSLv3")
+    test_no += 1
+
+    print("Test {0} - good mutual X509, SSLv3".format(test_no))
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -259,7 +297,9 @@ def clientTestCmd(argv):
     assert(isinstance(connection.session.serverCertChain, X509CertChain))
     connection.close()
 
-    print("Test 15 - mutual X.509 faults")
+    test_no += 1
+
+    print("Test {0} - mutual X.509 faults".format(test_no))
     for fault in Fault.clientCertFaults + Fault.genericFaults:
         synchro.recv(1)
         connection = connect()
@@ -271,7 +311,10 @@ def clientTestCmd(argv):
             print("  BAD FAULT %s: %s" % (Fault.faultNames[fault], str(e)))
             badFault = True
 
-    print("Test 18 - good SRP, prepare to resume... (plus SNI)")
+    test_no += 1
+
+    print("Test {0} - good SRP, prepare to resume... (plus SNI)".\
+          format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientSRP("test", "password", serverName=address[0])
@@ -279,7 +322,9 @@ def clientTestCmd(argv):
     connection.close()
     session = connection.session
 
-    print("Test 19 - resumption (plus SNI)")
+    test_no += 1
+
+    print("Test {0} - resumption (plus SNI)".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientSRP("test", "garbage", serverName=address[0], 
@@ -287,7 +332,9 @@ def clientTestCmd(argv):
     testConnClient(connection)
     #Don't close! -- see below
 
-    print("Test 20 - invalidated resumption (plus SNI)")
+    test_no += 1
+
+    print("Test {0} - invalidated resumption (plus SNI)".format(test_no))
     synchro.recv(1)
     connection.sock.close() #Close the socket without a close_notify!
     synchro.recv(1)
@@ -300,8 +347,10 @@ def clientTestCmd(argv):
         if alert.description != AlertDescription.bad_record_mac:
             raise
     connection.close()
-    
-    print("Test 21 - HTTPS test X.509")
+
+    test_no += 1
+
+    print("Test {0} - HTTPS test X.509".format(test_no))
     address = address[0], address[1]+1
     if hasattr(socket, "timeout"):
         timeoutEx = socket.timeout
@@ -338,11 +387,15 @@ def clientTestCmd(argv):
         implementations.append("pycrypto")
     implementations.append("python")
 
-    print("Test 22 - different ciphers, TLSv1.0")
+    test_no += 1
+
+    print("Test {0} - different ciphers, TLSv1.0".format(test_no))
     for implementation in implementations:
         for cipher in ["aes128", "aes256", "rc4"]:
 
-            print("Test 22:", end=' ')
+            test_no += 1
+
+            print("Test {0}:".format(test_no), end=' ')
             synchro.recv(1)
             connection = connect()
 
@@ -356,7 +409,9 @@ def clientTestCmd(argv):
             print("%s %s" % (connection.getCipherName(), connection.getCipherImplementation()))
             connection.close()
 
-    print("Test 23 - throughput test")
+    test_no += 1
+
+    print("Test {0} - throughput test".format(test_no))
     for implementation in implementations:
         for cipher in ["aes128gcm", "aes256gcm", "aes128", "aes256", "3des",
                        "rc4"]:
@@ -368,7 +423,9 @@ def clientTestCmd(argv):
                                            "python"):
                 continue
 
-            print("Test 23:", end=' ')
+            test_no += 1
+
+            print("Test {0}:".format(test_no), end=' ')
             synchro.recv(1)
             connection = connect()
 
@@ -389,8 +446,10 @@ def clientTestCmd(argv):
 
             assert(h == b"hello"*10000)
             connection.close()
-    
-    print("Test 24.a - Next-Protocol Client Negotiation")
+
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Client Negotiation".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"http/1.1"])
@@ -398,31 +457,39 @@ def clientTestCmd(argv):
     assert(connection.next_proto == b'http/1.1')
     connection.close()
 
-    print("Test 24.b - Next-Protocol Client Negotiation")
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Client Negotiation".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"spdy/2", b"http/1.1"])
     #print("  Next-Protocol Negotiated: %s" % connection.next_proto)
     assert(connection.next_proto == b'spdy/2')
     connection.close()
-    
-    print("Test 24.c - Next-Protocol Client Negotiation")
+
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Client Negotiation".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"spdy/2", b"http/1.1"])
     #print("  Next-Protocol Negotiated: %s" % connection.next_proto)
     assert(connection.next_proto == b'spdy/2')
     connection.close()
-    
-    print("Test 24.d - Next-Protocol Client Negotiation")
+
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Client Negotiation".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
     #print("  Next-Protocol Negotiated: %s" % connection.next_proto)
     assert(connection.next_proto == b'spdy/2')
     connection.close()
-    
-    print("Test 24.e - Next-Protocol Client Negotiation")
+
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Client Negotiation".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
@@ -430,7 +497,9 @@ def clientTestCmd(argv):
     assert(connection.next_proto == b'spdy/3')
     connection.close()
 
-    print("Test 24.f - Next-Protocol Client Negotiation")
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Client Negotiation".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"http/1.1"])
@@ -438,7 +507,9 @@ def clientTestCmd(argv):
     assert(connection.next_proto == b'http/1.1')
     connection.close()
 
-    print("Test 24.g - Next-Protocol Client Negotiation")
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Client Negotiation".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientCert(nextProtos=[b"spdy/2", b"http/1.1"])
@@ -446,7 +517,9 @@ def clientTestCmd(argv):
     assert(connection.next_proto == b'spdy/2')
     connection.close()
 
-    print("Test 25.a - FALLBACK_SCSV")
+    test_no += 1
+
+    print("Test {0} - FALLBACK_SCSV".format(test_no))
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -455,7 +528,9 @@ def clientTestCmd(argv):
     testConnClient(connection)
     connection.close()
 
-    print("Test 25.b - FALLBACK_SCSV")
+    test_no += 1
+
+    print("Test {0} - FALLBACK_SCSV".format(test_no))
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -469,7 +544,9 @@ def clientTestCmd(argv):
             raise
     connection.close()
 
-    print("Test 26.a - no EtM server side")
+    test_no += 1
+
+    print("Test {0} - no EtM server side".format(test_no))
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -482,7 +559,9 @@ def clientTestCmd(argv):
     assert(not connection.encryptThenMAC)
     connection.close()
 
-    print("Test 26.b - no EtM client side")
+    test_no += 1
+
+    print("Test {0} - no EtM client side".format(test_no))
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -495,7 +574,9 @@ def clientTestCmd(argv):
     assert(not connection.encryptThenMAC)
     connection.close()
 
-    print("Test 26.c - resumption with EtM")
+    test_no += 1
+
+    print("Test {0} - resumption with EtM".format(test_no))
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -520,7 +601,9 @@ def clientTestCmd(argv):
     assert(connection.encryptThenMAC)
     connection.close()
 
-    print("Test 26.d - resumption with no EtM in 2nd handshake")
+    test_no += 1
+
+    print("Test {0} - resumption with no EtM in 2nd handshake".format(test_no))
     synchro.recv(1)
     connection = connect()
     settings = HandshakeSettings()
@@ -549,7 +632,9 @@ def clientTestCmd(argv):
         raise AssertionError("No exception raised")
     connection.close()
 
-    print('Test 27 - good standard XMLRPC https client')
+    test_no += 1
+
+    print('Test {0} - good standard XMLRPC https client'.format(test_no))
     address = address[0], address[1]+1
     synchro.recv(1)
     try:
@@ -566,7 +651,9 @@ def clientTestCmd(argv):
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print('Test 28 - good tlslite XMLRPC client')
+    test_no += 1
+
+    print('Test {0} - good tlslite XMLRPC client'.format(test_no))
     transport = XMLRPCTransport(ignoreAbruptClose=True)
     server = xmlrpclib.Server('https://%s:%s' % address, transport)
     synchro.recv(1)
@@ -574,29 +661,39 @@ def clientTestCmd(argv):
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print('Test 29 - good XMLRPC ignored protocol')
+    test_no += 1
+
+    print('Test {0} - good XMLRPC ignored protocol'.format(test_no))
     server = xmlrpclib.Server('http://%s:%s' % address, transport)
     synchro.recv(1)
     assert server.add(1,2) == 3
     synchro.recv(1)
     assert server.pow(2,4) == 16
 
-    print("Test 30 - Internet servers test")
+    test_no += 1
+
+    print("Test {0} - Internet servers test".format(test_no))
     try:
         i = IMAP4_TLS("cyrus.andrew.cmu.edu")
         i.login("anonymous", "anonymous@anonymous.net")
         i.logout()
-        print("Test 31: IMAP4 good")
+
+        test_no += 1
+
+        print("Test {0}: IMAP4 good".format(test_no))
         p = POP3_TLS("pop.gmail.com")
         p.quit()
-        print("Test 32: POP3 good")
+
+        test_no += 1
+
+        print("Test {0}: POP3 good".format(test_no))
     except socket.error as e:
         print("Non-critical error: socket error trying to reach internet server: ", e)   
 
     synchro.close()
 
     if not badFault:
-        print("Test succeeded")
+        print("Test succeeded, {0} good".format(test_no))
     else:
         print("Test failed")
 
@@ -645,14 +742,18 @@ def serverTestCmd(argv):
     s = open(os.path.join(dir, "serverX509Key.pem")).read()
     x509Key = parsePEMKey(s, private=True)
 
-    print("Test 0 - Anonymous server handshake")
+    test_no = 0
+
+    print("Test {0} - Anonymous server handshake".format(test_no))
     synchro.send(b'R')
     connection = connect()
     connection.handshakeServer(anon=True)
     testConnServer(connection)    
-    connection.close() 
-    
-    print("Test 1 - good X.509")
+    connection.close()
+
+    test_no += 1
+
+    print("Test {0} - good X.509".format(test_no))
     synchro.send(b'R')
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
@@ -660,7 +761,9 @@ def serverTestCmd(argv):
     testConnServer(connection)    
     connection.close()
 
-    print("Test 1.a - good X.509, SSL v3")
+    test_no += 1
+
+    print("Test {0} - good X.509, SSL v3".format(test_no))
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -668,9 +771,11 @@ def serverTestCmd(argv):
     settings.maxVersion = (3,0)
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
     testConnServer(connection)
-    connection.close()            
+    connection.close()
 
-    print("Test 1.b - good X.509, RC4-MD5")
+    test_no += 1
+
+    print("Test {0} - good X.509, RC4-MD5".format(test_no))
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -678,24 +783,29 @@ def serverTestCmd(argv):
     settings.cipherNames = ["rc4"]
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
     testConnServer(connection)
-    connection.close()            
-    
+    connection.close()
+
     if tackpyLoaded:
         tack = Tack.createFromPem(open("./TACK1.pem", "rU").read())
         tackUnrelated = Tack.createFromPem(open("./TACKunrelated.pem", "rU").read())    
-            
+
         settings = HandshakeSettings()
         settings.useExperimentalTackExtension = True
 
-        print("Test 2.a - good X.509, TACK")
+        test_no += 1
+
+        print("Test {0} - good X.509, TACK".format(test_no))
         synchro.send(b'R')
         connection = connect()
         connection.handshakeServer(certChain=x509Chain, privateKey=x509Key,
             tacks=[tack], activationFlags=1, settings=settings)
-        testConnServer(connection)    
-        connection.close()        
+        testConnServer(connection)
+        connection.close()
 
-        print("Test 2.b - good X.509, TACK unrelated to cert chain")
+        test_no += 1
+
+        print("Test {0} - good X.509, TACK unrelated to cert chain".\
+              format(test_no))
         synchro.send(b'R')
         connection = connect()
         try:
@@ -704,9 +814,21 @@ def serverTestCmd(argv):
             assert(False)
         except TLSRemoteAlert as alert:
             if alert.description != AlertDescription.illegal_parameter:
-                raise        
-    
-    print("Test 3 - good SRP")
+                raise
+    else:
+        test_no += 1
+
+        print("Test {0} - good X.509, TACK...skipped (no tackpy)".\
+              format(test_no))
+
+        test_no += 1
+
+        print("Test {0} - good X.509, TACK unrelated to cert chain"
+              "...skipped (no tackpy)".format(test_no))
+
+    test_no += 1
+
+    print("Test {0} - good SRP".format(test_no))
     verifierDB = VerifierDB()
     verifierDB.create()
     entry = VerifierDB.makeVerifier("test", "password", 1536)
@@ -718,7 +840,9 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print("Test 4 - SRP faults")
+    test_no += 1
+
+    print("Test {0} - SRP faults".format(test_no))
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
         synchro.send(b'R')
         connection = connect()
@@ -726,7 +850,9 @@ def serverTestCmd(argv):
         connection.handshakeServer(verifierDB=verifierDB)
         connection.close()
 
-    print("Test 6 - good SRP: with X.509 cert")
+    test_no += 1
+
+    print("Test {0} - good SRP: with X.509 cert".format(test_no))
     synchro.send(b'R')
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB, \
@@ -734,7 +860,9 @@ def serverTestCmd(argv):
     testConnServer(connection)    
     connection.close()
 
-    print("Test 7 - X.509 with SRP faults")
+    test_no += 1
+
+    print("Test {0} - X.509 with SRP faults".format(test_no))
     for fault in Fault.clientSrpFaults + Fault.genericFaults:
         synchro.send(b'R')
         connection = connect()
@@ -743,7 +871,9 @@ def serverTestCmd(argv):
                                    certChain=x509Chain, privateKey=x509Key)
         connection.close()
 
-    print("Test 11 - X.509 faults")
+    test_no += 1
+
+    print("Test {0} - X.509 faults".format(test_no))
     for fault in Fault.clientNoAuthFaults + Fault.genericFaults:
         synchro.send(b'R')
         connection = connect()
@@ -751,7 +881,9 @@ def serverTestCmd(argv):
         connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
         connection.close()
 
-    print("Test 14 - good mutual X.509")
+    test_no += 1
+
+    print("Test {0} - good mutual X.509".format(test_no))
     synchro.send(b'R')
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True)
@@ -759,7 +891,9 @@ def serverTestCmd(argv):
     assert(isinstance(connection.session.clientCertChain, X509CertChain))
     connection.close()
 
-    print("Test 14a - good mutual X.509, TLSv1.1")
+    test_no += 1
+
+    print("Test {0} - good mutual X.509, TLSv1.1".format(test_no))
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -770,7 +904,9 @@ def serverTestCmd(argv):
     assert(isinstance(connection.session.clientCertChain, X509CertChain))
     connection.close()
 
-    print("Test 14b - good mutual X.509, SSLv3")
+    test_no += 1
+
+    print("Test {0} - good mutual X.509, SSLv3".format(test_no))
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -781,7 +917,9 @@ def serverTestCmd(argv):
     assert(isinstance(connection.session.clientCertChain, X509CertChain))
     connection.close()
 
-    print("Test 15 - mutual X.509 faults")
+    test_no += 1
+
+    print("Test {0} - mutual X.509 faults".format(test_no))
     for fault in Fault.clientCertFaults + Fault.genericFaults:
         synchro.send(b'R')
         connection = connect()
@@ -789,7 +927,9 @@ def serverTestCmd(argv):
         connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, reqCert=True)
         connection.close()
 
-    print("Test 18 - good SRP, prepare to resume")
+    test_no += 1
+
+    print("Test {0} - good SRP, prepare to resume".format(test_no))
     synchro.send(b'R')
     sessionCache = SessionCache()
     connection = connect()
@@ -798,7 +938,9 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print("Test 19 - resumption")
+    test_no += 1
+
+    print("Test {0} - resumption".format(test_no))
     synchro.send(b'R')
     connection = connect()
     connection.handshakeServer(verifierDB=verifierDB, sessionCache=sessionCache)
@@ -806,7 +948,9 @@ def serverTestCmd(argv):
     testConnServer(connection)    
     #Don't close! -- see next test
 
-    print("Test 20 - invalidated resumption")
+    test_no += 1
+
+    print("Test {0} - invalidated resumption".format(test_no))
     synchro.send(b'R')
     try:
         connection.read(min=1, max=1)
@@ -822,7 +966,9 @@ def serverTestCmd(argv):
             raise
     connection.close()
 
-    print("Test 21 - HTTPS test X.509")
+    test_no += 1
+
+    print("Test {0} - HTTPS test X.509".format(test_no))
 
     #Close the current listening socket
     lsock.close()
@@ -860,11 +1006,15 @@ def serverTestCmd(argv):
         implementations.append("pycrypto")
     implementations.append("python")
 
-    print("Test 22 - different ciphers")
+    test_no += 1
+
+    print("Test {0} - different ciphers".format(test_no))
     for implementation in ["python"] * len(implementations):
         for cipher in ["aes128", "aes256", "rc4"]:
 
-            print("Test 22:", end=' ')
+            test_no += 1
+
+            print("Test {0}:".format(test_no), end=' ')
             synchro.send(b'R')
             connection = connect()
 
@@ -878,7 +1028,9 @@ def serverTestCmd(argv):
             testConnServer(connection)
             connection.close()
 
-    print("Test 23 - throughput test")
+    test_no += 1
+
+    print("Test {0} - throughput test".format(test_no))
     for implementation in implementations:
         for cipher in ["aes128gcm", "aes256gcm", "aes128", "aes256", "3des",
                        "rc4"]:
@@ -890,7 +1042,9 @@ def serverTestCmd(argv):
                                            "python"):
                 continue
 
-            print("Test 23:", end=' ')
+            test_no += 1
+
+            print("Test {0}:".format(test_no), end=' ')
             synchro.send(b'R')
             connection = connect()
 
@@ -906,7 +1060,9 @@ def serverTestCmd(argv):
             connection.write(h)
             connection.close()
 
-    print("Test 24.a - Next-Protocol Server Negotiation")
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Server Negotiation".format(test_no))
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -915,7 +1071,9 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print("Test 24.b - Next-Protocol Server Negotiation")
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Server Negotiation".format(test_no))
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -923,8 +1081,10 @@ def serverTestCmd(argv):
                                settings=settings, nextProtos=[b"spdy/2", b"http/1.1"])
     testConnServer(connection)
     connection.close()
-    
-    print("Test 24.c - Next-Protocol Server Negotiation")
+
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Server Negotiation".format(test_no))
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -933,7 +1093,9 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print("Test 24.d - Next-Protocol Server Negotiation")
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Server Negotiation".format(test_no))
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -941,8 +1103,10 @@ def serverTestCmd(argv):
                                settings=settings, nextProtos=[b"spdy/2", b"http/1.1"])
     testConnServer(connection)
     connection.close()
-    
-    print("Test 24.e - Next-Protocol Server Negotiation")
+
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Server Negotiation".format(test_no))
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -950,8 +1114,10 @@ def serverTestCmd(argv):
                                settings=settings, nextProtos=[b"http/1.1", b"spdy/2", b"spdy/3"])
     testConnServer(connection)
     connection.close()
-    
-    print("Test 24.f - Next-Protocol Server Negotiation")
+
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Server Negotiation".format(test_no))
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -959,8 +1125,10 @@ def serverTestCmd(argv):
                                settings=settings, nextProtos=[b"spdy/3", b"spdy/2"])
     testConnServer(connection)
     connection.close()
-    
-    print("Test 24.g - Next-Protocol Server Negotiation")
+
+    test_no += 1
+
+    print("Test {0} - Next-Protocol Server Negotiation".format(test_no))
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -969,14 +1137,18 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print("Test 25.a - FALLBACK_SCSV")
+    test_no += 1
+
+    print("Test {0} - FALLBACK_SCSV".format(test_no))
     synchro.send(b'R')
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
     testConnServer(connection)
     connection.close()
 
-    print("Test 25.b - FALLBACK_SCSV")
+    test_no += 1
+
+    print("Test {0} - FALLBACK_SCSV".format(test_no))
     synchro.send(b'R')
     connection = connect()
     try:
@@ -987,7 +1159,9 @@ def serverTestCmd(argv):
             raise
     connection.close()
 
-    print("Test 26.a - no EtM server side")
+    test_no += 1
+
+    print("Test {0} - no EtM server side".format(test_no))
     synchro.send(b'R')
     connection = connect()
     settings = HandshakeSettings()
@@ -997,14 +1171,18 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print("Test 26.b - no EtM client side")
+    test_no += 1
+
+    print("Test {0} - no EtM client side".format(test_no))
     synchro.send(b'R')
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
     testConnServer(connection)
     connection.close()
 
-    print("Test 26.c - resumption with EtM")
+    test_no += 1
+
+    print("Test {0} - resumption with EtM".format(test_no))
     synchro.send(b'R')
     sessionCache = SessionCache()
     connection = connect()
@@ -1021,7 +1199,9 @@ def serverTestCmd(argv):
     testConnServer(connection)
     connection.close()
 
-    print("Test 26.d - resumption with no EtM in 2nd handshake")
+    test_no += 1
+
+    print("Test {0} - resumption with no EtM in 2nd handshake".format(test_no))
     synchro.send(b'R')
     sessionCache = SessionCache()
     connection = connect()
@@ -1042,7 +1222,11 @@ def serverTestCmd(argv):
         raise AssertionError("no exception raised")
     connection.close()
 
-    print("Tests 27-29 - XMLRPXC server")
+    test_no += 1
+
+    print("Tests {0}-{1} - XMLRPXC server".format(test_no, test_no + 2))
+    test_no += 2
+
     address = address[0], address[1]+1
     class Server(TLSXMLRPCServer):
 
