@@ -28,6 +28,13 @@ from .utils.tackwrapper import *
 from .utils.rsakey import RSAKey
 
 class KeyExchange(object):
+
+    """
+    Common API for calculating Premaster secret
+
+    NOT stable, will get moved from this file
+    """
+
     def __init__(self, cipherSuite, clientHello, serverHello, privateKey):
         """
         Initializes the KeyExchange. privateKey is the signing private key.
@@ -53,6 +60,13 @@ class KeyExchange(object):
         raise NotImplementedError()
 
 class RSAKeyExchange(KeyExchange):
+
+    """
+    Handling of RSA key exchange
+
+    NOT stable API, do NOT use
+    """
+
     def makeServerKeyExchange(self):
         return None
 
@@ -76,6 +90,13 @@ class RSAKeyExchange(KeyExchange):
         return premasterSecret
 
 class DHE_RSAKeyExchange(KeyExchange):
+
+    """
+    Handling of ephemeral Diffe-Hellman Key exchange
+
+    NOT stable API, do NOT use
+    """
+
     # 2048-bit MODP Group (RFC 3526, Section 3)
     dh_g, dh_p = goodGroupParameters[2]
 
