@@ -1,4 +1,4 @@
-# Authors: 
+# Authors:
 #   Trevor Perrin
 #   Google - added reqCAs parameter
 #   Google (adapted by Sam Rushing and Marcelo Fernandez) - NPN support
@@ -79,7 +79,7 @@ class RSAKeyExchange(KeyExchange):
         randomPreMasterSecret = getRandomBytes(48)
         if not premasterSecret:
             premasterSecret = randomPreMasterSecret
-        elif len(premasterSecret)!=48:
+        elif len(premasterSecret) != 48:
             premasterSecret = randomPreMasterSecret
         else:
             versionCheck = (premasterSecret[0], premasterSecret[1])
@@ -96,6 +96,11 @@ class DHE_RSAKeyExchange(KeyExchange):
 
     NOT stable API, do NOT use
     """
+
+    def __init__(self, cipherSuite, clientHello, serverHello, privateKey):
+        super(DHE_RSAKeyExchange, self).__init__(cipherSuite, clientHello,
+                                                 serverHello, privateKey)
+        self.dh_Xs = None
 
     # 2048-bit MODP Group (RFC 3526, Section 3)
     dh_g, dh_p = goodGroupParameters[2]
@@ -114,7 +119,7 @@ class DHE_RSAKeyExchange(KeyExchange):
         serverKeyExchange.createDH(self.dh_p, self.dh_g, dh_Ys)
         hashBytes = serverKeyExchange.hash(self.clientHello.random,
                                            self.serverHello.random)
-        if version >= (3,3):
+        if version >= (3, 3):
             # TODO: Signature algorithm negotiation not supported.
             hashBytes = RSAKey.addPKCS1SHA1Prefix(hashBytes)
             serverKeyExchange.signAlg = SignatureAlgorithm.rsa
