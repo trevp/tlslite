@@ -12,7 +12,7 @@ from hypothesis import given, example
 from hypothesis.strategies import integers
 import math
 
-from tlslite.utils.cryptomath import isPrime, numBits, numBytes
+from tlslite.utils.cryptomath import isPrime, numBits, numBytes, numberToByteArray
 
 class TestIsPrime(unittest.TestCase):
     def test_with_small_primes(self):
@@ -62,6 +62,23 @@ class TestIsPrime(unittest.TestCase):
         self.assertFalse(isPrime(179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639474124377767893424865485276302219601246094119453082952085005768838150682342462881473913110540827237163350510684586298239947245938479716304835356329624224137859+2))
         # NextPrime[NextPrime[2^512]]*NextPrime[2^512]
         self.assertFalse(isPrime(179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639477074095512480796227391561801824887394139579933613278628104952355769470429079061808809522886423955917442317693387325171135071792698344550223571732405562649211))
+
+class TestNumberToBytesFunctions(unittest.TestCase):
+    def test_numberToByteArray(self):
+        self.assertEqual(numberToByteArray(0x00000000000001),
+                         bytearray(b'\x01'))
+
+    def test_numberToByteArray_with_MSB_number(self):
+        self.assertEqual(numberToByteArray(0xff),
+                         bytearray(b'\xff'))
+
+    def test_numberToByteArray_with_length(self):
+        self.assertEqual(numberToByteArray(0xff, 2),
+                         bytearray(b'\x00\xff'))
+
+    def test_numberToByteArray_with_not_enough_length(self):
+        self.assertEqual(numberToByteArray(0x0a0b0c, 2),
+                         bytearray(b'\x0b\x0c'))
 
 class TestNumBits(unittest.TestCase):
 
