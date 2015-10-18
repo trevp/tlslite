@@ -71,6 +71,24 @@ class TestHandshakeHashes(unittest.TestCase):
                 b"A\xe4d\x9b\x93L\xa4\x95\x99\x1bxR\xb8U",
                 hh.digest('sha256'))
 
+    def test_digest_sha224(self):
+        hh = HandshakeHashes()
+
+        self.assertEqual((
+                b'\xd1J\x02\x8c*:+\xc9Ga\x02\xbb(\x824\xc4\x15\xa2\xb0'
+                b'\x1f\x82\x8e\xa6*\xc5\xb3\xe4/'),
+                hh.digest('sha224'))
+
+    def test_digest_sha512(self):
+        hh = HandshakeHashes()
+
+        self.assertEqual((
+                b'\xcf\x83\xe15~\xef\xb8\xbd\xf1T(P\xd6m\x80\x07\xd6 '
+                b'\xe4\x05\x0bW\x15\xdc\x83\xf4\xa9!\xd3l\xe9\xceG\xd0'
+                b'\xd1<]\x85\xf2\xb0\xff\x83\x18\xd2\x87~\xec/c\xb91'
+                b'\xbdGAz\x81\xa582z\xf9\'\xda>'),
+                hh.digest('sha512'))
+
     def test_digest_with_partial_writes(self):
         hh = HandshakeHashes()
         hh.update(b'text')

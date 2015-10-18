@@ -20,8 +20,10 @@ class HandshakeHashes(object):
         """Create instance"""
         self._handshakeMD5 = hashlib.md5()
         self._handshakeSHA = hashlib.sha1()
+        self._handshakeSHA224 = hashlib.sha224()
         self._handshakeSHA256 = hashlib.sha256()
         self._handshakeSHA384 = hashlib.sha384()
+        self._handshakeSHA512 = hashlib.sha512()
 
     def update(self, data):
         """
@@ -33,8 +35,10 @@ class HandshakeHashes(object):
         text = compat26Str(data)
         self._handshakeMD5.update(text)
         self._handshakeSHA.update(text)
+        self._handshakeSHA224.update(text)
         self._handshakeSHA256.update(text)
         self._handshakeSHA384.update(text)
+        self._handshakeSHA512.update(text)
 
     def digest(self, digest=None):
         """
@@ -51,10 +55,14 @@ class HandshakeHashes(object):
             return self._handshakeMD5.digest()
         elif digest == 'sha1':
             return self._handshakeSHA.digest()
+        elif digest == 'sha224':
+            return self._handshakeSHA224.digest()
         elif digest == 'sha256':
             return self._handshakeSHA256.digest()
         elif digest == 'sha384':
             return self._handshakeSHA384.digest()
+        elif digest == 'sha512':
+            return self._handshakeSHA512.digest()
         else:
             raise ValueError("Unknown digest name")
 
@@ -99,6 +107,8 @@ class HandshakeHashes(object):
         other = HandshakeHashes()
         other._handshakeMD5 = self._handshakeMD5.copy()
         other._handshakeSHA = self._handshakeSHA.copy()
+        other._handshakeSHA224 = self._handshakeSHA224.copy()
         other._handshakeSHA256 = self._handshakeSHA256.copy()
         other._handshakeSHA384 = self._handshakeSHA384.copy()
+        other._handshakeSHA512 = self._handshakeSHA512.copy()
         return other
