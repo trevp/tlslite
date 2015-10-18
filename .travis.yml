@@ -70,8 +70,7 @@ before_install:
 install:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then travis_retry pip install unittest2; fi
   - if [[ $TACKPY == 'true' ]]; then travis_retry pip install tackpy; fi
-  # 'm2crypto==0.22.3' is a workaround for https://gitlab.com/m2crypto/m2crypto/issues/65
-  - if [[ $M2CRYPTO == 'true' ]]; then travis_retry pip install 'm2crypto==0.22.3'; fi
+  - if [[ $M2CRYPTO == 'true' ]]; then travis_retry pip install --pre m2crypto; fi
   - if [[ $PYCRYPTO == 'true' ]]; then travis_retry pip install pycrypto; fi
   - if [[ $GMPY == 'true' ]]; then travis_retry pip install gmpy; fi
   - if [[ $TRAVIS_PYTHON_VERSION == '3.2' ]]; then travis_retry pip install 'coverage<4'; else travis_retry pip install coverage; fi
