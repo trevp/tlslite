@@ -10,7 +10,7 @@ import hashlib
 from .constants import ContentType, CipherSuite
 from .messages import RecordHeader3, RecordHeader2, Message
 from .utils.cipherfactory import createAESGCM, createAES, createRC4, \
-        createTripleDES
+        createTripleDES, createCHACHA20
 from .utils.codec import Parser, Writer
 from .utils.compat import compatHMAC
 from .utils.cryptomath import getRandomBytes
@@ -378,13 +378,14 @@ class RecordLayer(object):
 
         #The nonce is always the fixed nonce and the sequence number.
         nonce = self._writeState.fixedNonce + seqNumBytes
+
         assert len(nonce) == self._writeState.encContext.nonceLength
 
         buf = self._writeState.encContext.seal(nonce, buf, authData)
 
-        #The only AEAD supported, AES-GCM, has an explicit variable
-        #nonce.
-        buf = seqNumBytes + buf
+        #AES-GCM, has an explicit variable nonce.
+        if "aes" in self._writeState.encContext.name:
+            buf = seqNumBytes + buf
 
         return buf
 
@@ -556,21 +557,22 @@ class RecordLayer(object):
 
     def _decryptAndUnseal(self, recordType, buf):
         """Decrypt AEAD encrypted data"""
-        #The only AEAD supported, AES-GCM, has an explicit variable
-        #nonce.
-        explicitNonceLength = 8
-        if explicitNonceLength > len(buf):
-            #Publicly invalid.
-            raise TLSBadRecordMAC("Truncated nonce")
-        nonce = self._readState.fixedNonce + buf[:explicitNonceLength]
-        buf = buf[8:]
+        seqnumBytes = self._readState.getSeqNumBytes()
+        #AES-GCM, has an explicit variable nonce.
+        if "aes" in self._readState.encContext.name:
+            explicitNonceLength = 8
+            if explicitNonceLength > len(buf):
+                #Publicly invalid.
+                raise TLSBadRecordMAC("Truncated nonce")
+            nonce = self._readState.fixedNonce + buf[:explicitNonceLength]
+            buf = buf[8:]
+        else:
+            nonce = self._readState.fixedNonce + seqnumBytes
 
         if self._readState.encContext.tagLength > len(buf):
             #Publicly invalid.
             raise TLSBadRecordMAC("Truncated tag")
 
-        #Assemble the authenticated data.
-        seqnumBytes = self._readState.getSeqNumBytes()
         plaintextLen = len(buf) - self._readState.encContext.tagLength
         authData = seqnumBytes + bytearray([recordType, self.version[0],
                                             self.version[1],
@@ -651,6 +653,10 @@ class RecordLayer(object):
             keyLength = 16
             ivLength = 4
             createCipherFunc = createAESGCM
+        elif cipherSuite in CipherSuite.chacha20Suites:
+            keyLength = 32
+            ivLength = 4
+            createCipherFunc = createCHACHA20
         elif cipherSuite in CipherSuite.aes128Suites:
             keyLength = 16
             ivLength = 16

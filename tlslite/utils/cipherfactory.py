@@ -7,6 +7,7 @@ import os
 
 from tlslite.utils import python_aes
 from tlslite.utils import python_aesgcm
+from tlslite.utils import python_chacha20_poly1305
 from tlslite.utils import python_rc4
 
 from tlslite.utils import cryptomath
@@ -71,6 +72,23 @@ def createAESGCM(key, implList=None):
             return pycrypto_aesgcm.new(key)
         if impl == "python":
             return python_aesgcm.new(key)
+    raise NotImplementedError()
+
+def createCHACHA20(key, implList=None):
+    """Create a new CHACHA20_POLY1305 object.
+
+    @type key: bytearray
+    @param key: a 32 byte array to serve as key
+
+    @rtype: L{tlslite.utils.CHACHA20_POLY1305}
+    @return: A ChaCha20/Poly1305 object
+    """
+    if implList is None:
+        implList = ["python"]
+
+    for impl in implList:
+        if impl == "python":
+            return python_chacha20_poly1305.new(key)
     raise NotImplementedError()
 
 def createRC4(key, IV, implList=None):
