@@ -13,6 +13,7 @@ import os
 import math
 import base64
 import binascii
+import sys
 
 from .compat import *
 
@@ -149,22 +150,22 @@ def numberToMPI(n):
 # **************************************************************************
 
 def numBits(n):
+    """Return number of bits necessary to represent the integer in binary"""
     if n==0:
         return 0
-    s = "%x" % n
-    return ((len(s)-1)*4) + \
-    {'0':0, '1':1, '2':2, '3':2,
-     '4':3, '5':3, '6':3, '7':3,
-     '8':4, '9':4, 'a':4, 'b':4,
-     'c':4, 'd':4, 'e':4, 'f':4,
-     }[s[0]]
-    return int(math.floor(math.log(n, 2))+1)
+    if sys.version_info < (2, 7):
+        # bit_length() was introduced in 2.7, and it is an order of magnitude
+        # faster than the below code
+        return len(bin(n))-2
+    else:
+        return n.bit_length()
 
 def numBytes(n):
+    """Return number of bytes necessary to represent the integer in bytes"""
     if n==0:
         return 0
     bits = numBits(n)
-    return int(math.ceil(bits / 8.0))
+    return (bits + 7) // 8
 
 # **************************************************************************
 # Big Number Math
