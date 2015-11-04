@@ -8,8 +8,11 @@ try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+from hypothesis import given, example
+from hypothesis.strategies import integers
+import math
 
-from tlslite.utils.cryptomath import isPrime
+from tlslite.utils.cryptomath import isPrime, numBits, numBytes
 
 class TestIsPrime(unittest.TestCase):
     def test_with_small_primes(self):
@@ -60,3 +63,38 @@ class TestIsPrime(unittest.TestCase):
         # NextPrime[NextPrime[2^512]]*NextPrime[2^512]
         self.assertFalse(isPrime(179769313486231590772930519078902473361797697894230657273430081157732675805500963132708477322407536021120113879871393357658789768814416622492847430639477074095512480796227391561801824887394139579933613278628104952355769470429079061808809522886423955917442317693387325171135071792698344550223571732405562649211))
 
+class TestNumBits(unittest.TestCase):
+
+    @staticmethod
+    def num_bits(number):
+        if number == 0:
+            return 0
+        return len(bin(number).lstrip('-0b'))
+
+    @staticmethod
+    def num_bytes(number):
+        if number == 0:
+            return 0
+        return (TestNumBits.num_bits(number) + 7) // 8
+
+    @given(integers(min_value=0, max_value=1<<16384))
+    @example(0)
+    @example(255)
+    @example(256)
+    @example((1<<1024)-1)
+    @example((1<<521)-1)
+    @example(1<<8192)
+    @example((1<<8192)-1)
+    def test_numBits(self, number):
+        self.assertEqual(numBits(number), self.num_bits(number))
+
+    @given(integers(min_value=0, max_value=1<<16384))
+    @example(0)
+    @example(255)
+    @example(256)
+    @example((1<<1024)-1)
+    @example((1<<521)-1)
+    @example(1<<8192)
+    @example((1<<8192)-1)
+    def test_numBytes(self, number):
+        self.assertEqual(numBytes(number), self.num_bytes(number))
