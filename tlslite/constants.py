@@ -10,6 +10,33 @@
 
 """Constants used in various places."""
 
+class TLSEnum(object):
+    """Base class for different enums of TLS IDs"""
+
+    @classmethod
+    def toRepr(cls, value, blacklist=None):
+        """
+        Convert numeric type to string representation
+
+        name if found, None otherwise
+        """
+        if blacklist is None:
+            blacklist = []
+        return next((key for key, val in cls.__dict__.items() \
+                    if key not in ('__weakref__', '__dict__', '__doc__',
+                                   '__module__') and \
+                       key not in blacklist and \
+                        val == value), None)
+
+    @classmethod
+    def toStr(cls, value, blacklist=None):
+        """Convert numeric type to human-readable string if possible"""
+        ret = cls.toRepr(value, blacklist)
+        if ret is not None:
+            return ret
+        else:
+            return '{0}'.format(value)
+
 class CertificateType:
     x509 = 0
     openpgp = 1
@@ -52,8 +79,7 @@ class ExtensionType:    # RFC 6066 / 4366
     supports_npn = 13172
     renegotiation_info = 0xff01
 
-class HashAlgorithm:
-
+class HashAlgorithm(TLSEnum):
     """Hash algorithm IDs used in TLSv1.2"""
 
     none = 0
@@ -64,8 +90,7 @@ class HashAlgorithm:
     sha384 = 5
     sha512 = 6
 
-class SignatureAlgorithm:
-
+class SignatureAlgorithm(TLSEnum):
     """Signing algorithms used in TLSv1.2"""
 
     anonymous = 0

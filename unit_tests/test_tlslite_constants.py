@@ -9,7 +9,29 @@ try:
 except ImportError:
     import unittest
 
-from tlslite.constants import CipherSuite
+from tlslite.constants import CipherSuite, HashAlgorithm, SignatureAlgorithm
+
+class TestHashAlgorithm(unittest.TestCase):
+
+    def test_toRepr(self):
+        self.assertEqual(HashAlgorithm.toRepr(5), 'sha384')
+
+    def test_toRepr_with_invalid_id(self):
+        self.assertIsNone(HashAlgorithm.toRepr(None))
+
+    def test_toRepr_with_unknown_id(self):
+        self.assertIsNone(HashAlgorithm.toRepr(200))
+
+    def test_toStr_with_unknown_id(self):
+        self.assertEqual(HashAlgorithm.toStr(200), '200')
+
+    def test_toStr(self):
+        self.assertEqual(HashAlgorithm.toStr(6), 'sha512')
+
+class TestSignatureAlgorithm(unittest.TestCase):
+
+    def test_toRepr(self):
+        self.assertEqual(SignatureAlgorithm.toRepr(1), 'rsa')
 
 class TestCipherSuite(unittest.TestCase):
 
