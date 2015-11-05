@@ -60,12 +60,22 @@ class HandshakeType:
     finished = 20
     next_protocol = 67
 
-class ContentType:
+class ContentType(TLSEnum):
+    """TLS record layer content types of payloads"""
+
     change_cipher_spec = 20
     alert = 21
     handshake = 22
     application_data = 23
-    all = (20,21,22,23)
+    all = (20, 21, 22, 23)
+
+    @classmethod
+    def toRepr(cls, value, blacklist=None):
+        """Convert numeric type to name representation"""
+        if blacklist is None:
+            blacklist = []
+        blacklist.append('all')
+        return super(ContentType, cls).toRepr(value, blacklist)
 
 class ExtensionType:    # RFC 6066 / 4366
     server_name = 0     # RFC 6066 / 4366
