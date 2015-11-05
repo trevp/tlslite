@@ -12,7 +12,8 @@ from hypothesis import given, example
 from hypothesis.strategies import integers
 import math
 
-from tlslite.utils.cryptomath import isPrime, numBits, numBytes, numberToByteArray
+from tlslite.utils.cryptomath import isPrime, numBits, numBytes, \
+        numberToByteArray, MD5, SHA1, secureHash
 
 class TestIsPrime(unittest.TestCase):
     def test_with_small_primes(self):
@@ -115,3 +116,71 @@ class TestNumBits(unittest.TestCase):
     @example((1<<8192)-1)
     def test_numBytes(self, number):
         self.assertEqual(numBytes(number), self.num_bytes(number))
+
+class TestHashMethods(unittest.TestCase):
+    def test_MD5(self):
+        self.assertEqual(MD5(b"message digest"),
+                         bytearray(b'\xf9\x6b\x69\x7d\x7c\xb7\x93\x8d'
+                                   b'\x52\x5a\x2f\x31\xaa\xf1\x61\xd0'))
+
+    def test_SHA1(self):
+        self.assertEqual(SHA1(b'abc'),
+                         bytearray(b'\xA9\x99\x3E\x36'
+                                   b'\x47\x06\x81\x6A'
+                                   b'\xBA\x3E\x25\x71'
+                                   b'\x78\x50\xC2\x6C'
+                                   b'\x9C\xD0\xD8\x9D'))
+    def test_SHA224(self):
+        self.assertEqual(secureHash(b'abc', 'sha224'),
+                         bytearray(b'\x23\x09\x7D\x22'
+                                   b'\x34\x05\xD8\x22'
+                                   b'\x86\x42\xA4\x77'
+                                   b'\xBD\xA2\x55\xB3'
+                                   b'\x2A\xAD\xBC\xE4'
+                                   b'\xBD\xA0\xB3\xF7'
+                                   b'\xE3\x6C\x9D\xA7'))
+
+    def test_SHA256(self):
+        self.assertEqual(secureHash(b'abc', 'sha256'),
+                         bytearray(b'\xBA\x78\x16\xBF'
+                                   b'\x8F\x01\xCF\xEA'
+                                   b'\x41\x41\x40\xDE'
+                                   b'\x5D\xAE\x22\x23'
+                                   b'\xB0\x03\x61\xA3'
+                                   b'\x96\x17\x7A\x9C'
+                                   b'\xB4\x10\xFF\x61'
+                                   b'\xF2\x00\x15\xAD'))
+
+    def test_SHA384(self):
+        self.assertEqual(secureHash(b'abc', 'sha384'),
+                         bytearray(b'\xCB\x00\x75\x3F'
+                                   b'\x45\xA3\x5E\x8B'
+                                   b'\xB5\xA0\x3D\x69'
+                                   b'\x9A\xC6\x50\x07'
+                                   b'\x27\x2C\x32\xAB'
+                                   b'\x0E\xDE\xD1\x63'
+                                   b'\x1A\x8B\x60\x5A'
+                                   b'\x43\xFF\x5B\xED'
+                                   b'\x80\x86\x07\x2B'
+                                   b'\xA1\xE7\xCC\x23'
+                                   b'\x58\xBA\xEC\xA1'
+                                   b'\x34\xC8\x25\xA7'))
+
+    def test_SHA512(self):
+        self.assertEqual(secureHash(b'abc', 'sha512'),
+                         bytearray(b'\xDD\xAF\x35\xA1'
+                                   b'\x93\x61\x7A\xBA'
+                                   b'\xCC\x41\x73\x49'
+                                   b'\xAE\x20\x41\x31'
+                                   b'\x12\xE6\xFA\x4E'
+                                   b'\x89\xA9\x7E\xA2'
+                                   b'\x0A\x9E\xEE\xE6'
+                                   b'\x4B\x55\xD3\x9A'
+                                   b'\x21\x92\x99\x2A'
+                                   b'\x27\x4F\xC1\xA8'
+                                   b'\x36\xBA\x3C\x23'
+                                   b'\xA3\xFE\xEB\xBD'
+                                   b'\x45\x4D\x44\x23'
+                                   b'\x64\x3C\xE8\x0E'
+                                   b'\x2A\x9A\xC9\x4F'
+                                   b'\xA5\x4C\xA4\x9F'))
