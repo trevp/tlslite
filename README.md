@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.5.0                                           2015-10-10
+tlslite-ng version 0.5.1                                           2015-11-05
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -55,6 +55,8 @@ Original code in TLS Lite has either been dedicated to the public domain by its
 authors, or placed under a BSD-style license. See the LICENSE file for
 details.
 
+Currently it is distributed under Gnu LGPLv2 license.
+
 Thanks to Edward Loper for Epydoc, which generated the API docs.
 
 3 Installation
@@ -63,7 +65,7 @@ Thanks to Edward Loper for Epydoc, which generated the API docs.
 Requirements:
 
   * Python 2.6 or higher is required.
-  * Python 3 is supported.
+  * Python 3.2 or higher is supported.
 
 Options:
 
@@ -518,6 +520,12 @@ encrypt-then-MAC mode for CBC ciphers.
 
 12 History
 ===========
+
+0.5.1 - 2015-11-05
+ - fix SRP_SHA_RSA ciphersuites in TLSv1.2 (for real this time)
+ - minor enchancements in test scripts
+ - NOTE: KeyExchange class is not part of stable API yet (it will be moved to
+   different module later)!
 
 0.5.0 - 10/10/2015
  - fix generators in AsyncStateMachine to work on Python3 (Theron Lewis)
