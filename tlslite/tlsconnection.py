@@ -44,16 +44,20 @@ class KeyExchange(object):
         self.serverHello = serverHello
         self.privateKey = privateKey
 
-    def makeServerKeyExchange():
+    def makeServerKeyExchange(self):
         """
+        Create a ServerKeyExchange object
+
         Returns a ServerKeyExchange object for the server's initial leg in the
         handshake. If the key exchange method does not send ServerKeyExchange
         (e.g. RSA), it returns None.
         """
         raise NotImplementedError()
 
-    def processClientKeyExchange(clientKeyExchange):
+    def processClientKeyExchange(self, clientKeyExchange):
         """
+        Process ClientKeyExchange and return premaster secret
+
         Processes the client's ClientKeyExchange message and returns the
         premaster secret. Raises TLSLocalAlert on error.
         """
