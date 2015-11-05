@@ -852,6 +852,8 @@ class TLSConnection(TLSRecordLayer):
         if cipherSuite in CipherSuite.srpCertSuites:
             #Hash ServerKeyExchange/ServerSRPParams
             hashBytes = serverKeyExchange.hash(clientRandom, serverRandom)
+            if self.version == (3, 3):
+                hashBytes = RSAKey.addPKCS1SHA1Prefix(hashBytes)
 
             #Extract signature bytes from ServerKeyExchange
             sigBytes = serverKeyExchange.signature
@@ -1730,6 +1732,8 @@ class TLSConnection(TLSRecordLayer):
         if cipherSuite in CipherSuite.srpCertSuites:
             hashBytes = serverKeyExchange.hash(clientHello.random,
                                                serverHello.random)
+            if self.version == (3, 3):
+                hashBytes = RSAKey.addPKCS1SHA1Prefix(hashBytes)
             serverKeyExchange.signature = privateKey.sign(hashBytes)
             if self.version == (3, 3):
                 # TODO signing algorithm not negotiatied
