@@ -21,6 +21,8 @@ ALL_MAC_NAMES = MAC_NAMES + ["md5"]
 KEY_EXCHANGE_NAMES = ["rsa", "dhe_rsa", "srp_sha", "srp_sha_rsa", "dh_anon"]
 CIPHER_IMPLEMENTATIONS = ["openssl", "pycrypto", "python"]
 CERTIFICATE_TYPES = ["x509"]
+RSA_SIGNATURE_HASHES = ["sha512", "sha384", "sha256", "sha224", "sha1"]
+ALL_RSA_SIGNATURE_HASHES = RSA_SIGNATURE_HASHES + ["md5"]
 
 class HandshakeSettings(object):
     """This class encapsulates various parameters that can be used with
@@ -101,6 +103,16 @@ class HandshakeSettings(object):
 
     @type sendFallbackSCSV: bool
     @ivar sendFallbackSCSV: Whether to, as a client, send FALLBACK_SCSV.
+
+    @type rsaSigHashes: list
+    @ivar rsaSigHashes: List of hashes supported (and advertised as such) for
+    TLS 1.2 signatures over Server Key Exchange or Certificate Verify with
+    RSA signature algorithm.
+
+    The list is sorted from most wanted to least wanted algorithm.
+
+    The allowed hashes are: "md5", "sha1", "sha224", "sha256",
+    "sha384" and "sha512". The default list does not include md5.
     """
     def __init__(self):
         self.minKeySize = 1023
@@ -115,6 +127,7 @@ class HandshakeSettings(object):
         self.useExperimentalTackExtension = False
         self.sendFallbackSCSV = False
         self.useEncryptThenMAC = True
+        self.rsaSigHashes = list(RSA_SIGNATURE_HASHES)
 
     def validate(self):
         """
@@ -137,6 +150,7 @@ class HandshakeSettings(object):
         other.maxVersion = self.maxVersion
         other.sendFallbackSCSV = self.sendFallbackSCSV
         other.useEncryptThenMAC = self.useEncryptThenMAC
+        other.rsaSigHashes = self.rsaSigHashes
 
         if not cipherfactory.tripleDESPresent:
             other.cipherNames = [e for e in self.cipherNames if e != "3des"]
@@ -196,6 +210,11 @@ class HandshakeSettings(object):
 
         if other.useEncryptThenMAC not in (True, False):
             raise ValueError("useEncryptThenMAC can only be True or False")
+
+        for val in other.rsaSigHashes:
+            if val not in ALL_RSA_SIGNATURE_HASHES:
+                raise ValueError("Unknown RSA signature hash: '{0}'".\
+                                 format(val))
 
         return other
 

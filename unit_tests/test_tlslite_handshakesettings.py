@@ -183,3 +183,9 @@ class TestHandshakeSettings(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             hs.validate()
+
+    def test_invalid_signature_algorithm(self):
+        hs = HandshakeSettings()
+        hs.rsaSigHashes += ['md2']
+        with self.assertRaises(ValueError):
+            hs.validate()
