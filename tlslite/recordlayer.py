@@ -307,7 +307,7 @@ class RecordLayer(object):
         data += paddingBytes
         return data
 
-    def _calculateMAC(self, mac, seqnumBytes, contentType, data):
+    def calculateMAC(self, mac, seqnumBytes, contentType, data):
         """Calculate the SSL/TLS version of a MAC"""
         mac.update(compatHMAC(seqnumBytes))
         mac.update(compatHMAC(bytearray([contentType])))
@@ -325,7 +325,7 @@ class RecordLayer(object):
         if self._writeState.macContext:
             seqnumBytes = self._writeState.getSeqNumBytes()
             mac = self._writeState.macContext.copy()
-            macBytes = self._calculateMAC(mac, seqnumBytes, contentType, data)
+            macBytes = self.calculateMAC(mac, seqnumBytes, contentType, data)
             data += macBytes
 
         #Encrypt for Block or Stream Cipher
@@ -361,7 +361,7 @@ class RecordLayer(object):
             mac = self._writeState.macContext.copy()
 
             # append MAC
-            macBytes = self._calculateMAC(mac, seqnumBytes, contentType, buf)
+            macBytes = self.calculateMAC(mac, seqnumBytes, contentType, buf)
             buf += macBytes
 
         return buf
@@ -443,8 +443,8 @@ class RecordLayer(object):
                 seqnumBytes = self._readState.getSeqNumBytes()
                 data = data[:-endLength]
                 mac = self._readState.macContext.copy()
-                macBytes = self._calculateMAC(mac, seqnumBytes, recordType,
-                                              data)
+                macBytes = self.calculateMAC(mac, seqnumBytes, recordType,
+                                             data)
 
                 #Compare MACs
                 if not ct_compare_digest(macBytes, checkBytes):
@@ -513,7 +513,7 @@ class RecordLayer(object):
             seqnumBytes = self._readState.getSeqNumBytes()
             mac = self._readState.macContext.copy()
 
-            macBytes = self._calculateMAC(mac, seqnumBytes, recordType, buf)
+            macBytes = self.calculateMAC(mac, seqnumBytes, recordType, buf)
 
             if not ct_compare_digest(macBytes, checkBytes):
                 raise TLSBadRecordMAC("MAC mismatch")

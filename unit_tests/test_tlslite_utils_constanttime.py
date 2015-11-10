@@ -107,8 +107,8 @@ class TestContanttimeCBCCheck(unittest.TestCase):
 
         h = hmac.new(key, digestmod=mac)
 
-        digest = r_layer._calculateMAC(h, seqnum_bytes, content_type,
-                                       application_data)
+        digest = r_layer.calculateMAC(h, seqnum_bytes, content_type,
+                                      application_data)
 
         return application_data + digest
 
