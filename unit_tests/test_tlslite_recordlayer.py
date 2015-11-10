@@ -1327,7 +1327,7 @@ class TestRecordLayer(unittest.TestCase):
                            bytearray([paddingLength])
             data += paddingBytes
             return data
-        sendingRecordLayer._addPadding = broken_padding
+        sendingRecordLayer.addPadding = broken_padding
 
         msg = ApplicationData().create(bytearray(b'test'))
 
@@ -1405,7 +1405,7 @@ class TestRecordLayer(unittest.TestCase):
                            bytearray([255])
             data += paddingBytes
             return data
-        sendingRecordLayer._addPadding = broken_padding
+        sendingRecordLayer.addPadding = broken_padding
 
         msg = ApplicationData().create(bytearray(b'test'))
 
@@ -1477,7 +1477,7 @@ class TestRecordLayer(unittest.TestCase):
                            bytearray([paddingLength])
             data += paddingBytes
             return data
-        sendingRecordLayer._addPadding = broken_padding
+        sendingRecordLayer.addPadding = broken_padding
 
         msg = ApplicationData().create(bytearray(b'test'))
 
@@ -1548,7 +1548,7 @@ class TestRecordLayer(unittest.TestCase):
                            bytearray([paddingLength])
             data += paddingBytes
             return data
-        sendingRecordLayer._addPadding = broken_padding
+        sendingRecordLayer.addPadding = broken_padding
 
         msg = ApplicationData().create(bytearray(b'test'))
 
@@ -1619,7 +1619,7 @@ class TestRecordLayer(unittest.TestCase):
                            bytearray([paddingLength])
             data += paddingBytes
             return data
-        sendingRecordLayer._addPadding = broken_padding
+        sendingRecordLayer.addPadding = broken_padding
 
         msg = ApplicationData().create(bytearray(b'test'))
 
@@ -1890,7 +1890,7 @@ class TestRecordLayer(unittest.TestCase):
                            bytearray([255])
             data += paddingBytes
             return data
-        sendingRecordLayer._addPadding = broken_padding
+        sendingRecordLayer.addPadding = broken_padding
 
         msg = ApplicationData().create(bytearray(b'test'))
 
@@ -2021,7 +2021,7 @@ class TestRecordLayer(unittest.TestCase):
                            bytearray([paddingLength])
             data += paddingBytes
             return data
-        sendingRecordLayer._addPadding = broken_padding
+        sendingRecordLayer.addPadding = broken_padding
 
         msg = ApplicationData().create(bytearray(b'test'))
 

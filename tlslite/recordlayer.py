@@ -297,7 +297,7 @@ class RecordLayer(object):
     # sending messages
     #
 
-    def _addPadding(self, data):
+    def addPadding(self, data):
         """Add padding to data so that it is multiple of block size"""
         currentLength = len(data)
         blockLength = self._writeState.encContext.block_size
@@ -337,7 +337,7 @@ class RecordLayer(object):
                 if self.version >= (3, 2):
                     data = self.fixedIVBlock + data
 
-                data = self._addPadding(data)
+                data = self.addPadding(data)
 
             #Encrypt
             data = self._writeState.encContext.encrypt(data)
@@ -351,7 +351,7 @@ class RecordLayer(object):
             if self.version >= (3, 2):
                 buf = self.fixedIVBlock + buf
 
-            buf = self._addPadding(buf)
+            buf = self.addPadding(buf)
 
             buf = self._writeState.encContext.encrypt(buf)
 
