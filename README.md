@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.5.1                                           2015-11-05
+tlslite-ng version 0.6.0-alpha1                                    2015-11-11
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -520,6 +520,11 @@ encrypt-then-MAC mode for CBC ciphers.
 
 12 History
 ===========
+
+0.6.0 - WIP
+ - add support for ChaCha20 and Poly1305
+ - add TLS_DHE_RSA_WITH_CHACHA20_POLY1305 ciphersuite
+ - expose padding and MAC-ing functions in RecordLayer
 
 0.5.1 - 2015-11-05
  - fix SRP_SHA_RSA ciphersuites in TLSv1.2 (for real this time)
