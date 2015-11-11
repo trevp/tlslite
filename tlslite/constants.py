@@ -329,6 +329,11 @@ class CipherSuite:
     TLS_DHE_RSA_WITH_AES_256_GCM_SHA384 = 0x009F
     ietfNames[0x009F] = 'TLS_DHE_RSA_WITH_AES_256_GCM_SHA384'
 
+    # draft-ietf-tls-chacha20-poly1305-00
+    # ChaCha20/Poly1305 based Cipher Suites for TLS1.2
+    TLS_DHE_RSA_WITH_CHACHA20_POLY1305 = 0xcca3
+    ietfNames[0xcca3] = 'TLS_DHE_RSA_WITH_CHACHA20_POLY1305'
+
     #
     # Define cipher suite families below
     #
@@ -374,6 +379,9 @@ class CipherSuite:
     aes256GcmSuites.append(TLS_RSA_WITH_AES_256_GCM_SHA384)
     aes256GcmSuites.append(TLS_DHE_RSA_WITH_AES_256_GCM_SHA384)
     aes256GcmSuites.append(TLS_DH_ANON_WITH_AES_256_GCM_SHA384)
+
+    chacha20Suites = []
+    chacha20Suites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305)
 
     # RC4 128 stream cipher
     rc4Suites = []
@@ -429,6 +437,7 @@ class CipherSuite:
     aeadSuites = []
     aeadSuites.extend(aes128GcmSuites)
     aeadSuites.extend(aes256GcmSuites)
+    aeadSuites.extend(chacha20Suites)
 
     # TLS1.2 with SHA384 PRF
     sha384PrfSuites = []
@@ -482,6 +491,8 @@ class CipherSuite:
             macSuites += CipherSuite.aeadSuites
 
         cipherSuites = []
+        if "chacha20-poly1305" in cipherNames and version >= (3, 3):
+            cipherSuites += CipherSuite.chacha20Suites
         if "aes128gcm" in cipherNames and version >= (3, 3):
             cipherSuites += CipherSuite.aes128GcmSuites
         if "aes256gcm" in cipherNames and version >= (3, 3):
@@ -559,6 +570,7 @@ class CipherSuite:
 
     # FFDHE key exchange, RSA authentication
     dheCertSuites = []
+    dheCertSuites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305)
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_256_GCM_SHA384)
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
@@ -608,6 +620,8 @@ class CipherSuite:
             return "3des"
         elif ciphersuite in CipherSuite.nullSuites:
             return "null"
+        elif ciphersuite in CipherSuite.chacha20Suites:
+            return "chacha20-poly1305"
         else:
             return None
 

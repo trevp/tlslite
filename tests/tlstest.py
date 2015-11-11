@@ -414,13 +414,17 @@ def clientTestCmd(argv):
     print("Test {0} - throughput test".format(test_no))
     for implementation in implementations:
         for cipher in ["aes128gcm", "aes256gcm", "aes128", "aes256", "3des",
-                       "rc4"]:
+                       "rc4", "chacha20-poly1305"]:
+            # skip tests with implementations that don't support them
             if cipher == "3des" and implementation not in ("openssl",
                                                            "pycrypto"):
                 continue
             if cipher in ("aes128gcm", "aes256gcm") and \
                     implementation not in ("pycrypto",
                                            "python"):
+                continue
+            if cipher in ("chacha20-poly1305", ) and \
+                    implementation not in ("python", ):
                 continue
 
             test_no += 1
@@ -1033,13 +1037,17 @@ def serverTestCmd(argv):
     print("Test {0} - throughput test".format(test_no))
     for implementation in implementations:
         for cipher in ["aes128gcm", "aes256gcm", "aes128", "aes256", "3des",
-                       "rc4"]:
+                       "rc4", "chacha20-poly1305"]:
+            # skip tests with implementations that don't support them
             if cipher == "3des" and implementation not in ("openssl",
                                                            "pycrypto"):
                 continue
             if cipher in ("aes128gcm", "aes256gcm") and \
                     implementation not in ("pycrypto",
                                            "python"):
+                continue
+            if cipher in ("chacha20-poly1305", ) and \
+                    implementation not in ("python", ):
                 continue
 
             test_no += 1
