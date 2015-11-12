@@ -368,6 +368,37 @@ class TestRecordLayer(unittest.TestCase):
         self.assertEqual('aes128', recordLayer.getCipherName())
         self.assertTrue(recordLayer.isCBCMode())
 
+    def test_blockSize(self):
+        sock = MockSocket(bytearray(0))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 3)
+
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeWriteState()
+
+        self.assertEqual(16, recordLayer.blockSize)
+
+    @unittest.skipUnless(cryptomath.m2cryptoLoaded, "requires M2Crypto")
+    def test_blockSize_with_3DES(self):
+        sock = MockSocket(bytearray(0))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 3)
+
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeWriteState()
+
+        self.assertEqual(8, recordLayer.blockSize)
+
     def test_getCipherImplementation(self):
         sock = MockSocket(bytearray(0))
 
@@ -1320,7 +1351,7 @@ class TestRecordLayer(unittest.TestCase):
         # change the padding method to return simple version of padding (SSLv3)
         def broken_padding(data):
             currentLength = len(data)
-            blockLength = sendingRecordLayer._writeState.encContext.block_size
+            blockLength = sendingRecordLayer.blockSize
             paddingLength = blockLength - 1 - (currentLength % blockLength)
 
             paddingBytes = bytearray([0] * (paddingLength)) + \
@@ -1397,7 +1428,7 @@ class TestRecordLayer(unittest.TestCase):
         # change the padding method to return invalid padding
         def broken_padding(data):
             currentLength = len(data)
-            blockLength = sendingRecordLayer._writeState.encContext.block_size
+            blockLength = sendingRecordLayer.blockSize
             paddingLength = blockLength - 1 - (currentLength % blockLength)
 
             # make the value of last byte longer than all data
@@ -1468,7 +1499,7 @@ class TestRecordLayer(unittest.TestCase):
         # change the padding method to return invalid padding
         def broken_padding(data):
             currentLength = len(data)
-            blockLength = sendingRecordLayer._writeState.encContext.block_size
+            blockLength = sendingRecordLayer.blockSize
             paddingLength = blockLength - 1 - (currentLength % blockLength)
 
             # make the value of last byte longer than all data
@@ -1541,7 +1572,7 @@ class TestRecordLayer(unittest.TestCase):
         def broken_padding(data):
             data = data[:18]
             currentLength = len(data)
-            blockLength = sendingRecordLayer._writeState.encContext.block_size
+            blockLength = sendingRecordLayer.blockSize
             paddingLength = blockLength - 1 - (currentLength % blockLength)
 
             paddingBytes = bytearray([paddingLength] * (paddingLength)) + \
@@ -1612,7 +1643,7 @@ class TestRecordLayer(unittest.TestCase):
         def broken_padding(data):
             data[-1] ^= 255
             currentLength = len(data)
-            blockLength = sendingRecordLayer._writeState.encContext.block_size
+            blockLength = sendingRecordLayer.blockSize
             paddingLength = blockLength - 1 - (currentLength % blockLength)
 
             paddingBytes = bytearray([paddingLength] * (paddingLength)) + \
@@ -1882,7 +1913,7 @@ class TestRecordLayer(unittest.TestCase):
         # change the padding method to return invalid padding
         def broken_padding(data):
             currentLength = len(data)
-            blockLength = sendingRecordLayer._writeState.encContext.block_size
+            blockLength = sendingRecordLayer.blockSize
             paddingLength = blockLength - 1 - (currentLength % blockLength)
 
             # make the value of last byte longer than all data
@@ -2012,7 +2043,7 @@ class TestRecordLayer(unittest.TestCase):
         # change the padding method to return invalid padding
         def broken_padding(data):
             currentLength = len(data)
-            blockLength = sendingRecordLayer._writeState.encContext.block_size
+            blockLength = sendingRecordLayer.blockSize
             paddingLength = blockLength - 1 - (currentLength % blockLength)
 
             # make the value of second to last byte invalid (0)

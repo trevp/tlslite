@@ -245,6 +245,11 @@ class RecordLayer(object):
         self.encryptThenMAC = False
 
     @property
+    def blockSize(self):
+        """Return the size of block used by current symmetric cipher (R/O)"""
+        return self._writeState.encContext.block_size
+
+    @property
     def version(self):
         """Return the TLS version used by record layer"""
         return self._version
@@ -300,7 +305,7 @@ class RecordLayer(object):
     def addPadding(self, data):
         """Add padding to data so that it is multiple of block size"""
         currentLength = len(data)
-        blockLength = self._writeState.encContext.block_size
+        blockLength = self.blockSize
         paddingLength = blockLength - 1 - (currentLength % blockLength)
 
         paddingBytes = bytearray([paddingLength] * (paddingLength+1))
