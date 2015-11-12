@@ -923,6 +923,71 @@ class TestRecordLayer(unittest.TestCase):
             b'\xff\x842\xc7\xa2\x0byd\xab\x1a\xfd\xaf\x05\xd6\xba\x89'
             ))
 
+    def test_if_padding_is_minimal_in_ssl3_low_end(self):
+        sock = MockSocket(bytearray(0))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 0)
+
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeWriteState()
+
+        app_data = ApplicationData().create(bytearray(b'test of pad'))
+
+        self.assertIsNotNone(app_data)
+        self.assertEqual(len(app_data.write()), 11)
+
+        for result in recordLayer.sendRecord(app_data):
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+
+        self.assertEqual(len(sock.sent), 1)
+        self.assertEqual(sock.sent[0][:5], bytearray(
+            b'\x17' +           # application data
+            b'\x03\x00' +       # SSL3
+            b'\x00\x20'         # length - 32 bytes (2 blocks)
+            ))                  # (11 bytes of data + 20 bytes of MAC
+                                #  + 1 byte of padding length)
+        self.assertEqual(len(sock.sent[0][5:]), 32)
+
+    def test_if_padding_is_minimal_in_ssl3_high_end(self):
+        sock = MockSocket(bytearray(0))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (3, 0)
+
+        recordLayer.calcPendingStates(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                                      bytearray(48), # master secret
+                                      bytearray(32), # client random
+                                      bytearray(32), # server random
+                                      None)
+        recordLayer.changeWriteState()
+
+        app_data = ApplicationData().create(bytearray(b'test of padd'))
+
+        self.assertIsNotNone(app_data)
+        self.assertEqual(len(app_data.write()), 12)
+
+        for result in recordLayer.sendRecord(app_data):
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+
+        self.assertEqual(len(sock.sent), 1)
+        self.assertEqual(sock.sent[0][:5], bytearray(
+            b'\x17' +           # application data
+            b'\x03\x00' +       # SSL3
+            b'\x00\x30'         # length - 48 bytes (3 blocks)
+            ))                  # (12 bytes of data + 20 bytes of MAC
+                                #  + 15 bytes of padding
+                                #  + 1 byte of padding length)
+        self.assertEqual(len(sock.sent[0][5:]), 48)
+
     def test_sendRecord_with_wrong_SSL_version(self):
         sock = MockSocket(bytearray(0))
 
