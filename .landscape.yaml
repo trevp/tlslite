@@ -10,3 +10,7 @@ ignore-paths:
     - tests
     - unit_tests
     - scripts
+
+pep257:
+    disable:
+        - D203
