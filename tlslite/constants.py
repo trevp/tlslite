@@ -46,8 +46,10 @@ class ClientCertificateType:
     dss_sign = 2
     rsa_fixed_dh = 3
     dss_fixed_dh = 4
- 
-class HandshakeType:
+
+class HandshakeType(TLSEnum):
+    """Message types in TLS Handshake protocol"""
+
     hello_request = 0
     client_hello = 1
     server_hello = 2
