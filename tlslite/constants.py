@@ -171,11 +171,13 @@ class ECPointFormat(object):
 class NameType:
     host_name = 0
 
-class AlertLevel:
+class AlertLevel(TLSEnum):
+    """Enumeration of TLS Alert protocol levels"""
+
     warning = 1
     fatal = 2
 
-class AlertDescription:
+class AlertDescription(TLSEnum):
     """
     @cvar bad_record_mac: A TLS record failed to decrypt properly.
 
