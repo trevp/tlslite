@@ -522,6 +522,9 @@ encrypt-then-MAC mode for CBC ciphers.
 ===========
 
 0.6.0 - WIP
+ - mark library as compatible with Python 3.5 (it was previously, but now
+   it is verified with Continous Integration)
+ - small cleanups and more documentation
  - add support for ChaCha20 and Poly1305
  - add TLS_DHE_RSA_WITH_CHACHA20_POLY1305 ciphersuite
  - expose padding and MAC-ing functions and blockSize property in RecordLayer
