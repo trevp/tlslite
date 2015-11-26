@@ -973,12 +973,8 @@ class SupportedGroupsExtension(TLSExtension):
         if parser.getRemainingLength() == 0:
             self.groups = None
             return self
-        self.groups = []
 
-        parser.startLengthCheck(2)
-        while not parser.atLengthCheck():
-            self.groups.append(parser.get(2))
-        parser.stopLengthCheck()
+        self.groups = parser.getVarList(2, 2)
 
         return self
 
@@ -1041,12 +1037,7 @@ class ECPointFormatsExtension(TLSExtension):
             self.formats = None
             return self
 
-        self.formats = []
-
-        parser.startLengthCheck(1)
-        while not parser.atLengthCheck():
-            self.formats.append(parser.get(1))
-        parser.stopLengthCheck()
+        self.formats = parser.getVarList(1, 1)
 
         return self
 
