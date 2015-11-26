@@ -1607,7 +1607,7 @@ class TestServerKeyExchange(unittest.TestCase):
         with self.assertRaises(AssertionError):
             ske.hash(bytearray(32), bytearray(32))
 
-    def test_hash_with_default_hash_algorithm_for_TLS_v1_2(self):
+    def test_hash_with_sha1_hash_algorithm_for_TLS_v1_2(self):
         ske = ServerKeyExchange(
                 CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
                 (3, 3))
@@ -1616,6 +1616,7 @@ class TestServerKeyExchange(unittest.TestCase):
                       srp_g=2,
                       srp_s=bytearray(3),
                       srp_B=4)
+        ske.hashAlg = HashAlgorithm.sha1
 
         hash1 = ske.hash(bytearray(32), bytearray(32))
 
@@ -1623,6 +1624,16 @@ class TestServerKeyExchange(unittest.TestCase):
             b'\x8e?YW\xcd\xad\xc6\x83\x91\x1d.fe,\x17y=\xc4T\x89'
             ))
 
+    def test_hash_with_invalid_hash_algorithm(self):
+       ske = ServerKeyExchange(
+               CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
+               (3, 3))
+
+       ske.createDH(1, 2, 3)
+       ske.hashAlg = 300
+
+       with self.assertRaises(AssertionError):
+           ske.hash(bytearray(32), bytearray(32))
 
 class TestCertificateRequest(unittest.TestCase):
     def test___init__(self):

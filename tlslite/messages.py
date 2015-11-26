@@ -1074,14 +1074,17 @@ class ServerKeyExchange(HandshakeMsg):
 
     def hash(self, clientRandom, serverRandom):
         """
-        Calculate hash of paramters to sign
+        Calculate hash of parameters to sign
 
         @rtype: bytearray
         """
         bytesToHash = clientRandom + serverRandom + self.writeParams()
         if self.version >= (3, 3):
-            # TODO: Signature algorithm negotiation not supported.
-            return SHA1(bytesToHash)
+            hashAlg = HashAlgorithm.toRepr(self.hashAlg)
+            if hashAlg is None:
+                raise AssertionError("Unknown hash algorithm: {0}".\
+                                     format(self.hashAlg))
+            return secureHash(bytesToHash, hashAlg)
         return MD5(bytesToHash) + SHA1(bytesToHash)
 
 class ServerHelloDone(HandshakeMsg):

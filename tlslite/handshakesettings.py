@@ -215,6 +215,8 @@ class HandshakeSettings(object):
             if val not in ALL_RSA_SIGNATURE_HASHES:
                 raise ValueError("Unknown RSA signature hash: '{0}'".\
                                  format(val))
+        if len(other.rsaSigHashes) == 0 and other.maxVersion >= (3, 3):
+            raise ValueError("TLS 1.2 requires signature algorithms to be set")
 
         return other
 
