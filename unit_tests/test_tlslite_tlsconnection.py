@@ -92,6 +92,26 @@ class TestKeyExchange(unittest.TestCase):
 
         self.assertIsNotNone(keyExchange)
 
+    def test_makeServerKeyExchange(self):
+        keyExchange = KeyExchange(0, None, None, None)
+        with self.assertRaises(NotImplementedError):
+            keyExchange.makeServerKeyExchange()
+
+    def test_makeClientKeyExchange(self):
+        keyExchange = KeyExchange(0, None, None, None)
+        with self.assertRaises(NotImplementedError):
+            keyExchange.makeClientKeyExchange()
+
+    def test_processClientKeyExchange(self):
+        keyExchange = KeyExchange(0, None, None, None)
+        with self.assertRaises(NotImplementedError):
+            keyExchange.processClientKeyExchange(None)
+
+    def test_processServerKeyExchange(self):
+        keyExchange = KeyExchange(0, None, None, None)
+        with self.assertRaises(NotImplementedError):
+            keyExchange.processServerKeyExchange(None, None)
+
     def test_signServerKeyExchange_with_sha1_in_TLS1_2(self):
         srv_private_key = parsePEMKey(srv_raw_key, private=True)
         client_hello = ClientHello()
@@ -380,6 +400,24 @@ class TestRSAKeyExchange(unittest.TestCase):
         premaster_secret[0] = 3
         premaster_secret[1] = 3
         self.assertEqual(dec_premaster, premaster_secret)
+
+    def test_RSA_key_exchange_with_client(self):
+        self.assertIsNone(self.keyExchange.makeServerKeyExchange())
+
+        client_keyExchange = RSAKeyExchange(self.cipher_suite,
+                                            self.client_hello,
+                                            self.server_hello,
+                                            None)
+
+        client_premaster = client_keyExchange.processServerKeyExchange(\
+                self.srv_pub_key,
+                None)
+        clientKeyExchange = client_keyExchange.makeClientKeyExchange()
+
+        server_premaster = self.keyExchange.processClientKeyExchange(\
+                clientKeyExchange)
+
+        self.assertEqual(client_premaster, server_premaster)
 
     def test_RSA_with_invalid_encryption(self):
 

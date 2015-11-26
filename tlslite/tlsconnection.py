@@ -54,6 +54,15 @@ class KeyExchange(object):
         """
         raise NotImplementedError()
 
+    def makeClientKeyExchange(self):
+        """
+        Create a ClientKeyExchange object
+
+        Returns a ClientKeyExchange for the second flight from client in the
+        handshake.
+        """
+        raise NotImplementedError()
+
     def processClientKeyExchange(self, clientKeyExchange):
         """
         Process ClientKeyExchange and return premaster secret
@@ -61,6 +70,11 @@ class KeyExchange(object):
         Processes the client's ClientKeyExchange message and returns the
         premaster secret. Raises TLSLocalAlert on error.
         """
+        raise NotImplementedError()
+
+    def processServerKeyExchange(self, srvPublicKey,
+                                 serverKeyExchange):
+        """Process the server KEX and return premaster secret"""
         raise NotImplementedError()
 
     def signServerKeyExchange(self, serverKeyExchange, sigHash=None):
@@ -168,12 +182,16 @@ class KeyExchange(object):
         return certificateVerify
 
 class RSAKeyExchange(KeyExchange):
-
     """
     Handling of RSA key exchange
 
     NOT stable API, do NOT use
     """
+
+    def __init__(self, cipherSuite, clientHello, serverHello, privateKey):
+        super(RSAKeyExchange, self).__init__(cipherSuite, clientHello,
+                                             serverHello, privateKey)
+        self.encPremasterSecret = None
 
     def makeServerKeyExchange(self, sigHash=None):
         """Don't create a server key exchange for RSA key exchange"""
@@ -199,6 +217,25 @@ class RSAKeyExchange(KeyExchange):
                     premasterSecret = randomPreMasterSecret
         return premasterSecret
 
+    def processServerKeyExchange(self, srvPublicKey,
+                                 serverKeyExchange):
+        """Generate premaster secret for server"""
+        del serverKeyExchange # not present in RSA key exchange
+        premasterSecret = getRandomBytes(48)
+        premasterSecret[0] = self.clientHello.client_version[0]
+        premasterSecret[1] = self.clientHello.client_version[1]
+
+        self.encPremasterSecret = srvPublicKey.encrypt(premasterSecret)
+        return premasterSecret
+
+    def makeClientKeyExchange(self):
+        clientKeyExchange = ClientKeyExchange(self.cipherSuite,
+                                              self.serverHello.server_version)
+        clientKeyExchange.createRSA(self.encPremasterSecret)
+        return clientKeyExchange
+
+# the DHE_RSA part comes from IETF ciphersuite names, we want to keep it
+#pylint: disable = invalid-name
 class DHE_RSAKeyExchange(KeyExchange):
     """
     Handling of ephemeral Diffe-Hellman Key exchange
@@ -209,6 +246,7 @@ class DHE_RSAKeyExchange(KeyExchange):
     def __init__(self, cipherSuite, clientHello, serverHello, privateKey):
         super(DHE_RSAKeyExchange, self).__init__(cipherSuite, clientHello,
                                                  serverHello, privateKey)
+#pylint: enable = invalid-name
         self.dh_Xs = None
 
     # 2048-bit MODP Group (RFC 3526, Section 3)
@@ -692,11 +730,14 @@ class TLSConnection(TLSRecordLayer):
         #and also produces a CertificateVerify message that signs the 
         #ClientKeyExchange.
         else:
+            keyExchange = RSAKeyExchange(cipherSuite, clientHello,
+                                         serverHello, None)
             for result in self._clientRSAKeyExchange(settings, cipherSuite,
                                     clientCertChain, privateKey,
                                     serverHello.certificate_type,
                                     clientHello.random, serverHello.random,
-                                    serverHello.tackExt):
+                                    serverHello.tackExt,
+                                    keyExchange):
                 if result in (0,1): yield result
                 else: break
             (premasterSecret, serverCertChain, clientCertChain, 
@@ -1027,7 +1068,7 @@ class TLSConnection(TLSRecordLayer):
                                 clientCertChain, privateKey,
                                 certificateType,
                                 clientRandom, serverRandom,
-                                tackExt):
+                                tackExt, keyExchange):
 
         #Get Certificate[, CertificateRequest], ServerHelloDone
         for result in self._getMsg(ContentType.handshake,
@@ -1064,18 +1105,8 @@ class TLSConnection(TLSRecordLayer):
             else: break
         publicKey, serverCertChain, tackExt = result
 
-        #Calculate premaster secret
-        premasterSecret = getRandomBytes(48)
-        premasterSecret[0] = settings.maxVersion[0]
-        premasterSecret[1] = settings.maxVersion[1]
-
-        if self.fault == Fault.badPremasterPadding:
-            premasterSecret[0] = 5
-        if self.fault == Fault.shortPremasterSecret:
-            premasterSecret = premasterSecret[:-1]
-
-        #Encrypt premaster secret to server's public key
-        encryptedPreMasterSecret = publicKey.encrypt(premasterSecret)
+        premasterSecret = keyExchange.processServerKeyExchange(publicKey,
+                                                               None)
 
         #If client authentication was requested, send Certificate
         #message, either with certificates or empty
@@ -1106,9 +1137,7 @@ class TLSConnection(TLSRecordLayer):
             clientCertChain = None
 
         #Send ClientKeyExchange
-        clientKeyExchange = ClientKeyExchange(cipherSuite,
-                                              self.version)
-        clientKeyExchange.createRSA(encryptedPreMasterSecret)
+        clientKeyExchange = keyExchange.makeClientKeyExchange()
         for result in self._sendMsg(clientKeyExchange):
             yield result
 
