@@ -1278,11 +1278,8 @@ class TLSConnection(TLSRecordLayer):
             if clientCertChain:
                 #Check to make sure we have the same type of
                 #certificates the server requested
-                wrongType = False
-                if certificateType == CertificateType.x509:
-                    if not isinstance(clientCertChain, X509CertChain):
-                        wrongType = True
-                if wrongType:
+                if certificateType == CertificateType.x509 \
+                    and not isinstance(clientCertChain, X509CertChain):
                     for result in self._sendError(\
                             AlertDescription.handshake_failure,
                             "Client certificate is of wrong type"):
