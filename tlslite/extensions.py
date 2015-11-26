@@ -429,12 +429,9 @@ class ClientCertTypeExtension(TLSExtension):
         if self.certTypes is None:
             return bytearray(0)
 
-        w = Writer()
-        w.add(len(self.certTypes), 1)
-        for c_type in self.certTypes:
-            w.add(c_type, 1)
-
-        return w.bytes
+        writer = Writer()
+        writer.addVarSeq(self.certTypes, 1, 1)
+        return writer.bytes
 
     def create(self, certTypes=None):
         """
@@ -947,10 +944,7 @@ class SupportedGroupsExtension(TLSExtension):
             return bytearray(0)
 
         writer = Writer()
-        # encode length of two bytes per group in two bytes
-        writer.add(len(self.groups) * 2, 2)
-        for group in self.groups:
-            writer.add(group, 2)
+        writer.addVarSeq(self.groups, 2, 2)
         return writer.bytes
 
     def create(self, groups):
@@ -1010,10 +1004,7 @@ class ECPointFormatsExtension(TLSExtension):
             return bytearray(0)
 
         writer = Writer()
-        # the length is number of formats encoded in one byte
-        writer.add(len(self.formats), 1)
-        for fmt in self.formats:
-            writer.add(fmt, 1)
+        writer.addVarSeq(self.formats, 1, 1)
         return writer.bytes
 
     def create(self, formats):
