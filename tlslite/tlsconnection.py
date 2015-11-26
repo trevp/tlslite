@@ -982,6 +982,7 @@ class TLSConnection(TLSRecordLayer):
             cipherSuites += CipherSuite.getDheCertSuites(settings)
             cipherSuites += CipherSuite.getCertSuites(settings)
         elif anonParams:
+            cipherSuites += CipherSuite.getEcdhAnonSuites(settings)
             cipherSuites += CipherSuite.getAnonSuites(settings)
         else:
             assert False

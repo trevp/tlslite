@@ -392,6 +392,16 @@ class CipherSuite:
     ietfNames[0xC013] = 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA'
     TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA = 0xC014
     ietfNames[0xC014] = 'TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA'
+    TLS_ECDH_ANON_WITH_NULL_SHA = 0xC015
+    ietfNames[0xC015] = 'TLS_ECDH_ANON_WITH_NULL_SHA'
+    TLS_ECDH_ANON_WITH_RC4_128_SHA = 0xC016
+    ietfNames[0xC016] = 'TLS_ECDH_ANON_WITH_RC4_128_SHA'
+    TLS_ECDH_ANON_WITH_3DES_EDE_CBC_SHA = 0xC017
+    ietfNames[0xC017] = 'TLS_ECDH_ANON_WITH_3DES_EDE_CBC_SHA'
+    TLS_ECDH_ANON_WITH_AES_128_CBC_SHA = 0xC018
+    ietfNames[0xC018] = 'TLS_ECDH_ANON_WITH_AES_128_CBC_SHA'
+    TLS_ECDH_ANON_WITH_AES_256_CBC_SHA = 0xC019
+    ietfNames[0xC019] = 'TLS_ECDH_ANON_WITH_AES_256_CBC_SHA'
 
     # draft-ietf-tls-chacha20-poly1305-00
     # ChaCha20/Poly1305 based Cipher Suites for TLS1.2
@@ -421,6 +431,7 @@ class CipherSuite:
     tripleDESSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA)
+    tripleDESSuites.append(TLS_ECDH_ANON_WITH_3DES_EDE_CBC_SHA)
 
     # AES-128 CBC ciphers
     aes128Suites = []
@@ -434,6 +445,7 @@ class CipherSuite:
     aes128Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA256)
     aes128Suites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256)
+    aes128Suites.append(TLS_ECDH_ANON_WITH_AES_128_CBC_SHA)
 
     # AES-256 CBC ciphers
     aes256Suites = []
@@ -447,6 +459,7 @@ class CipherSuite:
     aes256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA256)
     aes256Suites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384)
+    aes256Suites.append(TLS_ECDH_ANON_WITH_AES_256_CBC_SHA)
 
     # AES-128 GCM ciphers
     aes128GcmSuites = []
@@ -462,6 +475,7 @@ class CipherSuite:
     aes256GcmSuites.append(TLS_DH_ANON_WITH_AES_256_GCM_SHA384)
     aes256GcmSuites.append(TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384)
 
+    # CHACHA20 cipher (implicit POLY1305 authenticator)
     chacha20Suites = []
     chacha20Suites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305)
 
@@ -470,6 +484,7 @@ class CipherSuite:
     rc4Suites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_MD5)
+    rc4Suites.append(TLS_ECDH_ANON_WITH_RC4_128_SHA)
 
     # no encryption
     nullSuites = []
@@ -477,6 +492,7 @@ class CipherSuite:
     nullSuites.append(TLS_RSA_WITH_NULL_SHA)
     nullSuites.append(TLS_RSA_WITH_NULL_SHA256)
     nullSuites.append(TLS_ECDHE_RSA_WITH_NULL_SHA)
+    nullSuites.append(TLS_ECDH_ANON_WITH_NULL_SHA)
 
     # SHA-1 HMAC, protocol default PRF
     shaSuites = []
@@ -500,6 +516,11 @@ class CipherSuite:
     shaSuites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
     shaSuites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA)
     shaSuites.append(TLS_ECDHE_RSA_WITH_NULL_SHA)
+    shaSuites.append(TLS_ECDH_ANON_WITH_AES_256_CBC_SHA)
+    shaSuites.append(TLS_ECDH_ANON_WITH_AES_128_CBC_SHA)
+    shaSuites.append(TLS_ECDH_ANON_WITH_3DES_EDE_CBC_SHA)
+    shaSuites.append(TLS_ECDH_ANON_WITH_RC4_128_SHA)
+    shaSuites.append(TLS_ECDH_ANON_WITH_NULL_SHA)
 
     # SHA-256 HMAC, SHA-256 PRF
     sha256Suites = []
@@ -609,6 +630,8 @@ class CipherSuite:
             keyExchangeSuites += CipherSuite.srpCertSuites
         if "dh_anon" in keyExchangeNames:
             keyExchangeSuites += CipherSuite.anonSuites
+        if "ecdh_anon" in keyExchangeNames:
+            keyExchangeSuites += CipherSuite.ecdhAnonSuites
 
         return [s for s in suites if s in macSuites and
                 s in cipherSuites and s in keyExchangeSuites]
@@ -696,14 +719,14 @@ class CipherSuite:
 
     # anon FFDHE key exchange
     anonSuites = []
-    anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
-    anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
-    anonSuites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
-    anonSuites.append(TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA)
-    anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA256)
-    anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA256)
-    anonSuites.append(TLS_DH_ANON_WITH_AES_128_GCM_SHA256)
     anonSuites.append(TLS_DH_ANON_WITH_AES_256_GCM_SHA384)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_128_GCM_SHA256)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA256)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA256)
+    anonSuites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+    anonSuites.append(TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA)
+    anonSuites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
 
     @staticmethod
     def getAnonSuites(settings, version=None):
@@ -715,6 +738,17 @@ class CipherSuite:
 
     # anon ECDHE key exchange
     ecdhAnonSuites = []
+    ecdhAnonSuites.append(TLS_ECDH_ANON_WITH_AES_256_CBC_SHA)
+    ecdhAnonSuites.append(TLS_ECDH_ANON_WITH_AES_128_CBC_SHA)
+    ecdhAnonSuites.append(TLS_ECDH_ANON_WITH_3DES_EDE_CBC_SHA)
+    ecdhAnonSuites.append(TLS_ECDH_ANON_WITH_RC4_128_SHA)
+    ecdhAnonSuites.append(TLS_ECDH_ANON_WITH_NULL_SHA)
+
+    @staticmethod
+    def getEcdhAnonSuites(settings, version=None):
+        """Provide anonymous ECDH ciphersuites matching settings"""
+        return CipherSuite._filterSuites(CipherSuite.ecdhAnonSuites,
+                                         settings, version)
 
     ecdhAllSuites = ecdheCertSuites + ecdhAnonSuites
 
