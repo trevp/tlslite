@@ -221,8 +221,9 @@ class RSAKey(object):
     # Helper Functions for RSA Keys
     # **************************************************************************
 
-    @staticmethod
-    def addPKCS1SHA1Prefix(bytes, withNULL=True):
+    @classmethod
+    def addPKCS1SHA1Prefix(cls, hashBytes, withNULL=True):
+        """Add PKCS#1 v1.5 algorithm identifier prefix to SHA1 hash bytes"""
         # There is a long history of confusion over whether the SHA1 
         # algorithmIdentifier should be encoded with a NULL parameter or 
         # with the parameter omitted.  While the original intention was 
@@ -235,8 +236,8 @@ class RSAKey(object):
             prefixBytes = bytearray([0x30, 0x1f, 0x30, 0x07, 0x06, 0x05, 0x2b,
                                      0x0e, 0x03, 0x02, 0x1a, 0x04, 0x14])
         else:
-            prefixBytes = RSAKey._pkcs1Prefixes['sha1']
-        prefixedBytes = prefixBytes + bytes
+            prefixBytes = cls._pkcs1Prefixes['sha1']
+        prefixedBytes = prefixBytes + hashBytes
         return prefixedBytes
 
     _pkcs1Prefixes = {'md5' : bytearray([0x30, 0x20, 0x30, 0x0c, 0x06, 0x08,
@@ -262,12 +263,12 @@ class RSAKey(object):
                                             0x04, 0x02, 0x03, 0x05, 0x00, 0x04,
                                             0x40])}
 
-    @staticmethod
-    def addPKCS1Prefix(data, hashName):
+    @classmethod
+    def addPKCS1Prefix(cls, data, hashName):
         """Add the PKCS#1 v1.5 algorithm identifier prefix to hash bytes"""
         hashName = hashName.lower()
-        assert hashName in RSAKey._pkcs1Prefixes
-        prefixBytes = RSAKey._pkcs1Prefixes[hashName]
+        assert hashName in cls._pkcs1Prefixes
+        prefixBytes = cls._pkcs1Prefixes[hashName]
         return prefixBytes + data
 
     def _addPKCS1Padding(self, bytes, blockType):
