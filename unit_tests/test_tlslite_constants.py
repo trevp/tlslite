@@ -9,7 +9,51 @@ try:
 except ImportError:
     import unittest
 
-from tlslite.constants import CipherSuite
+from tlslite.constants import CipherSuite, HashAlgorithm, SignatureAlgorithm, \
+        ContentType, AlertDescription, AlertLevel, HandshakeType
+
+class TestHashAlgorithm(unittest.TestCase):
+
+    def test_toRepr(self):
+        self.assertEqual(HashAlgorithm.toRepr(5), 'sha384')
+
+    def test_toRepr_with_invalid_id(self):
+        self.assertIsNone(HashAlgorithm.toRepr(None))
+
+    def test_toRepr_with_unknown_id(self):
+        self.assertIsNone(HashAlgorithm.toRepr(200))
+
+    def test_toStr_with_unknown_id(self):
+        self.assertEqual(HashAlgorithm.toStr(200), '200')
+
+    def test_toStr(self):
+        self.assertEqual(HashAlgorithm.toStr(6), 'sha512')
+
+class TestSignatureAlgorithm(unittest.TestCase):
+
+    def test_toRepr(self):
+        self.assertEqual(SignatureAlgorithm.toRepr(1), 'rsa')
+
+class TestContentType(unittest.TestCase):
+
+    def test_toRepr_with_invalid_value(self):
+        self.assertIsNone(ContentType.toRepr((20, 21, 22, 23)))
+
+    def test_toStr_with_invalid_value(self):
+        self.assertEqual(ContentType.toStr((20, 21, 22, 23)),
+                         '(20, 21, 22, 23)')
+
+class TestAlertDescription(unittest.TestCase):
+    def test_toRepr(self):
+        self.assertEqual(AlertDescription.toStr(40), 'handshake_failure')
+
+class TestAlertLevel(unittest.TestCase):
+    def test_toRepr(self):
+        self.assertEqual(AlertLevel.toStr(1), 'warning')
+
+class TestHandshakeType(unittest.TestCase):
+    def test_toRepr(self):
+        self.assertEqual(HandshakeType.toStr(1), 'client_hello')
 
 class TestCipherSuite(unittest.TestCase):
 

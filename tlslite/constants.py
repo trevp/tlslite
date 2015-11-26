@@ -10,6 +10,33 @@
 
 """Constants used in various places."""
 
+class TLSEnum(object):
+    """Base class for different enums of TLS IDs"""
+
+    @classmethod
+    def toRepr(cls, value, blacklist=None):
+        """
+        Convert numeric type to string representation
+
+        name if found, None otherwise
+        """
+        if blacklist is None:
+            blacklist = []
+        return next((key for key, val in cls.__dict__.items() \
+                    if key not in ('__weakref__', '__dict__', '__doc__',
+                                   '__module__') and \
+                       key not in blacklist and \
+                        val == value), None)
+
+    @classmethod
+    def toStr(cls, value, blacklist=None):
+        """Convert numeric type to human-readable string if possible"""
+        ret = cls.toRepr(value, blacklist)
+        if ret is not None:
+            return ret
+        else:
+            return '{0}'.format(value)
+
 class CertificateType:
     x509 = 0
     openpgp = 1
@@ -19,8 +46,10 @@ class ClientCertificateType:
     dss_sign = 2
     rsa_fixed_dh = 3
     dss_fixed_dh = 4
- 
-class HandshakeType:
+
+class HandshakeType(TLSEnum):
+    """Message types in TLS Handshake protocol"""
+
     hello_request = 0
     client_hello = 1
     server_hello = 2
@@ -33,12 +62,22 @@ class HandshakeType:
     finished = 20
     next_protocol = 67
 
-class ContentType:
+class ContentType(TLSEnum):
+    """TLS record layer content types of payloads"""
+
     change_cipher_spec = 20
     alert = 21
     handshake = 22
     application_data = 23
-    all = (20,21,22,23)
+    all = (20, 21, 22, 23)
+
+    @classmethod
+    def toRepr(cls, value, blacklist=None):
+        """Convert numeric type to name representation"""
+        if blacklist is None:
+            blacklist = []
+        blacklist.append('all')
+        return super(ContentType, cls).toRepr(value, blacklist)
 
 class ExtensionType:    # RFC 6066 / 4366
     server_name = 0     # RFC 6066 / 4366
@@ -52,8 +91,7 @@ class ExtensionType:    # RFC 6066 / 4366
     supports_npn = 13172
     renegotiation_info = 0xff01
 
-class HashAlgorithm:
-
+class HashAlgorithm(TLSEnum):
     """Hash algorithm IDs used in TLSv1.2"""
 
     none = 0
@@ -64,8 +102,7 @@ class HashAlgorithm:
     sha384 = 5
     sha512 = 6
 
-class SignatureAlgorithm:
-
+class SignatureAlgorithm(TLSEnum):
     """Signing algorithms used in TLSv1.2"""
 
     anonymous = 0
@@ -136,11 +173,13 @@ class ECPointFormat(object):
 class NameType:
     host_name = 0
 
-class AlertLevel:
+class AlertLevel(TLSEnum):
+    """Enumeration of TLS Alert protocol levels"""
+
     warning = 1
     fatal = 2
 
-class AlertDescription:
+class AlertDescription(TLSEnum):
     """
     @cvar bad_record_mac: A TLS record failed to decrypt properly.
 
