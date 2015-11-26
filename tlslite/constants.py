@@ -110,8 +110,7 @@ class SignatureAlgorithm(TLSEnum):
     dsa = 2
     ecdsa = 3
 
-class GroupName(object):
-
+class GroupName(TLSEnum):
     """Name of groups supported for (EC)DH key exchange"""
 
     # RFC4492
@@ -158,6 +157,14 @@ class GroupName(object):
 
     all = allEC + allFF
 
+    @classmethod
+    def toRepr(cls, value, blacklist=None):
+        """Convert numeric type to name representation"""
+        if blacklist is None:
+            blacklist = []
+        blacklist += ['all', 'allEC', 'allFF']
+        return super(GroupName, cls).toRepr(value, blacklist)
+
 class ECPointFormat(object):
 
     """Names and ID's of supported EC point formats"""
@@ -169,6 +176,13 @@ class ECPointFormat(object):
     all = [uncompressed,
            ansiX962_compressed_prime,
            ansiX962_compressed_char2]
+
+class ECCurveType(TLSEnum):
+    """Types of ECC curves supported in TLS from RFC4492"""
+
+    explicit_prime = 1
+    explicit_char2 = 2
+    named_curve = 3
 
 class NameType:
     host_name = 0
@@ -270,6 +284,9 @@ class CipherSuite:
 
     ietfNames = {}
 
+# the ciphesuite names come from IETF, we want to keep them
+#pylint: disable = invalid-name
+
     # Weird pseudo-ciphersuite from RFC 5746
     # Signals that "secure renegotiation" is supported
     # We actually don't do any renegotiation, but this
@@ -368,11 +385,31 @@ class CipherSuite:
     TLS_DHE_RSA_WITH_AES_256_GCM_SHA384 = 0x009F
     ietfNames[0x009F] = 'TLS_DHE_RSA_WITH_AES_256_GCM_SHA384'
 
+    # RFC 4492 - ECC Cipher Suites for TLS
+    TLS_ECDHE_RSA_WITH_NULL_SHA = 0xC010
+    ietfNames[0xC010] = 'TLS_ECDHE_RSA_WITH_NULL_SHA'
+    TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA = 0xC013
+    ietfNames[0xC013] = 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA'
+    TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA = 0xC014
+    ietfNames[0xC014] = 'TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA'
+
     # draft-ietf-tls-chacha20-poly1305-00
     # ChaCha20/Poly1305 based Cipher Suites for TLS1.2
     TLS_DHE_RSA_WITH_CHACHA20_POLY1305 = 0xcca3
     ietfNames[0xcca3] = 'TLS_DHE_RSA_WITH_CHACHA20_POLY1305'
 
+
+    # RFC 5289 - ECC Ciphers with SHA-256/SHA284 HMAC and AES-GCM
+    TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 = 0xC027
+    ietfNames[0xC027] = 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256'
+    TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384 = 0xC028
+    ietfNames[0xC028] = 'TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384'
+    TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 = 0xC02F
+    ietfNames[0xC02F] = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
+    TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 = 0xC030
+    ietfNames[0xC030] = 'TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384'
+
+#pylint: enable = invalid-name
     #
     # Define cipher suite families below
     #
@@ -395,6 +432,8 @@ class CipherSuite:
     aes128Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
     aes128Suites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA256)
     aes128Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA256)
+    aes128Suites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
+    aes128Suites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256)
 
     # AES-256 CBC ciphers
     aes256Suites = []
@@ -406,18 +445,22 @@ class CipherSuite:
     aes256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
     aes256Suites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
     aes256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA256)
+    aes256Suites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA)
+    aes256Suites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384)
 
     # AES-128 GCM ciphers
     aes128GcmSuites = []
     aes128GcmSuites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
     aes128GcmSuites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
     aes128GcmSuites.append(TLS_DH_ANON_WITH_AES_128_GCM_SHA256)
+    aes128GcmSuites.append(TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
 
     # AES-256-GCM ciphers (implicit SHA384, see sha384PrfSuites)
     aes256GcmSuites = []
     aes256GcmSuites.append(TLS_RSA_WITH_AES_256_GCM_SHA384)
     aes256GcmSuites.append(TLS_DHE_RSA_WITH_AES_256_GCM_SHA384)
     aes256GcmSuites.append(TLS_DH_ANON_WITH_AES_256_GCM_SHA384)
+    aes256GcmSuites.append(TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384)
 
     chacha20Suites = []
     chacha20Suites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305)
@@ -433,6 +476,7 @@ class CipherSuite:
     nullSuites.append(TLS_RSA_WITH_NULL_MD5)
     nullSuites.append(TLS_RSA_WITH_NULL_SHA)
     nullSuites.append(TLS_RSA_WITH_NULL_SHA256)
+    nullSuites.append(TLS_ECDHE_RSA_WITH_NULL_SHA)
 
     # SHA-1 HMAC, protocol default PRF
     shaSuites = []
@@ -453,6 +497,9 @@ class CipherSuite:
     shaSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA)
     shaSuites.append(TLS_RSA_WITH_NULL_SHA)
+    shaSuites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
+    shaSuites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA)
+    shaSuites.append(TLS_ECDHE_RSA_WITH_NULL_SHA)
 
     # SHA-256 HMAC, SHA-256 PRF
     sha256Suites = []
@@ -463,9 +510,11 @@ class CipherSuite:
     sha256Suites.append(TLS_RSA_WITH_NULL_SHA256)
     sha256Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA256)
     sha256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA256)
+    sha256Suites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256)
 
     # SHA-384 HMAC, SHA-384 PRF
     sha384Suites = []
+    sha384Suites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384)
 
     # stream cipher construction
     streamSuites = []
@@ -552,6 +601,8 @@ class CipherSuite:
             keyExchangeSuites += CipherSuite.certSuites
         if "dhe_rsa" in keyExchangeNames:
             keyExchangeSuites += CipherSuite.dheCertSuites
+        if "ecdhe_rsa" in keyExchangeNames:
+            keyExchangeSuites += CipherSuite.ecdheCertSuites
         if "srp_sha" in keyExchangeNames:
             keyExchangeSuites += CipherSuite.srpSuites
         if "srp_sha_rsa" in keyExchangeNames:
@@ -620,10 +671,28 @@ class CipherSuite:
 
     @staticmethod
     def getDheCertSuites(settings, version=None):
-        return CipherSuite._filterSuites(CipherSuite.dheCertSuites, settings, version)
+        """Provide authenticated DHE ciphersuites matching settings"""
+        return CipherSuite._filterSuites(CipherSuite.dheCertSuites,
+                                         settings, version)
+
+    # ECDHE key exchange, RSA authentication
+    ecdheCertSuites = []
+    ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384)
+    ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
+    ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384)
+    ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256)
+    ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA)
+    ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
+    ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_NULL_SHA)
+
+    @staticmethod
+    def getEcdheCertSuites(settings, version=None):
+        """Provide authenticated ECDHE ciphersuites matching settings"""
+        return CipherSuite._filterSuites(CipherSuite.ecdheCertSuites, settings,
+                                         version)
 
     # RSA authentication
-    certAllSuites = srpCertSuites + certSuites + dheCertSuites
+    certAllSuites = srpCertSuites + certSuites + dheCertSuites + ecdheCertSuites
 
     # anon FFDHE key exchange
     anonSuites = []
@@ -638,9 +707,16 @@ class CipherSuite:
 
     @staticmethod
     def getAnonSuites(settings, version=None):
-        return CipherSuite._filterSuites(CipherSuite.anonSuites, settings, version)
+        """Provide anonymous DH ciphersuites matching settings"""
+        return CipherSuite._filterSuites(CipherSuite.anonSuites,
+                                         settings, version)
 
     dhAllSuites = dheCertSuites + anonSuites
+
+    # anon ECDHE key exchange
+    ecdhAnonSuites = []
+
+    ecdhAllSuites = ecdheCertSuites + ecdhAnonSuites
 
     @staticmethod
     def canonicalCipherName(ciphersuite):

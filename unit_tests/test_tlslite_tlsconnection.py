@@ -14,11 +14,12 @@ from tlslite.recordlayer import RecordLayer
 from tlslite.messages import ServerHello, Certificate, ServerHelloDone, \
         ClientHello, ServerKeyExchange, CertificateRequest, ClientKeyExchange
 from tlslite.constants import CipherSuite, CertificateType, AlertDescription, \
-        HashAlgorithm, SignatureAlgorithm
+        HashAlgorithm, SignatureAlgorithm, GroupName
 from tlslite.tlsconnection import TLSConnection, KeyExchange, RSAKeyExchange, \
-        DHE_RSAKeyExchange, SRPKeyExchange
+        DHE_RSAKeyExchange, SRPKeyExchange, ECDHE_RSAKeyExchange
 from tlslite.errors import TLSLocalAlert, TLSIllegalParameterException, \
-        TLSDecryptionFailed, TLSInsufficientSecurity, TLSUnknownPSKIdentity
+        TLSDecryptionFailed, TLSInsufficientSecurity, TLSUnknownPSKIdentity, \
+        TLSInternalError
 from tlslite.x509 import X509
 from tlslite.x509certchain import X509CertChain
 from tlslite.utils.keyfactory import parsePEMKey
@@ -28,6 +29,10 @@ from tlslite.utils.cryptomath import bytesToNumber, getRandomBytes, powMod, \
 from tlslite.mathtls import makeX, makeU, makeK
 from tlslite.handshakehashes import HandshakeHashes
 from tlslite import VerifierDB
+from tlslite.extensions import SupportedGroupsExtension, SNIExtension
+from tlslite.utils.ecc import getCurveByName, decodeX962Point, encodeX962Point,\
+        getPointByteSize
+import ecdsa
 
 from unit_tests.mocksock import MockSocket
 
@@ -763,8 +768,99 @@ class TestSRPKeyExchange(unittest.TestCase):
         with self.assertRaises(TLSIllegalParameterException):
             client_keyExchange.processServerKeyExchange(None, keyExchange)
 
-class TestTLSConnection(unittest.TestCase):
+class TestECDHE_RSAKeyExchange(unittest.TestCase):
+    def setUp(self):
+        self.srv_private_key = parsePEMKey(srv_raw_key, private=True)
+        srv_chain = X509CertChain([X509().parse(srv_raw_certificate)])
+        self.srv_pub_key = srv_chain.getEndEntityPublicKey()
+        self.cipher_suite = CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+        ext = [SupportedGroupsExtension().create([GroupName.secp256r1])]
+        self.client_hello = ClientHello().create((3, 3),
+                                                 bytearray(32),
+                                                 bytearray(0),
+                                                 [],
+                                                 extensions=ext)
+        self.server_hello = ServerHello().create((3, 3),
+                                                 bytearray(32),
+                                                 bytearray(0),
+                                                 self.cipher_suite)
 
+        self.keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                self.client_hello,
+                                                self.server_hello,
+                                                self.srv_private_key,
+                                                [GroupName.secp256r1])
+
+    def test_ECDHE_key_exchange(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        KeyExchange.verifyServerKeyExchange(srv_key_ex,
+                                            self.srv_pub_key,
+                                            self.client_hello.random,
+                                            self.server_hello.random,
+                                            [(HashAlgorithm.sha1,
+                                              SignatureAlgorithm.rsa)])
+
+        curveName = GroupName.toStr(srv_key_ex.named_curve)
+        curve = getCurveByName(curveName)
+        generator = curve.generator
+        cln_Xc = ecdsa.util.randrange(generator.order())
+        cln_Ys = decodeX962Point(srv_key_ex.ecdh_Ys, curve)
+        cln_Yc = encodeX962Point(generator * cln_Xc)
+
+        cln_key_ex = ClientKeyExchange(self.cipher_suite, (3, 3))
+        cln_key_ex.createECDH(cln_Yc)
+
+        cln_S = cln_Ys * cln_Xc
+        cln_premaster = numberToByteArray(cln_S.x(),
+                                          getPointByteSize(cln_S))
+
+        srv_premaster = self.keyExchange.processClientKeyExchange(cln_key_ex)
+
+        self.assertEqual(cln_premaster, srv_premaster)
+
+    def test_ECDHE_key_exchange_with_missing_curves(self):
+        self.client_hello.extensions = [SNIExtension().create(bytearray(b"a"))]
+        with self.assertRaises(TLSInternalError):
+            self.keyExchange.makeServerKeyExchange('sha1')
+
+    def test_ECDHE_key_exchange_with_no_mutual_curves(self):
+        ext = SupportedGroupsExtension().create([GroupName.secp160r1])
+        self.client_hello.extensions = [ext]
+        with self.assertRaises(TLSInsufficientSecurity):
+            self.keyExchange.makeServerKeyExchange('sha1')
+
+    def test_client_ECDHE_key_exchange(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.secp256r1])
+        client_premaster = client_keyExchange.processServerKeyExchange(\
+                None,
+                srv_key_ex)
+        clientKeyExchange = client_keyExchange.makeClientKeyExchange()
+
+        server_premaster = self.keyExchange.processClientKeyExchange(\
+                clientKeyExchange)
+
+        self.assertEqual(client_premaster, server_premaster)
+
+    def test_client_ECDHE_key_exchange_with_invalid_server_curve(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+        srv_key_ex.named_curve = GroupName.secp384r1
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.secp256r1])
+        with self.assertRaises(TLSIllegalParameterException):
+            client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+class TestTLSConnection(unittest.TestCase):
 
     def test_client_with_server_responing_with_SHA256_on_TLSv1_1(self):
         # socket to generate the faux response

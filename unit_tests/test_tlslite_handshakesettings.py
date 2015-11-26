@@ -201,3 +201,9 @@ class TestHandshakeSettings(unittest.TestCase):
         hs.rsaSigHashes = []
         hs.maxVersion = (3, 2)
         self.assertIsNotNone(hs.validate())
+
+    def test_invalid_curve_name(self):
+        hs = HandshakeSettings()
+        hs.eccCurves = ['P-256']
+        with self.assertRaises(ValueError):
+            hs.validate()

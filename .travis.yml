@@ -81,6 +81,7 @@ install:
   - if [[ $PYCRYPTO == 'true' ]]; then travis_retry pip install pycrypto; fi
   - if [[ $GMPY == 'true' ]]; then travis_retry pip install gmpy; fi
   - if [[ $TRAVIS_PYTHON_VERSION == '3.2' ]]; then travis_retry pip install 'coverage<4' 'hypothesis<1.10'; else travis_retry pip install coverage hypothesis; fi
+  - travis_retry pip install -r requirements.txt
   - travis_retry pip install -r build-requirements.txt
 
 script:

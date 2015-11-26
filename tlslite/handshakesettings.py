@@ -10,6 +10,7 @@
 from .constants import CertificateType
 from .utils import cryptomath
 from .utils import cipherfactory
+from .utils.compat import ecdsaAllCurves
 
 CIPHER_NAMES = ["chacha20-poly1305",
                 "aes256gcm", "aes128gcm",
@@ -18,11 +19,18 @@ CIPHER_NAMES = ["chacha20-poly1305",
 ALL_CIPHER_NAMES = CIPHER_NAMES + ["rc4", "null"]
 MAC_NAMES = ["sha", "sha256", "aead"] # Don't allow "md5" by default.
 ALL_MAC_NAMES = MAC_NAMES + ["md5"]
-KEY_EXCHANGE_NAMES = ["rsa", "dhe_rsa", "srp_sha", "srp_sha_rsa", "dh_anon"]
+KEY_EXCHANGE_NAMES = ["rsa", "dhe_rsa", "ecdhe_rsa", "srp_sha", "srp_sha_rsa",
+                      "dh_anon"]
 CIPHER_IMPLEMENTATIONS = ["openssl", "pycrypto", "python"]
 CERTIFICATE_TYPES = ["x509"]
 RSA_SIGNATURE_HASHES = ["sha512", "sha384", "sha256", "sha224", "sha1"]
 ALL_RSA_SIGNATURE_HASHES = RSA_SIGNATURE_HASHES + ["md5"]
+# while secp521r1 is the most secure, it's also much slower than the others
+# so place it as the last one
+CURVE_NAMES = ["secp384r1", "secp256r1", "secp521r1"]
+ALL_CURVE_NAMES = CURVE_NAMES + ["secp256k1"]
+if ecdsaAllCurves:
+    ALL_CURVE_NAMES += ["secp224r1", "secp192r1"]
 
 class HandshakeSettings(object):
     """This class encapsulates various parameters that can be used with
@@ -113,6 +121,9 @@ class HandshakeSettings(object):
 
     The allowed hashes are: "md5", "sha1", "sha224", "sha256",
     "sha384" and "sha512". The default list does not include md5.
+
+    @type eccCurves: list
+    @ivar eccCurves: List of named curves that are to be supported
     """
     def __init__(self):
         self.minKeySize = 1023
@@ -128,6 +139,7 @@ class HandshakeSettings(object):
         self.sendFallbackSCSV = False
         self.useEncryptThenMAC = True
         self.rsaSigHashes = list(RSA_SIGNATURE_HASHES)
+        self.eccCurves = list(CURVE_NAMES)
 
     def validate(self):
         """
@@ -151,6 +163,7 @@ class HandshakeSettings(object):
         other.sendFallbackSCSV = self.sendFallbackSCSV
         other.useEncryptThenMAC = self.useEncryptThenMAC
         other.rsaSigHashes = self.rsaSigHashes
+        other.eccCurves = self.eccCurves
 
         if not cipherfactory.tripleDESPresent:
             other.cipherNames = [e for e in self.cipherNames if e != "3des"]
@@ -217,6 +230,10 @@ class HandshakeSettings(object):
                                  format(val))
         if len(other.rsaSigHashes) == 0 and other.maxVersion >= (3, 3):
             raise ValueError("TLS 1.2 requires signature algorithms to be set")
+
+        for val in other.eccCurves:
+            if val not in ALL_CURVE_NAMES:
+                raise ValueError("Unknown ECC Curve name: {0}".format(val))
 
         return other
 

@@ -26,6 +26,9 @@ from .mathtls import *
 from .handshakesettings import HandshakeSettings
 from .utils.tackwrapper import *
 from .utils.rsakey import RSAKey
+from .utils.ecc import decodeX962Point, encodeX962Point, getCurveByName, \
+        getPointByteSize
+import ecdsa
 
 class KeyExchange(object):
 
@@ -304,6 +307,87 @@ class DHE_RSAKeyExchange(KeyExchange):
         clientKeyExchange.createDH(self.dh_Yc)
         return clientKeyExchange
 
+# The ECDHE_RSA part comes from the IETF names of ciphersuites, so we want to
+# keep it
+#pylint: disable = invalid-name
+class ECDHE_RSAKeyExchange(KeyExchange):
+    """Helper class for conducting ECDHE key exchange"""
+
+    def __init__(self, cipherSuite, clientHello, serverHello, privateKey,
+                 acceptedCurves):
+        super(ECDHE_RSAKeyExchange, self).__init__(cipherSuite, clientHello,
+                                                   serverHello, privateKey)
+#pylint: enable = invalid-name
+        self.ecdhXs = None
+        self.acceptedCurves = acceptedCurves
+        self.group_id = None
+        self.ecdhYc = None
+
+    def makeServerKeyExchange(self, sigHash=None):
+        """Create ECDHE version of Server Key Exchange"""
+        #Get client supported groups
+        client_curves = self.clientHello.getExtension(\
+                ExtensionType.supported_groups)
+        if client_curves is None or client_curves.groups is None or \
+                len(client_curves.groups) == 0:
+            raise TLSInternalError("Can't do ECDHE with no client curves")
+        client_curves = client_curves.groups
+
+        #Pick first client preferred group we support
+        self.group_id = next((x for x in client_curves \
+                              if x in self.acceptedCurves),
+                             None)
+        if self.group_id is None:
+            raise TLSInsufficientSecurity("No mutual groups")
+        generator = getCurveByName(GroupName.toRepr(self.group_id)).generator
+        self.ecdhXs = ecdsa.util.randrange(generator.order())
+
+        ecdhYs = encodeX962Point(generator * self.ecdhXs)
+
+        version = self.serverHello.server_version
+        serverKeyExchange = ServerKeyExchange(self.cipherSuite, version)
+        serverKeyExchange.createECDH(ECCurveType.named_curve,
+                                     named_curve=self.group_id,
+                                     point=ecdhYs)
+        self.signServerKeyExchange(serverKeyExchange, sigHash)
+        return serverKeyExchange
+
+    def processClientKeyExchange(self, clientKeyExchange):
+        """Calculate premaster secret from previously generated SKE and CKE"""
+        curveName = GroupName.toRepr(self.group_id)
+        ecdhYc = decodeX962Point(clientKeyExchange.ecdh_Yc,
+                                 getCurveByName(curveName))
+
+        sharedSecret = ecdhYc * self.ecdhXs
+
+        return numberToByteArray(sharedSecret.x(), getPointByteSize(ecdhYc))
+
+    def processServerKeyExchange(self, srvPublicKey, serverKeyExchange):
+        """Process the server key exchange, return premaster secret"""
+        del srvPublicKey
+
+        if serverKeyExchange.curve_type != ECCurveType.named_curve \
+            or serverKeyExchange.named_curve not in self.acceptedCurves:
+            raise TLSIllegalParameterException("Server picked curve we "
+                                               "didn't advertise")
+
+        curveName = GroupName.toStr(serverKeyExchange.named_curve)
+        curve = getCurveByName(curveName)
+        generator = curve.generator
+
+        ecdhXc = ecdsa.util.randrange(generator.order())
+        ecdhYs = decodeX962Point(serverKeyExchange.ecdh_Ys, curve)
+        self.ecdhYc = encodeX962Point(generator * ecdhXc)
+        S = ecdhYs * ecdhXc
+        return numberToByteArray(S.x(), getPointByteSize(S))
+
+    def makeClientKeyExchange(self):
+        """Make client key exchange for ECDHE"""
+        clientKeyExchange = ClientKeyExchange(self.cipherSuite,
+                                              self.serverHello.server_version)
+        clientKeyExchange.createECDH(self.ecdhYc)
+        return clientKeyExchange
+
 class SRPKeyExchange(KeyExchange):
     """Helper class for conducting SRP key exchange"""
 
@@ -434,6 +518,9 @@ class TLSConnection(TLSRecordLayer):
         @type sock: L{socket.socket}
         """
         TLSRecordLayer.__init__(self, sock)
+        self.serverSigAlg = None
+        self.ecdhCurve = None
+        self.dhGroupSize = None
 
     #*********************************************************
     # Client Handshake Functions
@@ -832,6 +919,12 @@ class TLSConnection(TLSRecordLayer):
             keyExchange = DHE_RSAKeyExchange(cipherSuite, clientHello,
                                              serverHello, None)
 
+        elif cipherSuite in CipherSuite.ecdhAllSuites:
+            acceptedCurves = self._curveNamesToList(settings)
+            keyExchange = ECDHE_RSAKeyExchange(cipherSuite, clientHello,
+                                               serverHello, None,
+                                               acceptedCurves)
+
         #If the server selected a certificate-based RSA ciphersuite,
         #the client finishes reading the post-ServerHello messages. If 
         #a CertificateRequest message was sent, the client responds with
@@ -866,7 +959,7 @@ class TLSConnection(TLSRecordLayer):
                 if result in (0,1): yield result
                 else: break
         masterSecret = result
-        
+
         # Create the session object which is used for resumptions
         self.session = Session()
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
@@ -885,12 +978,13 @@ class TLSConnection(TLSRecordLayer):
         if srpParams:
             cipherSuites += CipherSuite.getSrpAllSuites(settings)
         elif certParams:
+            cipherSuites += CipherSuite.getEcdheCertSuites(settings)
             cipherSuites += CipherSuite.getDheCertSuites(settings)
             cipherSuites += CipherSuite.getCertSuites(settings)
         elif anonParams:
             cipherSuites += CipherSuite.getAnonSuites(settings)
         else:
-            assert(False)
+            assert False
 
         #Add any SCSVs. These are not real cipher suites, but signaling
         #values which reuse the cipher suite field in the ClientHello.
@@ -908,6 +1002,13 @@ class TLSConnection(TLSRecordLayer):
             extensions.append(TLSExtension().\
                               create(ExtensionType.encrypt_then_mac,
                                      bytearray(0)))
+        #Send the ECC extensions only if we advertise ECC ciphers
+        if next((cipher for cipher in cipherSuites \
+                if cipher in CipherSuite.ecdhAllSuites), None) is not None:
+            extensions.append(SupportedGroupsExtension().\
+                              create(self._curveNamesToList(settings)))
+            extensions.append(ECPointFormatsExtension().\
+                              create([ECPointFormat.uncompressed]))
         # In TLS1.2 advertise support for additional signature types
         if settings.maxVersion >= (3, 3):
             sigList = self._sigHashesToList(settings)
@@ -1145,6 +1246,19 @@ class TLSConnection(TLSRecordLayer):
                     for result in self._sendError(\
                             AlertDescription.decrypt_error):
                         yield result
+
+        if serverKeyExchange:
+            # store key exchange metadata for user applications
+            if self.version >= (3, 3) \
+                    and cipherSuite in CipherSuite.certAllSuites \
+                    and cipherSuite not in CipherSuite.certSuites:
+                self.serverSigAlg = (serverKeyExchange.hashAlg,
+                                     serverKeyExchange.signAlg)
+
+            if cipherSuite in CipherSuite.dhAllSuites:
+                self.dhGroupSize = numBits(serverKeyExchange.dh_p)
+            if cipherSuite in CipherSuite.ecdhAllSuites:
+                self.ecdhCurve = serverKeyExchange.named_curve
 
         #Send Certificate if we were asked for it
         if certificateRequest:
@@ -1498,7 +1612,8 @@ class TLSConnection(TLSRecordLayer):
 
         # Perform a certificate-based key exchange
         elif (cipherSuite in CipherSuite.certSuites or
-              cipherSuite in CipherSuite.dheCertSuites):
+              cipherSuite in CipherSuite.dheCertSuites or
+              cipherSuite in CipherSuite.ecdheCertSuites):
             if cipherSuite in CipherSuite.certSuites:
                 keyExchange = RSAKeyExchange(cipherSuite,
                                              clientHello,
@@ -1509,6 +1624,13 @@ class TLSConnection(TLSRecordLayer):
                                                  clientHello,
                                                  serverHello,
                                                  privateKey)
+            elif cipherSuite in CipherSuite.ecdheCertSuites:
+                acceptedCurves = self._curveNamesToList(settings)
+                keyExchange = ECDHE_RSAKeyExchange(cipherSuite,
+                                                   clientHello,
+                                                   serverHello,
+                                                   privateKey,
+                                                   acceptedCurves)
             else:
                 assert(False)
             for result in self._serverCertKeyExchange(clientHello, serverHello, 
@@ -1601,8 +1723,19 @@ class TLSConnection(TLSRecordLayer):
                   AlertDescription.inappropriate_fallback):
                 yield result
 
+        #Check if there's intersection between supported curves by client and
+        #server
+        client_groups = clientHello.getExtension(ExtensionType.supported_groups)
+        group_intersect = []
+        if client_groups is not None:
+            client_groups = client_groups.groups
+            if client_groups is None:
+                client_groups = []
+            server_groups = self._curveNamesToList(settings)
+            group_intersect = [x for x in client_groups if x in server_groups]
+
         #Now that the version is known, limit to only the ciphers available to
-        #that version.
+        #that version and client capabilities.
         cipherSuites = []
         if verifierDB:
             if certChain:
@@ -1610,6 +1743,9 @@ class TLSConnection(TLSRecordLayer):
                     CipherSuite.getSrpCertSuites(settings, self.version)
             cipherSuites += CipherSuite.getSrpSuites(settings, self.version)
         elif certChain:
+            if len(group_intersect) > 0:
+                cipherSuites += CipherSuite.getEcdheCertSuites(settings,
+                                                               self.version)
             cipherSuites += CipherSuite.getDheCertSuites(settings, self.version)
             cipherSuites += CipherSuite.getCertSuites(settings, self.version)
         elif anon:
@@ -2121,3 +2257,8 @@ class TLSConnection(TLSRecordLayer):
             sigAlgs.append((getattr(HashAlgorithm, hashName),
                             SignatureAlgorithm.rsa))
         return sigAlgs
+
+    @staticmethod
+    def _curveNamesToList(settings):
+        """Convert list of acceptable curves to array identifiers"""
+        return [getattr(GroupName, val) for val in settings.eccCurves]

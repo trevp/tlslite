@@ -10,7 +10,7 @@ except ImportError:
     import unittest
 
 from tlslite.constants import CipherSuite, HashAlgorithm, SignatureAlgorithm, \
-        ContentType, AlertDescription, AlertLevel, HandshakeType
+        ContentType, AlertDescription, AlertLevel, HandshakeType, GroupName
 
 class TestHashAlgorithm(unittest.TestCase):
 
@@ -42,6 +42,11 @@ class TestContentType(unittest.TestCase):
     def test_toStr_with_invalid_value(self):
         self.assertEqual(ContentType.toStr((20, 21, 22, 23)),
                          '(20, 21, 22, 23)')
+
+class TestGroupName(unittest.TestCase):
+
+    def test_toRepr(self):
+        self.assertEqual(GroupName.toRepr(256), 'ffdhe2048')
 
 class TestAlertDescription(unittest.TestCase):
     def test_toRepr(self):
