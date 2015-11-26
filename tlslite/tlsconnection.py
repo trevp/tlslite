@@ -64,7 +64,8 @@ class KeyExchange(object):
         Returns a ClientKeyExchange for the second flight from client in the
         handshake.
         """
-        raise NotImplementedError()
+        return ClientKeyExchange(self.cipherSuite,
+                                 self.serverHello.server_version)
 
     def processClientKeyExchange(self, clientKeyExchange):
         """
@@ -232,8 +233,8 @@ class RSAKeyExchange(KeyExchange):
         return premasterSecret
 
     def makeClientKeyExchange(self):
-        clientKeyExchange = ClientKeyExchange(self.cipherSuite,
-                                              self.serverHello.server_version)
+        """Return a client key exchange with clients key share"""
+        clientKeyExchange = super(RSAKeyExchange, self).makeClientKeyExchange()
         clientKeyExchange.createRSA(self.encPremasterSecret)
         return clientKeyExchange
 
@@ -302,10 +303,9 @@ class DHE_RSAKeyExchange(KeyExchange):
 
     def makeClientKeyExchange(self):
         """Create client key share for the key exchange"""
-        clientKeyExchange = ClientKeyExchange(self.cipherSuite,
-                                              self.serverHello.server_version)
-        clientKeyExchange.createDH(self.dh_Yc)
-        return clientKeyExchange
+        cke = super(DHE_RSAKeyExchange, self).makeClientKeyExchange()
+        cke.createDH(self.dh_Yc)
+        return cke
 
 # The ECDHE_RSA part comes from the IETF names of ciphersuites, so we want to
 # keep it
@@ -383,10 +383,9 @@ class ECDHE_RSAKeyExchange(KeyExchange):
 
     def makeClientKeyExchange(self):
         """Make client key exchange for ECDHE"""
-        clientKeyExchange = ClientKeyExchange(self.cipherSuite,
-                                              self.serverHello.server_version)
-        clientKeyExchange.createECDH(self.ecdhYc)
-        return clientKeyExchange
+        cke = super(ECDHE_RSAKeyExchange, self).makeClientKeyExchange()
+        cke.createECDH(self.ecdhYc)
+        return cke
 
 class SRPKeyExchange(KeyExchange):
     """Helper class for conducting SRP key exchange"""
@@ -480,10 +479,9 @@ class SRPKeyExchange(KeyExchange):
 
     def makeClientKeyExchange(self):
         """Create ClientKeyExchange"""
-        clientKeyExchange = ClientKeyExchange(self.cipherSuite,
-                                              self.serverHello.server_version)
-        clientKeyExchange.createSRP(self.A)
-        return clientKeyExchange
+        cke = super(SRPKeyExchange, self).makeClientKeyExchange()
+        cke.createSRP(self.A)
+        return cke
 
 class TLSConnection(TLSRecordLayer):
     """

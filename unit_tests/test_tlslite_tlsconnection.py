@@ -105,9 +105,10 @@ class TestKeyExchange(unittest.TestCase):
             keyExchange.makeServerKeyExchange()
 
     def test_makeClientKeyExchange(self):
-        keyExchange = KeyExchange(0, None, None, None)
-        with self.assertRaises(NotImplementedError):
-            keyExchange.makeClientKeyExchange()
+        srv_h = ServerHello().create((3, 3), bytearray(32), bytearray(0), 0)
+        keyExchange = KeyExchange(0, None, srv_h, None)
+        self.assertIsInstance(keyExchange.makeClientKeyExchange(),
+                              ClientKeyExchange)
 
     def test_processClientKeyExchange(self):
         keyExchange = KeyExchange(0, None, None, None)
