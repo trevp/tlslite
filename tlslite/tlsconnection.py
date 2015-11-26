@@ -248,6 +248,7 @@ class DHE_RSAKeyExchange(KeyExchange):
                                                  serverHello, privateKey)
 #pylint: enable = invalid-name
         self.dh_Xs = None
+        self.dh_Yc = None
 
     # 2048-bit MODP Group (RFC 3526, Section 3)
     dh_g, dh_p = goodGroupParameters[2]
@@ -280,6 +281,28 @@ class DHE_RSAKeyExchange(KeyExchange):
 
         S = powMod(dh_Yc, self.dh_Xs, self.dh_p)
         return numberToByteArray(S)
+
+    def processServerKeyExchange(self, srvPublicKey, serverKeyExchange):
+        """Process the server key exchange, return premaster secret"""
+        del srvPublicKey
+        dh_p = serverKeyExchange.dh_p
+        # TODO make the minimum changeable
+        if dh_p < 2**1023:
+            raise TLSInsufficientSecurity("DH prime too small")
+        dh_g = serverKeyExchange.dh_g
+        dh_Xc = bytesToNumber(getRandomBytes(32))
+        dh_Ys = serverKeyExchange.dh_Ys
+        self.dh_Yc = powMod(dh_g, dh_Xc, dh_p)
+
+        S = powMod(dh_Ys, dh_Xc, dh_p)
+        return numberToByteArray(S)
+
+    def makeClientKeyExchange(self):
+        """Create client key share for the key exchange"""
+        clientKeyExchange = ClientKeyExchange(self.cipherSuite,
+                                              self.serverHello.server_version)
+        clientKeyExchange.createDH(self.dh_Yc)
+        return clientKeyExchange
 
 class TLSConnection(TLSRecordLayer):
     """
@@ -713,11 +736,14 @@ class TLSConnection(TLSRecordLayer):
         #If the server selected an anonymous ciphersuite, the client
         #finishes reading the post-ServerHello messages.
         elif cipherSuite in CipherSuite.dhAllSuites:
+            keyExchange = DHE_RSAKeyExchange(cipherSuite, clientHello,
+                                             serverHello, None)
             for result in self._clientDHEKeyExchange(settings, cipherSuite,
                                     clientCertChain, privateKey,
                                     serverHello.certificate_type,
                                     serverHello.tackExt,
-                                    clientHello.random, serverHello.random):
+                                    clientHello.random, serverHello.random,
+                                    keyExchange):
                 if result in (0,1): yield result
                 else: break
             (premasterSecret, serverCertChain, clientCertChain,
@@ -1171,7 +1197,8 @@ class TLSConnection(TLSRecordLayer):
     def _clientDHEKeyExchange(self, settings, cipherSuite,
                               clientCertChain, privateKey,
                               certificateType,
-                              tackExt, clientRandom, serverRandom):
+                              tackExt, clientRandom, serverRandom,
+                              keyExchange):
         #TODO: check if received messages match cipher suite
         # (abort if CertfificateRequest and ADH)
 
@@ -1238,13 +1265,6 @@ class TLSConnection(TLSRecordLayer):
                 for result in self._sendError(AlertDescription.decrypt_error):
                     yield result
 
-            # TODO: make it changeable
-            if 2**1023 > serverKeyExchange.dh_p:
-                for result in self._sendError(
-                        AlertDescription.insufficient_security,
-                        "Server sent a DHE key exchange with very small prime"):
-                    yield result
-
         #Send Certificate if we were asked for it
         if certificateRequest:
 
@@ -1283,21 +1303,21 @@ class TLSConnection(TLSRecordLayer):
             privateKey = None
             clientCertChain = None
 
-        #calculate Yc
-        dh_p = serverKeyExchange.dh_p
-        dh_g = serverKeyExchange.dh_g
-        dh_Xc = bytesToNumber(getRandomBytes(32))
-        dh_Ys = serverKeyExchange.dh_Ys
-        dh_Yc = powMod(dh_g, dh_Xc, dh_p)
+        try:
+            ske = serverKeyExchange
+            premasterSecret = keyExchange.processServerKeyExchange(None,
+                                                                   ske)
+        except TLSInsufficientSecurity:
+            for result in self._sendError(
+                    AlertDescription.insufficient_security,
+                    "Server sent a DHE key exchange with very small prime"):
+                yield result
+
+        clientKeyExchange = keyExchange.makeClientKeyExchange()
 
         #Send ClientKeyExchange
-        for result in self._sendMsg(\
-                ClientKeyExchange(cipherSuite, self.version).createDH(dh_Yc)):
+        for result in self._sendMsg(clientKeyExchange):
             yield result
-
-        #Calculate premaster secret
-        S = powMod(dh_Ys, dh_Xc, dh_p)
-        premasterSecret = numberToByteArray(S)
 
         #if client auth was requested and we have a private key, send a
         #CertificateVerify

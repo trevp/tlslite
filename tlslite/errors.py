@@ -219,3 +219,8 @@ class TLSBadRecordMAC(TLSProtocolException):
     """Bad MAC (or padding in case of mac-then-encrypt)"""
 
     pass
+
+class TLSInsufficientSecurity(TLSProtocolException):
+    """Parameters selected by user are too weak"""
+
+    pass

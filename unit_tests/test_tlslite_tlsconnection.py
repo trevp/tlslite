@@ -18,7 +18,7 @@ from tlslite.constants import CipherSuite, CertificateType, AlertDescription, \
 from tlslite.tlsconnection import TLSConnection, KeyExchange, RSAKeyExchange, \
         DHE_RSAKeyExchange
 from tlslite.errors import TLSLocalAlert, TLSIllegalParameterException, \
-        TLSDecryptionFailed
+        TLSDecryptionFailed, TLSInsufficientSecurity
 from tlslite.x509 import X509
 from tlslite.x509certchain import X509CertChain
 from tlslite.utils.keyfactory import parsePEMKey
@@ -537,6 +537,36 @@ class TestDHE_RSAKeyExchange(unittest.TestCase):
         srv_secret = self.keyExchange.processClientKeyExchange(cln_key_ex)
 
         self.assertEqual(cln_secret, srv_secret)
+
+    def test_DHE_RSA_key_exchange_with_client(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                                self.client_hello,
+                                                self.server_hello,
+                                                None)
+        client_premaster = client_keyExchange.processServerKeyExchange(\
+                None,
+                srv_key_ex)
+        clientKeyExchange = client_keyExchange.makeClientKeyExchange()
+
+        server_premaster = self.keyExchange.processClientKeyExchange(\
+                clientKeyExchange)
+
+        self.assertEqual(client_premaster, server_premaster)
+
+    def test_DHE_RSA_key_exchange_with_small_prime(self):
+        client_keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                                self.client_hello,
+                                                self.server_hello,
+                                                None)
+
+        srv_key_ex = ServerKeyExchange(self.cipher_suite,
+                                       self.server_hello.server_version)
+        srv_key_ex.createDH(2**768, 2, 2**512-1)
+
+        with self.assertRaises(TLSInsufficientSecurity):
+            client_keyExchange.processServerKeyExchange(None, srv_key_ex)
 
 class TestTLSConnection(unittest.TestCase):
 
