@@ -642,9 +642,10 @@ class CipherSuite:
     srpSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
 
-    @staticmethod
-    def getSrpSuites(settings, version=None):
-        return CipherSuite._filterSuites(CipherSuite.srpSuites, settings, version)
+    @classmethod
+    def getSrpSuites(cls, settings, version=None):
+        """Return SRP cipher suites matching settings"""
+        return cls._filterSuites(CipherSuite.srpSuites, settings, version)
 
     # SRP key exchange, RSA authentication
     srpCertSuites = []
@@ -652,15 +653,17 @@ class CipherSuite:
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
 
-    @staticmethod
-    def getSrpCertSuites(settings, version=None):
-        return CipherSuite._filterSuites(CipherSuite.srpCertSuites, settings, version)
+    @classmethod
+    def getSrpCertSuites(cls, settings, version=None):
+        """Return SRP cipher suites that use server certificates"""
+        return cls._filterSuites(CipherSuite.srpCertSuites, settings, version)
 
     srpAllSuites = srpSuites + srpCertSuites
 
-    @staticmethod
-    def getSrpAllSuites(settings, version=None):
-        return CipherSuite._filterSuites(CipherSuite.srpAllSuites, settings, version)
+    @classmethod
+    def getSrpAllSuites(cls, settings, version=None):
+        """Return all SRP cipher suites matching settings"""
+        return cls._filterSuites(CipherSuite.srpAllSuites, settings, version)
 
     # RSA key exchange, RSA authentication
     certSuites = []
@@ -677,9 +680,10 @@ class CipherSuite:
     certSuites.append(TLS_RSA_WITH_NULL_SHA)
     certSuites.append(TLS_RSA_WITH_NULL_SHA256)
 
-    @staticmethod
-    def getCertSuites(settings, version=None):
-        return CipherSuite._filterSuites(CipherSuite.certSuites, settings, version)
+    @classmethod
+    def getCertSuites(cls, settings, version=None):
+        """Return ciphers with RSA authentication matching settings"""
+        return cls._filterSuites(CipherSuite.certSuites, settings, version)
 
     # FFDHE key exchange, RSA authentication
     dheCertSuites = []
@@ -692,11 +696,10 @@ class CipherSuite:
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA)
     dheCertSuites.append(TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA)
 
-    @staticmethod
-    def getDheCertSuites(settings, version=None):
+    @classmethod
+    def getDheCertSuites(cls, settings, version=None):
         """Provide authenticated DHE ciphersuites matching settings"""
-        return CipherSuite._filterSuites(CipherSuite.dheCertSuites,
-                                         settings, version)
+        return cls._filterSuites(CipherSuite.dheCertSuites, settings, version)
 
     # ECDHE key exchange, RSA authentication
     ecdheCertSuites = []
@@ -708,11 +711,10 @@ class CipherSuite:
     ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
     ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_NULL_SHA)
 
-    @staticmethod
-    def getEcdheCertSuites(settings, version=None):
+    @classmethod
+    def getEcdheCertSuites(cls, settings, version=None):
         """Provide authenticated ECDHE ciphersuites matching settings"""
-        return CipherSuite._filterSuites(CipherSuite.ecdheCertSuites, settings,
-                                         version)
+        return cls._filterSuites(CipherSuite.ecdheCertSuites, settings, version)
 
     # RSA authentication
     certAllSuites = srpCertSuites + certSuites + dheCertSuites + ecdheCertSuites
@@ -728,11 +730,10 @@ class CipherSuite:
     anonSuites.append(TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA)
     anonSuites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
 
-    @staticmethod
-    def getAnonSuites(settings, version=None):
+    @classmethod
+    def getAnonSuites(cls, settings, version=None):
         """Provide anonymous DH ciphersuites matching settings"""
-        return CipherSuite._filterSuites(CipherSuite.anonSuites,
-                                         settings, version)
+        return cls._filterSuites(CipherSuite.anonSuites, settings, version)
 
     dhAllSuites = dheCertSuites + anonSuites
 
@@ -744,11 +745,10 @@ class CipherSuite:
     ecdhAnonSuites.append(TLS_ECDH_ANON_WITH_RC4_128_SHA)
     ecdhAnonSuites.append(TLS_ECDH_ANON_WITH_NULL_SHA)
 
-    @staticmethod
-    def getEcdhAnonSuites(settings, version=None):
+    @classmethod
+    def getEcdhAnonSuites(cls, settings, version=None):
         """Provide anonymous ECDH ciphersuites matching settings"""
-        return CipherSuite._filterSuites(CipherSuite.ecdhAnonSuites,
-                                         settings, version)
+        return cls._filterSuites(CipherSuite.ecdhAnonSuites, settings, version)
 
     ecdhAllSuites = ecdheCertSuites + ecdhAnonSuites
 
