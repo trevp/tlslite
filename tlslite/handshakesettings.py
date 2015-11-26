@@ -141,6 +141,73 @@ class HandshakeSettings(object):
         self.rsaSigHashes = list(RSA_SIGNATURE_HASHES)
         self.eccCurves = list(CURVE_NAMES)
 
+    @staticmethod
+    def _sanityCheckKeySizes(other):
+        """Check if key size limits are sane"""
+        if other.minKeySize < 512:
+            raise ValueError("minKeySize too small")
+        if other.minKeySize > 16384:
+            raise ValueError("minKeySize too large")
+        if other.maxKeySize < 512:
+            raise ValueError("maxKeySize too small")
+        if other.maxKeySize > 16384:
+            raise ValueError("maxKeySize too large")
+        if other.maxKeySize < other.minKeySize:
+            raise ValueError("maxKeySize smaller than minKeySize")
+
+    @staticmethod
+    def _sanityCheckPrimitivesNames(other):
+        """Check if specified cryptographic primitive names are known"""
+        unknownCiphers = [val for val in other.cipherNames \
+                          if val not in ALL_CIPHER_NAMES]
+        if unknownCiphers:
+            raise ValueError("Unknown cipher name: %s" % unknownCiphers)
+
+        unknownMacs = [val for val in other.macNames \
+                       if val not in ALL_MAC_NAMES]
+        if unknownMacs:
+            raise ValueError("Unknown MAC name: %s" % unknownMacs)
+
+        unknownKex = [val for val in other.keyExchangeNames \
+                      if val not in KEY_EXCHANGE_NAMES]
+        if unknownKex:
+            raise ValueError("Unknown key exchange name: %s" % unknownKex)
+
+        unknownImpl = [val for val in other.cipherImplementations \
+                       if val not in CIPHER_IMPLEMENTATIONS]
+        if unknownImpl:
+            raise ValueError("Unknown cipher implementation: %s" % \
+                             unknownImpl)
+
+        unknownType = [val for val in other.certificateTypes \
+                       if val not in CERTIFICATE_TYPES]
+        if unknownType:
+            raise ValueError("Unknown certificate type: %s" % unknownType)
+
+        unknownCurve = [val for val in other.eccCurves \
+                        if val not in ALL_CURVE_NAMES]
+        if unknownCurve:
+            raise ValueError("Unknown ECC Curve name: {0}".format(unknownCurve))
+
+        if other.useEncryptThenMAC not in (True, False):
+            raise ValueError("useEncryptThenMAC can only be True or False")
+
+        unknownSigHash = [val for val in other.rsaSigHashes \
+                          if val not in ALL_RSA_SIGNATURE_HASHES]
+        if unknownSigHash:
+            raise ValueError("Unknown RSA signature hash: '{0}'".\
+                             format(unknownSigHash))
+
+    @staticmethod
+    def _sanityCheckProtocolVersions(other):
+        """Check if set protocol version are sane"""
+        if other.minVersion > other.maxVersion:
+            raise ValueError("Versions set incorrectly")
+        if other.minVersion not in ((3, 0), (3, 1), (3, 2), (3, 3)):
+            raise ValueError("minVersion set incorrectly")
+        if other.maxVersion not in ((3, 0), (3, 1), (3, 2), (3, 3)):
+            raise ValueError("maxVersion set incorrectly")
+
     def validate(self):
         """
         Validate the settings, filter out unsupported ciphersuites and return
@@ -166,10 +233,10 @@ class HandshakeSettings(object):
         other.eccCurves = self.eccCurves
 
         if not cipherfactory.tripleDESPresent:
-            other.cipherNames = [e for e in self.cipherNames if e != "3des"]
-        if len(other.cipherNames)==0:
+            other.cipherNames = [i for i in self.cipherNames if i != "3des"]
+        if len(other.cipherNames) == 0:
             raise ValueError("No supported ciphers")
-        if len(other.certificateTypes)==0:
+        if len(other.certificateTypes) == 0:
             raise ValueError("No supported certificate types")
 
         if not cryptomath.m2cryptoLoaded:
@@ -178,62 +245,22 @@ class HandshakeSettings(object):
         if not cryptomath.pycryptoLoaded:
             other.cipherImplementations = \
                 [e for e in other.cipherImplementations if e != "pycrypto"]
-        if len(other.cipherImplementations)==0:
+        if len(other.cipherImplementations) == 0:
             raise ValueError("No supported cipher implementations")
 
-        if other.minKeySize<512:
-            raise ValueError("minKeySize too small")
-        if other.minKeySize>16384:
-            raise ValueError("minKeySize too large")
-        if other.maxKeySize<512:
-            raise ValueError("maxKeySize too small")
-        if other.maxKeySize>16384:
-            raise ValueError("maxKeySize too large")
-        if other.maxKeySize < other.minKeySize:
-            raise ValueError("maxKeySize smaller than minKeySize")
-        for s in other.cipherNames:
-            if s not in ALL_CIPHER_NAMES:
-                raise ValueError("Unknown cipher name: '%s'" % s)
-        for s in other.macNames:
-            if s not in ALL_MAC_NAMES:
-                raise ValueError("Unknown MAC name: '%s'" % s)
-        for s in other.keyExchangeNames:
-            if s not in KEY_EXCHANGE_NAMES:
-                raise ValueError("Unknown key exchange name: '%s'" % s)
-        for s in other.cipherImplementations:
-            if s not in CIPHER_IMPLEMENTATIONS:
-                raise ValueError("Unknown cipher implementation: '%s'" % s)
-        for s in other.certificateTypes:
-            if s not in CERTIFICATE_TYPES:
-                raise ValueError("Unknown certificate type: '%s'" % s)
+        self._sanityCheckKeySizes(other)
 
-        if other.minVersion > other.maxVersion:
-            raise ValueError("Versions set incorrectly")
+        self._sanityCheckPrimitivesNames(other)
 
-        if not other.minVersion in ((3,0), (3,1), (3,2), (3,3)):
-            raise ValueError("minVersion set incorrectly")
-
-        if not other.maxVersion in ((3,0), (3,1), (3,2), (3,3)):
-            raise ValueError("maxVersion set incorrectly")
+        self._sanityCheckProtocolVersions(other)
 
         if other.maxVersion < (3,3):
             # No sha-2 and AEAD pre TLS 1.2
             other.macNames = [e for e in self.macNames if \
                               e == "sha" or e == "md5"]
 
-        if other.useEncryptThenMAC not in (True, False):
-            raise ValueError("useEncryptThenMAC can only be True or False")
-
-        for val in other.rsaSigHashes:
-            if val not in ALL_RSA_SIGNATURE_HASHES:
-                raise ValueError("Unknown RSA signature hash: '{0}'".\
-                                 format(val))
         if len(other.rsaSigHashes) == 0 and other.maxVersion >= (3, 3):
             raise ValueError("TLS 1.2 requires signature algorithms to be set")
-
-        for val in other.eccCurves:
-            if val not in ALL_CURVE_NAMES:
-                raise ValueError("Unknown ECC Curve name: {0}".format(val))
 
         return other
 
