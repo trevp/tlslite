@@ -825,38 +825,13 @@ class TLSConnection(TLSRecordLayer):
                                          srpUsername=srpUsername,
                                          password=password,
                                          settings=settings)
-            for result in self._clientSRPKeyExchange(settings, cipherSuite,
-                                                     serverHello.\
-                                                             certificate_type,
-                                                     clientHello.random,
-                                                     serverHello.random,
-                                                     serverHello.tackExt,
-                                                     keyExchange):
-                if result in (0, 1):
-                    yield result
-                else: break
-            (premasterSecret, serverCertChain, tackExt) = result
 
         #If the server selected an anonymous ciphersuite, the client
         #finishes reading the post-ServerHello messages.
         elif cipherSuite in CipherSuite.dhAllSuites:
             keyExchange = DHE_RSAKeyExchange(cipherSuite, clientHello,
                                              serverHello, None)
-            for result in self._clientDHEKeyExchange(settings, cipherSuite,
-                                                     clientCertChain,
-                                                     privateKey,
-                                                     serverHello.\
-                                                            certificate_type,
-                                                     serverHello.tackExt,
-                                                     clientHello.random,
-                                                     serverHello.random,
-                                                     keyExchange):
-                if result in (0, 1):
-                    yield result
-                else: break
-            (premasterSecret, serverCertChain, clientCertChain,
-             tackExt) = result
-               
+
         #If the server selected a certificate-based RSA ciphersuite,
         #the client finishes reading the post-ServerHello messages. If 
         #a CertificateRequest message was sent, the client responds with
@@ -866,17 +841,21 @@ class TLSConnection(TLSRecordLayer):
         else:
             keyExchange = RSAKeyExchange(cipherSuite, clientHello,
                                          serverHello, None)
-            for result in self._clientRSAKeyExchange(settings, cipherSuite,
-                                    clientCertChain, privateKey,
-                                    serverHello.certificate_type,
-                                    clientHello.random, serverHello.random,
-                                    serverHello.tackExt,
-                                    keyExchange):
-                if result in (0,1): yield result
-                else: break
-            (premasterSecret, serverCertChain, clientCertChain, 
-             tackExt) = result
-                        
+
+        for result in self._clientKeyExchange(settings, cipherSuite,
+                                              clientCertChain,
+                                              privateKey,
+                                              serverHello.certificate_type,
+                                              serverHello.tackExt,
+                                              clientHello.random,
+                                              serverHello.random,
+                                              keyExchange):
+            if result in (0, 1):
+                yield result
+            else: break
+        (premasterSecret, serverCertChain, clientCertChain,
+         tackExt) = result
+
         #After having previously sent a ClientKeyExchange, the client now
         #initiates an exchange of Finished messages.
         for result in self._clientFinished(premasterSecret,
@@ -1078,188 +1057,16 @@ class TLSConnection(TLSRecordLayer):
 
             #Set the session for this connection
             self.session = session
-            yield "resumed_and_finished"        
-            
-    def _clientSRPKeyExchange(self, settings, cipherSuite, certificateType,
-            clientRandom, serverRandom, tackExt, keyExchange):
+            yield "resumed_and_finished"
 
-        #If the server chose an SRP+RSA suite...
-        if cipherSuite in CipherSuite.srpCertSuites:
-            #Get Certificate, ServerKeyExchange, ServerHelloDone
-            for result in self._getMsg(ContentType.handshake,
-                    HandshakeType.certificate, certificateType):
-                if result in (0,1): yield result
-                else: break
-            serverCertificate = result
-        else:
-            serverCertificate = None
-
-        for result in self._getMsg(ContentType.handshake,
-                HandshakeType.server_key_exchange, cipherSuite):
-            if result in (0,1): yield result
-            else: break
-        serverKeyExchange = result
-
-        for result in self._getMsg(ContentType.handshake,
-                HandshakeType.server_hello_done):
-            if result in (0,1): yield result
-            else: break
-        serverHelloDone = result
-
-        #Check the server's signature, if server chose an
-        #SRP+RSA suite
-        serverCertChain = None
-        if cipherSuite in CipherSuite.srpCertSuites:
-            # Get server's public key from the Certificate message
-            # Also validate the chain against the ServerHello's TACKext (if any)
-            # If none, and a TACK cert is present, return its TACKext
-            for result in self._clientGetKeyFromChain(serverCertificate,
-                                                      settings, tackExt):
-                if result in (0,1): yield result
-                else: break
-            publicKey, serverCertChain, tackExt = result
-
-            # Check signature on ServerKeyExchange message
-            validSigAlgs = self._sigHashesToList(settings)
-            try:
-                KeyExchange.verifyServerKeyExchange(serverKeyExchange,
-                                                    publicKey,
-                                                    clientRandom,
-                                                    serverRandom,
-                                                    validSigAlgs)
-            except TLSIllegalParameterException:
-                for result in self._sendError(AlertDescription.\
-                                              illegal_parameter):
-                    yield result
-            except TLSDecryptionFailed:
-                for result in self._sendError(AlertDescription.decrypt_error):
-                    yield result
-
-        try:
-            ske = serverKeyExchange
-            premasterSecret = keyExchange.processServerKeyExchange(None,
-                                                                   ske)
-        except TLSInsufficientSecurity as e:
-            for result in self._sendError(\
-                    AlertDescription.insufficient_security, e):
-                yield result
-        except TLSIllegalParameterException as e:
-            for result in self._sendError(\
-                    AlertDescription.illegal_parameter, e):
-                yield result
-
-        #Send ClientKeyExchange
-        clientKeyExchange = keyExchange.makeClientKeyExchange()
-        for result in self._sendMsg(clientKeyExchange):
-            yield result
-        yield (premasterSecret, serverCertChain, tackExt)
-                   
-
-    def _clientRSAKeyExchange(self, settings, cipherSuite, 
-                                clientCertChain, privateKey,
-                                certificateType,
-                                clientRandom, serverRandom,
-                                tackExt, keyExchange):
-
-        #Get Certificate[, CertificateRequest], ServerHelloDone
-        for result in self._getMsg(ContentType.handshake,
-                HandshakeType.certificate, certificateType):
-            if result in (0,1): yield result
-            else: break
-        serverCertificate = result
-
-        # Get CertificateRequest or ServerHelloDone
-        for result in self._getMsg(ContentType.handshake,
-                (HandshakeType.server_hello_done,
-                HandshakeType.certificate_request)):
-            if result in (0,1): yield result
-            else: break
-        msg = result
-        certificateRequest = None
-        if isinstance(msg, CertificateRequest):
-            certificateRequest = msg
-            # We got CertificateRequest, so this must be ServerHelloDone
-            for result in self._getMsg(ContentType.handshake,
-                    HandshakeType.server_hello_done):
-                if result in (0,1): yield result
-                else: break
-            serverHelloDone = result
-        elif isinstance(msg, ServerHelloDone):
-            serverHelloDone = msg
-
-        # Get server's public key from the Certificate message
-        # Also validate the chain against the ServerHello's TACKext (if any)
-        # If none, and a TACK cert is present, return its TACKext  
-        for result in self._clientGetKeyFromChain(serverCertificate,
-                                           settings, tackExt):
-            if result in (0,1): yield result
-            else: break
-        publicKey, serverCertChain, tackExt = result
-
-        premasterSecret = keyExchange.processServerKeyExchange(publicKey,
-                                                               None)
-
-        #If client authentication was requested, send Certificate
-        #message, either with certificates or empty
-        if certificateRequest:
-            clientCertificate = Certificate(certificateType)
-
-            if clientCertChain:
-                #Check to make sure we have the same type of
-                #certificates the server requested
-                wrongType = False
-                if certificateType == CertificateType.x509:
-                    if not isinstance(clientCertChain, X509CertChain):
-                        wrongType = True
-                if wrongType:
-                    for result in self._sendError(\
-                            AlertDescription.handshake_failure,
-                            "Client certificate is of wrong type"):
-                        yield result
-
-                clientCertificate.create(clientCertChain)
-            for result in self._sendMsg(clientCertificate):
-                yield result
-        else:
-            #The server didn't request client auth, so we
-            #zeroize these so the clientCertChain won't be
-            #stored in the session.
-            privateKey = None
-            clientCertChain = None
-
-        #Send ClientKeyExchange
-        clientKeyExchange = keyExchange.makeClientKeyExchange()
-        for result in self._sendMsg(clientKeyExchange):
-            yield result
-
-        #If client authentication was requested and we have a
-        #private key, send CertificateVerify
-        if certificateRequest and privateKey:
-            validSigAlgs = self._sigHashesToList(settings)
-            certificateVerify = KeyExchange.makeCertificateVerify(\
-                    self.version,
-                    self._handshake_hash,
-                    validSigAlgs,
-                    privateKey,
-                    certificateRequest,
-                    premasterSecret,
-                    clientRandom,
-                    serverRandom)
-            for result in self._sendMsg(certificateVerify):
-                yield result
-
-        yield (premasterSecret, serverCertChain, clientCertChain, tackExt)
-
-    def _clientDHEKeyExchange(self, settings, cipherSuite,
-                              clientCertChain, privateKey,
-                              certificateType,
-                              tackExt, clientRandom, serverRandom,
-                              keyExchange):
-        #TODO: check if received messages match cipher suite
-        # (abort if CertfificateRequest and ADH)
-
-        # if server chose DHE_RSA cipher get the certificate
-        if cipherSuite in CipherSuite.dheCertSuites:
+    def _clientKeyExchange(self, settings, cipherSuite,
+                           clientCertChain, privateKey,
+                           certificateType,
+                           tackExt, clientRandom, serverRandom,
+                           keyExchange):
+        """Perform the client side of key exchange"""
+        # if server chose cipher suite with authentication, get the certificate
+        if cipherSuite in CipherSuite.certAllSuites:
             for result in self._getMsg(ContentType.handshake,
                                        HandshakeType.certificate,
                                        certificateType):
@@ -1267,12 +1074,19 @@ class TLSConnection(TLSRecordLayer):
                     yield result
                 else: break
             serverCertificate = result
-        # get rest of handshake messages
-        for result in self._getMsg(ContentType.handshake,
-                HandshakeType.server_key_exchange, cipherSuite):
-            if result in (0,1): yield result
-            else: break
-        serverKeyExchange = result
+        else:
+            serverCertificate = None
+        # if server chose RSA key exchange, we need to skip SKE message
+        if cipherSuite not in CipherSuite.certSuites:
+            for result in self._getMsg(ContentType.handshake,
+                                       HandshakeType.server_key_exchange,
+                                       cipherSuite):
+                if result in (0, 1):
+                    yield result
+                else: break
+            serverKeyExchange = result
+        else:
+            serverKeyExchange = None
 
         for result in self._getMsg(ContentType.handshake,
                                    (HandshakeType.certificate_request,
@@ -1284,52 +1098,63 @@ class TLSConnection(TLSRecordLayer):
         certificateRequest = None
         if isinstance(result, CertificateRequest):
             certificateRequest = result
+
+            #abort if Certificate Request with inappropriate ciphersuite
+            if cipherSuite not in CipherSuite.certAllSuites \
+                or cipherSuite in CipherSuite.srpAllSuites:
+                for result in self._sendError(\
+                        AlertDescription.unexpected_message,
+                        "Certificate Request with incompatible cipher suite"):
+                    yield result
+
             # we got CertificateRequest so now we'll get ServerHelloDone
             for result in self._getMsg(ContentType.handshake,
-                    HandshakeType.server_hello_done):
+                                       HandshakeType.server_hello_done):
                 if result in (0, 1):
                     yield result
                 else: break
         serverHelloDone = result
 
-        #Check the server's signature, if the server chose an DHE_RSA suite
         serverCertChain = None
-        if cipherSuite in CipherSuite.dheCertSuites:
+        publicKey = None
+        if cipherSuite in CipherSuite.certAllSuites:
             # get the certificate
             for result in self._clientGetKeyFromChain(serverCertificate,
                                                       settings,
                                                       tackExt):
                 if result in (0, 1):
                     yield result
-                else:
-                    break
+                else: break
             publicKey, serverCertChain, tackExt = result
 
-            # then verify the signature on SKE
-            validSigAlgs = self._sigHashesToList(settings)
-            try:
-                KeyExchange.verifyServerKeyExchange(serverKeyExchange,
-                                                    publicKey,
-                                                    clientRandom,
-                                                    serverRandom,
-                                                    validSigAlgs)
-            except TLSIllegalParameterException:
-                for result in self._sendError(AlertDescription.\
-                                              illegal_parameter):
-                    yield result
-            except TLSDecryptionFailed:
-                for result in self._sendError(AlertDescription.decrypt_error):
-                    yield result
+            #Check the server's signature, if the server chose an authenticated
+            # PFS-enabled ciphersuite
+            if serverKeyExchange:
+                validSigAlgs = self._sigHashesToList(settings)
+                try:
+                    KeyExchange.verifyServerKeyExchange(serverKeyExchange,
+                                                        publicKey,
+                                                        clientRandom,
+                                                        serverRandom,
+                                                        validSigAlgs)
+                except TLSIllegalParameterException:
+                    for result in self._sendError(AlertDescription.\
+                                                  illegal_parameter):
+                        yield result
+                except TLSDecryptionFailed:
+                    for result in self._sendError(\
+                            AlertDescription.decrypt_error):
+                        yield result
 
         #Send Certificate if we were asked for it
         if certificateRequest:
 
             # if a peer doesn't advertise support for any algorithm in TLSv1.2,
             # support for SHA1+RSA can be assumed
-            if self.version == (3, 3) and \
-                    len([sig for sig in \
+            if self.version == (3, 3)\
+                and not [sig for sig in \
                          certificateRequest.supported_signature_algs\
-                         if sig[1] == SignatureAlgorithm.rsa]) == 0:
+                         if sig[1] == SignatureAlgorithm.rsa]:
                 for result in self._sendError(\
                         AlertDescription.handshake_failure,
                         "Server doesn't accept any sigalgs we support: " +
@@ -1361,12 +1186,15 @@ class TLSConnection(TLSRecordLayer):
 
         try:
             ske = serverKeyExchange
-            premasterSecret = keyExchange.processServerKeyExchange(None,
+            premasterSecret = keyExchange.processServerKeyExchange(publicKey,
                                                                    ske)
-        except TLSInsufficientSecurity:
-            for result in self._sendError(
-                    AlertDescription.insufficient_security,
-                    "Server sent a DHE key exchange with very small prime"):
+        except TLSInsufficientSecurity as e:
+            for result in self._sendError(\
+                    AlertDescription.insufficient_security, e):
+                yield result
+        except TLSIllegalParameterException as e:
+            for result in self._sendError(\
+                    AlertDescription.illegal_parameter, e):
                 yield result
 
         clientKeyExchange = keyExchange.makeClientKeyExchange()
