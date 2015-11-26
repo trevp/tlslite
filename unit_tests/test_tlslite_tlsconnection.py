@@ -682,6 +682,87 @@ class TestSRPKeyExchange(unittest.TestCase):
         with self.assertRaises(TLSIllegalParameterException):
             self.keyExchange.processClientKeyExchange(cln_key_ex)
 
+    def test_SRP_key_exchange_with_client(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = SRPKeyExchange(self.cipher_suite,
+                                            self.client_hello,
+                                            self.server_hello,
+                                            None, None,
+                                            srpUsername='user',
+                                            password='password',
+                                            settings=HandshakeSettings())
+
+        client_premaster = client_keyExchange.processServerKeyExchange(\
+                None,
+                srv_key_ex)
+        clientKeyExchange = client_keyExchange.makeClientKeyExchange()
+
+        server_premaster = self.keyExchange.processClientKeyExchange(\
+                clientKeyExchange)
+
+        self.assertEqual(client_premaster, server_premaster)
+
+    def test_client_SRP_key_exchange_with_unknown_params(self):
+        keyExchange = ServerKeyExchange(self.cipher_suite,
+                                        self.server_hello.server_version)
+        keyExchange.createSRP(1, 2, 3, 4)
+
+        client_keyExchange = SRPKeyExchange(self.cipher_suite,
+                                            self.client_hello,
+                                            self.server_hello,
+                                            None, None,
+                                            srpUsername='user',
+                                            password='password')
+        with self.assertRaises(TLSInsufficientSecurity):
+            client_keyExchange.processServerKeyExchange(None, keyExchange)
+
+    def test_client_SRP_key_exchange_with_too_small_params(self):
+        keyExchange = self.keyExchange.makeServerKeyExchange('sha1')
+
+        settings = HandshakeSettings()
+        settings.minKeySize = 3072
+        client_keyExchange = SRPKeyExchange(self.cipher_suite,
+                                            self.client_hello,
+                                            self.server_hello,
+                                            None, None,
+                                            srpUsername='user',
+                                            password='password',
+                                            settings=settings)
+        with self.assertRaises(TLSInsufficientSecurity):
+            client_keyExchange.processServerKeyExchange(None, keyExchange)
+
+    def test_client_SRP_key_exchange_with_too_big_params(self):
+        keyExchange = self.keyExchange.makeServerKeyExchange('sha1')
+
+        settings = HandshakeSettings()
+        settings.minKeySize = 512
+        settings.maxKeySize = 1024
+        client_keyExchange = SRPKeyExchange(self.cipher_suite,
+                                            self.client_hello,
+                                            self.server_hello,
+                                            None, None,
+                                            srpUsername='user',
+                                            password='password',
+                                            settings=settings)
+        with self.assertRaises(TLSInsufficientSecurity):
+            client_keyExchange.processServerKeyExchange(None, keyExchange)
+
+    def test_client_SRP_key_exchange_with_invalid_params(self):
+        keyExchange = self.keyExchange.makeServerKeyExchange('sha1')
+        keyExchange.srp_B = keyExchange.srp_N
+
+        settings = HandshakeSettings()
+        client_keyExchange = SRPKeyExchange(self.cipher_suite,
+                                            self.client_hello,
+                                            self.server_hello,
+                                            None, None,
+                                            srpUsername='user',
+                                            password='password',
+                                            settings=settings)
+        with self.assertRaises(TLSIllegalParameterException):
+            client_keyExchange.processServerKeyExchange(None, keyExchange)
+
 class TestTLSConnection(unittest.TestCase):
 
 

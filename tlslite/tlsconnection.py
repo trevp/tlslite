@@ -308,7 +308,7 @@ class SRPKeyExchange(KeyExchange):
     """Helper class for conducting SRP key exchange"""
 
     def __init__(self, cipherSuite, clientHello, serverHello, privateKey,
-                 verifierDB):
+                 verifierDB, srpUsername=None, password=None, settings=None):
         """Link Key Exchange options with verifierDB for SRP"""
         super(SRPKeyExchange, self).__init__(cipherSuite, clientHello,
                                              serverHello, privateKey)
@@ -317,6 +317,10 @@ class SRPKeyExchange(KeyExchange):
         self.b = None
         self.B = None
         self.verifierDB = verifierDB
+        self.A = None
+        self.srpUsername = srpUsername
+        self.password = password
+        self.settings = settings
 
     def makeServerKeyExchange(self, sigHash=None):
         """Create SRP version of Server Key Exchange"""
@@ -353,6 +357,49 @@ class SRPKeyExchange(KeyExchange):
         #Calculate premaster secret
         S = powMod((A * powMod(self.v, u, self.N)) % self.N, self.b, self.N)
         return numberToByteArray(S)
+
+    def processServerKeyExchange(self, srvPublicKey, serverKeyExchange):
+        """Calculate premaster secret from ServerKeyExchange"""
+        del srvPublicKey # irrelevant for SRP
+        N = serverKeyExchange.srp_N
+        g = serverKeyExchange.srp_g
+        s = serverKeyExchange.srp_s
+        B = serverKeyExchange.srp_B
+
+        if (g, N) not in goodGroupParameters:
+            raise TLSInsufficientSecurity("Unknown group parameters")
+        if numBits(N) < self.settings.minKeySize:
+            raise TLSInsufficientSecurity("N value is too small: {0}".\
+                                          format(numBits(N)))
+        if numBits(N) > self.settings.maxKeySize:
+            raise TLSInsufficientSecurity("N value is too large: {0}".\
+                                          format(numBits(N)))
+        if B % N == 0:
+            raise TLSIllegalParameterException("Suspicious B value")
+
+        #Client ephemeral value
+        a = bytesToNumber(getRandomBytes(32))
+        self.A = powMod(g, a, N)
+
+        #Calculate client's static DH values (x, v)
+        x = makeX(s, bytearray(self.srpUsername, "utf-8"),
+                  bytearray(self.password, "utf-8"))
+        v = powMod(g, x, N)
+
+        #Calculate u
+        u = makeU(N, self.A, B)
+
+        #Calculate premaster secret
+        k = makeK(N, g)
+        S = powMod((B - (k*v)) % N, a+(u*x), N)
+        return numberToByteArray(S)
+
+    def makeClientKeyExchange(self):
+        """Create ClientKeyExchange"""
+        clientKeyExchange = ClientKeyExchange(self.cipherSuite,
+                                              self.serverHello.server_version)
+        clientKeyExchange.createSRP(self.A)
+        return clientKeyExchange
 
 class TLSConnection(TLSRecordLayer):
     """
@@ -773,13 +820,18 @@ class TLSConnection(TLSRecordLayer):
         #reading the post-ServerHello messages, then derives a
         #premasterSecret and sends a corresponding ClientKeyExchange.
         if cipherSuite in CipherSuite.srpAllSuites:
+            keyExchange = SRPKeyExchange(cipherSuite, clientHello,
+                                         serverHello, None, None,
+                                         srpUsername=srpUsername,
+                                         password=password,
+                                         settings=settings)
             for result in self._clientSRPKeyExchange(settings, cipherSuite,
                                                      serverHello.\
                                                              certificate_type,
-                                                     srpUsername, password,
                                                      clientHello.random,
                                                      serverHello.random,
-                                                     serverHello.tackExt):
+                                                     serverHello.tackExt,
+                                                     keyExchange):
                 if result in (0, 1):
                     yield result
                 else: break
@@ -1028,9 +1080,8 @@ class TLSConnection(TLSRecordLayer):
             self.session = session
             yield "resumed_and_finished"        
             
-    def _clientSRPKeyExchange(self, settings, cipherSuite, certificateType, 
-            srpUsername, password,
-            clientRandom, serverRandom, tackExt):
+    def _clientSRPKeyExchange(self, settings, cipherSuite, certificateType,
+            clientRandom, serverRandom, tackExt, keyExchange):
 
         #If the server chose an SRP+RSA suite...
         if cipherSuite in CipherSuite.srpCertSuites:
@@ -1054,34 +1105,6 @@ class TLSConnection(TLSRecordLayer):
             if result in (0,1): yield result
             else: break
         serverHelloDone = result
-            
-        #Calculate SRP premaster secret
-        #Get and check the server's group parameters and B value
-        N = serverKeyExchange.srp_N
-        g = serverKeyExchange.srp_g
-        s = serverKeyExchange.srp_s
-        B = serverKeyExchange.srp_B
-
-        if (g,N) not in goodGroupParameters:
-            for result in self._sendError(\
-                    AlertDescription.insufficient_security,
-                    "Unknown group parameters"):
-                yield result
-        if numBits(N) < settings.minKeySize:
-            for result in self._sendError(\
-                    AlertDescription.insufficient_security,
-                    "N value is too small: %d" % numBits(N)):
-                yield result
-        if numBits(N) > settings.maxKeySize:
-            for result in self._sendError(\
-                    AlertDescription.insufficient_security,
-                    "N value is too large: %d" % numBits(N)):
-                yield result
-        if B % N == 0:
-            for result in self._sendError(\
-                    AlertDescription.illegal_parameter,
-                    "Suspicious B value"):
-                yield result
 
         #Check the server's signature, if server chose an
         #SRP+RSA suite
@@ -1112,31 +1135,22 @@ class TLSConnection(TLSRecordLayer):
                 for result in self._sendError(AlertDescription.decrypt_error):
                     yield result
 
-        #Calculate client's ephemeral DH values (a, A)
-        a = bytesToNumber(getRandomBytes(32))
-        A = powMod(g, a, N)
-
-        #Calculate client's static DH values (x, v)
-        x = makeX(s, bytearray(srpUsername, "utf-8"),
-                    bytearray(password, "utf-8"))
-        v = powMod(g, x, N)
-
-        #Calculate u
-        u = makeU(N, A, B)
-
-        #Calculate premaster secret
-        k = makeK(N, g)
-        S = powMod((B - (k*v)) % N, a+(u*x), N)
-
-        if self.fault == Fault.badA:
-            A = N
-            S = 0
-            
-        premasterSecret = numberToByteArray(S)
+        try:
+            ske = serverKeyExchange
+            premasterSecret = keyExchange.processServerKeyExchange(None,
+                                                                   ske)
+        except TLSInsufficientSecurity as e:
+            for result in self._sendError(\
+                    AlertDescription.insufficient_security, e):
+                yield result
+        except TLSIllegalParameterException as e:
+            for result in self._sendError(\
+                    AlertDescription.illegal_parameter, e):
+                yield result
 
         #Send ClientKeyExchange
-        for result in self._sendMsg(\
-                ClientKeyExchange(cipherSuite, self.version).createSRP(A)):
+        clientKeyExchange = keyExchange.makeClientKeyExchange()
+        for result in self._sendMsg(clientKeyExchange):
             yield result
         yield (premasterSecret, serverCertChain, tackExt)
                    
