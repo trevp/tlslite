@@ -224,3 +224,9 @@ class TLSInsufficientSecurity(TLSProtocolException):
     """Parameters selected by user are too weak"""
 
     pass
+
+class TLSUnknownPSKIdentity(TLSProtocolException):
+    """The PSK or SRP identity is unknown"""
+
+    pass
+

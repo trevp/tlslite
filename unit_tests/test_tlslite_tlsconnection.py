@@ -16,16 +16,18 @@ from tlslite.messages import ServerHello, Certificate, ServerHelloDone, \
 from tlslite.constants import CipherSuite, CertificateType, AlertDescription, \
         HashAlgorithm, SignatureAlgorithm
 from tlslite.tlsconnection import TLSConnection, KeyExchange, RSAKeyExchange, \
-        DHE_RSAKeyExchange
+        DHE_RSAKeyExchange, SRPKeyExchange
 from tlslite.errors import TLSLocalAlert, TLSIllegalParameterException, \
-        TLSDecryptionFailed, TLSInsufficientSecurity
+        TLSDecryptionFailed, TLSInsufficientSecurity, TLSUnknownPSKIdentity
 from tlslite.x509 import X509
 from tlslite.x509certchain import X509CertChain
 from tlslite.utils.keyfactory import parsePEMKey
 from tlslite.utils.codec import Parser
 from tlslite.utils.cryptomath import bytesToNumber, getRandomBytes, powMod, \
         numberToByteArray
+from tlslite.mathtls import makeX, makeU, makeK
 from tlslite.handshakehashes import HandshakeHashes
+from tlslite import VerifierDB
 
 from unit_tests.mocksock import MockSocket
 
@@ -567,6 +569,118 @@ class TestDHE_RSAKeyExchange(unittest.TestCase):
 
         with self.assertRaises(TLSInsufficientSecurity):
             client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+class TestSRPKeyExchange(unittest.TestCase):
+    def setUp(self):
+        self.srv_private_key = parsePEMKey(srv_raw_key, private=True)
+        srv_chain = X509CertChain([X509().parse(srv_raw_certificate)])
+        self.srv_pub_key = srv_chain.getEndEntityPublicKey()
+        self.cipher_suite = CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA
+        self.client_hello = ClientHello().create((3, 3),
+                                                 bytearray(32),
+                                                 bytearray(0),
+                                                 [],
+                                                 srpUsername='user')
+        self.server_hello = ServerHello().create((3, 3),
+                                                 bytearray(32),
+                                                 bytearray(0),
+                                                 self.cipher_suite)
+
+        verifierDB = VerifierDB()
+        verifierDB.create()
+        entry = verifierDB.makeVerifier('user', 'password', 2048)
+        verifierDB['user'] = entry
+
+        self.keyExchange = SRPKeyExchange(self.cipher_suite,
+                                          self.client_hello,
+                                          self.server_hello,
+                                          self.srv_private_key,
+                                          verifierDB)
+
+    def test_SRP_key_exchange(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha256')
+
+        KeyExchange.verifyServerKeyExchange(srv_key_ex,
+                                            self.srv_pub_key,
+                                            self.client_hello.random,
+                                            self.server_hello.random,
+                                            [(HashAlgorithm.sha256,
+                                              SignatureAlgorithm.rsa)])
+
+        a = bytesToNumber(getRandomBytes(32))
+        A = powMod(srv_key_ex.srp_g,
+                   a,
+                   srv_key_ex.srp_N)
+        x = makeX(srv_key_ex.srp_s, bytearray(b'user'), bytearray(b'password'))
+        v = powMod(srv_key_ex.srp_g,
+                   x,
+                   srv_key_ex.srp_N)
+        u = makeU(srv_key_ex.srp_N,
+                  A,
+                  srv_key_ex.srp_B)
+
+        k = makeK(srv_key_ex.srp_N,
+                  srv_key_ex.srp_g)
+        S = powMod((srv_key_ex.srp_B - (k*v)) % srv_key_ex.srp_N,
+                   a+(u*x),
+                   srv_key_ex.srp_N)
+
+        cln_premaster = numberToByteArray(S)
+
+        cln_key_ex = ClientKeyExchange(self.cipher_suite, (3, 3)).createSRP(A)
+
+        srv_premaster = self.keyExchange.processClientKeyExchange(cln_key_ex)
+
+        self.assertEqual(cln_premaster, srv_premaster)
+
+    def test_SRP_key_exchange_without_signature(self):
+        self.cipher_suite = CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA
+        self.keyExchange.cipherSuite = self.cipher_suite
+        self.server_hello.cipher_suite = self.cipher_suite
+
+        srv_key_ex = self.keyExchange.makeServerKeyExchange()
+
+        a = bytesToNumber(getRandomBytes(32))
+        A = powMod(srv_key_ex.srp_g,
+                   a,
+                   srv_key_ex.srp_N)
+        x = makeX(srv_key_ex.srp_s, bytearray(b'user'), bytearray(b'password'))
+        v = powMod(srv_key_ex.srp_g,
+                   x,
+                   srv_key_ex.srp_N)
+        u = makeU(srv_key_ex.srp_N,
+                  A,
+                  srv_key_ex.srp_B)
+
+        k = makeK(srv_key_ex.srp_N,
+                  srv_key_ex.srp_g)
+        S = powMod((srv_key_ex.srp_B - (k*v)) % srv_key_ex.srp_N,
+                   a+(u*x),
+                   srv_key_ex.srp_N)
+
+        cln_premaster = numberToByteArray(S)
+
+        cln_key_ex = ClientKeyExchange(self.cipher_suite, (3, 3)).createSRP(A)
+
+        srv_premaster = self.keyExchange.processClientKeyExchange(cln_key_ex)
+
+        self.assertEqual(cln_premaster, srv_premaster)
+
+    def test_SRP_with_invalid_name(self):
+        self.client_hello.srp_username = bytearray(b'test')
+
+        with self.assertRaises(TLSUnknownPSKIdentity):
+            self.keyExchange.makeServerKeyExchange('sha1')
+
+    def test_SRP_with_invalid_client_key_share(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        A = srv_key_ex.srp_N
+
+        cln_key_ex = ClientKeyExchange(self.cipher_suite, (3, 3)).createSRP(A)
+
+        with self.assertRaises(TLSIllegalParameterException):
+            self.keyExchange.processClientKeyExchange(cln_key_ex)
 
 class TestTLSConnection(unittest.TestCase):
 

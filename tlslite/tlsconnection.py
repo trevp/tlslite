@@ -304,10 +304,59 @@ class DHE_RSAKeyExchange(KeyExchange):
         clientKeyExchange.createDH(self.dh_Yc)
         return clientKeyExchange
 
+class SRPKeyExchange(KeyExchange):
+    """Helper class for conducting SRP key exchange"""
+
+    def __init__(self, cipherSuite, clientHello, serverHello, privateKey,
+                 verifierDB):
+        """Link Key Exchange options with verifierDB for SRP"""
+        super(SRPKeyExchange, self).__init__(cipherSuite, clientHello,
+                                             serverHello, privateKey)
+        self.N = None
+        self.v = None
+        self.b = None
+        self.B = None
+        self.verifierDB = verifierDB
+
+    def makeServerKeyExchange(self, sigHash=None):
+        """Create SRP version of Server Key Exchange"""
+        srpUsername = self.clientHello.srp_username.decode("utf-8")
+        #Get parameters from username
+        try:
+            entry = self.verifierDB[srpUsername]
+        except KeyError:
+            raise TLSUnknownPSKIdentity("Unknown identity")
+        (self.N, g, s, self.v) = entry
+
+        #Calculate server's ephemeral DH values (b, B)
+        self.b = bytesToNumber(getRandomBytes(32))
+        k = makeK(self.N, g)
+        self.B = (powMod(g, self.b, self.N) + (k * self.v)) % self.N
+
+        #Create ServerKeyExchange, signing it if necessary
+        serverKeyExchange = ServerKeyExchange(self.cipherSuite,
+                                              self.serverHello.server_version)
+        serverKeyExchange.createSRP(self.N, g, s, self.B)
+        if self.cipherSuite in CipherSuite.srpCertSuites:
+            self.signServerKeyExchange(serverKeyExchange, sigHash)
+        return serverKeyExchange
+
+    def processClientKeyExchange(self, clientKeyExchange):
+        """Calculate premaster secret from Client Key Exchange and sent SKE"""
+        A = clientKeyExchange.srp_A
+        if A % self.N == 0:
+            raise TLSIllegalParameterException("Invalid SRP A value")
+
+        #Calculate u
+        u = makeU(self.N, A, self.B)
+
+        #Calculate premaster secret
+        S = powMod((A * powMod(self.v, u, self.N)) % self.N, self.b, self.N)
+        return numberToByteArray(S)
+
 class TLSConnection(TLSRecordLayer):
     """
-    This class wraps a socket and provides TLS handshaking and data
-    transfer.
+    This class wraps a socket and provides TLS handshaking and data transfer.
 
     To use this class, create a new instance, passing a connected
     socket into the constructor.  Then call some handshake function.
@@ -724,13 +773,16 @@ class TLSConnection(TLSRecordLayer):
         #reading the post-ServerHello messages, then derives a
         #premasterSecret and sends a corresponding ClientKeyExchange.
         if cipherSuite in CipherSuite.srpAllSuites:
-            for result in self._clientSRPKeyExchange(\
-                    settings, cipherSuite, serverHello.certificate_type, 
-                    srpUsername, password,
-                    clientHello.random, serverHello.random, 
-                    serverHello.tackExt):                
-                if result in (0,1): yield result
-                else: break                
+            for result in self._clientSRPKeyExchange(settings, cipherSuite,
+                                                     serverHello.\
+                                                             certificate_type,
+                                                     srpUsername, password,
+                                                     clientHello.random,
+                                                     serverHello.random,
+                                                     serverHello.tackExt):
+                if result in (0, 1):
+                    yield result
+                else: break
             (premasterSecret, serverCertChain, tackExt) = result
 
         #If the server selected an anonymous ciphersuite, the client
@@ -739,12 +791,16 @@ class TLSConnection(TLSRecordLayer):
             keyExchange = DHE_RSAKeyExchange(cipherSuite, clientHello,
                                              serverHello, None)
             for result in self._clientDHEKeyExchange(settings, cipherSuite,
-                                    clientCertChain, privateKey,
-                                    serverHello.certificate_type,
-                                    serverHello.tackExt,
-                                    clientHello.random, serverHello.random,
-                                    keyExchange):
-                if result in (0,1): yield result
+                                                     clientCertChain,
+                                                     privateKey,
+                                                     serverHello.\
+                                                            certificate_type,
+                                                     serverHello.tackExt,
+                                                     clientHello.random,
+                                                     serverHello.random,
+                                                     keyExchange):
+                if result in (0, 1):
+                    yield result
                 else: break
             (premasterSecret, serverCertChain, clientCertChain,
              tackExt) = result
@@ -1031,34 +1087,29 @@ class TLSConnection(TLSRecordLayer):
         #SRP+RSA suite
         serverCertChain = None
         if cipherSuite in CipherSuite.srpCertSuites:
-            #Hash ServerKeyExchange/ServerSRPParams
-            hashBytes = serverKeyExchange.hash(clientRandom, serverRandom)
-            if self.version == (3, 3):
-                hashBytes = RSAKey.addPKCS1SHA1Prefix(hashBytes)
-
-            #Extract signature bytes from ServerKeyExchange
-            sigBytes = serverKeyExchange.signature
-            if len(sigBytes) == 0:
-                for result in self._sendError(\
-                        AlertDescription.illegal_parameter,
-                        "Server sent an SRP ServerKeyExchange "\
-                        "message without a signature"):
-                    yield result
-
             # Get server's public key from the Certificate message
             # Also validate the chain against the ServerHello's TACKext (if any)
-            # If none, and a TACK cert is present, return its TACKext  
+            # If none, and a TACK cert is present, return its TACKext
             for result in self._clientGetKeyFromChain(serverCertificate,
-                                               settings, tackExt):
+                                                      settings, tackExt):
                 if result in (0,1): yield result
                 else: break
             publicKey, serverCertChain, tackExt = result
 
-            #Verify signature
-            if not publicKey.verify(sigBytes, hashBytes):
-                for result in self._sendError(\
-                        AlertDescription.decrypt_error,
-                        "Signature failed to verify"):
+            # Check signature on ServerKeyExchange message
+            validSigAlgs = self._sigHashesToList(settings)
+            try:
+                KeyExchange.verifyServerKeyExchange(serverKeyExchange,
+                                                    publicKey,
+                                                    clientRandom,
+                                                    serverRandom,
+                                                    validSigAlgs)
+            except TLSIllegalParameterException:
+                for result in self._sendError(AlertDescription.\
+                                              illegal_parameter):
+                    yield result
+            except TLSDecryptionFailed:
+                for result in self._sendError(AlertDescription.decrypt_error):
                     yield result
 
         #Calculate client's ephemeral DH values (a, A)
@@ -1170,28 +1221,19 @@ class TLSConnection(TLSRecordLayer):
         #If client authentication was requested and we have a
         #private key, send CertificateVerify
         if certificateRequest and privateKey:
-            signatureAlgorithm = None
-            if self.version == (3,0):
-                masterSecret = calcMasterSecret(self.version,
-                                                cipherSuite,
-                                                premasterSecret,
-                                                clientRandom,
-                                                serverRandom)
-                verifyBytes = self._handshake_hash.digestSSL(masterSecret, b"")
-            elif self.version in ((3,1), (3,2)):
-                verifyBytes = self._handshake_hash.digest()
-            elif self.version == (3,3):
-                # TODO: Signature algorithm negotiation not supported.
-                signatureAlgorithm = (HashAlgorithm.sha1, SignatureAlgorithm.rsa)
-                verifyBytes = self._handshake_hash.digest('sha1')
-                verifyBytes = RSAKey.addPKCS1SHA1Prefix(verifyBytes)
-            if self.fault == Fault.badVerifyMessage:
-                verifyBytes[0] = ((verifyBytes[0]+1) % 256)
-            signedBytes = privateKey.sign(verifyBytes)
-            certificateVerify = CertificateVerify(self.version)
-            certificateVerify.create(signedBytes, signatureAlgorithm)
+            validSigAlgs = self._sigHashesToList(settings)
+            certificateVerify = KeyExchange.makeCertificateVerify(\
+                    self.version,
+                    self._handshake_hash,
+                    validSigAlgs,
+                    privateKey,
+                    certificateRequest,
+                    premasterSecret,
+                    clientRandom,
+                    serverRandom)
             for result in self._sendMsg(certificateVerify):
                 yield result
+
         yield (premasterSecret, serverCertChain, clientCertChain, tackExt)
 
     def _clientDHEKeyExchange(self, settings, cipherSuite,
@@ -1603,10 +1645,12 @@ class TLSConnection(TLSRecordLayer):
         # Perform the SRP key exchange
         clientCertChain = None
         if cipherSuite in CipherSuite.srpAllSuites:
-            for result in self._serverSRPKeyExchange(clientHello, serverHello, 
-                                    verifierDB, cipherSuite, 
-                                    privateKey, certChain):
-                if result in (0,1): yield result
+            for result in self._serverSRPKeyExchange(clientHello, serverHello,
+                                                     verifierDB, cipherSuite,
+                                                     privateKey, certChain,
+                                                     settings):
+                if result in (0, 1):
+                    yield result
                 else: break
             premasterSecret = result
 
@@ -1834,7 +1878,7 @@ class TLSConnection(TLSRecordLayer):
                     AlertDescription.unknown_psk_identity,
                     "Client sent a hello, but without the SRP username"):
                 yield result
-           
+
         #If an RSA suite is chosen, check for certificate type intersection
         if cipherSuite in CipherSuite.certAllSuites and CertificateType.x509 \
                                 not in clientHello.certificate_types:
@@ -1848,38 +1892,25 @@ class TLSConnection(TLSRecordLayer):
         # the client's session_id was not found in cache:
         yield (clientHello, cipherSuite)
 
-    def _serverSRPKeyExchange(self, clientHello, serverHello, verifierDB, 
-                                cipherSuite, privateKey, serverCertChain):
+    def _serverSRPKeyExchange(self, clientHello, serverHello, verifierDB,
+                              cipherSuite, privateKey, serverCertChain,
+                              settings):
+        """Perform the server side of SRP key exchange"""
+        keyExchange = SRPKeyExchange(cipherSuite,
+                                     clientHello,
+                                     serverHello,
+                                     privateKey,
+                                     verifierDB)
 
-        srpUsername = clientHello.srp_username.decode("utf-8")
-        self.allegedSrpUsername = srpUsername
-        #Get parameters from username
+        sigHash = self._pickServerKeyExchangeSig(settings, clientHello)
+
+        #Create ServerKeyExchange, signing it if necessary
         try:
-            entry = verifierDB[srpUsername]
-        except KeyError:
+            serverKeyExchange = keyExchange.makeServerKeyExchange(sigHash)
+        except TLSUnknownPSKIdentity:
             for result in self._sendError(\
                     AlertDescription.unknown_psk_identity):
                 yield result
-        (N, g, s, v) = entry
-
-        #Calculate server's ephemeral DH values (b, B)
-        b = bytesToNumber(getRandomBytes(32))
-        k = makeK(N, g)
-        B = (powMod(g, b, N) + (k*v)) % N
-
-        #Create ServerKeyExchange, signing it if necessary
-        serverKeyExchange = ServerKeyExchange(cipherSuite, self.version)
-        serverKeyExchange.createSRP(N, g, s, B)
-        if cipherSuite in CipherSuite.srpCertSuites:
-            if self.version == (3, 3):
-                # TODO signing algorithm not negotiatied
-                serverKeyExchange.signAlg = SignatureAlgorithm.rsa
-                serverKeyExchange.hashAlg = HashAlgorithm.sha1
-            hashBytes = serverKeyExchange.hash(clientHello.random,
-                                               serverHello.random)
-            if self.version == (3, 3):
-                hashBytes = RSAKey.addPKCS1SHA1Prefix(hashBytes)
-            serverKeyExchange.signature = privateKey.sign(hashBytes)
 
         #Send ServerHello[, Certificate], ServerKeyExchange,
         #ServerHelloDone
@@ -1900,23 +1931,14 @@ class TLSConnection(TLSRecordLayer):
                                   cipherSuite):
             if result in (0,1): yield result
             else: break
-        clientKeyExchange = result
-        A = clientKeyExchange.srp_A
-        if A % N == 0:
+        try:
+            premasterSecret = keyExchange.processClientKeyExchange(result)
+        except TLSIllegalParameterException:
             for result in self._sendError(AlertDescription.illegal_parameter,
-                    "Suspicious A value"):
+                                          "Suspicious A value"):
                 yield result
-            assert(False) # Just to ensure we don't fall through somehow
 
-        #Calculate u
-        u = makeU(N, A, B)
-
-        #Calculate premaster secret
-        S = powMod((A * powMod(v,u,N)) % N, b, N)
-        premasterSecret = numberToByteArray(S)
-        
         yield premasterSecret
-
 
     def _serverCertKeyExchange(self, clientHello, serverHello, 
                                 serverCertChain, keyExchange,
