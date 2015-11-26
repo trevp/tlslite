@@ -123,7 +123,7 @@ class KeyExchange(object):
             hashBytes = RSAKey.addPKCS1Prefix(hashBytes, hashName)
 
         sigBytes = serverKeyExchange.signature
-        if len(sigBytes) == 0:
+        if not sigBytes:
             raise TLSIllegalParameterException("Empty signature")
 
         if not publicKey.verify(sigBytes, hashBytes):
@@ -1015,7 +1015,7 @@ class TLSConnection(TLSRecordLayer):
             extensions.append(SignatureAlgorithmsExtension().\
                               create(sigList))
         #don't send empty list of extensions
-        if len(extensions) == 0:
+        if not extensions:
             extensions = None
 
         #Either send ClientHello (with a resumable session)...
@@ -1742,7 +1742,7 @@ class TLSConnection(TLSRecordLayer):
                     CipherSuite.getSrpCertSuites(settings, self.version)
             cipherSuites += CipherSuite.getSrpSuites(settings, self.version)
         elif certChain:
-            if len(group_intersect) > 0:
+            if group_intersect:
                 cipherSuites += CipherSuite.getEcdheCertSuites(settings,
                                                                self.version)
             cipherSuites += CipherSuite.getDheCertSuites(settings, self.version)
