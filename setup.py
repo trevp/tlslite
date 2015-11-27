@@ -18,6 +18,7 @@ setup(name="tlslite-ng",
       packages=["tlslite", "tlslite.utils", "tlslite.integration"],
       package_data={
                     'package1': ['LICENSE', 'README.md']},
+      install_requires=['ecdsa'],
       obsoletes=["tlslite"],
       classifiers=[
             'Development Status :: 4 - Beta',

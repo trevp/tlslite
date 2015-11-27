@@ -7,6 +7,7 @@ import sys
 import os
 import math
 import binascii
+import ecdsa
 
 if sys.version_info >= (3,0):
 
@@ -91,3 +92,10 @@ def formatExceptionTrace(e):
     newStr = "".join(traceback.format_exception(sys.exc_type, sys.exc_value, sys.exc_traceback))
     return newStr
 
+try:
+    # Fedora and Red Hat Enterprise Linux versions have small curves removed
+    getattr(ecdsa, 'NIST192p')
+except AttributeError:
+    ecdsaAllCurves = False
+else:
+    ecdsaAllCurves = True

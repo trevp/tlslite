@@ -183,3 +183,27 @@ class TestHandshakeSettings(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             hs.validate()
+
+    def test_invalid_signature_algorithm(self):
+        hs = HandshakeSettings()
+        hs.rsaSigHashes += ['md2']
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_no_signature_hashes_set_with_TLS1_2(self):
+        hs = HandshakeSettings()
+        hs.rsaSigHashes = []
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_no_signature_hashes_set_with_TLS1_1(self):
+        hs = HandshakeSettings()
+        hs.rsaSigHashes = []
+        hs.maxVersion = (3, 2)
+        self.assertIsNotNone(hs.validate())
+
+    def test_invalid_curve_name(self):
+        hs = HandshakeSettings()
+        hs.eccCurves = ['P-256']
+        with self.assertRaises(ValueError):
+            hs.validate()

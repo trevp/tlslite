@@ -941,6 +941,12 @@ class ServerKeyExchange(HandshakeMsg):
     @cvar dh_g: FFDHE protocol generator
     @type dh_Ys: int
     @cvar dh_Ys: FFDH protocol server key share
+    @type curve_type: int
+    @cvar curve_type: Type of curve used (explicit, named, etc.)
+    @type named_curve: int
+    @cvar named_curve: TLS ID of named curve
+    @type ecdh_Ys: bytearray
+    @cvar ecdh_Ys: ECDH protocol encoded point key share
     @type signature: bytearray
     @cvar signature: signature performed over the parameters by server
     @type hashAlg: int
@@ -967,6 +973,10 @@ class ServerKeyExchange(HandshakeMsg):
         self.dh_p = 0
         self.dh_g = 0
         self.dh_Ys = 0
+        # EC settings
+        self.curve_type = None
+        self.named_curve = None
+        self.ecdh_Ys = bytearray(0)
         # signature for certificate authenticated ciphersuites
         self.signature = bytearray(0)
         # signature hash algorithm and signing algorithm for TLSv1.2
@@ -1009,6 +1019,12 @@ class ServerKeyExchange(HandshakeMsg):
         self.dh_Ys = dh_Ys
         return self
 
+    def createECDH(self, curve_type, named_curve=None, point=None):
+        """Set ECDH protocol parameters"""
+        self.curve_type = curve_type
+        self.named_curve = named_curve
+        self.ecdh_Ys = point
+
     def parse(self, parser):
         """Deserialise message from L{Parser}
 
@@ -1025,6 +1041,12 @@ class ServerKeyExchange(HandshakeMsg):
             self.dh_p = bytesToNumber(parser.getVarBytes(2))
             self.dh_g = bytesToNumber(parser.getVarBytes(2))
             self.dh_Ys = bytesToNumber(parser.getVarBytes(2))
+        elif self.cipherSuite in CipherSuite.ecdhAllSuites:
+            self.curve_type = parser.get(1)
+            # only named curves supported
+            assert self.curve_type == 3
+            self.named_curve = parser.get(2)
+            self.ecdh_Ys = parser.getVarBytes(1)
         else:
             raise AssertionError()
 
@@ -1052,6 +1074,11 @@ class ServerKeyExchange(HandshakeMsg):
             writer.addVarSeq(numberToByteArray(self.dh_p), 1, 2)
             writer.addVarSeq(numberToByteArray(self.dh_g), 1, 2)
             writer.addVarSeq(numberToByteArray(self.dh_Ys), 1, 2)
+        elif self.cipherSuite in CipherSuite.ecdhAllSuites:
+            writer.add(self.curve_type, 1)
+            assert self.curve_type == 3
+            writer.add(self.named_curve, 2)
+            writer.addVarSeq(self.ecdh_Ys, 1, 1)
         else:
             assert(False)
         return writer.bytes
@@ -1074,14 +1101,17 @@ class ServerKeyExchange(HandshakeMsg):
 
     def hash(self, clientRandom, serverRandom):
         """
-        Calculate hash of paramters to sign
+        Calculate hash of parameters to sign
 
         @rtype: bytearray
         """
         bytesToHash = clientRandom + serverRandom + self.writeParams()
         if self.version >= (3, 3):
-            # TODO: Signature algorithm negotiation not supported.
-            return SHA1(bytesToHash)
+            hashAlg = HashAlgorithm.toRepr(self.hashAlg)
+            if hashAlg is None:
+                raise AssertionError("Unknown hash algorithm: {0}".\
+                                     format(self.hashAlg))
+            return secureHash(bytesToHash, hashAlg)
         return MD5(bytesToHash) + SHA1(bytesToHash)
 
 class ServerHelloDone(HandshakeMsg):
@@ -1113,6 +1143,8 @@ class ClientKeyExchange(HandshakeMsg):
     @ivar srp_A: SRP protocol client answer value
     @type dh_Yc: int
     @ivar dh_Yc: client Finite Field Diffie-Hellman protocol key share
+    @type ecdh_Yc: bytearray
+    @ivar ecdh_Yc: encoded curve coordinates
     @type encryptedPreMasterSecret: bytearray
     @ivar encryptedPreMasterSecret: client selected PremMaster secret encrypted
     with server public key (from certificate)
@@ -1132,6 +1164,7 @@ class ClientKeyExchange(HandshakeMsg):
         self.version = version
         self.srp_A = 0
         self.dh_Yc = 0
+        self.ecdh_Yc = bytearray(0)
         self.encryptedPreMasterSecret = bytearray(0)
 
     def createSRP(self, srp_A):
@@ -1170,7 +1203,19 @@ class ClientKeyExchange(HandshakeMsg):
         """
         self.dh_Yc = dh_Yc
         return self
-    
+
+    def createECDH(self, ecdh_Yc):
+        """
+        Set the client ECDH key share
+
+        returns self
+
+        @type ecdh_Yc: bytearray
+        @rtype: L{ClientKeyExchange}
+        """
+        self.ecdh_Yc = ecdh_Yc
+        return self
+
     def parse(self, parser):
         """
         Deserialise the message from L{Parser}
@@ -1193,6 +1238,8 @@ class ClientKeyExchange(HandshakeMsg):
                 raise AssertionError()
         elif self.cipherSuite in CipherSuite.dhAllSuites:
             self.dh_Yc = bytesToNumber(parser.getVarBytes(2))
+        elif self.cipherSuite in CipherSuite.ecdhAllSuites:
+            self.ecdh_Yc = parser.getVarBytes(1)
         else:
             raise AssertionError()
         parser.stopLengthCheck()
@@ -1216,6 +1263,8 @@ class ClientKeyExchange(HandshakeMsg):
                 raise AssertionError()
         elif self.cipherSuite in CipherSuite.dhAllSuites:
             w.addVarSeq(numberToByteArray(self.dh_Yc), 1, 2)
+        elif self.cipherSuite in CipherSuite.ecdhAllSuites:
+            w.addVarSeq(self.ecdh_Yc, 1, 1)
         else:
             raise AssertionError()
         return self.postWrite(w)

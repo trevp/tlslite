@@ -116,3 +116,10 @@ class TestRSAKey(unittest.TestCase):
         self.assertEqual(RSAKey.addPKCS1SHA1Prefix(data, False), bytearray(
             b'0\x1f0\x07\x06\x05+\x0e\x03\x02\x1a\x04\x14' +
             b' sha-1 hash of data '))
+
+    def test_addPKCS1Prefix(self):
+        data = bytearray(b' sha-1 hash of data ')
+
+        self.assertEqual(RSAKey.addPKCS1Prefix(data, 'sha1'), bytearray(
+            b'0!0\t\x06\x05+\x0e\x03\x02\x1a\x05\x00\x04\x14' +
+            b' sha-1 hash of data '))

@@ -70,10 +70,18 @@ import hmac
 import hashlib
 
 def MD5(b):
-    return bytearray(hashlib.md5(compat26Str(b)).digest())
+    """Return a MD5 digest of data"""
+    return secureHash(b, 'md5')
 
 def SHA1(b):
-    return bytearray(hashlib.sha1(compat26Str(b)).digest())
+    """Return a SHA1 digest of data"""
+    return secureHash(b, 'sha1')
+
+def secureHash(data, algorithm):
+    """Return a digest of `data` using `algorithm`"""
+    hashInstance = hashlib.new(algorithm)
+    hashInstance.update(compat26Str(data))
+    return bytearray(hashInstance.digest())
 
 def HMAC_MD5(k, b):
     k = compatHMAC(k)

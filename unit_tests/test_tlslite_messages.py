@@ -13,7 +13,7 @@ from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
-        HashAlgorithm, SignatureAlgorithm
+        HashAlgorithm, SignatureAlgorithm, ECCurveType, GroupName
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension
 from tlslite.errors import TLSInternalError
@@ -1187,6 +1187,20 @@ class TestClientKeyExchange(unittest.TestCase):
             b'\x00\x09' +
             b'\x01' + b'\x00'*7 + b'\x03'))
 
+    def test_createECDH(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
+
+        cke.createECDH(bytearray(b'\x04\xff\xab'))
+
+        bts = cke.write()
+
+        self.assertEqual(bts, bytearray(
+            b'\x10'         # type - CKE
+            b'\x00\x00\x04' # overall length
+            b'\x03'         # length of point encoding
+            b'\x04\xff\xab' # point encoding
+            ))
+
     def test_createRSA_with_unset_protocol(self):
         cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA)
 
@@ -1271,6 +1285,19 @@ class TestClientKeyExchange(unittest.TestCase):
         cke.parse(parser)
 
         self.assertEqual(2**56, cke.dh_Yc)
+
+    def test_parse_with_ECDH(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x04'
+            b'\x03'
+            b'\x04\xff\xcd'
+            ))
+
+        cke.parse(parser)
+
+        self.assertEqual(cke.ecdh_Yc, bytearray(b'\x04\xff\xcd'))
 
     def test_parse_with_unknown_cipher(self):
         cke = ClientKeyExchange(0)
@@ -1451,6 +1478,31 @@ class TestServerKeyExchange(unittest.TestCase):
             b'\x10'                 # Ys value
             ))
 
+    def test_createECDH(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+                                (3, 3))
+
+        point = bytearray(b'\x04\x0a\x0a\x0b\x0b')
+        ske.createECDH(ECCurveType.named_curve,
+                       named_curve=GroupName.secp256r1,
+                       point=point)
+        ske.hashAlg = HashAlgorithm.sha1
+        ske.signAlg = SignatureAlgorithm.rsa
+        ske.signature = bytearray(b'\xff'*16)
+
+        self.assertEqual(ske.write(), bytearray(
+            b'\x0c'                 # message type - SKE
+            b'\x00\x00\x1d'         # overall length
+            b'\x03'                 # named_curve
+            b'\x00\x17'             # secp256r1
+            b'\x05'                 # length of point encoding
+            b'\x04\x0a\x0a\x0b\x0b' # point
+            b'\x02\x01'             # RSA+SHA1
+            b'\x00\x10'             # length of signature
+            # signature:
+            b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+            ))
+
     def test_parse_with_unknown_cipher(self):
         ske = ServerKeyExchange(0, (3, 1))
 
@@ -1584,6 +1636,29 @@ class TestServerKeyExchange(unittest.TestCase):
         self.assertEqual(ske.dh_g, 2)
         self.assertEqual(ske.dh_Ys, 16)
 
+    def test_parser_with_ECDH(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+                                (3, 3))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x1d'         # overall length
+            b'\x03'                 # named_curve
+            b'\x00\x17'             # secp256r1
+            b'\x05'                 # length of point encoding
+            b'\x04\x0a\x0a\x0b\x0b' # point
+            b'\x02\x01'             # RSA+SHA1
+            b'\x00\x10'             # length of signature
+            # signature:
+            b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+            ))
+
+        ske.parse(parser)
+
+        self.assertEqual(ske.curve_type, ECCurveType.named_curve)
+        self.assertEqual(ske.named_curve, GroupName.secp256r1)
+        self.assertEqual(ske.ecdh_Ys, bytearray(b'\x04\x0a\x0a\x0b\x0b'))
+        self.assertEqual(ske.signature, bytearray(b'\xff'*16))
+
     def test_hash(self):
         ske = ServerKeyExchange(
                 CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
@@ -1607,7 +1682,7 @@ class TestServerKeyExchange(unittest.TestCase):
         with self.assertRaises(AssertionError):
             ske.hash(bytearray(32), bytearray(32))
 
-    def test_hash_with_default_hash_algorithm_for_TLS_v1_2(self):
+    def test_hash_with_sha1_hash_algorithm_for_TLS_v1_2(self):
         ske = ServerKeyExchange(
                 CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
                 (3, 3))
@@ -1616,6 +1691,7 @@ class TestServerKeyExchange(unittest.TestCase):
                       srp_g=2,
                       srp_s=bytearray(3),
                       srp_B=4)
+        ske.hashAlg = HashAlgorithm.sha1
 
         hash1 = ske.hash(bytearray(32), bytearray(32))
 
@@ -1623,6 +1699,16 @@ class TestServerKeyExchange(unittest.TestCase):
             b'\x8e?YW\xcd\xad\xc6\x83\x91\x1d.fe,\x17y=\xc4T\x89'
             ))
 
+    def test_hash_with_invalid_hash_algorithm(self):
+       ske = ServerKeyExchange(
+               CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
+               (3, 3))
+
+       ske.createDH(1, 2, 3)
+       ske.hashAlg = 300
+
+       with self.assertRaises(AssertionError):
+           ske.hash(bytearray(32), bytearray(32))
 
 class TestCertificateRequest(unittest.TestCase):
     def test___init__(self):

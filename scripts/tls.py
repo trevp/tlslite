@@ -29,7 +29,8 @@ if __name__ != "__main__":
     raise "This must be run as a command, not used as a module!"
 
 from tlslite.api import *
-from tlslite.constants import CipherSuite
+from tlslite.constants import CipherSuite, HashAlgorithm, SignatureAlgorithm, \
+        GroupName
 from tlslite import __version__
 
 try:
@@ -182,6 +183,15 @@ def printGoodConnection(connection, seconds):
     if connection.session.serverCertChain:
         print("  Server X.509 SHA1 fingerprint: %s" % 
             connection.session.serverCertChain.getFingerprint())
+    if connection.version >= (3, 3) and connection.serverSigAlg is not None:
+        print("  Key exchange signature: {1}+{0}".format(\
+                HashAlgorithm.toStr(connection.serverSigAlg[0]),
+                SignatureAlgorithm.toStr(connection.serverSigAlg[1])))
+    if connection.ecdhCurve is not None:
+        print("  Group used for key exchange: {0}".format(\
+                GroupName.toStr(connection.ecdhCurve)))
+    if connection.dhGroupSize is not None:
+        print("  DH group size: {0} bits".format(connection.dhGroupSize))
     if connection.session.serverName:
         print("  SNI: %s" % connection.session.serverName)
     if connection.session.tackExt:   

@@ -221,8 +221,9 @@ class RSAKey(object):
     # Helper Functions for RSA Keys
     # **************************************************************************
 
-    @staticmethod
-    def addPKCS1SHA1Prefix(bytes, withNULL=True):
+    @classmethod
+    def addPKCS1SHA1Prefix(cls, hashBytes, withNULL=True):
+        """Add PKCS#1 v1.5 algorithm identifier prefix to SHA1 hash bytes"""
         # There is a long history of confusion over whether the SHA1 
         # algorithmIdentifier should be encoded with a NULL parameter or 
         # with the parameter omitted.  While the original intention was 
@@ -232,13 +233,43 @@ class RSAKey(object):
         # always implemented.  Anyways, verification code should probably 
         # accept both.
         if not withNULL:
-            prefixBytes = bytearray(\
-            [0x30,0x1f,0x30,0x07,0x06,0x05,0x2b,0x0e,0x03,0x02,0x1a,0x04,0x14])            
+            prefixBytes = bytearray([0x30, 0x1f, 0x30, 0x07, 0x06, 0x05, 0x2b,
+                                     0x0e, 0x03, 0x02, 0x1a, 0x04, 0x14])
         else:
-            prefixBytes = bytearray(\
-            [0x30,0x21,0x30,0x09,0x06,0x05,0x2b,0x0e,0x03,0x02,0x1a,0x05,0x00,0x04,0x14])            
-        prefixedBytes = prefixBytes + bytes
+            prefixBytes = cls._pkcs1Prefixes['sha1']
+        prefixedBytes = prefixBytes + hashBytes
         return prefixedBytes
+
+    _pkcs1Prefixes = {'md5' : bytearray([0x30, 0x20, 0x30, 0x0c, 0x06, 0x08,
+                                         0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d,
+                                         0x02, 0x05, 0x05, 0x00, 0x04, 0x10]),
+                      'sha1' : bytearray([0x30, 0x21, 0x30, 0x09, 0x06, 0x05,
+                                          0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05,
+                                          0x00, 0x04, 0x14]),
+                      'sha224' : bytearray([0x30, 0x2d, 0x30, 0x0d, 0x06, 0x09,
+                                            0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+                                            0x04, 0x02, 0x04, 0x05, 0x00, 0x04,
+                                            0x1c]),
+                      'sha256' : bytearray([0x30, 0x31, 0x30, 0x0d, 0x06, 0x09,
+                                            0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+                                            0x04, 0x02, 0x01, 0x05, 0x00, 0x04,
+                                            0x20]),
+                      'sha384' : bytearray([0x30, 0x41, 0x30, 0x0d, 0x06, 0x09,
+                                            0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+                                            0x04, 0x02, 0x02, 0x05, 0x00, 0x04,
+                                            0x30]),
+                      'sha512' : bytearray([0x30, 0x51, 0x30, 0x0d, 0x06, 0x09,
+                                            0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+                                            0x04, 0x02, 0x03, 0x05, 0x00, 0x04,
+                                            0x40])}
+
+    @classmethod
+    def addPKCS1Prefix(cls, data, hashName):
+        """Add the PKCS#1 v1.5 algorithm identifier prefix to hash bytes"""
+        hashName = hashName.lower()
+        assert hashName in cls._pkcs1Prefixes
+        prefixBytes = cls._pkcs1Prefixes[hashName]
+        return prefixBytes + data
 
     def _addPKCS1Padding(self, bytes, blockType):
         padLength = (numBytes(self.n) - (len(bytes)+3))
