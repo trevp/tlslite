@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.6.0-alpha2                                    2015-11-12
+tlslite-ng version 0.6.0-alpha3                                    2015-11-27
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -523,6 +523,12 @@ encrypt-then-MAC mode for CBC ciphers.
 ===========
 
 0.6.0 - WIP
+ - abitlity to perform reverse lookups on many of the TLS type enumerations
+ - added ECDHE_RSA key exchange together with associated ciphersuites
+ - refactor key exchange code to remove duplication and make adding new methods
+   easier
+ - add support for all hashes for ServerKeyExchange and CertificateVerify
+   messages in TLS 1.2
  - mark library as compatible with Python 3.5 (it was previously, but now
    it is verified with Continous Integration)
  - small cleanups and more documentation
