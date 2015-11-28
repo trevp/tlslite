@@ -1,18 +1,22 @@
 engines:
-    radon:
+  radon:
+    enabled: true
+  pep8:
+    enabled: true
+  duplication:
+    enabled: true
+    config:
+      languages:
+      - python
+  fixme:
+    enabled: true
+    checks:
+      bug:
         enabled: true
-    pep8:
-        enabled: true
-    duplication:
-        enabled: true
-        config:
-            languages:
-                - python
-
 ratings:
-    paths:
-        -"**.py"
-
+  paths:
+  - "tlslite/**"
+  - "**.py"
 exclude_paths:
  - "tests/**/*"
  - "scripts/**/*"
