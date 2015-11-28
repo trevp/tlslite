@@ -1,9 +1,19 @@
-languages:
-  Ruby: true
-  JavaScript: true
-  PHP: true
-  Python: true
+engines:
+    radon:
+        enabled: true
+    pep8:
+        enabled: true
+    duplication:
+        enabled: true
+        config:
+            languages:
+                - python
+
+ratings:
+    paths:
+        -"**.py"
+
 exclude_paths:
- - "tests/*"
- - "scripts/*"
- - "unit_tests/*"
+ - "tests/**/*"
+ - "scripts/**/*"
+ - "unit_tests/**/*"
