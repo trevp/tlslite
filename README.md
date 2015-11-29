@@ -67,6 +67,7 @@ Requirements:
 
   * Python 2.6 or higher is required.
   * Python 3.2 or higher is supported.
+  * python ecdsa library ([GitHub](https://github.com/warner/python-ecdsa) [PyPI](https://pypi.python.org/pypi/ecdsa))
 
 Options:
 
