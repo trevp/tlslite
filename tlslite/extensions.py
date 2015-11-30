@@ -101,6 +101,14 @@ class TLSExtension(object):
         w.addFixSeq(self.extData, 1)
         return w.bytes
 
+    @staticmethod
+    def _parseExt(parser, extType, extLength, extList):
+        """Parse a extension using a predefined constructor"""
+        ext = extList[extType]()
+        extParser = Parser(parser.getFixBytes(extLength))
+        ext = ext.parse(extParser)
+        return ext
+
     def parse(self, p):
         """ Parses extension from the wire format
 
@@ -118,17 +126,13 @@ class TLSExtension(object):
 
         # first check if we shouldn't use server side parser
         if self.serverType and extType in self._serverExtensions:
-            ext = self._serverExtensions[extType]()
-            ext_parser = Parser(p.getFixBytes(ext_length))
-            ext = ext.parse(ext_parser)
-            return ext
+            return self._parseExt(p, extType, ext_length,
+                                  self._serverExtensions)
 
         # then fallback to universal/ClientHello-specific parsers
         if extType in self._universalExtensions:
-            ext = self._universalExtensions[extType]()
-            ext_parser = Parser(p.getFixBytes(ext_length))
-            ext = ext.parse(ext_parser)
-            return ext
+            return self._parseExt(p, extType, ext_length,
+                                  self._universalExtensions)
 
         # finally, just save the extension data as there are extensions which
         # don't require specific handlers and indicate option by mere presence
