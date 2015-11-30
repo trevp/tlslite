@@ -158,6 +158,87 @@ class TLSExtension(object):
                 " serverType={2!r})".format(self.extType, self.extData,
                                             self.serverType)
 
+class VarListExtension(TLSExtension):
+    """
+    Abstract extension for handling extensions comprised only of a value list
+
+    Extension for handling arbitrary extensions comprising of just a list
+    of same-sized elementes inside an array
+    """
+
+    def __init__(self, elemLength, lengthLength, fieldName, extType):
+        self._fieldName = fieldName
+        self._internalList = None
+        self._elemLength = elemLength
+        self._lengthLength = lengthLength
+        self._extType = extType
+
+    @property
+    def extType(self):
+        """Type of extension"""
+        return self._extType
+
+    @property
+    def extData(self):
+        """Return raw data encoding of the extension
+
+        @rtype: bytearray
+        """
+        if self._internalList is None:
+            return bytearray(0)
+
+        writer = Writer()
+        writer.addVarSeq(self._internalList,
+                         self._elemLength,
+                         self._lengthLength)
+        return writer.bytes
+
+    def create(self, values):
+        """Set the list to specified values
+
+        @type values: list of int
+        @param values: list of values to save
+        """
+        self._internalList = values
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on-the-wire data
+
+        @type parser: L{Parser}
+        @rtype: Extension
+        """
+        if parser.getRemainingLength() == 0:
+            self._internalList = None
+            return self
+
+        self._internalList = parser.getVarList(self._elemLength,
+                                               self._lengthLength)
+        return self
+
+    def __getattr__(self, name):
+        """Return the special field name value"""
+        if name == self._fieldName:
+            return self._internalList
+        raise AttributeError("type object '{0}' has no attribute '{1}'"\
+                .format(self.__class__.__name__, name))
+
+    def __setattr__(self, name, value):
+        """Set the special field value"""
+        if name == '_fieldName':
+            super(VarListExtension, self).__setattr__(name, value)
+            return
+        if name == self._fieldName:
+            self._internalList = value
+            return
+        super(VarListExtension, self).__setattr__(name, value)
+
+    def __repr__(self):
+        return "{0}({1}={2!r})".format(self.__class__.__name__,
+                                       self._fieldName,
+                                       self._internalList)
+
 class SNIExtension(TLSExtension):
     """
     Class for handling Server Name Indication (server_name) extension from
@@ -376,10 +457,11 @@ class SNIExtension(TLSExtension):
 
         return self
 
-class ClientCertTypeExtension(TLSExtension):
+class ClientCertTypeExtension(VarListExtension):
     """
-    This class handles the Certificate Type extension (variant sent by client)
-    defined in RFC 6091.
+    This class handles the (client variant of) Certificate Type extension
+
+    See RFC 6091.
 
     @type extType: int
     @ivar extType: numeric type of Certificate Type extension, i.e. 9
@@ -397,71 +479,8 @@ class ClientCertTypeExtension(TLSExtension):
 
         See also: L{create} and L{parse}
         """
-
-        self.certTypes = None
-
-    def __repr__(self):
-        """ Return programmer-centric representation of extension
-
-        @rtype: str
-        """
-        return "ClientCertTypeExtension(certTypes={0!r})"\
-                .format(self.certTypes)
-
-    @property
-    def extType(self):
-        """
-        Return the type of TLS extension, in this case - 9
-
-        @rtype: int
-        """
-
-        return ExtensionType.cert_type
-
-    @property
-    def extData(self):
-        """
-        Return the raw encoding of this extension
-
-        @rtype: bytearray
-        """
-
-        if self.certTypes is None:
-            return bytearray(0)
-
-        writer = Writer()
-        writer.addVarSeq(self.certTypes, 1, 1)
-        return writer.bytes
-
-    def create(self, certTypes=None):
-        """
-        Return instance of this extension with specified certificate types
-
-        @type certTypes: iterable list of int
-        @param certTypes: list of certificate types to advertise, all values
-            should be between 0 and 2^8-1 inclusive
-
-        @raises ValueError: when the list includes too big or negative integers
-        """
-        self.certTypes = certTypes
-        return self
-
-    def parse(self, p):
-        """
-        Parse the extension from binary data
-
-        @type p: L{tlslite.util.codec.Parser}
-        @param p: data to be parsed
-
-        @raise SyntaxError: when the size of the passed element doesn't match
-            the internal representation
-
-        @rtype: L{ClientCertTypeExtension}
-        """
-
-        self.certTypes = p.getVarList(1, 1)
-
-        return self
+        super(ClientCertTypeExtension, self).__init__(1, 1, 'certTypes', \
+                ExtensionType.cert_type)
 
 class ServerCertTypeExtension(TLSExtension):
     """
@@ -909,8 +928,7 @@ class TACKExtension(TLSExtension):
 
         return self
 
-class SupportedGroupsExtension(TLSExtension):
-
+class SupportedGroupsExtension(VarListExtension):
     """
     Client side list of supported groups of (EC)DHE key exchage.
 
@@ -922,115 +940,23 @@ class SupportedGroupsExtension(TLSExtension):
 
     def __init__(self):
         """Create instance of class"""
-        self.groups = None
+        super(SupportedGroupsExtension, self).__init__(2, 2, 'groups', \
+            ExtensionType.supported_groups)
 
-    @property
-    def extType(self):
-        """
-        Type of extension, in this case - 10
-
-        @rtype: int
-        """
-        return ExtensionType.supported_groups
-
-    @property
-    def extData(self):
-        """
-        Return raw data encoding of the extension
-
-        @rtype: bytearray
-        """
-        if self.groups is None:
-            return bytearray(0)
-
-        writer = Writer()
-        writer.addVarSeq(self.groups, 2, 2)
-        return writer.bytes
-
-    def create(self, groups):
-        """
-        Set the supported groups in the extension
-
-        @type groups: list of int
-        @param groups: list of supported groups
-        """
-        self.groups = groups
-        return self
-
-    def parse(self, parser):
-        """
-        Deserialise extension from on-the-wire data
-
-        @type parser: L{Parser}
-        @rtype: SupportedGroupsExtension
-        """
-        if parser.getRemainingLength() == 0:
-            self.groups = None
-            return self
-
-        self.groups = parser.getVarList(2, 2)
-
-        return self
-
-class ECPointFormatsExtension(TLSExtension):
-
+class ECPointFormatsExtension(VarListExtension):
     """
     Client side list of supported ECC point formats.
 
     See RFC4492.
+
+    @type formats: list of int
+    @ivar formats: list of point formats supported by peer
     """
 
     def __init__(self):
         """Create instance of class"""
-        self.formats = None
-
-    @property
-    def extType(self):
-        """
-        Type of extension, in this case - 11
-
-        @rtype: int
-        """
-        return ExtensionType.ec_point_formats
-
-    @property
-    def extData(self):
-        """
-        Return raw encoding of the extension
-
-        @rtype: bytearray
-        """
-        if self.formats is None:
-            return bytearray(0)
-
-        writer = Writer()
-        writer.addVarSeq(self.formats, 1, 1)
-        return writer.bytes
-
-    def create(self, formats):
-        """
-        Set the list of supported EC point formats
-
-        @type formats: list of int
-        @param formats: list of supported EC point formats
-        """
-        self.formats = formats
-        return self
-
-    def parse(self, parser):
-        """
-        Deserialise extension from on the wire data
-
-        @type parser: L{Parser}
-        @rtype: ECPointFormatsExtension
-        """
-        if parser.getRemainingLength() == 0:
-            self.formats = None
-            return self
-
-        self.formats = parser.getVarList(1, 1)
-
-        return self
+        super(ECPointFormatsExtension, self).__init__(1, 1, 'formats', \
+                ExtensionType.ec_point_formats)
 
 class SignatureAlgorithmsExtension(TLSExtension):
 

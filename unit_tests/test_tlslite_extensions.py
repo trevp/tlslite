@@ -11,7 +11,7 @@ except ImportError:
 from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension,\
         TACKExtension, SupportedGroupsExtension, ECPointFormatsExtension,\
-        SignatureAlgorithmsExtension
+        SignatureAlgorithmsExtension, VarListExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType, ExtensionType, GroupName,\
         ECPointFormat, HashAlgorithm, SignatureAlgorithm
@@ -292,6 +292,28 @@ class TestTLSExtension(unittest.TestCase):
         self.assertEqual("TLSExtension(extType=0, "\
                 "extData=bytearray(b'\\x00\\x00'), serverType=False)",
                 repr(ext))
+
+class TestVarListExtension(unittest.TestCase):
+    def setUp(self):
+        self.ext = VarListExtension(1, 1, 'groups', 42)
+
+    def test___init__(self):
+        self.assertIsNotNone(self.ext)
+
+    def test_get_attribute(self):
+        self.assertIsNone(self.ext.groups)
+
+    def test_set_attribute(self):
+        self.ext.groups = [1, 2, 3]
+
+        self.assertEqual(self.ext.groups, [1, 2, 3])
+
+    def test_get_non_existant_attribute(self):
+        with self.assertRaises(AttributeError) as e:
+            val = self.ext.gruppen
+
+        self.assertEqual(str(e.exception),
+                "type object 'VarListExtension' has no attribute 'gruppen'")
 
 class TestSNIExtension(unittest.TestCase):
     def test___init__(self):
@@ -648,7 +670,7 @@ class TestClientCertTypeExtension(unittest.TestCase):
 
     def test_create(self):
         cert_type = ClientCertTypeExtension()
-        cert_type = cert_type.create()
+        cert_type = cert_type.create(None)
 
         self.assertEqual(9, cert_type.extType)
         self.assertEqual(bytearray(0), cert_type.extData)
@@ -1217,6 +1239,11 @@ class TestSupportedGroups(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             ext.parse(parser)
 
+    def test_repr(self):
+        ext = SupportedGroupsExtension().create([GroupName.secp256r1])
+        self.assertEqual("SupportedGroupsExtension(groups=[23])",
+                repr(ext))
+
 class TestECPointFormatsExtension(unittest.TestCase):
     def test___init__(self):
         ext = ECPointFormatsExtension()
@@ -1251,6 +1278,10 @@ class TestECPointFormatsExtension(unittest.TestCase):
         ext.parse(parser)
 
         self.assertIsNone(ext.formats)
+
+    def test_repr(self):
+        ext = ECPointFormatsExtension().create([ECPointFormat.uncompressed])
+        self.assertEqual("ECPointFormatsExtension(formats=[0])", repr(ext))
 
 class TestSignatureAlgorithmsExtension(unittest.TestCase):
     def test__init__(self):
