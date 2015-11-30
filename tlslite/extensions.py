@@ -122,23 +122,23 @@ class TLSExtension(object):
         """
 
         extType = p.get(2)
-        ext_length = p.get(2)
+        extLength = p.get(2)
 
         # first check if we shouldn't use server side parser
         if self.serverType and extType in self._serverExtensions:
-            return self._parseExt(p, extType, ext_length,
+            return self._parseExt(p, extType, extLength,
                                   self._serverExtensions)
 
         # then fallback to universal/ClientHello-specific parsers
         if extType in self._universalExtensions:
-            return self._parseExt(p, extType, ext_length,
+            return self._parseExt(p, extType, extLength,
                                   self._universalExtensions)
 
         # finally, just save the extension data as there are extensions which
         # don't require specific handlers and indicate option by mere presence
         self.extType = extType
-        self.extData = p.getFixBytes(ext_length)
-        assert len(self.extData) == ext_length
+        self.extData = p.getFixBytes(extLength)
+        assert len(self.extData) == extLength
         return self
 
     def __eq__(self, that):
