@@ -320,6 +320,7 @@ class SNIExtension(TLSExtension):
 
         See also: L{create} and L{parse}.
         """
+        super(SNIExtension, self).__init__(extType=ExtensionType.server_name)
         self.serverNames = None
 
     def __repr__(self):
@@ -373,14 +374,6 @@ class SNIExtension(TLSExtension):
             self.serverNames += serverNames
 
         return self
-
-    @property
-    def extType(self):
-        """ Return the type of TLS extension, in this case - 0
-
-        @rtype: int
-        """
-        return ExtensionType.server_name
 
     @property
     def hostNames(self):
@@ -518,7 +511,7 @@ class ServerCertTypeExtension(TLSExtension):
     defined in RFC 6091.
 
     @type extType: int
-    @ivar extType: byneruc ttoe if Certificate Type extension, i.e. 9
+    @ivar extType: binary type of Certificate Type extension, i.e. 9
 
     @type extData: bytearray
     @ivar extData: raw representation of the extension data
@@ -533,7 +526,8 @@ class ServerCertTypeExtension(TLSExtension):
 
         See also: L{create} and L{parse}
         """
-
+        super(ServerCertTypeExtension, self).__init__(server=True, \
+                                               extType=ExtensionType.cert_type)
         self.cert_type = None
 
     def __repr__(self):
@@ -542,15 +536,6 @@ class ServerCertTypeExtension(TLSExtension):
         @rtype: str
         """
         return "ServerCertTypeExtension(cert_type={0!r})".format(self.cert_type)
-
-    @property
-    def extType(self):
-        """
-        Return the type of TLS extension, in this case - 9
-
-        @rtype: int
-        """
-        return ExtensionType.cert_type
 
     @property
     def extData(self):
@@ -609,6 +594,7 @@ class SRPExtension(TLSExtension):
 
         See also: L{create} and L{parse}
         """
+        super(SRPExtension, self).__init__(extType=ExtensionType.srp)
 
         self.identity = None
 
@@ -619,16 +605,6 @@ class SRPExtension(TLSExtension):
         @rtype: str
         """
         return "SRPExtension(identity={0!r})".format(self.identity)
-
-    @property
-    def extType(self):
-        """
-        Return the type of TLS extension, in this case - 12
-
-        @rtype: int
-        """
-
-        return ExtensionType.srp
 
     @property
     def extData(self):
@@ -702,6 +678,7 @@ class NPNExtension(TLSExtension):
 
         See also: L{create} and L{parse}
         """
+        super(NPNExtension, self).__init__(extType=ExtensionType.supports_npn)
 
         self.protocols = None
 
@@ -712,14 +689,6 @@ class NPNExtension(TLSExtension):
         @rtype: str
         """
         return "NPNExtension(protocols={0!r})".format(self.protocols)
-
-    @property
-    def extType(self):
-        """ Return the type of TLS extension, in this case - 13172
-
-        @rtype: int
-        """
-        return ExtensionType.supports_npn
 
     @property
     def extData(self):
@@ -888,6 +857,7 @@ class TACKExtension(TLSExtension):
 
         See also: L{create} and L{parse}
         """
+        super(TACKExtension, self).__init__(extType=ExtensionType.tack)
 
         self.tacks = []
         self.activation_flags = 0
@@ -900,15 +870,6 @@ class TACKExtension(TLSExtension):
         """
         return "TACKExtension(activation_flags={0!r}, tacks={1!r})".format(
                 self.activation_flags, self.tacks)
-
-    @property
-    def extType(self):
-        """
-        Returns the type of TLS extension, in this case - 62208
-
-        @rtype: int
-        """
-        return ExtensionType.tack
 
     @property
     def extData(self):
@@ -1001,16 +962,10 @@ class SignatureAlgorithmsExtension(TLSExtension):
 
     def __init__(self):
         """Create instance of class"""
+        super(SignatureAlgorithmsExtension, self).__init__(extType=
+                                                           ExtensionType.
+                                                           signature_algorithms)
         self.sigalgs = None
-
-    @property
-    def extType(self):
-        """
-        Type of extension, in this case - 13
-
-        @rtype: int
-        """
-        return ExtensionType.signature_algorithms
 
     @property
     def extData(self):
