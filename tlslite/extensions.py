@@ -50,10 +50,9 @@ class TLSExtension(object):
     _universalExtensions = {}
     _serverExtensions = {}
 
-    def __init__(self, server=False):
+    def __init__(self, server=False, extType=None):
         """
-        Creates a generic TLS extension that can be used either for
-        client hello or server hello message parsing or creation.
+        Creates a generic TLS extension.
 
         You'll need to use L{create} or L{parse} methods to create an extension
         that is actually usable.
@@ -61,29 +60,58 @@ class TLSExtension(object):
         @type server: boolean
         @param server: whatever to select ClientHello or ServerHello version
             for parsing
+        @type extType: int
+        @param extType: type of extension encoded as an integer
         """
-        self.extType = None
-        self.extData = bytearray(0)
+        self.extType = extType
+        self._extData = bytearray(0)
         self.serverType = server
 
-    def create(self, extType, data):
+    @property
+    def extData(self):
+        """Return the on the wire encoding of extension"""
+        return self._extData
+
+    def _oldCreate(self, extType, data):
+        """Legacy handling of create method"""
+        self.extType = extType
+        self._extData = data
+
+    def _newCreate(self, data):
+        """New format for create method"""
+        self._extData = data
+
+    def create(self, *args, **kwargs):
         """
-        Initializes a generic TLS extension that can later be used in
-        client hello or server hello messages
+        Initializes a generic TLS extension.
+
+        The extension can carry arbitrary data and have arbitrary payload, can
+        be used in client hello or server hello messages.
+
+        The legacy calling method uses two arguments - the extType and data.
+        If the new calling method is used, only one argument is passed in -
+        data.
 
         @type  extType: int
-        @param extType: type of the extension encoded as an integer between
-            M{0} and M{2^16-1}
+        @param extType: if int: type of the extension encoded as an integer
+            between M{0} and M{2^16-1}
         @type  data: bytearray
         @param data: raw data representing extension on the wire
         @rtype: L{TLSExtension}
         """
-        self.extType = extType
-        self.extData = data
+        # old style
+        if len(args) + len(kwargs) == 2:
+            self._oldCreate(*args, **kwargs)
+        # new style
+        elif len(args) + len(kwargs) == 1:
+            self._newCreate(*args, **kwargs)
+        else:
+            raise TypeError("Invalid number of arguments")
+
         return self
 
     def write(self):
-        """ Returns encoded extension, as encoded on the wire
+        """Returns encoded extension, as encoded on the wire
 
         @rtype: bytearray
         @return: An array of bytes formatted as is supposed to be written on
@@ -92,7 +120,6 @@ class TLSExtension(object):
 
         @raise AssertionError: when the object was not initialized
         """
-
         assert self.extType is not None
 
         w = Writer()
@@ -110,7 +137,7 @@ class TLSExtension(object):
         return ext
 
     def parse(self, p):
-        """ Parses extension from the wire format
+        """Parses extension from on the wire format
 
         @type p: L{tlslite.util.codec.Parser}
         @param p:  data to be parsed
@@ -120,7 +147,6 @@ class TLSExtension(object):
 
         @rtype: L{TLSExtension}
         """
-
         extType = p.get(2)
         extLength = p.get(2)
 
@@ -137,12 +163,14 @@ class TLSExtension(object):
         # finally, just save the extension data as there are extensions which
         # don't require specific handlers and indicate option by mere presence
         self.extType = extType
-        self.extData = p.getFixBytes(extLength)
-        assert len(self.extData) == extLength
+        self._extData = p.getFixBytes(extLength)
+        assert len(self._extData) == extLength
         return self
 
     def __eq__(self, that):
-        """ Test if two TLS extensions will result in the same on the wire
+        """Test if two TLS extensions are effectively the same
+
+        Will check if encoding them will result in the same on the wire
         representation.
 
         Will return False for every object that's not an extension.
@@ -154,7 +182,7 @@ class TLSExtension(object):
             return False
 
     def __repr__(self):
-        """ Output human readable representation of object
+        """Output human readable representation of object
 
         @rtype: str
         """
@@ -171,16 +199,11 @@ class VarListExtension(TLSExtension):
     """
 
     def __init__(self, elemLength, lengthLength, fieldName, extType):
+        super(VarListExtension, self).__init__(extType=extType)
         self._fieldName = fieldName
         self._internalList = None
         self._elemLength = elemLength
         self._lengthLength = lengthLength
-        self._extType = extType
-
-    @property
-    def extType(self):
-        """Type of extension"""
-        return self._extType
 
     @property
     def extData(self):
@@ -223,6 +246,9 @@ class VarListExtension(TLSExtension):
 
     def __getattr__(self, name):
         """Return the special field name value"""
+        if name == '_fieldName':
+            raise AttributeError("type object '{0}' has no attribute '{1}'"\
+                    .format(self.__class__.__name__, name))
         if name == self._fieldName:
             return self._internalList
         raise AttributeError("type object '{0}' has no attribute '{1}'"\
@@ -233,7 +259,7 @@ class VarListExtension(TLSExtension):
         if name == '_fieldName':
             super(VarListExtension, self).__setattr__(name, value)
             return
-        if name == self._fieldName:
+        if hasattr(self, '_fieldName') and name == self._fieldName:
             self._internalList = value
             return
         super(VarListExtension, self).__setattr__(name, value)

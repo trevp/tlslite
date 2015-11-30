@@ -28,9 +28,60 @@ class TestTLSExtension(unittest.TestCase):
     def test_create(self):
         tls_extension = TLSExtension().create(1, bytearray(b'\x01\x00'))
 
-        assert tls_extension
+        self.assertIsNotNone(tls_extension)
         self.assertEqual(1, tls_extension.extType)
         self.assertEqual(bytearray(b'\x01\x00'), tls_extension.extData)
+
+    def test_new_style_create(self):
+        tls_extension = TLSExtension(extType=1).create(bytearray(b'\x01\x00'))
+
+        self.assertIsNotNone(tls_extension)
+        self.assertEqual(1, tls_extension.extType)
+        self.assertEqual(bytearray(b'\x01\x00'), tls_extension.extData)
+
+    def test_new_style_create_with_keyword(self):
+        tls_extension = TLSExtension(extType=1).create(data=\
+                bytearray(b'\x01\x00'))
+
+        self.assertIsNotNone(tls_extension)
+        self.assertEqual(1, tls_extension.extType)
+        self.assertEqual(bytearray(b'\x01\x00'), tls_extension.extData)
+
+    def test_new_style_create_with_invalid_keyword(self):
+        with self.assertRaises(TypeError):
+            TLSExtension(extType=1).create(extData=bytearray(b'\x01\x00'))
+
+    def test_old_style_create_with_keyword_args(self):
+        tls_extension = TLSExtension().create(extType=1,
+                                              data=bytearray(b'\x01\x00'))
+        self.assertIsNotNone(tls_extension)
+        self.assertEqual(1, tls_extension.extType)
+        self.assertEqual(bytearray(b'\x01\x00'), tls_extension.extData)
+
+    def test_old_style_create_with_one_keyword_arg(self):
+        tls_extension = TLSExtension().create(1,
+                                              data=bytearray(b'\x01\x00'))
+        self.assertIsNotNone(tls_extension)
+        self.assertEqual(1, tls_extension.extType)
+        self.assertEqual(bytearray(b'\x01\x00'), tls_extension.extData)
+
+    def test_old_style_create_with_invalid_keyword_name(self):
+        with self.assertRaises(TypeError):
+            TLSExtension().create(1,
+                                  extData=bytearray(b'\x01\x00'))
+
+    def test_old_style_create_with_duplicate_keyword_name(self):
+        with self.assertRaises(TypeError):
+            TLSExtension().create(1,
+                                  extType=1)
+
+    def test_create_with_too_few_args(self):
+        with self.assertRaises(TypeError):
+            TLSExtension().create()
+
+    def test_create_with_too_many_args(self):
+        with self.assertRaises(TypeError):
+            TLSExtension().create(1, 2, 3)
 
     def test_write(self):
         tls_extension = TLSExtension()
