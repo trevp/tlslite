@@ -31,17 +31,31 @@ Table of Contents
 1 Introduction
 ===============
 
-tlslite-ng is an open source python library that implements SSL and TLS.
-tlslite-ng supports RSA and SRP ciphersuites. tlslite-ng is pure python, however
-it can use other libraries for faster crypto operations. tlslite-ng integrates
-with several stdlib neworking libraries.
+tlslite-ng is an open source python library that implements SSL and
+[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security)
+cryptographic protocols. It can be used either as a standalone wrapper around
+python socket interface or as a backend for multiple other libraries.
+tlslite-ng is pure python, however it can use other libraries for faster crypto
+operations. tlslite-ng integrates with several stdlib neworking libraries.
 
-API documentation is available in the 'docs' directory.
+API documentation is available in the 'docs' directory of the PyPI package
+or can be automatically generated using `make docs` with Epydoc installed.
 
 If you have questions or feedback, feel free to contact me. Issues and pull
-requests can also be submitted through github issue tracking system.
+requests can also be submitted through github issue tracking system, see
+CONTRIBUTING.md file for more information.
 
 tlslite-ng aims to be a drop in replacement for the original TLS Lite.
+
+Implemented features of TLS include:
+ * SSLv3, TLSv1.0, TLSv1.1 and TLSv1.2
+ * ciphersuites with DHE, ECDHE, RSA and SRP key exchange together with
+   AES (including GCM variant), 3DES, RC4 and (the experimental) ChaCha20
+   symmetric ciphers.
+ * Secure Renegotiation
+ * Encrypt Then MAC extension
+ * TLS_FALLBACK_SCSV
+ * (experimental) TACK extension
 
 2 Licenses/Acknowledgements
 ============================
@@ -67,7 +81,8 @@ Requirements:
 
   * Python 2.6 or higher is required.
   * Python 3.2 or higher is supported.
-  * python ecdsa library ([GitHub](https://github.com/warner/python-ecdsa) [PyPI](https://pypi.python.org/pypi/ecdsa))
+  * python ecdsa library ([GitHub](https://github.com/warner/python-ecdsa),
+    [PyPI](https://pypi.python.org/pypi/ecdsa))
 
 Options:
 
@@ -79,6 +94,23 @@ Options:
     SRP operations.
   * These modules don't need to be present at installation - you can install
     them any time.
+
+3.1 Automatic
+-------------
+
+Run:
+```
+pip install tlslite-ng
+```
+
+In case your system doesn't have pip, you can install it by first downloading
+[get-pip.py](https://bootstrap.pypa.io/get-pip.py) and running
+```
+python get-pip.py
+```
+
+3.2 Manual
+----------
 
 Run 'python setup.py install'
 
