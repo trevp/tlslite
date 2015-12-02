@@ -67,6 +67,7 @@ class TLSConnection(TLSRecordLayer):
         self.serverSigAlg = None
         self.ecdhCurve = None
         self.dhGroupSize = None
+        self.extendedMasterSecret = False
 
     #*********************************************************
     # Client Handshake Functions
@@ -438,6 +439,9 @@ class TLSConnection(TLSRecordLayer):
         if serverHello.getExtension(ExtensionType.encrypt_then_mac):
             self._recordLayer.encryptThenMAC = True
 
+        if serverHello.getExtension(ExtensionType.extended_master_secret):
+            self.extendedMasterSecret = True
+
         #If the server elected to resume the session, it is handled here.
         for result in self._clientResume(session, serverHello, 
                         clientHello.random, 
@@ -512,7 +516,8 @@ class TLSConnection(TLSRecordLayer):
                             srpUsername, clientCertChain, serverCertChain,
                             tackExt, (serverHello.tackExt is not None),
                             serverName,
-                            encryptThenMAC=self._recordLayer.encryptThenMAC)
+                            encryptThenMAC=self._recordLayer.encryptThenMAC,
+                            extendedMasterSecret=self.extendedMasterSecret)
         self._handshakeDone(resumed=False)
 
 
@@ -549,6 +554,10 @@ class TLSConnection(TLSRecordLayer):
             extensions.append(TLSExtension().\
                               create(ExtensionType.encrypt_then_mac,
                                      bytearray(0)))
+        if settings.useExtendedMasterSecret:
+            extensions.append(TLSExtension().create(ExtensionType.
+                                                    extended_master_secret,
+                                                    bytearray(0)))
         #Send the ECC extensions only if we advertise ECC ciphers
         if next((cipher for cipher in cipherSuites \
                 if cipher in CipherSuite.ecdhAllSuites), None) is not None:
@@ -562,8 +571,8 @@ class TLSConnection(TLSRecordLayer):
             assert len(sigList) > 0
             extensions.append(SignatureAlgorithmsExtension().\
                               create(sigList))
-        #don't send empty list of extensions
-        if not extensions:
+        # don't send empty list of extensions or extensions in SSLv3
+        if not extensions or settings.maxVersion == (3, 0):
             extensions = None
 
         #Either send ClientHello (with a resumable session)...
@@ -887,12 +896,17 @@ class TLSConnection(TLSRecordLayer):
 
     def _clientFinished(self, premasterSecret, clientRandom, serverRandom,
                         cipherSuite, cipherImplementations, nextProto):
-
-        masterSecret = calcMasterSecret(self.version,
-                                        cipherSuite,
-                                        premasterSecret,
-                                        clientRandom,
-                                        serverRandom)
+        if self.extendedMasterSecret:
+            masterSecret = calcExtendedMasterSecret(self.version,
+                                                    cipherSuite,
+                                                    premasterSecret,
+                                                    self._handshake_hash)
+        else:
+            masterSecret = calcMasterSecret(self.version,
+                                            cipherSuite,
+                                            premasterSecret,
+                                            clientRandom,
+                                            serverRandom)
         self._calcPendingStates(cipherSuite, masterSecret, 
                                 clientRandom, serverRandom, 
                                 cipherImplementations)
@@ -1132,15 +1146,26 @@ class TLSConnection(TLSRecordLayer):
         else:
             tackExt = None
 
+        extensions = []
         # Prepare other extensions if requested
         if settings.useEncryptThenMAC and \
                 clientHello.getExtension(ExtensionType.encrypt_then_mac) and \
                 cipherSuite not in CipherSuite.streamSuites and \
                 cipherSuite not in CipherSuite.aeadSuites:
-            extensions = [TLSExtension().create(ExtensionType.encrypt_then_mac,
-                                                bytearray(0))]
+            extensions.append(TLSExtension().create(ExtensionType.
+                                                    encrypt_then_mac,
+                                                    bytearray(0)))
             self._recordLayer.encryptThenMAC = True
-        else:
+
+        if settings.useExtendedMasterSecret and \
+                clientHello.getExtension(ExtensionType.extended_master_secret):
+            extensions.append(TLSExtension().create(ExtensionType.
+                                                    extended_master_secret,
+                                                    bytearray(0)))
+            self.extendedMasterSecret = True
+
+        # don't send empty list of extensions
+        if not extensions:
             extensions = None
 
         serverHello = ServerHello()
@@ -1343,18 +1368,31 @@ class TLSConnection(TLSRecordLayer):
                         for result in self._sendError(\
                                 AlertDescription.handshake_failure):
                             yield result
+                    if session.extendedMasterSecret and \
+                            not clientHello.getExtension(
+                                    ExtensionType.extended_master_secret):
+                        for result in self._sendError(\
+                                AlertDescription.handshake_failure):
+                            yield result
                 except KeyError:
                     pass
 
             #If a session is found..
             if session:
                 #Send ServerHello
+                extensions = []
                 if session.encryptThenMAC:
                     self._recordLayer.encryptThenMAC = True
                     mte = TLSExtension().create(ExtensionType.encrypt_then_mac,
                                                 bytearray(0))
-                    extensions = [mte]
-                else:
+                    extensions.append(mte)
+                if session.extendedMasterSecret:
+                    ems = TLSExtension().create(ExtensionType.
+                                                extended_master_secret,
+                                                bytearray(0))
+                    extensions.append(ems)
+                # don't send empty extensions
+                if not extensions:
                     extensions = None
                 serverHello = ServerHello()
                 serverHello.create(self.version, getRandomBytes(32),
@@ -1645,12 +1683,18 @@ class TLSConnection(TLSRecordLayer):
 
     def _serverFinished(self,  premasterSecret, clientRandom, serverRandom,
                         cipherSuite, cipherImplementations, nextProtos):
-        masterSecret = calcMasterSecret(self.version,
-                                        cipherSuite,
-                                        premasterSecret,
-                                        clientRandom,
-                                        serverRandom)
-        
+        if self.extendedMasterSecret:
+            masterSecret = calcExtendedMasterSecret(self.version,
+                                                    cipherSuite,
+                                                    premasterSecret,
+                                                    self._handshake_hash)
+        else:
+            masterSecret = calcMasterSecret(self.version,
+                                            cipherSuite,
+                                            premasterSecret,
+                                            clientRandom,
+                                            serverRandom)
+
         #Calculate pending connection states
         self._calcPendingStates(cipherSuite, masterSecret, 
                                 clientRandom, serverRandom,

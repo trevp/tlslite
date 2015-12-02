@@ -762,6 +762,7 @@ def serverTestCmd(argv):
     connection = connect()
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key)
     assert(connection.session.serverName == address[0])    
+    assert(connection.extendedMasterSecret)
     testConnServer(connection)    
     connection.close()
 
@@ -774,6 +775,7 @@ def serverTestCmd(argv):
     settings.minVersion = (3,0)
     settings.maxVersion = (3,0)
     connection.handshakeServer(certChain=x509Chain, privateKey=x509Key, settings=settings)
+    assert(not connection.extendedMasterSecret)
     testConnServer(connection)
     connection.close()
 

@@ -60,11 +60,12 @@ class Session(object):
         self.serverName = ""
         self.resumable = False
         self.encryptThenMAC = False
+        self.extendedMasterSecret = False
 
     def create(self, masterSecret, sessionID, cipherSuite,
                srpUsername, clientCertChain, serverCertChain,
                tackExt, tackInHelloExt, serverName, resumable=True,
-               encryptThenMAC=False):
+               encryptThenMAC=False, extendedMasterSecret=False):
         self.masterSecret = masterSecret
         self.sessionID = sessionID
         self.cipherSuite = cipherSuite
@@ -76,6 +77,7 @@ class Session(object):
         self.serverName = serverName
         self.resumable = resumable
         self.encryptThenMAC = encryptThenMAC
+        self.extendedMasterSecret = extendedMasterSecret
 
     def _clone(self):
         other = Session()
@@ -90,6 +92,7 @@ class Session(object):
         other.serverName = self.serverName
         other.resumable = self.resumable
         other.encryptThenMAC = self.encryptThenMAC
+        other.extendedMasterSecret = self.extendedMasterSecret
         return other
 
     def valid(self):

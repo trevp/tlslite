@@ -170,6 +170,23 @@ class TestHandshakeSettings(unittest.TestCase):
         with self.assertRaises(ValueError):
             hs.validate()
 
+    def test_useExtendedMasterSecret(self):
+        hs = HandshakeSettings()
+        self.assertTrue(hs.useExtendedMasterSecret)
+
+        hs.useExtendedMasterSecret = False
+
+        n_hs = hs.validate()
+
+        self.assertFalse(n_hs.useExtendedMasterSecret)
+
+    def test_useExtendedMasterSecret_with_wrong_value(self):
+        hs = HandshakeSettings()
+        hs.useExtendedMasterSecret = None
+
+        with self.assertRaises(ValueError):
+            hs.validate()
+
     def test_invalid_MAC(self):
         hs = HandshakeSettings()
         hs.macNames = ['sha1', 'whirpool']

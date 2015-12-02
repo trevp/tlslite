@@ -75,6 +75,29 @@ def PRF_SSL(secret, seed, length):
             index += 1
     return bytes
 
+def calcExtendedMasterSecret(version, cipherSuite, premasterSecret,
+                             handshakeHashes):
+    """Derive Extended Master Secret from premaster and handshake msgs"""
+    assert version in ((3, 1), (3, 2), (3, 3))
+    if version in ((3, 1), (3, 2)):
+        masterSecret = PRF(premasterSecret, b"extended master secret",
+                           handshakeHashes.digest('md5') +
+                           handshakeHashes.digest('sha1'),
+                           48)
+    else:
+        if cipherSuite in CipherSuite.sha384PrfSuites:
+            masterSecret = PRF_1_2_SHA384(premasterSecret,
+                                          b"extended master secret",
+                                          handshakeHashes.digest('sha384'),
+                                          48)
+        else:
+            masterSecret = PRF_1_2(premasterSecret,
+                                   b"extended master secret",
+                                   handshakeHashes.digest('sha256'),
+                                   48)
+    return masterSecret
+
+
 def calcMasterSecret(version, cipherSuite, premasterSecret, clientRandom,
                      serverRandom):
     """Derive Master Secret from premaster secret and random values"""

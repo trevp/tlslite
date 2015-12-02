@@ -9,7 +9,8 @@ try:
 except ImportError:
         import unittest
 
-from tlslite.mathtls import PRF_1_2, calcMasterSecret, calcFinished
+from tlslite.mathtls import PRF_1_2, calcMasterSecret, calcFinished, \
+        calcExtendedMasterSecret
 from tlslite.handshakehashes import HandshakeHashes
 from tlslite.constants import CipherSuite
 
@@ -24,6 +25,45 @@ class TestCalcMasterSecret(unittest.TestCase):
             b'\x88\xd0`\xe4\x8c^\xb2&ls\xcb\x1a=-Kh'
             ), ret)
         self.assertEqual(48, len(ret))
+
+class TestCalcExtendedMasterSecret(unittest.TestCase):
+    def setUp(self):
+        self.handshakeHashes = HandshakeHashes()
+        self.handshakeHashes.update(bytearray(48))
+
+    def test_with_TLS_1_0(self):
+        ret = calcExtendedMasterSecret((3, 1),
+                                       0,
+                                       bytearray(48),
+                                       self.handshakeHashes)
+        self.assertEqual(ret, bytearray(
+            b'/\xe9\x86\xda\xda\xa9)\x1eyJ\xc9\x13E\xe4\xfc\xe7\x842m7(\xb4'
+            b'\x98\xb7\xbc\xa5\xda\x1d\xf3\x15\xea\xdf:i\xeb\x9bA\x8f\xe7'
+            b'\xd4<\xe0\xe8\x1d\xa0\xf0\x10\x83'
+            ))
+
+    def test_with_TLS_1_2(self):
+        ret = calcExtendedMasterSecret((3, 3),
+                                       0,
+                                       bytearray(48),
+                                       self.handshakeHashes)
+        self.assertEqual(ret, bytearray(
+            b'\x03\xc93Yx\xcbjSEmz*\x0b\xc3\xc04G\xf3\xe3{\xee\x13\x8b\xac'
+            b'\xd7\xb7\xe6\xbaY\x86\xd5\xf2o?\x8f\xc6\xf2\x19\x1d\x06\xe0N'
+            b'\xb5\xcaJX\xe8\x1d'
+            ))
+
+    def test_with_TLS_1_2_and_SHA384_PRF(self):
+        ret = calcExtendedMasterSecret((3, 3),
+                                       CipherSuite.
+                                       TLS_RSA_WITH_AES_256_GCM_SHA384,
+                                       bytearray(48),
+                                       self.handshakeHashes)
+        self.assertEqual(ret, bytearray(
+            b"\xd6\xed}K\xfbo\xb2\xdb\xa4\xee\xa1\x0f\x8f\x07*\x84w/\xbf_"
+            b"\xbd\xc1U^\x93\xcf\xe8\xca\x82\xb7_B\xa3O\xd9V\x86\x12\xfd\x08"
+            b"$\x92\'L\xae\xc0@\x01"
+            ))
 
 class TestPRF1_2(unittest.TestCase):
     def test_with_bogus_values(self):

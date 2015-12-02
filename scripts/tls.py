@@ -203,7 +203,8 @@ def printGoodConnection(connection, seconds):
         print(str(connection.session.tackExt))
     print("  Next-Protocol Negotiated: %s" % connection.next_proto) 
     print("  Encrypt-then-MAC: {0}".format(connection.encryptThenMAC))
-    
+    print("  Extended Master Secret: {0}".format(
+                                               connection.extendedMasterSecret))
 
 def clientCmd(argv):
     (address, privateKey, certChain, username, password) = \
