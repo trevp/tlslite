@@ -29,6 +29,7 @@ from .handshakesettings import HandshakeSettings
 from .utils.tackwrapper import *
 from .keyexchange import KeyExchange, RSAKeyExchange, DHE_RSAKeyExchange, \
         ECDHE_RSAKeyExchange, SRPKeyExchange
+from .handshakehelpers import HandshakeHelpers
 
 class TLSConnection(TLSRecordLayer):
     """
@@ -592,6 +593,12 @@ class TLSConnection(TLSRecordLayer):
                                reqTack, nextProtos is not None, 
                                serverName,
                                extensions=extensions)
+
+        # Check if padding extension should be added
+        # we want to add extensions even when using just SSLv3
+        if settings.usePaddingExtension:
+            HandshakeHelpers.alignClientHelloPadding(clientHello)
+
         for result in self._sendMsg(clientHello):
             yield result
         yield clientHello
