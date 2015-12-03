@@ -1118,6 +1118,65 @@ class SignatureAlgorithmsExtension(TLSExtension):
 
         return self
 
+class PaddingExtension(TLSExtension):
+
+    """
+    ClientHello message padding with a desired size.
+
+    Can be used to pad ClientHello messages to a desired size
+    in order to avoid implementation bugs caused by certain
+    ClientHello sizes.
+
+    See RFC7685.
+    """
+
+    def __init__(self):
+        """Create instance of class"""
+        self.paddingData = bytearray(0)
+
+    @property
+    def extType(self):
+        """
+        Type of extension, in this case - 21
+
+        @rtype: int
+        """
+        return ExtensionType.client_hello_padding
+
+    @property
+    def extData(self):
+        """
+        Return raw encoding of the extension
+
+        @rtype: bytearray
+        """
+        return self.paddingData
+
+    def create(self, size):
+        """
+        Set the padding size and create null byte padding of defined size
+
+        @type size: int
+        @param size: required padding size in bytes
+        """
+        self.paddingData = bytearray(size)
+        return self
+
+    def parse(self, p):
+        """
+        Deserialise extension from on the wire data
+
+        @type p: L{tlslite.util.codec.Parser}
+        @param p:  data to be parsed
+
+        @raise SyntaxError: when the size of the passed element doesn't match
+        the internal representation
+
+        @rtype: L{TLSExtension}
+        """
+        self.paddingData = p.getFixBytes(p.getRemainingLength())
+        return self
+
 TLSExtension._universalExtensions = \
     {
         ExtensionType.server_name : SNIExtension,
@@ -1126,7 +1185,8 @@ TLSExtension._universalExtensions = \
         ExtensionType.ec_point_formats : ECPointFormatsExtension,
         ExtensionType.srp : SRPExtension,
         ExtensionType.signature_algorithms : SignatureAlgorithmsExtension,
-        ExtensionType.supports_npn : NPNExtension}
+        ExtensionType.supports_npn : NPNExtension,
+        ExtensionType.client_hello_padding : PaddingExtension}
 
 TLSExtension._serverExtensions = \
     {
