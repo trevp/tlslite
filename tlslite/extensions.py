@@ -883,7 +883,7 @@ class TACKExtension(TLSExtension):
 
     def create(self, tacks, activation_flags):
         """
-        Initialize the insance of TACKExtension
+        Initialize the instance of TACKExtension
 
         @rtype: TACKExtension
         """
@@ -1077,7 +1077,7 @@ class SignatureAlgorithmsExtension(TLSExtension):
     @property
     def extData(self):
         """
-        Return raw encoding of the exteion
+        Return raw encoding of the extension
 
         @rtype: bytearray
         """
