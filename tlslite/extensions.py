@@ -1,4 +1,4 @@
-# Copyright (c) 2014, Hubert Kario
+# Copyright (c) 2014, 2015 Hubert Kario
 #
 # See the LICENSE file for legal information regarding use of this file.
 
@@ -14,12 +14,33 @@ from .errors import TLSInternalError
 
 class TLSExtension(object):
     """
+    Base class for handling handshake protocol hello messages extensions.
+
     This class handles the generic information about TLS extensions used by
     both sides of connection in Client Hello and Server Hello messages.
     See U{RFC 4366<https://tools.ietf.org/html/rfc4366>} for more info.
 
     It is used as a base class for specific users and as a way to store
     extensions that are not implemented in library.
+
+    To implement a new extension you will need to create a new class which
+    calls this class contructor (__init__), usually specifying just the
+    extType parameter. The other methods which need to be implemented are:
+    L{extData}, L{create}, L{parse} and L{__repr__}. Finally, the extension
+    constructor should be added to either L{_universalExtensions}, if the parser
+    can be used for client and optionally server extensions. When the
+    client and server extensions have completely different forms, you should
+    add client form to the L{_universalExtensions} and the server form to
+    L{_serverExtensions}. Since the server MUST NOT send extensions not
+    advertised by client, there are no purely server-side extensions. But
+    if the client side extension is just marked by presence and has no payload,
+    the client side (thus the L{_universalExtensions} may be skipped, then
+    the L{TLSExtension} class will be used for implementing it. See
+    end of the file for type-to-constructor bindings.
+
+    Though please note that subclassing for the purpose of parsing extensions
+    is not an officially supported part of API (just as underscores in their
+    names would indicate.
 
     @type extType: int
     @ivar extType: a 2^16-1 limited integer specifying the type of the
@@ -58,10 +79,11 @@ class TLSExtension(object):
         that is actually usable.
 
         @type server: boolean
-        @param server: whatever to select ClientHello or ServerHello version
+        @param server: whether to select ClientHello or ServerHello version
             for parsing
         @type extType: int
-        @param extType: type of extension encoded as an integer
+        @param extType: type of extension encoded as an integer, to be used
+            by subclasses
         """
         self.extType = extType
         self._extData = bytearray(0)
@@ -69,7 +91,16 @@ class TLSExtension(object):
 
     @property
     def extData(self):
-        """Return the on the wire encoding of extension"""
+        """
+        Return the on the wire encoding of extension
+
+        Child classes need to override this property so that it returns just
+        the payload of an extension, that is, without the 4 byte generic header
+        common to all extension. In other words, without the extension ID and
+        overall extension length.
+
+        @rtype: bytearray
+        """
         return self._extData
 
     def _oldCreate(self, extType, data):
@@ -92,6 +123,9 @@ class TLSExtension(object):
         If the new calling method is used, only one argument is passed in -
         data.
 
+        Child classes need to override this method so that it is possible
+        to set values for all fields used by the extension.
+
         @type  extType: int
         @param extType: if int: type of the extension encoded as an integer
             between M{0} and M{2^16-1}
@@ -112,6 +146,8 @@ class TLSExtension(object):
 
     def write(self):
         """Returns encoded extension, as encoded on the wire
+
+        Note that child classes in general don't need to override this method.
 
         @rtype: bytearray
         @return: An array of bytes formatted as is supposed to be written on
@@ -138,6 +174,12 @@ class TLSExtension(object):
 
     def parse(self, p):
         """Parses extension from on the wire format
+
+        Child classes should override this method so that it parses the
+        extension from on the wire data. Note that child class parsers will
+        not receive the generic header of the extension, but just a parser
+        with the payload. In other words, the method should be the exact
+        reverse of the L{extData} property.
 
         @type p: L{tlslite.util.codec.Parser}
         @param p:  data to be parsed
@@ -183,6 +225,9 @@ class TLSExtension(object):
 
     def __repr__(self):
         """Output human readable representation of object
+
+        Child classes should override this method to support more appropriate
+        string rendering of the extension.
 
         @rtype: str
         """
