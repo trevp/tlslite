@@ -556,6 +556,7 @@ encrypt-then-MAC mode for CBC ciphers.
 ===========
 
 0.6.0 - WIP
+ - support for the padding extension from RFC 7685 (Karel Srot)
  - abitlity to perform reverse lookups on many of the TLS type enumerations
  - added ECDHE_RSA key exchange together with associated ciphersuites
  - refactor key exchange code to remove duplication and make adding new methods
