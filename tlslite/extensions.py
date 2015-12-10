@@ -26,11 +26,11 @@ class TLSExtension(object):
     To implement a new extension you will need to create a new class which
     calls this class contructor (__init__), usually specifying just the
     extType parameter. The other methods which need to be implemented are:
-    L{extData}, L{create}, L{parse} and L{__repr__}. Finally, the extension
-    constructor should be added to either L{_universalExtensions}, if the parser
-    can be used for client and optionally server extensions. When the
-    client and server extensions have completely different forms, you should
-    add client form to the L{_universalExtensions} and the server form to
+    L{extData}, L{create}, L{parse} and L{__repr__}. If the parser can be used
+    for client and optionally server extensions, the extension constructor
+    should be added to L{_universalExtensions}. Otherwise, when the client and
+    server extensions have completely different forms, you should add client
+    form to the L{_universalExtensions} and the server form to
     L{_serverExtensions}. Since the server MUST NOT send extensions not
     advertised by client, there are no purely server-side extensions. But
     if the client side extension is just marked by presence and has no payload,
