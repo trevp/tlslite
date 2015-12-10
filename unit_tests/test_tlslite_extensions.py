@@ -11,7 +11,7 @@ except ImportError:
 from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension,\
         TACKExtension, SupportedGroupsExtension, ECPointFormatsExtension,\
-        SignatureAlgorithmsExtension
+        SignatureAlgorithmsExtension, PaddingExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType, ExtensionType, GroupName,\
         ECPointFormat, HashAlgorithm, SignatureAlgorithm
@@ -1293,6 +1293,54 @@ class TestSignatureAlgorithmsExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             ext.parse(parser)
+
+class TestPaddingExtension(unittest.TestCase):
+    def test__init__(self):
+        ext = PaddingExtension()
+
+        self.assertIsNotNone(ext)
+        self.assertEqual(ext.extType, 21)
+        self.assertEqual(ext.paddingData, bytearray(0))
+
+    def test_create(self):
+        ext = PaddingExtension()
+        ext.create(3)
+
+        self.assertIsNotNone(ext)
+        self.assertEqual(ext.extType, 21)
+        self.assertEqual(ext.paddingData, bytearray(b'\x00\x00\x00'))
+
+    def test_write(self):
+        ext = PaddingExtension()
+        ext.create(6)
+
+        self.assertEqual(bytearray(
+            b'\x00\x15' +           # type of extension
+            b'\x00\x06' +           # overall length of extension
+            b'\x00\x00' +           # 1st and 2nd null byte
+            b'\x00\x00' +           # 3rd and 4th null byte
+            b'\x00\x00'             # 5th and 6th null byte
+            ), ext.write())
+
+    def test_parse_with_empty_data(self):
+        parser = Parser(bytearray(0))
+
+        ext = PaddingExtension()
+
+        ext.parse(parser)
+
+        self.assertEqual(bytearray(b''), ext.paddingData)
+
+    def test_parse_with_nonempty_data(self):
+        parser = Parser(bytearray(
+            b'\x00\x00' +           # 1st and 2nd null byte
+            b'\x00\x00'))           # 3rd and 4th null byte
+
+        ext = PaddingExtension()
+
+        ext.parse(parser)
+
+        self.assertEqual(bytearray(b'\x00\x00\x00\x00'), ext.paddingData)
 
 if __name__ == '__main__':
     unittest.main()

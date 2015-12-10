@@ -140,6 +140,7 @@ class HandshakeSettings(object):
         self.useEncryptThenMAC = True
         self.rsaSigHashes = list(RSA_SIGNATURE_HASHES)
         self.eccCurves = list(CURVE_NAMES)
+        self.usePaddingExtension = True
 
     @staticmethod
     def _sanityCheckKeySizes(other):
@@ -189,9 +190,6 @@ class HandshakeSettings(object):
         if unknownCurve:
             raise ValueError("Unknown ECC Curve name: {0}".format(unknownCurve))
 
-        if other.useEncryptThenMAC not in (True, False):
-            raise ValueError("useEncryptThenMAC can only be True or False")
-
         unknownSigHash = [val for val in other.rsaSigHashes \
                           if val not in ALL_RSA_SIGNATURE_HASHES]
         if unknownSigHash:
@@ -207,6 +205,15 @@ class HandshakeSettings(object):
             raise ValueError("minVersion set incorrectly")
         if other.maxVersion not in ((3, 0), (3, 1), (3, 2), (3, 3)):
             raise ValueError("maxVersion set incorrectly")
+
+    @staticmethod
+    def _sanityCheckExtensions(other):
+        """Check if set extension settings are sane"""
+        if other.useEncryptThenMAC not in (True, False):
+            raise ValueError("useEncryptThenMAC can only be True or False")
+
+        if other.usePaddingExtension not in (True, False):
+            raise ValueError("usePaddingExtension must be True or False")
 
     def validate(self):
         """
@@ -229,6 +236,7 @@ class HandshakeSettings(object):
         other.maxVersion = self.maxVersion
         other.sendFallbackSCSV = self.sendFallbackSCSV
         other.useEncryptThenMAC = self.useEncryptThenMAC
+        other.usePaddingExtension = self.usePaddingExtension
         other.rsaSigHashes = self.rsaSigHashes
         other.eccCurves = self.eccCurves
 
@@ -253,6 +261,8 @@ class HandshakeSettings(object):
         self._sanityCheckPrimitivesNames(other)
 
         self._sanityCheckProtocolVersions(other)
+
+        self._sanityCheckExtensions(other)
 
         if other.maxVersion < (3,3):
             # No sha-2 and AEAD pre TLS 1.2

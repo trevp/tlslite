@@ -207,3 +207,16 @@ class TestHandshakeSettings(unittest.TestCase):
         hs.eccCurves = ['P-256']
         with self.assertRaises(ValueError):
             hs.validate()
+
+    def test_usePaddingExtension(self):
+        hs = HandshakeSettings()
+        self.assertTrue(hs.usePaddingExtension)
+
+    def test_invalid_usePaddingExtension(self):
+        hs = HandshakeSettings()
+        hs.usePaddingExtension = -1
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+if __name__ == '__main__':
+    unittest.main()

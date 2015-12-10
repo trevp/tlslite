@@ -10,13 +10,14 @@ except ImportError:
     import unittest
 
 from tlslite.recordlayer import RecordLayer
-from tlslite.messages import ServerHello, ClientHello
-from tlslite.constants import CipherSuite, AlertDescription
+from tlslite.messages import ServerHello, ClientHello, Alert, RecordHeader3
+from tlslite.constants import CipherSuite, AlertDescription, ContentType
 from tlslite.tlsconnection import TLSConnection
-from tlslite.errors import TLSLocalAlert
+from tlslite.errors import TLSLocalAlert, TLSRemoteAlert
 from tlslite.x509 import X509
 from tlslite.x509certchain import X509CertChain
 from tlslite.utils.keyfactory import parsePEMKey
+from tlslite.handshakesettings import HandshakeSettings
 
 from unit_tests.mocksock import MockSocket
 
@@ -124,3 +125,41 @@ class TestTLSConnection(unittest.TestCase):
 
         self.assertEqual(err.exception.description,
                          AlertDescription.handshake_failure)
+
+    def prepare_mock_socket_with_handshake_failure(self):
+        alertObj = Alert().create(AlertDescription.handshake_failure)
+        alert = alertObj.write()
+        header = RecordHeader3().create((3, 3), ContentType.alert, len(alert))
+        return MockSocket(header.write() + alert)
+
+    def test_padding_extension_with_hello_over_256(self):
+        sock = self.prepare_mock_socket_with_handshake_failure()
+
+        conn = TLSConnection(sock)
+        # create hostname extension
+        with self.assertRaises(TLSRemoteAlert):
+            # use serverName with 254 bytes
+            conn.handshakeClientCert(
+                serverName='aaaaaaaaaabbbbbbbbbbccccccccccdddddddddd' +
+                           'eeeeeeeeeeffffffffffgggggggggghhhhhhhhhh' +
+                           'iiiiiiiiiijjjjjjjjjjkkkkkkkkkkllllllllll' +
+                           'mmmmmmmmmmnnnnnnnnnnoooooooooopppppppppp' +
+                           'qqqqqqqqqqrrrrrrrrrrsssssssssstttttttttt' +
+                           'uuuuuuuuuuvvvvvvvvvvwwwwwwwwwwxxxxxxxxxx' +
+                           'yyyyyyyyyy.com')
+
+        self.assertEqual(len(sock.sent), 1)
+        # check for version and content type (handshake)
+        self.assertEqual(sock.sent[0][0:3], bytearray(
+            b'\x16' +
+            b'\x03\x03'))
+        # check for handshake message type (client_hello)
+        self.assertEqual(sock.sent[0][5:6], bytearray(
+            b'\x01'))
+        self.assertEqual(sock.sent[0][5:9], bytearray(
+            b'\x01\x00\x02\x00'))
+        # 5 bytes is record layer header, 4 bytes is handshake protocol header
+        self.assertEqual(len(sock.sent[0]) - 5 - 4, 512)
+
+if __name__ == '__main__':
+    unittest.main()
