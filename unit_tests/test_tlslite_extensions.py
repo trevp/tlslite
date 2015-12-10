@@ -11,7 +11,7 @@ except ImportError:
 from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension,\
         TACKExtension, SupportedGroupsExtension, ECPointFormatsExtension,\
-        SignatureAlgorithmsExtension, PaddingExtension
+        SignatureAlgorithmsExtension, PaddingExtension, VarListExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType, ExtensionType, GroupName,\
         ECPointFormat, HashAlgorithm, SignatureAlgorithm
@@ -28,9 +28,60 @@ class TestTLSExtension(unittest.TestCase):
     def test_create(self):
         tls_extension = TLSExtension().create(1, bytearray(b'\x01\x00'))
 
-        assert tls_extension
+        self.assertIsNotNone(tls_extension)
         self.assertEqual(1, tls_extension.extType)
         self.assertEqual(bytearray(b'\x01\x00'), tls_extension.extData)
+
+    def test_new_style_create(self):
+        tls_extension = TLSExtension(extType=1).create(bytearray(b'\x01\x00'))
+
+        self.assertIsNotNone(tls_extension)
+        self.assertEqual(1, tls_extension.extType)
+        self.assertEqual(bytearray(b'\x01\x00'), tls_extension.extData)
+
+    def test_new_style_create_with_keyword(self):
+        tls_extension = TLSExtension(extType=1).create(data=\
+                bytearray(b'\x01\x00'))
+
+        self.assertIsNotNone(tls_extension)
+        self.assertEqual(1, tls_extension.extType)
+        self.assertEqual(bytearray(b'\x01\x00'), tls_extension.extData)
+
+    def test_new_style_create_with_invalid_keyword(self):
+        with self.assertRaises(TypeError):
+            TLSExtension(extType=1).create(extData=bytearray(b'\x01\x00'))
+
+    def test_old_style_create_with_keyword_args(self):
+        tls_extension = TLSExtension().create(extType=1,
+                                              data=bytearray(b'\x01\x00'))
+        self.assertIsNotNone(tls_extension)
+        self.assertEqual(1, tls_extension.extType)
+        self.assertEqual(bytearray(b'\x01\x00'), tls_extension.extData)
+
+    def test_old_style_create_with_one_keyword_arg(self):
+        tls_extension = TLSExtension().create(1,
+                                              data=bytearray(b'\x01\x00'))
+        self.assertIsNotNone(tls_extension)
+        self.assertEqual(1, tls_extension.extType)
+        self.assertEqual(bytearray(b'\x01\x00'), tls_extension.extData)
+
+    def test_old_style_create_with_invalid_keyword_name(self):
+        with self.assertRaises(TypeError):
+            TLSExtension().create(1,
+                                  extData=bytearray(b'\x01\x00'))
+
+    def test_old_style_create_with_duplicate_keyword_name(self):
+        with self.assertRaises(TypeError):
+            TLSExtension().create(1,
+                                  extType=1)
+
+    def test_create_with_too_few_args(self):
+        with self.assertRaises(TypeError):
+            TLSExtension().create()
+
+    def test_create_with_too_many_args(self):
+        with self.assertRaises(TypeError):
+            TLSExtension().create(1, 2, 3)
 
     def test_write(self):
         tls_extension = TLSExtension()
@@ -292,6 +343,28 @@ class TestTLSExtension(unittest.TestCase):
         self.assertEqual("TLSExtension(extType=0, "\
                 "extData=bytearray(b'\\x00\\x00'), serverType=False)",
                 repr(ext))
+
+class TestVarListExtension(unittest.TestCase):
+    def setUp(self):
+        self.ext = VarListExtension(1, 1, 'groups', 42)
+
+    def test___init__(self):
+        self.assertIsNotNone(self.ext)
+
+    def test_get_attribute(self):
+        self.assertIsNone(self.ext.groups)
+
+    def test_set_attribute(self):
+        self.ext.groups = [1, 2, 3]
+
+        self.assertEqual(self.ext.groups, [1, 2, 3])
+
+    def test_get_non_existant_attribute(self):
+        with self.assertRaises(AttributeError) as e:
+            val = self.ext.gruppen
+
+        self.assertEqual(str(e.exception),
+                "type object 'VarListExtension' has no attribute 'gruppen'")
 
 class TestSNIExtension(unittest.TestCase):
     def test___init__(self):
@@ -648,7 +721,7 @@ class TestClientCertTypeExtension(unittest.TestCase):
 
     def test_create(self):
         cert_type = ClientCertTypeExtension()
-        cert_type = cert_type.create()
+        cert_type = cert_type.create(None)
 
         self.assertEqual(9, cert_type.extType)
         self.assertEqual(bytearray(0), cert_type.extData)
@@ -1217,6 +1290,11 @@ class TestSupportedGroups(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             ext.parse(parser)
 
+    def test_repr(self):
+        ext = SupportedGroupsExtension().create([GroupName.secp256r1])
+        self.assertEqual("SupportedGroupsExtension(groups=[23])",
+                repr(ext))
+
 class TestECPointFormatsExtension(unittest.TestCase):
     def test___init__(self):
         ext = ECPointFormatsExtension()
@@ -1251,6 +1329,10 @@ class TestECPointFormatsExtension(unittest.TestCase):
         ext.parse(parser)
 
         self.assertIsNone(ext.formats)
+
+    def test_repr(self):
+        ext = ECPointFormatsExtension().create([ECPointFormat.uncompressed])
+        self.assertEqual("ECPointFormatsExtension(formats=[0])", repr(ext))
 
 class TestSignatureAlgorithmsExtension(unittest.TestCase):
     def test__init__(self):
