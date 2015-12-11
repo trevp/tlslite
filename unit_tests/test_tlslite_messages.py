@@ -913,7 +913,7 @@ class TestServerHello(unittest.TestCase):
                 None,
                 extensions=[])
         self.maxDiff = None
-        self.assertEqual("ServerHello(server_version=(3.0), "\
+        self.assertEqual("ServerHello(server_version=(3, 0), "\
                 "random=bytearray(b'\\x00\\x00"\
                 "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00"\
                 "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00"\
