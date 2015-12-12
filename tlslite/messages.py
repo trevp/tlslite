@@ -1130,6 +1130,10 @@ class ServerHelloDone(HandshakeMsg):
         w = Writer()
         return self.postWrite(w)
 
+    def __repr__(self):
+        """Human readable representation of object"""
+        return "ServerHelloDone()"
+
 class ClientKeyExchange(HandshakeMsg):
 
     """
