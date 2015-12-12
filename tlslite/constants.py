@@ -14,15 +14,25 @@ class TLSEnum(object):
     """Base class for different enums of TLS IDs"""
 
     @classmethod
+    def _recursiveVars(cls, klass):
+        """Call vars recursively on base classes"""
+        fields = dict()
+        for basecls in klass.__bases__:
+            fields.update(cls._recursiveVars(basecls))
+        fields.update(dict(vars(klass)))
+        return fields
+
+    @classmethod
     def toRepr(cls, value, blacklist=None):
         """
         Convert numeric type to string representation
 
         name if found, None otherwise
         """
+        fields = cls._recursiveVars(cls)
         if blacklist is None:
             blacklist = []
-        return next((key for key, val in cls.__dict__.items() \
+        return next((key for key, val in fields.items() \
                     if key not in ('__weakref__', '__dict__', '__doc__',
                                    '__module__') and \
                        key not in blacklist and \
