@@ -1070,16 +1070,9 @@ class PaddingExtension(TLSExtension):
 
     def __init__(self):
         """Create instance of class"""
+        extType = ExtensionType.client_hello_padding
+        super(PaddingExtension, self).__init__(extType=extType)
         self.paddingData = bytearray(0)
-
-    @property
-    def extType(self):
-        """
-        Type of extension, in this case - 21
-
-        @rtype: int
-        """
-        return ExtensionType.client_hello_padding
 
     @property
     def extData(self):
