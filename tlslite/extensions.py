@@ -1056,8 +1056,8 @@ class SignatureAlgorithmsExtension(TLSExtension):
 
         return self
 
-class PaddingExtension(TLSExtension):
 
+class PaddingExtension(TLSExtension):
     """
     ClientHello message padding with a desired size.
 
@@ -1069,7 +1069,7 @@ class PaddingExtension(TLSExtension):
     """
 
     def __init__(self):
-        """Create instance of class"""
+        """Create instance of class."""
         extType = ExtensionType.client_hello_padding
         super(PaddingExtension, self).__init__(extType=extType)
         self.paddingData = bytearray(0)
@@ -1077,7 +1077,7 @@ class PaddingExtension(TLSExtension):
     @property
     def extData(self):
         """
-        Return raw encoding of the extension
+        Return raw encoding of the extension.
 
         @rtype: bytearray
         """
@@ -1085,7 +1085,7 @@ class PaddingExtension(TLSExtension):
 
     def create(self, size):
         """
-        Set the padding size and create null byte padding of defined size
+        Set the padding size and create null byte padding of defined size.
 
         @type size: int
         @param size: required padding size in bytes
@@ -1095,7 +1095,7 @@ class PaddingExtension(TLSExtension):
 
     def parse(self, p):
         """
-        Deserialise extension from on the wire data
+        Deserialise extension from on the wire data.
 
         @type p: L{tlslite.util.codec.Parser}
         @param p:  data to be parsed
@@ -1110,16 +1110,16 @@ class PaddingExtension(TLSExtension):
 
 TLSExtension._universalExtensions = \
     {
-        ExtensionType.server_name : SNIExtension,
-        ExtensionType.cert_type : ClientCertTypeExtension,
-        ExtensionType.supported_groups : SupportedGroupsExtension,
-        ExtensionType.ec_point_formats : ECPointFormatsExtension,
-        ExtensionType.srp : SRPExtension,
-        ExtensionType.signature_algorithms : SignatureAlgorithmsExtension,
-        ExtensionType.supports_npn : NPNExtension,
-        ExtensionType.client_hello_padding : PaddingExtension}
+        ExtensionType.server_name: SNIExtension,
+        ExtensionType.cert_type: ClientCertTypeExtension,
+        ExtensionType.supported_groups: SupportedGroupsExtension,
+        ExtensionType.ec_point_formats: ECPointFormatsExtension,
+        ExtensionType.srp: SRPExtension,
+        ExtensionType.signature_algorithms: SignatureAlgorithmsExtension,
+        ExtensionType.supports_npn: NPNExtension,
+        ExtensionType.client_hello_padding: PaddingExtension}
 
 TLSExtension._serverExtensions = \
     {
-        ExtensionType.cert_type : ServerCertTypeExtension,
-        ExtensionType.tack : TACKExtension}
+        ExtensionType.cert_type: ServerCertTypeExtension,
+        ExtensionType.tack: TACKExtension}

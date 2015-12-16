@@ -3,11 +3,10 @@
 #
 # See the LICENSE file for legal information regarding use of this file.
 
-"""
-Class with various handshake helpers.
-"""
+"""Class with various handshake helpers."""
 
 from .extensions import PaddingExtension
+
 
 class HandshakeHelpers(object):
     """
@@ -15,13 +14,14 @@ class HandshakeHelpers(object):
 
     @sort: alignUsingPaddingExtension
     """
+
     @staticmethod
     def alignClientHelloPadding(clientHello):
         """
-        Aligns ClientHello using the Padding extension to 512 bytes at least.
+        Align ClientHello using the Padding extension to 512 bytes at least.
 
-        @type data: ClientHello
-        @param data: ClientHello to be aligned
+        @type clientHello: ClientHello
+        @param clientHello: ClientHello to be aligned
         """
         # Check clientHello size if padding extension should be added
         # we want to add the extension even when using just SSLv3
