@@ -65,6 +65,9 @@ class TestGroupName(unittest.TestCase):
     def test_toRepr(self):
         self.assertEqual(GroupName.toRepr(256), 'ffdhe2048')
 
+    def test_toRepr_with_brainpool(self):
+        self.assertEqual(GroupName.toRepr(27), 'brainpoolP384r1')
+
 class TestAlertDescription(unittest.TestCase):
     def test_toRepr(self):
         self.assertEqual(AlertDescription.toStr(40), 'handshake_failure')
