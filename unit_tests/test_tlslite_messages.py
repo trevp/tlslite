@@ -9,7 +9,7 @@ except ImportError:
     import unittest
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
-        CertificateRequest, CertificateVerify
+        CertificateRequest, CertificateVerify, ServerHelloDone
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
@@ -1878,6 +1878,17 @@ class TestCertificateVerify(unittest.TestCase):
             b'\x00\x02' +           # signature length
             b'\xff\xba'             # signature
             ))
+
+class TestServerHelloDone(unittest.TestCase):
+    def test___init__(self):
+        shd = ServerHelloDone()
+
+        self.assertIsNotNone(shd)
+
+    def test___repr__(self):
+        shd = ServerHelloDone()
+
+        self.assertEqual("ServerHelloDone()", repr(shd))
 
 if __name__ == '__main__':
     unittest.main()
