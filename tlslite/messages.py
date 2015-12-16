@@ -627,7 +627,7 @@ class ServerHello(HandshakeMsg):
         return base + ret
 
     def __repr__(self):
-        return "ServerHello(server_version=({0[0]}.{0[1]}), random={1!r}, "\
+        return "ServerHello(server_version=({0[0]}, {0[1]}), random={1!r}, "\
                 "session_id={2!r}, cipher_suite={3}, compression_method={4}, "\
                 "_tack_ext={5}, extensions={6!r})".format(\
                 self.server_version, self.random, self.session_id,
