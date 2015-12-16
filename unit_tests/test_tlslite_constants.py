@@ -10,7 +10,24 @@ except ImportError:
     import unittest
 
 from tlslite.constants import CipherSuite, HashAlgorithm, SignatureAlgorithm, \
-        ContentType, AlertDescription, AlertLevel, HandshakeType, GroupName
+        ContentType, AlertDescription, AlertLevel, HandshakeType, GroupName, \
+        TLSEnum
+
+class TestTLSEnumSubClassing(unittest.TestCase):
+
+    class SubClass(TLSEnum):
+        value = 1
+
+    def test_toRepr(self):
+        self.assertEqual(self.SubClass.toStr(1), 'value')
+
+    class SubSubClass(SubClass):
+        new_value = 2
+
+    def test_toRepr_SubSubClass(self):
+        self.assertEqual(self.SubSubClass.toStr(1), 'value')
+        self.assertEqual(self.SubSubClass.toStr(2), 'new_value')
+
 
 class TestHashAlgorithm(unittest.TestCase):
 
