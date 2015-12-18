@@ -17,7 +17,8 @@
 To be able to work on the code you will need few pieces of software installed.
 The most important is `python` interpreter. Some development dependencies have
 additional restrictions on the versions used, so I recommend Python 2.7 or
-Python 3.4 as the lowest versions. Git client, make, text editor and ability to
+Python 3.4 as the lowest versions (see .travis.yml if you want details).
+Git client, make, text editor and ability to
 install local python packages (ability to run pip).
 
 The list goes as follows:
@@ -27,6 +28,8 @@ The list goes as follows:
  * pip
 
 The python module dependencies are as follows:
+ * unittest (unittest2 on Python 2; should be part of Python 3 install)
+ * mock (should be part of Python 3 distribution of unittest)
  * ecdsa
  * pylint
  * diff_cover
@@ -37,7 +40,7 @@ On Fedora they can be installed using:
 ```
 dnf install python-ecdsa python3-ecdsa pylint python3-pylint python-diff-cover \
     python3-diff-cover python-coverage python3-coverage python2-hypothesis \
-    python3-hypothesis
+    python3-hypothesis python3-libs python-unittest2 python-mock
 ```
 
 Optional module dependencies:
