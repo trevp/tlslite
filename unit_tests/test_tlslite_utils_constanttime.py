@@ -15,7 +15,7 @@ from tlslite.utils.constanttime import ct_lt_u32, ct_gt_u32, ct_le_u32, \
 
 from tlslite.utils.compat import compatHMAC
 from tlslite.recordlayer import RecordLayer
-import hashlib
+import tlslite.utils.tlshashlib as hashlib
 import hmac
 
 class TestContanttime(unittest.TestCase):
