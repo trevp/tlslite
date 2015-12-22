@@ -15,7 +15,7 @@ import base64
 import binascii
 import sys
 
-from .compat import *
+from .compat import compat26Str, compatHMAC, compatLong
 
 
 # **************************************************************************
