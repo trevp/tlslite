@@ -15,7 +15,7 @@ import base64
 import binascii
 import sys
 
-from .compat import *
+from .compat import compat26Str, compatHMAC, compatLong
 
 
 # **************************************************************************
@@ -26,6 +26,14 @@ from .compat import *
 try:
     from M2Crypto import m2
     m2cryptoLoaded = True
+
+    try:
+        with open('/proc/sys/crypto/fips_enabled', 'r') as fipsFile:
+            if '1' in fipsFile.read():
+                m2cryptoLoaded = False
+    except (IOError, OSError):
+        # looks like we're running in container, likely not FIPS mode
+        m2cryptoLoaded = True
 
 except ImportError:
     m2cryptoLoaded = False
@@ -67,7 +75,7 @@ prngName = "os.urandom"
 # **************************************************************************
 
 import hmac
-import hashlib
+from . import tlshashlib as hashlib
 
 def MD5(b):
     """Return a MD5 digest of data"""

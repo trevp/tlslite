@@ -6,7 +6,7 @@
 
 import socket
 import errno
-import hashlib
+from .utils import tlshashlib as hashlib
 from .constants import ContentType, CipherSuite
 from .messages import RecordHeader3, RecordHeader2, Message
 from .utils.cipherfactory import createAESGCM, createAES, createRC4, \

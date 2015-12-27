@@ -11,6 +11,7 @@
 from .utils.compat import *
 from .utils.cryptomath import *
 from .constants import CipherSuite
+from .utils import tlshashlib as hashlib
 
 import hmac
 
