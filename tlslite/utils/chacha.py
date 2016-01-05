@@ -64,7 +64,7 @@ class ChaCha(object):
         state.append(counter)
         state.extend(nonce)
 
-        working_state = copy.copy(state)
+        working_state = state[:]
         dbl_round = ChaCha.double_round
         for _ in range(0, rounds // 2):
             dbl_round(working_state)
