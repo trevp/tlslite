@@ -104,3 +104,8 @@ class TestM2CryptoLoaded(unittest.TestCase):
                 reload(tlslite.utils.cryptomath)
                 from tlslite.utils.cryptomath import m2cryptoLoaded
                 self.assertTrue(m2cryptoLoaded)
+
+    @classmethod
+    def tearDownClass(cls):
+        import tlslite.utils.cryptomath
+        reload(tlslite.utils.cryptomath)
