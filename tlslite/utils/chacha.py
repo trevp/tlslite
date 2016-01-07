@@ -66,18 +66,13 @@ class ChaCha(object):
         for i in range(0, rounds // 2):
             ChaCha.double_round(working_state)
 
-        for i, _ in enumerate(working_state):
-            state[i] = (state[i] + working_state[i]) & 0xffffffff
-
-        return state
+        return [(st + wrkSt) & 0xffffffff for st, wrkSt
+                in zip(state, working_state)]
 
     @staticmethod
     def word_to_bytearray(state):
         """Convert state to little endian bytestream"""
-        ret = bytearray()
-        for i in state:
-            ret += struct.pack('<L', i)
-        return ret
+        return bytearray(b"".join(struct.pack('<L', i) for i in state))
 
     @staticmethod
     def _bytearray_to_words(data):
