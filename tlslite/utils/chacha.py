@@ -25,7 +25,6 @@ class ChaCha(object):
     @staticmethod
     def quarter_round(x, a, b, c, d):
         """Perform a ChaCha quarter round"""
-        rotl32 = ChaCha.rotl32
         xa = x[a]
         xb = x[b]
         xc = x[c]
@@ -33,19 +32,19 @@ class ChaCha(object):
 
         xa = (xa + xb) & 0xffffffff
         xd = xd ^ xa
-        xd = rotl32(xd, 16)
+        xd = ((xd << 16) & 0xffffffff | (xd >> 16))
 
         xc = (xc + xd) & 0xffffffff
         xb = xb ^ xc
-        xb = rotl32(xb, 12)
+        xb = ((xb << 12) & 0xffffffff | (xb >> 20))
 
         xa = (xa + xb) & 0xffffffff
         xd = xd ^ xa
-        xd = rotl32(xd, 8)
+        xd = ((xd << 8) & 0xffffffff | (xd >> 24))
 
         xc = (xc + xd) & 0xffffffff
         xb = xb ^ xc
-        xb = rotl32(xb, 7)
+        xb = ((xb << 7) & 0xffffffff | (xb >> 25))
 
         x[a] = xa
         x[b] = xb
