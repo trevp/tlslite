@@ -117,8 +117,8 @@ class ChaCha(object):
                                              self.rounds)
             key_stream = ChaCha.word_to_bytearray(key_stream)
             block = plaintext[i*64:(i+1)*64]
-            encrypted_message += bytearray((x ^ y for x, y \
-                                            in zip(key_stream, block)))
+            encrypted_message += bytearray(x ^ y for x, y
+                                           in zip(key_stream, block))
 
         return encrypted_message
 
