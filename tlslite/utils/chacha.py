@@ -25,33 +25,35 @@ class ChaCha(object):
     @staticmethod
     def quarter_round(x, a, b, c, d):
         """Perform a ChaCha quarter round"""
+        rotl32 = ChaCha.rotl32
         x[a] = (x[a] + x[b]) & 0xffffffff
         x[d] = x[d] ^ x[a]
-        x[d] = ChaCha.rotl32(x[d], 16)
+        x[d] = rotl32(x[d], 16)
 
         x[c] = (x[c] + x[d]) & 0xffffffff
         x[b] = x[b] ^ x[c]
-        x[b] = ChaCha.rotl32(x[b], 12)
+        x[b] = rotl32(x[b], 12)
 
         x[a] = (x[a] + x[b]) & 0xffffffff
         x[d] = x[d] ^ x[a]
-        x[d] = ChaCha.rotl32(x[d], 8)
+        x[d] = rotl32(x[d], 8)
 
         x[c] = (x[c] + x[d]) & 0xffffffff
         x[b] = x[b] ^ x[c]
-        x[b] = ChaCha.rotl32(x[b], 7)
+        x[b] = rotl32(x[b], 7)
 
     @staticmethod
     def double_round(x):
         """Perform two rounds of ChaCha cipher"""
-        ChaCha.quarter_round(x, 0, 4, 8, 12)
-        ChaCha.quarter_round(x, 1, 5, 9, 13)
-        ChaCha.quarter_round(x, 2, 6, 10, 14)
-        ChaCha.quarter_round(x, 3, 7, 11, 15)
-        ChaCha.quarter_round(x, 0, 5, 10, 15)
-        ChaCha.quarter_round(x, 1, 6, 11, 12)
-        ChaCha.quarter_round(x, 2, 7, 8, 13)
-        ChaCha.quarter_round(x, 3, 4, 9, 14)
+        qr = ChaCha.quarter_round
+        qr(x, 0, 4, 8, 12)
+        qr(x, 1, 5, 9, 13)
+        qr(x, 2, 6, 10, 14)
+        qr(x, 3, 7, 11, 15)
+        qr(x, 0, 5, 10, 15)
+        qr(x, 1, 6, 11, 12)
+        qr(x, 2, 7, 8, 13)
+        qr(x, 3, 4, 9, 14)
 
     @staticmethod
     def chacha_block(key, counter, nonce, rounds):
@@ -63,8 +65,9 @@ class ChaCha(object):
         state.extend(nonce)
 
         working_state = copy.copy(state)
-        for i in range(0, rounds // 2):
-            ChaCha.double_round(working_state)
+        dbl_round = ChaCha.double_round
+        for _ in range(0, rounds // 2):
+            dbl_round(working_state)
 
         return [(st + wrkSt) & 0xffffffff for st, wrkSt
                 in zip(state, working_state)]
