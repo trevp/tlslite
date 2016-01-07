@@ -26,21 +26,31 @@ class ChaCha(object):
     def quarter_round(x, a, b, c, d):
         """Perform a ChaCha quarter round"""
         rotl32 = ChaCha.rotl32
-        x[a] = (x[a] + x[b]) & 0xffffffff
-        x[d] = x[d] ^ x[a]
-        x[d] = rotl32(x[d], 16)
+        xa = x[a]
+        xb = x[b]
+        xc = x[c]
+        xd = x[d]
 
-        x[c] = (x[c] + x[d]) & 0xffffffff
-        x[b] = x[b] ^ x[c]
-        x[b] = rotl32(x[b], 12)
+        xa = (xa + xb) & 0xffffffff
+        xd = xd ^ xa
+        xd = rotl32(xd, 16)
 
-        x[a] = (x[a] + x[b]) & 0xffffffff
-        x[d] = x[d] ^ x[a]
-        x[d] = rotl32(x[d], 8)
+        xc = (xc + xd) & 0xffffffff
+        xb = xb ^ xc
+        xb = rotl32(xb, 12)
 
-        x[c] = (x[c] + x[d]) & 0xffffffff
-        x[b] = x[b] ^ x[c]
-        x[b] = rotl32(x[b], 7)
+        xa = (xa + xb) & 0xffffffff
+        xd = xd ^ xa
+        xd = rotl32(xd, 8)
+
+        xc = (xc + xd) & 0xffffffff
+        xb = xb ^ xc
+        xb = rotl32(xb, 7)
+
+        x[a] = xa
+        x[b] = xb
+        x[c] = xc
+        x[d] = xd
 
     @staticmethod
     def double_round(x):
