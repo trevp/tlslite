@@ -67,11 +67,7 @@ class ChaCha(object):
     @staticmethod
     def chacha_block(key, counter, nonce, rounds):
         """Generate a state of a single block"""
-        state = []
-        state.extend(ChaCha.constants)
-        state.extend(key)
-        state.append(counter)
-        state.extend(nonce)
+        state = ChaCha.constants + key + [counter] + nonce
 
         working_state = state[:]
         dbl_round = ChaCha.double_round
