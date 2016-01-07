@@ -135,17 +135,13 @@ class ChaCha(object):
     def encrypt(self, plaintext):
         """Encrypt the data"""
         encrypted_message = bytearray()
-        if len(plaintext) % 64 != 0:
-            extra = 1
-        else:
-            extra = 0
-        for i in range(0, len(plaintext) // 64 + extra):
+        for i, block in enumerate(plaintext[i:i+64] for i
+                                  in range(0, len(plaintext), 64)):
             key_stream = ChaCha.chacha_block(self.key,
                                              self.counter + i,
                                              self.nonce,
                                              self.rounds)
             key_stream = ChaCha.word_to_bytearray(key_stream)
-            block = plaintext[i*64:(i+1)*64]
             encrypted_message += bytearray(x ^ y for x, y
                                            in zip(key_stream, block))
 
