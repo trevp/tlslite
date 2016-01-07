@@ -51,18 +51,44 @@ class ChaCha(object):
         x[c] = xc
         x[d] = xd
 
-    @staticmethod
-    def double_round(x):
+    _round_mixup_box = [(0, 4, 8, 12),
+                        (1, 5, 9, 13),
+                        (2, 6, 10, 14),
+                        (3, 7, 11, 15),
+                        (0, 5, 10, 15),
+                        (1, 6, 11, 12),
+                        (2, 7, 8, 13),
+                        (3, 4, 9, 14)]
+
+    @classmethod
+    def double_round(cls, x):
         """Perform two rounds of ChaCha cipher"""
-        qr = ChaCha.quarter_round
-        qr(x, 0, 4, 8, 12)
-        qr(x, 1, 5, 9, 13)
-        qr(x, 2, 6, 10, 14)
-        qr(x, 3, 7, 11, 15)
-        qr(x, 0, 5, 10, 15)
-        qr(x, 1, 6, 11, 12)
-        qr(x, 2, 7, 8, 13)
-        qr(x, 3, 4, 9, 14)
+        for a, b, c, d in cls._round_mixup_box:
+            xa = x[a]
+            xb = x[b]
+            xc = x[c]
+            xd = x[d]
+
+            xa = (xa + xb) & 0xffffffff
+            xd = xd ^ xa
+            xd = ((xd << 16) & 0xffffffff | (xd >> 16))
+
+            xc = (xc + xd) & 0xffffffff
+            xb = xb ^ xc
+            xb = ((xb << 12) & 0xffffffff | (xb >> 20))
+
+            xa = (xa + xb) & 0xffffffff
+            xd = xd ^ xa
+            xd = ((xd << 8) & 0xffffffff | (xd >> 24))
+
+            xc = (xc + xd) & 0xffffffff
+            xb = xb ^ xc
+            xb = ((xb << 7) & 0xffffffff | (xb >> 25))
+
+            x[a] = xa
+            x[b] = xb
+            x[c] = xc
+            x[d] = xd
 
     @staticmethod
     def chacha_block(key, counter, nonce, rounds):
