@@ -132,6 +132,11 @@ class HandshakeSettings(object):
     @type useExtendedMasterSecret: bool
     @ivar useExtendedMasterSecret: whether to support the extended master
     secret calculation from RFC 7627. True by default.
+
+    @type requireExtendedMasterSecret: bool
+    @ivar requireExtendedMasterSecret: whether to require negotiation of
+    extended master secret calculation for successful connection. Requires
+    useExtendedMasterSecret to be set to true. False by default.
     """
     def __init__(self):
         self.minKeySize = 1023
@@ -150,6 +155,7 @@ class HandshakeSettings(object):
         self.eccCurves = list(CURVE_NAMES)
         self.usePaddingExtension = True
         self.useExtendedMasterSecret = True
+        self.requireExtendedMasterSecret = False
 
     @staticmethod
     def _sanityCheckKeySizes(other):
@@ -223,6 +229,13 @@ class HandshakeSettings(object):
 
         if other.useExtendedMasterSecret not in (True, False):
             raise ValueError("useExtendedMasterSecret must be True or False")
+        if other.requireExtendedMasterSecret not in (True, False):
+            raise ValueError("requireExtendedMasterSecret must be True "
+                             "or False")
+        if other.requireExtendedMasterSecret and \
+            not other.useExtendedMasterSecret:
+            raise ValueError("requireExtendedMasterSecret requires "
+                             "useExtendedMasterSecret")
 
         if other.usePaddingExtension not in (True, False):
             raise ValueError("usePaddingExtension must be True or False")
@@ -252,6 +265,7 @@ class HandshakeSettings(object):
         other.rsaSigHashes = self.rsaSigHashes
         other.eccCurves = self.eccCurves
         other.useExtendedMasterSecret = self.useExtendedMasterSecret
+        other.requireExtendedMasterSecret = self.requireExtendedMasterSecret
 
         if not cipherfactory.tripleDESPresent:
             other.cipherNames = [i for i in self.cipherNames if i != "3des"]

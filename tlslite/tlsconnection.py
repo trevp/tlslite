@@ -670,6 +670,12 @@ class TLSConnection(TLSRecordLayer):
                 AlertDescription.illegal_parameter,
                 "Server responded with unrequested NPN Extension"):
                 yield result
+        if not serverHello.getExtension(ExtensionType.extended_master_secret)\
+            and settings.requireExtendedMasterSecret:
+            for result in self._sendError(
+                    AlertDescription.insufficient_security,
+                    "Negotiation of Extended master Secret failed"):
+                yield result
         yield serverHello
 
     def _clientSelectNextProto(self, nextProtos, serverHello):
@@ -1157,12 +1163,17 @@ class TLSConnection(TLSRecordLayer):
                                                     bytearray(0)))
             self._recordLayer.encryptThenMAC = True
 
-        if settings.useExtendedMasterSecret and \
-                clientHello.getExtension(ExtensionType.extended_master_secret):
-            extensions.append(TLSExtension().create(ExtensionType.
-                                                    extended_master_secret,
-                                                    bytearray(0)))
-            self.extendedMasterSecret = True
+        if settings.useExtendedMasterSecret:
+            if clientHello.getExtension(ExtensionType.extended_master_secret):
+                extensions.append(TLSExtension().create(ExtensionType.
+                                                        extended_master_secret,
+                                                        bytearray(0)))
+                self.extendedMasterSecret = True
+            elif settings.requireExtendedMasterSecret:
+                for result in self._sendError(
+                        AlertDescription.insufficient_security,
+                        "Failed to negotiate Extended Master Secret"):
+                    yield result
 
         # don't send empty list of extensions
         if not extensions:

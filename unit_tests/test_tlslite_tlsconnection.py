@@ -126,6 +126,81 @@ class TestTLSConnection(unittest.TestCase):
         self.assertEqual(err.exception.description,
                          AlertDescription.handshake_failure)
 
+    def test_client_with_server_responing_without_EMS(self):
+        # socket to generate the faux response
+        gen_sock = MockSocket(bytearray(0))
+
+        gen_record_layer = RecordLayer(gen_sock)
+        gen_record_layer.version = (3, 2)
+
+        server_hello = ServerHello().create(
+                version=(3, 3),
+                random=bytearray(32),
+                session_id=bytearray(0),
+                cipher_suite=CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA256,
+                certificate_type=None,
+                tackExt=None,
+                next_protos_advertised=None)
+
+        for res in gen_record_layer.sendRecord(server_hello):
+            if res in (0, 1):
+                self.assertTrue(False, "Blocking socket")
+            else:
+                break
+
+        # test proper
+        sock = MockSocket(gen_sock.sent[0])
+
+        hs = HandshakeSettings()
+        hs.requireExtendedMasterSecret = True
+
+        conn = TLSConnection(sock)
+
+        with self.assertRaises(TLSLocalAlert) as err:
+            conn.handshakeClientCert(settings=hs)
+
+        self.assertEqual(err.exception.description,
+                         AlertDescription.insufficient_security)
+
+    def test_server_with_client_not_using_required_EMS(self):
+        gen_sock = MockSocket(bytearray(0))
+
+        gen_record_layer = RecordLayer(gen_sock)
+        gen_record_layer.version = (3, 0)
+
+        ciphers = [CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA256,
+                   CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA256,
+                   CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
+
+        client_hello = ClientHello().create(version=(3, 3),
+                                            random=bytearray(32),
+                                            session_id=bytearray(0),
+                                            cipher_suites=ciphers)
+
+        for res in gen_record_layer.sendRecord(client_hello):
+            if res in (0, 1):
+                self.assertTrue(False, "Blocking socket")
+            else:
+                break
+
+        # test proper
+        sock = MockSocket(gen_sock.sent[0])
+
+        conn = TLSConnection(sock)
+
+        hs = HandshakeSettings()
+        hs.requireExtendedMasterSecret = True
+
+        srv_private_key = parsePEMKey(srv_raw_key, private=True)
+        srv_cert_chain = X509CertChain([X509().parse(srv_raw_certificate)])
+        with self.assertRaises(TLSLocalAlert) as err:
+            conn.handshakeServer(certChain=srv_cert_chain,
+                                 privateKey=srv_private_key,
+                                 settings=hs)
+
+        self.assertEqual(err.exception.description,
+                         AlertDescription.insufficient_security)
+
     def prepare_mock_socket_with_handshake_failure(self):
         alertObj = Alert().create(AlertDescription.handshake_failure)
         alert = alertObj.write()
