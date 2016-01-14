@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.6.0-alpha3                                    2015-11-27
+tlslite-ng version 0.6.0-alpha4                                    2016-01-14
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -556,6 +556,8 @@ encrypt-then-MAC mode for CBC ciphers.
 ===========
 
 0.6.0 - WIP
+ - Session Hash a.k.a. Extended Master Secret extension from RFC 7627
+ - make the library work on systems working in FIPS mode
  - support for the padding extension from RFC 7685 (Karel Srot)
  - abitlity to perform reverse lookups on many of the TLS type enumerations
  - added ECDHE_RSA key exchange together with associated ciphersuites

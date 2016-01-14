@@ -25,6 +25,8 @@ Functionality implemented include:
  - client certificates
  - TACK certificate pinning
  - SRP_SHA_RSA and SRP_SHA ciphersuites (RFC 5054)
+ - Extended Master Secret calculation for TLS connections (RFC 7627)
+
 
 tlslite-ng aims to be a drop-in replacement for tlslite while providing more
 comprehensive set of features and more secure defautls.
