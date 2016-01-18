@@ -111,7 +111,7 @@ class ChaCha(object):
     @staticmethod
     def word_to_bytearray(state):
         """Convert state to little endian bytestream"""
-        return bytearray(b"".join(struct.pack('<L', i) for i in state))
+        return bytearray(struct.pack('<LLLLLLLLLLLLLLLL', *state))
 
     @staticmethod
     def _bytearray_to_words(data):
