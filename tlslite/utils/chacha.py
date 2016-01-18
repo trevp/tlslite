@@ -10,6 +10,11 @@ from __future__ import division
 from .compat import compat26Str
 import copy
 import struct
+try:
+    # in Python 3 the native zip returns iterator
+    from itertools import izip
+except ImportError:
+    izip = zip
 
 class ChaCha(object):
 
@@ -101,7 +106,7 @@ class ChaCha(object):
             dbl_round(working_state)
 
         return [(st + wrkSt) & 0xffffffff for st, wrkSt
-                in zip(state, working_state)]
+                in izip(state, working_state)]
 
     @staticmethod
     def word_to_bytearray(state):
@@ -143,7 +148,7 @@ class ChaCha(object):
                                              self.rounds)
             key_stream = ChaCha.word_to_bytearray(key_stream)
             encrypted_message += bytearray(x ^ y for x, y
-                                           in zip(key_stream, block))
+                                           in izip(key_stream, block))
 
         return encrypted_message
 
