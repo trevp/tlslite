@@ -1003,6 +1003,81 @@ class TestRecordHeader2(unittest.TestCase):
         self.assertEqual(1, rh.padding)
         self.assertTrue(rh.securityEscape)
 
+    def test_create(self):
+        rh = RecordHeader2()
+        rh.create(512)
+
+        self.assertEqual(512, rh.length)
+        self.assertEqual(0, rh.padding)
+        self.assertFalse(rh.securityEscape)
+
+    def test_write(self):
+        rh = RecordHeader2()
+        rh.create(0x0123)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\x81'
+            b'\x23'), data)
+
+    def test_write_with_padding(self):
+        rh = RecordHeader2()
+        rh.create(0x0123, padding=12)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\x01'
+            b'\x23'
+            b'\x0c'), data)
+
+    def test_write_with_security_escape(self):
+        rh = RecordHeader2()
+        rh.create(0x0123, securityEscape=True)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\x41'
+            b'\x23'
+            b'\x00'), data)
+
+    def test_write_with_large_data_and_short_header(self):
+        rh = RecordHeader2()
+        rh.create(0x7fff)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\xff'
+            b'\xff'), data)
+
+    def test_write_with_too_long_length_and_short_header(self):
+        rh = RecordHeader2()
+        rh.create(0x8000)
+
+        with self.assertRaises(ValueError):
+            rh.write()
+
+    def test_write_with_long_length_and_long_header(self):
+        rh = RecordHeader2()
+        rh.create(0x3fff, padding=1)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\x3f'
+            b'\xff'
+            b'\x01'), data)
+
+    def test_write_with_too_long_length_and_long_header(self):
+        rh = RecordHeader2()
+        rh.create(0x4000, padding=1)
+
+        with self.assertRaises(ValueError):
+            rh.write()
+
 class TestRecordHeader3(unittest.TestCase):
     def test___init__(self):
         rh = RecordHeader3()

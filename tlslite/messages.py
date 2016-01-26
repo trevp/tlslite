@@ -83,7 +83,7 @@ class RecordHeader3(RecordHeader):
 
 class RecordHeader2(RecordHeader):
     """
-    SSLv2 record header (just reading)
+    SSLv2 record header
 
     @type padding: int
     @ivar padding: number of bytes added at end of message to make it multiple
@@ -112,6 +112,40 @@ class RecordHeader2(RecordHeader):
         self.type = ContentType.handshake
         self.version = (2, 0)
         return self
+
+    def create(self, length, padding=0, securityEscape=False):
+        """Set object's values"""
+        self.length = length
+        self.padding = padding
+        self.securityEscape = securityEscape
+
+    def write(self):
+        """Serialise object to bytearray"""
+        writer = Writer()
+
+        if not (self.padding or self.securityEscape):
+            shortHeader = True
+        else:
+            shortHeader = False
+
+        if ((shortHeader and self.length >= 0x8000) or
+                (not shortHeader and self.length >= 0x4000)):
+            raise ValueError("length too large")
+
+        firstByte = 0
+        if shortHeader:
+            firstByte |= 0x80
+        if self.securityEscape:
+            firstByte |= 0x40
+        firstByte |= self.length >> 8
+        secondByte = self.length & 0xff
+
+        writer.add(firstByte, 1)
+        writer.add(secondByte, 1)
+        if not shortHeader:
+            writer.add(self.padding, 1)
+
+        return writer.bytes
 
 class Message(object):
 
