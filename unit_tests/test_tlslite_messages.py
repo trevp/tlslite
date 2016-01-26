@@ -9,7 +9,7 @@ except ImportError:
     import unittest
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
-        CertificateRequest, CertificateVerify, ServerHelloDone
+        CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
@@ -969,6 +969,78 @@ class TestServerHello(unittest.TestCase):
                 "session_id=bytearray(b''), "\
                 "cipher_suite=34500, compression_method=0, _tack_ext=None, "\
                 "extensions=[])", repr(server_hello))
+
+class TestServerHello2(unittest.TestCase):
+    def test___init__(self):
+        sh = ServerHello2()
+
+        self.assertIsNotNone(sh)
+
+    def test_create(self):
+        sh = ServerHello2()
+
+        sh = sh.create(1, 2, (3, 4), bytearray(b'\x05'), [6, 7],
+                       bytearray(b'\x08\x09'))
+
+        self.assertEqual(sh.session_id_hit, 1)
+        self.assertEqual(sh.certificate_type, 2)
+        self.assertEqual(sh.server_version, (3, 4))
+        self.assertEqual(sh.certificate, bytearray(b'\x05'))
+        self.assertEqual(sh.ciphers, [6, 7])
+        self.assertEqual(sh.session_id, bytearray(b'\x08\x09'))
+
+    def test_write(self):
+        sh = ServerHello2()
+        sh = sh.create(1, 2, (3, 4), bytearray(b'\x05'), [6, 7],
+                       bytearray(b'\x08\x09'))
+
+        self.assertEqual(bytearray(
+            b'\x04' +           # type - SERVER-HELLO
+            b'\x01' +           # session ID hit
+            b'\x02' +           # certificate_type
+            b'\x03\x04' +       # version
+            b'\x00\x01' +       # certificate length
+            b'\x00\x06' +       # ciphers length
+            b'\x00\x02' +       # session ID length
+            b'\x05' +           # certificate
+            b'\x00\x00\x06' +   # first cipher
+            b'\x00\x00\x07' +   # second cipher
+            b'\x08\x09'         # session ID
+            ), sh.write())
+
+    def test_parse(self):
+        p = Parser(bytearray(
+            # don't include type of message as it is handled by the
+            # record layer protocol
+            #b'\x04' +           # type - SERVER-HELLO
+            b'\x01' +           # session ID hit
+            b'\x02' +           # certificate_type
+            b'\x03\x04' +       # version
+            b'\x00\x01' +       # certificate length
+            b'\x00\x06' +       # ciphers length
+            b'\x00\x02' +       # session ID length
+            b'\x05' +           # certificate
+            b'\x00\x00\x06' +   # first cipher
+            b'\x00\x00\x07' +   # second cipher
+            b'\x08\x09'         # session ID
+            ))
+        sh = ServerHello2()
+        sh = sh.parse(p)
+
+        self.assertEqual(sh.session_id_hit, 1)
+        self.assertEqual(sh.certificate_type, 2)
+        self.assertEqual(sh.server_version, (3, 4))
+        self.assertEqual(sh.certificate, bytearray(b'\x05'))
+        self.assertEqual(sh.ciphers, [6, 7])
+        self.assertEqual(sh.session_id, bytearray(b'\x08\x09'))
+
+    def test_write_with_invalid_version(self):
+        sh = ServerHello2()
+        sh = sh.create(1, 2, (3, 4, 12), bytearray(b'\x05'), [6, 7],
+                       bytearray(b'\x08\x09'))
+
+        with self.assertRaises(ValueError):
+            sh.write()
 
 class TestRecordHeader2(unittest.TestCase):
     def test___init__(self):

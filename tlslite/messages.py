@@ -907,6 +907,91 @@ class ServerHello(HandshakeMsg):
             w.bytes += w2.bytes        
         return self.postWrite(w)
 
+class ServerHello2(HandshakeMsg):
+    """
+    SERVER-HELLO message from SSLv2
+
+    @type session_id_hit: int
+    @ivar session_id_hit: non zero if the client provided session ID was
+        matched in server's session cache
+
+    @type certificate_type: int
+    @ivar certificate_type: type of certificate sent
+
+    @type server_version: tuple of ints
+    @ivar server_version: protocol version selected by server
+
+    @type certificate: bytearray
+    @ivar certificate: certificate sent by server
+
+    @type ciphers: array of int
+    @ivar ciphers: list of ciphers supported by server
+
+    @type session_id: bytearray
+    @ivar session_id: idendifier of negotiated session
+    """
+
+    def __init__(self):
+        super(ServerHello2, self).__init__(HandshakeType.ssl2_server_hello)
+        self.session_id_hit = 0
+        self.certificate_type = 0
+        self.server_version = (0, 0)
+        self.certificate = bytearray(0)
+        self.ciphers = []
+        self.session_id = bytearray(0)
+
+    def create(self, session_id_hit, certificate_type, server_version,
+               certificate, ciphers, session_id):
+        """Initialize fields of the SERVER-HELLO message"""
+        self.session_id_hit = session_id_hit
+        self.certificate_type = certificate_type
+        self.server_version = server_version
+        self.certificate = certificate
+        self.ciphers = ciphers
+        self.session_id = session_id
+        return self
+
+    def write(self):
+        """Serialise object to on the wire data"""
+        writer = Writer()
+        writer.add(self.handshakeType, 1)
+        writer.add(self.session_id_hit, 1)
+        writer.add(self.certificate_type, 1)
+        if len(self.server_version) != 2:
+            raise ValueError("server version must be a 2-element tuple")
+        writer.addFixSeq(self.server_version, 1)
+        writer.add(len(self.certificate), 2)
+
+        ciphersWriter = Writer()
+        ciphersWriter.addFixSeq(self.ciphers, 3)
+
+        writer.add(len(ciphersWriter.bytes), 2)
+        writer.add(len(self.session_id), 2)
+
+        writer.bytes += self.certificate
+        writer.bytes += ciphersWriter.bytes
+        writer.bytes += self.session_id
+
+        # postWrite() is necessary only for SSLv3/TLS
+        return writer.bytes
+
+    def parse(self, parser):
+        """Deserialise object from on the wire data"""
+        self.session_id_hit = parser.get(1)
+        self.certificate_type = parser.get(1)
+        self.server_version = (parser.get(1), parser.get(1))
+        certificateLength = parser.get(2)
+        ciphersLength = parser.get(2)
+        sessionIDLength = parser.get(2)
+        parser.setLengthCheck(certificateLength +
+                              ciphersLength +
+                              sessionIDLength)
+        self.certificate = parser.getFixBytes(certificateLength)
+        self.ciphers = parser.getFixList(3, ciphersLength // 3)
+        self.session_id = parser.getFixBytes(sessionIDLength)
+        parser.stopLengthCheck()
+        return self
+
 class Certificate(HandshakeMsg):
     def __init__(self, certificateType):
         HandshakeMsg.__init__(self, HandshakeType.certificate)
