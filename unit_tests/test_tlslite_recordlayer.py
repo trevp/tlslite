@@ -20,7 +20,8 @@ import socket
 import errno
 
 import tlslite.utils.cryptomath as cryptomath
-from tlslite.messages import Message, ApplicationData, RecordHeader3
+from tlslite.messages import Message, ApplicationData, RecordHeader3, \
+        ClientHello
 from tlslite.recordlayer import RecordSocket, ConnectionState, RecordLayer
 from tlslite.constants import ContentType, CipherSuite
 from unit_tests.mocksock import MockSocket
@@ -54,6 +55,36 @@ class TestRecordSocket(unittest.TestCase):
             b'\x00\x0a' +       # payload length
             b'\x00'*10          # payload
             ), mockSock.sent[0])
+
+    def test_send_SSLv2_message(self):
+        mock_sock = MockSocket(bytearray(0))
+        sock = RecordSocket(mock_sock)
+        sock.version = (0, 2)
+
+        msg = ClientHello(ssl2=True)
+        msg.create((3, 3), random=bytearray(b'\xaa'*16),
+                   session_id=bytearray(0),
+                   cipher_suites=[CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                                  CipherSuite.TLS_RSA_WITH_RC4_128_MD5])
+
+        for result in sock.send(msg):
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+
+        self.assertEqual(len(mock_sock.sent), 1)
+        self.assertEqual(bytearray(
+            b'\x80' +           # short header
+            b'\x1f' +           # length - 31 bytes
+            b'\x01' +           # CLIENT-HELLO
+            b'\x03\x03' +       # TLSv1.2
+            b'\x00\x06' +       # cipher suite length
+            b'\x00\x00' +       # session_id length
+            b'\x00\x10' +       # Challange length
+            b'\x00\x00\x2f' +   # cipher: TLS_RSA_WITH_AES_128_CBC_SHA
+            b'\x00\x00\x04' +   # cipher: TLS_RSA_WITH_RC4_128_MD5
+            b'\xaa'*16          # challange
+            ), mock_sock.sent[0])
 
     def test_send_with_very_slow_socket(self):
         mockSock = MockSocket(bytearray(0), maxWrite=1, blockEveryOther=True)

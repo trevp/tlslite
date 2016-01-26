@@ -55,19 +55,25 @@ class RecordSocket(object):
             data = data[bytesSent:]
             yield 1
 
-    def send(self, msg):
+    def send(self, msg, padding=0):
         """
         Send the message through socket.
 
         @type msg: bytearray
         @param msg: TLS message to send
+        @type padding: int
+        @param padding: amount of padding to specify for SSLv2
         @raise socket.error: when write to socket failed
         """
         data = msg.write()
 
-        header = RecordHeader3().create(self.version,
-                                        msg.contentType,
-                                        len(data))
+        if self.version in ((2, 0), (0, 2)):
+            header = RecordHeader2().create(len(data),
+                                            padding)
+        else:
+            header = RecordHeader3().create(self.version,
+                                            msg.contentType,
+                                            len(data))
 
         data = header.write() + data
 
