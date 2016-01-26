@@ -590,7 +590,7 @@ class TestClientHello(unittest.TestCase):
 
         client_hello = client_hello.parse(parser)
 
-        # XXX the value on the wire is LSB, but should be interpreted MSB for
+        # the value on the wire is LSB, but should be interpreted MSB for
         # SSL2
         self.assertEqual((0, 2), client_hello.client_version)
         self.assertEqual(bytearray(0), client_hello.session_id)
@@ -600,6 +600,54 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual(bytearray(b'\x00'*16 + b'\x01'*16),
                          client_hello.random)
         self.assertEqual([0], client_hello.compression_methods)
+
+    def test_parse_with_SSLv2_client_hello(self):
+        parser = Parser(bytearray(
+            # length and type is handled by hello protocol parser
+            #b'\x80\x2e' +           # length - 46 bytes
+            #b'\x01' +               # message type - client hello
+            b'\x03\x02' +           # version - TLSv1.1
+            b'\x00\x06' +           # cipher spec length - 6 bytes
+            b'\x00\x10' +           # session ID length - 16 bytes
+            b'\x00\x20' +           # challange length - 32 bytes
+            b'\x07\x00\xc0' +       # cipher - SSL2_DES_192_EDE3_CBC_WITH_MD5
+            b'\x00\x00\x2f' +       # cipher - TLS_RSA_WITH_AES_128_CBC_SHA
+            b'\xff' * 16 +          # session_id
+            b'\x01' * 32            # challenge
+            ))
+        client_hello = ClientHello(ssl2=True)
+
+        client_hello = client_hello.parse(parser)
+
+        # the value on the wire is LSB, but should be interpreted MSB for
+        # SSL2
+        self.assertEqual((3, 2), client_hello.client_version)
+        self.assertEqual(bytearray(b'\xff'*16), client_hello.session_id)
+        self.assertEqual([458944, CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA],
+                         client_hello.cipher_suites)
+        self.assertEqual(bytearray(b'\x01'*32),
+                         client_hello.random)
+        self.assertEqual([0], client_hello.compression_methods)
+
+    def test_write_with_SSLv2(self):
+        client_hello = ClientHello(ssl2=True)
+        ciphers = [0x0700c0,
+                   CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA]
+
+        client_hello.create((3, 2), random=bytearray(b'\xab'*16),
+                            session_id=bytearray(0),
+                            cipher_suites=ciphers)
+
+        self.assertEqual(bytearray(
+            b'\x01' +             # type of message - CLIENT HELLO
+            b'\x03\x02' +         # version - TLSv1.1
+            b'\x00\x06' +         # cipher list length
+            b'\x00\x00' +         # session id length
+            b'\x00\x10' +         # challange length
+            b'\x07\x00\xc0' +     # cipher - SSL2_DES_192_EDE3_CBC_WITH_MD5
+            b'\x00\x00\x2f' +     # cipher - TLS_RSA_WITH_AES_128_CBC_SHA
+            b'\xab'*16),          # challange
+            client_hello.write())
 
 class TestServerHello(unittest.TestCase):
     def test___init__(self):

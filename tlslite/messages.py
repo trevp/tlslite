@@ -602,7 +602,29 @@ class ClientHello(HandshakeMsg):
             p.stopLengthCheck()
         return self
 
-    def write(self):
+    def _writeSSL2(self):
+        """Serialise SSLv2 object to on the wire data"""
+        writer = Writer()
+        writer.add(self.handshakeType, 1)
+        writer.add(self.client_version[0], 1)
+        writer.add(self.client_version[1], 1)
+
+        ciphersWriter = Writer()
+        ciphersWriter.addFixSeq(self.cipher_suites, 3)
+
+        writer.add(len(ciphersWriter.bytes), 2)
+        writer.add(len(self.session_id), 2)
+        writer.add(len(self.random), 2)
+
+        writer.bytes += ciphersWriter.bytes
+        writer.bytes += self.session_id
+        writer.bytes += self.random
+
+        # postWrite() is necessary only for SSLv3/TLS
+        return writer.bytes
+
+    def _write(self):
+        """Serialise SSLv3 or TLS object to on the wire data"""
         w = Writer()
         w.add(self.client_version[0], 1)
         w.add(self.client_version[1], 1)
@@ -619,6 +641,13 @@ class ClientHello(HandshakeMsg):
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes
         return self.postWrite(w)
+
+    def write(self):
+        """Serialise object to on the wire data"""
+        if self.ssl2:
+            return self._writeSSL2()
+        else:
+            return self._write()
 
 class ServerHello(HandshakeMsg):
     """server_hello message
