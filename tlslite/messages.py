@@ -118,6 +118,7 @@ class RecordHeader2(RecordHeader):
         self.length = length
         self.padding = padding
         self.securityEscape = securityEscape
+        return self
 
     def write(self):
         """Serialise object to bytearray"""
