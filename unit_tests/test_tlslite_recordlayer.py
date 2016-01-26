@@ -300,6 +300,29 @@ class TestRecordSocket(unittest.TestCase):
 
         self.assertEqual(0, result)
 
+    def test_recv_with_long_SSL2_header(self):
+        mockSock = MockSocket(bytearray(
+            b'\x40' +  # security escape data
+            b'\x04' +  # length
+            b'\x00' +  # padding length
+            b'\xaa'*4))
+
+        sock = RecordSocket(mockSock)
+
+        for result in sock.recv():
+            if result in (0, 1):
+                self.assertTrue(True, "blocking socket")
+            else: break
+
+        header, data = result
+
+        self.assertTrue(header.ssl2)
+        self.assertTrue(header.securityEscape)
+        self.assertEqual(4, header.length)
+        self.assertEqual((2, 0), header.version)
+
+        self.assertEqual(bytearray(b'\xaa'*4), data)
+
 class TestConnectionState(unittest.TestCase):
     def test___init__(self):
         connState = ConnectionState()
