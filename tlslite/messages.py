@@ -519,7 +519,8 @@ class ClientHello(HandshakeMsg):
 
         @type random: bytearray
         @param random: client provided random value, in old versions of TLS
-            (before 1.2) the first 32 bits should include system time
+            (before 1.2) the first 32 bits should include system time, also
+            used as the "challange" field in SSLv2
 
         @type session_id: bytearray
         @param session_id: ID of session, set when doing session resumption
@@ -568,20 +569,23 @@ class ClientHello(HandshakeMsg):
         return self
 
     def parse(self, p):
+        """Deserialise object from on the wire data"""
         if self.ssl2:
             self.client_version = (p.get(1), p.get(1))
             cipherSpecsLength = p.get(2)
             sessionIDLength = p.get(2)
             randomLength = p.get(2)
+            p.setLengthCheck(cipherSpecsLength +
+                             sessionIDLength +
+                             randomLength)
             self.cipher_suites = p.getFixList(3, cipherSpecsLength//3)
             self.session_id = p.getFixBytes(sessionIDLength)
             self.random = p.getFixBytes(randomLength)
             if len(self.random) < 32:
                 zeroBytes = 32-len(self.random)
                 self.random = bytearray(zeroBytes) + self.random
-            self.compression_methods = [0]#Fake this value
-
-            #We're not doing a stopLengthCheck() for SSLv2, oh well..
+            self.compression_methods = [0]  # Fake this value
+            p.stopLengthCheck()
         else:
             p.startLengthCheck(3)
             self.client_version = (p.get(1), p.get(1))
