@@ -131,26 +131,32 @@ class RecordSocket(object):
                 else: break
             assert result is not None
             buf += result
-        # XXX this should be 'buf[0] & 128', otherwise hello messages longer
-        # than 127 bytes won't be properly parsed
-        elif buf[0] == 128:
+        else:
+            # if header has no pading the header is 2 bytes long, 3 otherwise
+            # at the same time we already read 1 byte
             ssl2 = True
-            # in SSLv2 we need to read 2 bytes in total to know the size of
-            # header, we already read 1
+            if buf[0] & 0x80:
+                readLen = 1
+            else:
+                readLen = 2
             result = None
-            for result in self._sockRecvAll(1):
+            for result in self._sockRecvAll(readLen):
                 if result in (0, 1):
                     yield result
                 else: break
             assert result is not None
             buf += result
-        else:
-            raise TLSIllegalParameterException(
-                "Record header type doesn't specify known type")
+
 
         #Parse the record header
         if ssl2:
             record = RecordHeader2().parse(Parser(buf))
+            # padding can't be longer than overall length and if it is present
+            # the overall size must be a multiple of cipher block size
+            if ((record.padding > record.length) or
+                    (record.padding and record.length % 8)):
+                raise TLSIllegalParameterException(\
+                        "Malformed record layer header")
         else:
             record = RecordHeader3().parse(Parser(buf))
 

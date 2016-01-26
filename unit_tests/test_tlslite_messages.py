@@ -962,11 +962,46 @@ class TestRecordHeader2(unittest.TestCase):
 
         rh = RecordHeader2()
 
-        #XXX can't handle two-byte length
-        with self.assertRaises(SyntaxError):
-            rh = rh.parse(parser)
+        rh = rh.parse(parser)
 
-        #self.assertEqual(512, rh.length)
+        self.assertEqual(512, rh.length)
+        self.assertEqual(0, rh.padding)
+
+    def test_parse_with_3_byte_long_header(self):
+        parser = Parser(bytearray(
+            b'\x02' +       # 3 byte header and nibble of length
+            b'\x00' +       # second byte of length
+            b'\x0a'         # padding length
+            ))
+
+        rh = RecordHeader2()
+        rh = rh.parse(parser)
+
+        self.assertEqual(512, rh.length)
+        self.assertEqual(10, rh.padding)
+
+    def test_parse_with_2_byte_header_and_security_escape_bit_set(self):
+        parser = Parser(bytearray(
+            b'\xc0' +
+            b'\x12'))
+
+        rh = RecordHeader2()
+        rh = rh.parse(parser)
+        self.assertEqual(0x4012, rh.length)
+        self.assertEqual(0, rh.padding)
+        self.assertFalse(rh.securityEscape)
+
+    def test_parse_with_3_byte_header_and_security_escape_bit_set(self):
+        parser = Parser(bytearray(
+            b'\x40' +
+            b'\x12' +
+            b'\x01'))
+
+        rh = RecordHeader2()
+        rh = rh.parse(parser)
+        self.assertEqual(0x0012, rh.length)
+        self.assertEqual(1, rh.padding)
+        self.assertTrue(rh.securityEscape)
 
 class TestRecordHeader3(unittest.TestCase):
     def test___init__(self):

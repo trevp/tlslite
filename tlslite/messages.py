@@ -82,21 +82,35 @@ class RecordHeader3(RecordHeader):
                 format(self.type, self.version, self.length)
 
 class RecordHeader2(RecordHeader):
+    """
+    SSLv2 record header (just reading)
 
-    """SSLv2 record header (just reading)"""
+    @type padding: int
+    @ivar padding: number of bytes added at end of message to make it multiple
+    of block cipher size
+    @type securityEscape: boolean
+    @ivar securityEscape: whether the record contains a security escape message
+    """
 
     def __init__(self):
         """Define a SSLv2 style class"""
         super(RecordHeader2, self).__init__(ssl2=True)
+        self.padding = 0
+        self.securityEscape = False
 
     def parse(self, parser):
         """Deserialise object from Parser"""
-        if parser.get(1) != 128:
-            raise SyntaxError()
+        firstByte = parser.get(1)
+        secondByte = parser.get(1)
+        if firstByte & 0x80:
+            self.length = ((firstByte & 0x7f) << 8) | secondByte
+        else:
+            self.length = ((firstByte & 0x3f) << 8) | secondByte
+            self.securityEscape = firstByte & 0x40 != 0
+            self.padding = parser.get(1)
+
         self.type = ContentType.handshake
         self.version = (2, 0)
-        #XXX We don't support 2-byte-length-headers; could be a problem
-        self.length = parser.get(1)
         return self
 
 class Message(object):
