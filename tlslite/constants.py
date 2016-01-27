@@ -57,13 +57,17 @@ class ClientCertificateType:
     rsa_fixed_dh = 3
     dss_fixed_dh = 4
 
+class SSL2HandshakeType(TLSEnum):
+    """SSL2 Handshake Protocol message types"""
+    client_hello = 1
+    server_hello = 4
+
 class HandshakeType(TLSEnum):
     """Message types in TLS Handshake protocol"""
 
     hello_request = 0
     client_hello = 1
     server_hello = 2
-    ssl2_server_hello = 4
     certificate = 11
     server_key_exchange = 12
     certificate_request = 13

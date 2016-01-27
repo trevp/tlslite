@@ -932,7 +932,7 @@ class ServerHello2(HandshakeMsg):
     """
 
     def __init__(self):
-        super(ServerHello2, self).__init__(HandshakeType.ssl2_server_hello)
+        super(ServerHello2, self).__init__(SSL2HandshakeType.server_hello)
         self.session_id_hit = 0
         self.certificate_type = 0
         self.server_version = (0, 0)
