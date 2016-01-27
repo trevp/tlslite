@@ -1440,6 +1440,68 @@ class ClientKeyExchange(HandshakeMsg):
             raise AssertionError()
         return self.postWrite(w)
 
+class ClientMasterKey(HandshakeMsg):
+    """
+    Handling of SSLv2 CLIENT-MASTER-KEY message
+
+    @type cipher: int
+    @ivar cipher: negotiated cipher
+
+    @type clear_key: bytearray
+    @ivar clear_key: the part of master secret key that is sent in clear for
+    export cipher suites
+
+    @type encrypted_key: bytearray
+    @ivar encrypted_key: (part of) master secret encrypted using server key
+
+    @type key_argument: bytearray
+    @ivar key_argument: additional key argument for block ciphers
+    """
+
+    def __init__(self):
+        super(ClientMasterKey,
+              self).__init__(SSL2HandshakeType.client_master_key)
+        self.cipher = 0
+        self.clear_key = bytearray(0)
+        self.encrypted_key = bytearray(0)
+        self.key_argument = bytearray(0)
+
+    def create(self, cipher, clear_key, encrypted_key, key_argument):
+        """Set values of the CLIENT-MASTER-KEY object"""
+        self.cipher = cipher
+        self.clear_key = clear_key
+        self.encrypted_key = encrypted_key
+        self.key_argument = key_argument
+        return self
+
+    def write(self):
+        """Serialise the object to on the wire data"""
+        writer = Writer()
+        writer.add(self.handshakeType, 1)
+        writer.add(self.cipher, 3)
+        writer.add(len(self.clear_key), 2)
+        writer.add(len(self.encrypted_key), 2)
+        writer.add(len(self.key_argument), 2)
+        writer.bytes += self.clear_key
+        writer.bytes += self.encrypted_key
+        writer.bytes += self.key_argument
+        return writer.bytes
+
+    def parse(self, parser):
+        """Deserialise object from on the wire data"""
+        self.cipher = parser.get(3)
+        clear_key_length = parser.get(2)
+        encrypted_key_length = parser.get(2)
+        key_argument_length = parser.get(2)
+        parser.setLengthCheck(clear_key_length +
+                              encrypted_key_length +
+                              key_argument_length)
+        self.clear_key = parser.getFixBytes(clear_key_length)
+        self.encrypted_key = parser.getFixBytes(encrypted_key_length)
+        self.key_argument = parser.getFixBytes(key_argument_length)
+        parser.stopLengthCheck()
+        return self
+
 class CertificateVerify(HandshakeMsg):
 
     """Serializer for TLS handshake protocol Certificate Verify message"""

@@ -9,11 +9,13 @@ except ImportError:
     import unittest
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
-        CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2
+        CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
+        ClientMasterKey
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
-        HashAlgorithm, SignatureAlgorithm, ECCurveType, GroupName
+        HashAlgorithm, SignatureAlgorithm, ECCurveType, GroupName, \
+        SSL2HandshakeType
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension
 from tlslite.errors import TLSInternalError
@@ -1537,6 +1539,61 @@ class TestClientKeyExchange(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             cke.parse(parser)
+
+class TestClientMasterKey(unittest.TestCase):
+    def test___init__(self):
+        cmk = ClientMasterKey()
+
+        self.assertIsNotNone(cmk)
+        self.assertEqual(cmk.handshakeType,
+                         SSL2HandshakeType.client_master_key)
+
+    def test_create(self):
+        cmk = ClientMasterKey()
+        cmk = cmk.create(1, bytearray(b'\x02'), bytearray(b'\x03\x04'),
+                         bytearray(b'\x05\x06\x07'))
+
+        self.assertEqual(cmk.cipher, 1)
+        self.assertEqual(cmk.clear_key, bytearray(b'\x02'))
+        self.assertEqual(cmk.encrypted_key, bytearray(b'\x03\x04'))
+        self.assertEqual(cmk.key_argument, bytearray(b'\x05\x06\x07'))
+
+    def test_write(self):
+        cmk = ClientMasterKey()
+        cmk = cmk.create(1, bytearray(b'\x02'), bytearray(b'\x03\x04'),
+                         bytearray(b'\x05\x06\x07'))
+
+        self.assertEqual(bytearray(
+            b'\x02' +           # message type
+            b'\x00\x00\x01' +   # cipher spec
+            b'\x00\x01' +       # clear key length
+            b'\x00\x02' +       # encrypted key length
+            b'\x00\x03' +       # key argument length
+            b'\x02' +           # clear key
+            b'\x03\x04' +       # encrypted key
+            b'\x05\x06\x07'     # key argument
+            ), cmk.write())
+
+    def test_parse(self):
+        cmk = ClientMasterKey()
+
+        parser = Parser(bytearray(
+            # type is handled by handshake protocol
+            #b'\x02' +           # message type
+            b'\x00\x00\x01' +   # cipher spec
+            b'\x00\x01' +       # clear key length
+            b'\x00\x02' +       # encrypted key length
+            b'\x00\x03' +       # key argument length
+            b'\x02' +           # clear key
+            b'\x03\x04' +       # encrypted key
+            b'\x05\x06\x07'))   # key argument
+
+        cmk = cmk.parse(parser)
+
+        self.assertEqual(cmk.cipher, 1)
+        self.assertEqual(cmk.clear_key, bytearray(b'\x02'))
+        self.assertEqual(cmk.encrypted_key, bytearray(b'\x03\x04'))
+        self.assertEqual(cmk.key_argument, bytearray(b'\x05\x06\x07'))
 
 class TestServerKeyExchange(unittest.TestCase):
     def test___init__(self):

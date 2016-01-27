@@ -60,6 +60,7 @@ class ClientCertificateType:
 class SSL2HandshakeType(TLSEnum):
     """SSL2 Handshake Protocol message types"""
     client_hello = 1
+    client_master_key = 2
     server_hello = 4
 
 class HandshakeType(TLSEnum):
