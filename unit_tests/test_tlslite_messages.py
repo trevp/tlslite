@@ -10,7 +10,7 @@ except ImportError:
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
-        ClientMasterKey
+        ClientMasterKey, ClientFinished, ServerFinished
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
@@ -2176,6 +2176,72 @@ class TestServerHelloDone(unittest.TestCase):
         shd = ServerHelloDone()
 
         self.assertEqual("ServerHelloDone()", repr(shd))
+
+class TestClientFinished(unittest.TestCase):
+    def test___init__(self):
+        fin = ClientFinished()
+
+        self.assertIsNotNone(fin)
+        self.assertEqual(fin.handshakeType, SSL2HandshakeType.client_finished)
+
+    def test_create(self):
+        fin = ClientFinished()
+        fin.create(bytearray(b'\xc0\xfe'))
+
+        self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
+
+    def test_write(self):
+        fin = ClientFinished()
+        fin = fin.create(bytearray(b'\xc0\xfe'))
+
+        self.assertEqual(bytearray(
+            b'\x03' +   # message type
+            b'\xc0\xfe' # message payload
+            ), fin.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            # type is handled by higher protocol level
+            b'\xc0\xfe'))
+
+        fin = ClientFinished()
+        fin = fin.parse(parser)
+
+        self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
+        self.assertEqual(fin.handshakeType, SSL2HandshakeType.client_finished)
+
+class TestServerFinished(unittest.TestCase):
+    def test___init__(self):
+        fin = ServerFinished()
+
+        self.assertIsNotNone(fin)
+        self.assertEqual(fin.handshakeType, SSL2HandshakeType.server_finished)
+
+    def test_create(self):
+        fin = ServerFinished()
+        fin = fin.create(bytearray(b'\xc0\xfe'))
+
+        self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
+
+    def test_write(self):
+        fin = ServerFinished()
+        fin.create(bytearray(b'\xc0\xfe'))
+
+        self.assertEqual(bytearray(
+            b'\x06' +   # message type
+            b'\xc0\xfe' # message payload
+            ), fin.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            # type is handled by higher protocol level
+            b'\xc0\xfe'))
+
+        fin = ServerFinished()
+        fin = fin.parse(parser)
+
+        self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
+        self.assertEqual(fin.handshakeType, SSL2HandshakeType.server_finished)
 
 if __name__ == '__main__':
     unittest.main()

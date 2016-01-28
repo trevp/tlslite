@@ -1624,6 +1624,57 @@ class Finished(HandshakeMsg):
         w.addFixSeq(self.verify_data, 1)
         return self.postWrite(w)
 
+
+class SSL2Finished(HandshakeMsg):
+    """Handling of the SSL2 FINISHED messages"""
+
+    def __init__(self, msg_type):
+        super(SSL2Finished, self).__init__(msg_type)
+        self.verify_data = bytearray(0)
+
+    def create(self, verify_data):
+        """Set the message payload"""
+        self.verify_data = verify_data
+        return self
+
+    def parse(self, parser):
+        """Deserialise the message from on the wire data"""
+        self.verify_data = parser.getFixBytes(parser.getRemainingLength())
+        return self
+
+    def write(self):
+        """Serialise the message to on the wire data"""
+        writer = Writer()
+        writer.add(self.handshakeType, 1)
+        writer.addFixSeq(self.verify_data, 1)
+        # does not use postWrite() as it's a SSLv2 message
+        return writer.bytes
+
+
+class ClientFinished(SSL2Finished):
+    """
+    Handling of SSLv2 CLIENT-FINISHED message
+
+    @type verify_data: bytearray
+    @ivar verify_data: payload of the message, should be the CONNECTION-ID
+    """
+
+    def __init__(self):
+        super(ClientFinished, self).__init__(SSL2HandshakeType.client_finished)
+
+
+class ServerFinished(SSL2Finished):
+    """
+    Handling of SSLv2 SERVER-FINISHED message
+
+    @type verify_data: bytearray
+    @ivar verify_data: payload of the message, should be SESSION-ID
+    """
+
+    def __init__(self):
+        super(ServerFinished, self).__init__(SSL2HandshakeType.server_finished)
+
+
 class ApplicationData(object):
     def __init__(self):
         self.contentType = ContentType.application_data
