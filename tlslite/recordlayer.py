@@ -687,7 +687,7 @@ class RecordLayer(object):
 
         (header, data) = result
 
-        if self.version in ((0, 2), (2, 0)):
+        if isinstance(header, RecordHeader2):
             data = self._decryptSSL2(data, header.padding)
             if self.handshake_finished:
                 header.type = ContentType.application_data
