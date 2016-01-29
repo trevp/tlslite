@@ -13,7 +13,7 @@ from .utils.cipherfactory import createAESGCM, createAES, createRC4, \
         createTripleDES, createCHACHA20
 from .utils.codec import Parser, Writer
 from .utils.compat import compatHMAC
-from .utils.cryptomath import getRandomBytes
+from .utils.cryptomath import getRandomBytes, MD5
 from .utils.constanttime import ct_compare_digest, ct_check_cbc_mac_and_pad
 from .errors import TLSRecordOverflow, TLSIllegalParameterException,\
         TLSAbruptCloseError, TLSDecryptionFailed, TLSBadRecordMAC
@@ -239,6 +239,7 @@ class RecordLayer(object):
     @ivar client: whether the connection should use encryption
     @ivar encryptThenMAC: use the encrypt-then-MAC mechanism for record
     integrity
+    @ivar handshake_finished: used in SSL2, True if handshake protocol is over
     """
 
     def __init__(self, sock):
@@ -255,6 +256,8 @@ class RecordLayer(object):
         self.fixedIVBlock = None
 
         self.encryptThenMAC = False
+
+        self.handshake_finished = False
 
     @property
     def blockSize(self):
@@ -406,6 +409,31 @@ class RecordLayer(object):
 
         return buf
 
+    def _ssl2Encrypt(self, data):
+        """Encrypt in SSL2 mode"""
+        # in SSLv2 sequence numbers are incremented for plaintext records too
+        seqnumBytes = self._writeState.getSeqNumBytes()
+
+        if (self._writeState.encContext and
+                self._writeState.encContext.isBlockCipher):
+            plaintext_len = len(data)
+            data = self.addPadding(data)
+            padding = len(data) - plaintext_len
+        else:
+            padding = 0
+
+        if self._writeState.macContext:
+            mac = self._writeState.macContext.copy()
+            mac.update(compatHMAC(data))
+            mac.update(compatHMAC(seqnumBytes[-4:]))
+
+            data = bytearray(mac.digest()) + data
+
+        if self._writeState.encContext:
+            data = self._writeState.encContext.encrypt(data)
+
+        return data, padding
+
     def sendRecord(self, msg):
         """
         Encrypt, MAC and send arbitrary message as-is through socket.
@@ -419,7 +447,10 @@ class RecordLayer(object):
         data = msg.write()
         contentType = msg.contentType
 
-        if self._writeState and \
+        padding = 0
+        if self.version in ((0, 2), (2, 0)):
+            data, padding = self._ssl2Encrypt(data)
+        elif self._writeState and \
             self._writeState.encContext and \
             self._writeState.encContext.isAEAD:
             data = self._encryptThenSeal(data, contentType)
@@ -430,7 +461,7 @@ class RecordLayer(object):
 
         encryptedMessage = Message(contentType, data)
 
-        for result in self._recordSocket.send(encryptedMessage):
+        for result in self._recordSocket.send(encryptedMessage, padding):
             yield result
 
     #
@@ -601,6 +632,42 @@ class RecordLayer(object):
             raise TLSBadRecordMAC("Invalid tag, decryption failure")
         return buf
 
+    def _decryptSSL2(self, data, padding):
+        """Decrypt SSL2 encrypted data"""
+        # sequence numbers are incremented for plaintext records too
+        seqnumBytes = self._readState.getSeqNumBytes()
+
+        #
+        # decrypt
+        #
+        if self._readState.encContext:
+            if self._readState.encContext.isBlockCipher:
+                blockLength = self._readState.encContext.block_size
+                if len(data) % blockLength:
+                    raise TLSDecryptionFailed()
+            data = self._readState.encContext.decrypt(data)
+
+        #
+        # strip and check MAC
+        #
+        if self._readState.macContext:
+            macBytes = data[:16]
+            data = data[16:]
+
+            mac = self._readState.macContext.copy()
+            mac.update(compatHMAC(data))
+            mac.update(compatHMAC(seqnumBytes[-4:]))
+            calcMac = bytearray(mac.digest())
+            if macBytes != calcMac:
+                raise TLSBadRecordMAC()
+
+        #
+        # strip padding
+        #
+        if padding:
+            data = data[:-padding]
+        return data
+
     def recvRecord(self):
         """
         Read, decrypt and check integrity of a single record
@@ -620,7 +687,11 @@ class RecordLayer(object):
 
         (header, data) = result
 
-        if self._readState and \
+        if self.version in ((0, 2), (2, 0)):
+            data = self._decryptSSL2(data, header.padding)
+            if self.handshake_finished:
+                header.type = ContentType.application_data
+        elif self._readState and \
             self._readState.encContext and \
             self._readState.encContext.isAEAD:
             data = self._decryptAndUnseal(header.type, data)
@@ -646,6 +717,10 @@ class RecordLayer(object):
         This should be done only once after a call to L{calcPendingStates} was
         performed and directly after sending a L{ChangeCipherSpec} message.
         """
+        if self.version in ((0, 2), (2, 0)):
+            # in SSLv2 sequence numbers carry over from plaintext to encrypted
+            # context
+            self._pendingWriteState.seqnum = self._writeState.seqnum
         self._writeState = self._pendingWriteState
         self._pendingWriteState = ConnectionState()
 
@@ -656,6 +731,10 @@ class RecordLayer(object):
         This should be done only once after a call to L{calcPendingStates} was
         performed and directly after receiving a L{ChangeCipherSpec} message.
         """
+        if self.version in ((0, 2), (2, 0)):
+            # in SSLv2 sequence numbers carry over from plaintext to encrypted
+            # context
+            self._pendingReadState.seqnum = self._readState.seqnum
         self._readState = self._pendingReadState
         self._pendingReadState = ConnectionState()
 
@@ -757,6 +836,80 @@ class RecordLayer(object):
             raise AssertionError()
 
         return keyBlock
+
+    def calcSSL2PendingStates(self, cipherSuite, masterSecret, clientRandom,
+                              serverRandom, implementations):
+        """
+        Create the keys for encryption and decryption in SSLv2
+
+        While we could reuse calcPendingStates(), we need to provide the
+        key-arg data for the server that needs to be passed up to handshake
+        protocol.
+        """
+        if cipherSuite in CipherSuite.ssl2_128Key:
+            key_length = 16
+        elif cipherSuite in CipherSuite.ssl2_192Key:
+            key_length = 24
+        elif cipherSuite in CipherSuite.ssl2_64Key:
+            key_length = 8
+        else:
+            raise ValueError("Unknown cipher specified")
+
+        key_material = bytearray(key_length * 2)
+        md5_output_size = 16
+        for i, pos in enumerate(range(0, key_length * 2, md5_output_size)):
+            key_material[pos:pos+md5_output_size] = MD5(\
+                    masterSecret +
+                    bytearray(str(i), "ascii") +
+                    clientRandom + serverRandom)
+
+        serverWriteKey = key_material[:key_length]
+        clientWriteKey = key_material[key_length:]
+
+        # specification draft says that DES key should not use the
+        # incrementing label but all implementations use it anyway
+        #elif cipherSuite in CipherSuite.ssl2_64Key:
+        #    key_material = MD5(masterSecret + clientRandom + serverRandom)
+        #    serverWriteKey = key_material[0:8]
+        #    clientWriteKey = key_material[8:16]
+
+        # RC4 cannot use initialisation vector
+        if cipherSuite not in CipherSuite.ssl2rc4:
+            iv = getRandomBytes(8)
+        else:
+            iv = bytearray(0)
+
+        clientPendingState = ConnectionState()
+        serverPendingState = ConnectionState()
+
+        # MAC
+        clientPendingState.macContext = hashlib.md5()
+        clientPendingState.macContext.update(compatHMAC(clientWriteKey))
+        serverPendingState.macContext = hashlib.md5()
+        serverPendingState.macContext.update(compatHMAC(serverWriteKey))
+
+        # ciphers
+        if cipherSuite in CipherSuite.ssl2rc4:
+            cipherMethod = createRC4
+        elif cipherSuite in CipherSuite.ssl2_3des:
+            cipherMethod = createTripleDES
+        else:
+            raise NotImplementedError("Unknown cipher")
+
+        clientPendingState.encContext = cipherMethod(clientWriteKey, iv,
+                                                     implementations)
+        serverPendingState.encContext = cipherMethod(serverWriteKey, iv,
+                                                     implementations)
+
+        # Assign new connection states to pending states
+        if self.client:
+            self._pendingWriteState = clientPendingState
+            self._pendingReadState = serverPendingState
+        else:
+            self._pendingWriteState = serverPendingState
+            self._pendingReadState = clientPendingState
+
+        return iv
 
     def calcPendingStates(self, cipherSuite, masterSecret, clientRandom,
                           serverRandom, implementations):

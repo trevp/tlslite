@@ -21,7 +21,7 @@ import errno
 
 import tlslite.utils.cryptomath as cryptomath
 from tlslite.messages import Message, ApplicationData, RecordHeader3, \
-        ClientHello
+        ClientHello, ClientMasterKey, ServerHello2, RecordHeader2
 from tlslite.recordlayer import RecordSocket, ConnectionState, RecordLayer
 from tlslite.constants import ContentType, CipherSuite
 from unit_tests.mocksock import MockSocket
@@ -2209,3 +2209,127 @@ class TestRecordLayer(unittest.TestCase):
 
         with self.assertRaises(TLSBadRecordMAC):
             next(gen)
+
+    def test_sendRecord_with_ssl2(self):
+        sock = MockSocket(bytearray(0))
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (0, 2)
+
+        recordLayer.calcSSL2PendingStates(
+                CipherSuite.SSL_CK_RC4_128_WITH_MD5,
+                bytearray(24), # master secret
+                bytearray(16), # client random
+                bytearray(16), # server random
+                None)
+
+        # make sequence number correct
+        hello = ClientHello().create((0, 2), bytearray(0), bytearray(0),
+                                     [])
+        master_key = ClientMasterKey()
+
+        for result in recordLayer.sendRecord(hello):
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+        for result in recordLayer.sendRecord(master_key):
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else:break
+        # sequence number tweaking end
+
+        recordLayer.changeWriteState()
+
+        app_data = ApplicationData().create(bytearray(b'test'))
+
+        self.assertIsNotNone(app_data)
+        self.assertTrue(len(app_data.write()) > 3)
+
+        for result in recordLayer.sendRecord(app_data):
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+
+        self.assertEqual(len(sock.sent), 3)
+        self.assertEqual(sock.sent[2][:2], bytearray(
+            b'\x80' +           # 2 byte header
+            b'\x14'             # overall length
+            ))
+        self.assertEqual(sock.sent[2][2:], bytearray(
+            b'\xa7\xaai.\x8a\x7ff\x12\xf8T\xcf[)\xc6\xd4\x11\xb85\x13\x0c'
+            ))
+
+    def test_recvRecord_with_ssl2(self):
+        # prepare encrypted message
+        srv_sock = MockSocket(bytearray(0))
+
+        srv_recordLayer = RecordLayer(srv_sock)
+        srv_recordLayer.client = False
+        srv_recordLayer.version = (0, 2)
+        # make the sequence number match
+        srv_hello = ServerHello2()
+        for result in srv_recordLayer.sendRecord(srv_hello):
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+        # setup encryption
+        srv_recordLayer.calcSSL2PendingStates(
+                CipherSuite.SSL_CK_RC4_128_WITH_MD5,
+                bytearray(24),  # master secret
+                bytearray(16),  # client random
+                bytearray(16),  # server random
+                None)
+        srv_recordLayer.changeWriteState()
+        # actually encrypt the message
+        srv_data = ApplicationData().create(bytearray(b'test'))
+        for result in srv_recordLayer.sendRecord(srv_data):
+            if result in (0, 1):
+                self.assertRaises(False, "blocking socket")
+            else: break
+
+        #
+        # check sanity of encrypted message
+        #
+        self.assertEqual(len(srv_sock.sent), 2)
+        self.assertEqual(srv_sock.sent[1][:2], bytearray(
+            b'\x80' +       # 2 byte header
+            b'\x14'))       # overall length
+        self.assertEqual(srv_sock.sent[1][2:], bytearray(
+            b'(\x07\xf9\xde`\x80\xa77s\x13Q\xc6%\n\x7f\xbd\xb0,8\xc4'
+            ))
+
+        #
+        # prepare socket for client
+        #
+        sock = MockSocket(srv_sock.sent[0] + srv_sock.sent[1])
+
+        recordLayer = RecordLayer(sock)
+        recordLayer.version = (0, 2)
+        # first match the sequence numbers
+        for result in recordLayer.recvRecord():
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+        header, parser = result
+        # setup encryption
+        recordLayer.calcSSL2PendingStates(
+                CipherSuite.SSL_CK_RC4_128_WITH_MD5,
+                bytearray(24),  # master secret
+                bytearray(16),  # client random
+                bytearray(16),  # server random
+                None)
+        recordLayer.changeReadState()
+        recordLayer.handshake_finished = True
+
+        #
+        # Test proper - recv encrypted message
+        #
+        for result in recordLayer.recvRecord():
+            if result in (0, 1):
+                self.assertTrue(False, "blocking socket")
+            else: break
+        header, parser = result
+
+        self.assertIsInstance(header, RecordHeader2)
+        self.assertEqual(header.type, ContentType.application_data)
+        self.assertEqual(parser.bytes, bytearray(b'test'))
