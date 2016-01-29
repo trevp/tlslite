@@ -69,6 +69,16 @@ class SSL2HandshakeType(TLSEnum):
     request_certificate = 7
     client_certificate = 8
 
+
+class SSL2ErrorDescription(TLSEnum):
+    """SSL2 Handshake protocol error message descriptions"""
+
+    no_cipher = 0x0001
+    no_certificate = 0x0002
+    bad_certificate = 0x0004
+    unsupported_certificate_type = 0x0006
+
+
 class HandshakeType(TLSEnum):
     """Message types in TLS Handshake protocol"""
 
