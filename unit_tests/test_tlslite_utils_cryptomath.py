@@ -126,6 +126,34 @@ class TestNumberToBytesFunctions(unittest.TestCase):
         self.assertEqual(numberToByteArray((1<<128)-1),
                          bytearray(b'\xff'*16))
 
+    @given(integers(min_value=0, max_value=0xff))
+    @example(0)
+    @example(0xff)
+    def test_small_number_little_endian(self, number):
+        self.assertEqual(numberToByteArray(number, 1, endian="little"),
+                         bytearray(struct.pack("<B", number)))
+
+    @given(integers(min_value=0, max_value=0xffffffff))
+    @example(0xffffffff)
+    def test_big_number(self, number):
+        self.assertEqual(numberToByteArray(number, 4, endian="little"),
+                         bytearray(struct.pack("<L", number)))
+
+    def test_very_large_number(self):
+        self.assertEqual(numberToByteArray((1<<128)-1, endian="little"),
+                         bytearray(b'\xff'*16))
+
+    def test_numberToByteArray_with_not_enough_length_little_endian(self):
+        self.assertEqual(numberToByteArray(0x0a0b0c, 2, endian="little"),
+                         bytearray(b'\x0c\x0b'))
+
+    def test_with_large_number_of_bytes_in_little_endian(self):
+        self.assertEqual(numberToByteArray(1, 16, endian="little"),
+                         bytearray(b'\x01' + b'\x00'*15))
+
+    def test_with_bad_endian_type(self):
+        with self.assertRaises(ValueError):
+            numberToByteArray(1, endian="middle")
 
 class TestNumBits(unittest.TestCase):
 

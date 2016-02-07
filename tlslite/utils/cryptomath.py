@@ -128,7 +128,7 @@ def bytesToNumber(b, endian="big"):
     else:
         raise ValueError("Only 'big' and 'little' endian supported")
 
-def numberToByteArray(n, howManyBytes=None):
+def numberToByteArray(n, howManyBytes=None, endian="big"):
     """
     Convert an integer into a bytearray, zero-pad to howManyBytes.
 
@@ -138,8 +138,14 @@ def numberToByteArray(n, howManyBytes=None):
     """
     if howManyBytes == None:
         howManyBytes = numBytes(n)
-    return bytearray((n >> i) & 0xff
-                     for i in range((howManyBytes-1)*8, -1, -8))
+    if endian == "big":
+        return bytearray((n >> i) & 0xff
+                         for i in range((howManyBytes-1)*8, -1, -8))
+    elif endian == "little":
+        return bytearray((n >> i) & 0xff
+                         for i in range(0, howManyBytes*8, 8))
+    else:
+        raise ValueError("Only 'big' and 'little' endian supported")
 
 def mpiToNumber(mpi): #mpi is an openssl-format bignum string
     if (ord(mpi[4]) & 0x80) !=0: #Make sure this is a positive number
