@@ -129,19 +129,17 @@ def bytesToNumber(b, endian="big"):
         raise ValueError("Only 'big' and 'little' endian supported")
 
 def numberToByteArray(n, howManyBytes=None):
-    """Convert an integer into a bytearray, zero-pad to howManyBytes.
+    """
+    Convert an integer into a bytearray, zero-pad to howManyBytes.
 
     The returned bytearray may be smaller than howManyBytes, but will
     not be larger.  The returned bytearray will contain a big-endian
     encoding of the input integer (n).
-    """    
+    """
     if howManyBytes == None:
         howManyBytes = numBytes(n)
-    b = bytearray(howManyBytes)
-    for count in range(howManyBytes-1, -1, -1):
-        b[count] = int(n % 256)
-        n >>= 8
-    return b
+    return bytearray((n >> i) & 0xff
+                     for i in range((howManyBytes-1)*8, -1, -8))
 
 def mpiToNumber(mpi): #mpi is an openssl-format bignum string
     if (ord(mpi[4]) & 0x80) !=0: #Make sure this is a positive number
