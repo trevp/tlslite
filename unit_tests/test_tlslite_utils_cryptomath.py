@@ -11,10 +11,11 @@ except ImportError:
 from hypothesis import given, example
 from hypothesis.strategies import integers
 import math
+import struct
 
 from tlslite.utils.cryptomath import isPrime, numBits, numBytes, \
         numberToByteArray, MD5, SHA1, secureHash, HMAC_MD5, HMAC_SHA1, \
-        HMAC_SHA256, HMAC_SHA384, HKDF_expand
+        HMAC_SHA256, HMAC_SHA384, HKDF_expand, bytesToNumber
 
 class TestIsPrime(unittest.TestCase):
     def test_with_small_primes(self):
@@ -344,3 +345,23 @@ class TestHashMethods(unittest.TestCase):
                                    b'\x64\x3C\xE8\x0E'
                                    b'\x2A\x9A\xC9\x4F'
                                    b'\xA5\x4C\xA4\x9F'))
+
+class TestBytesToNumber(unittest.TestCase):
+    @given(integers(min_value=0, max_value=0xff))
+    @example(0)
+    @example(0xff)
+    def test_small_numbers(self, number):
+        self.assertEqual(bytesToNumber(bytearray(struct.pack(">B", number))),
+                         number)
+
+    @given(integers(min_value=0, max_value=0xffffffff))
+    @example(0xffffffff)
+    def test_multi_byte_numbers(self, number):
+        self.assertEqual(bytesToNumber(bytearray(struct.pack(">I", number))),
+                         number)
+
+    def test_very_long_numbers(self):
+        self.assertEqual(bytesToNumber(bytearray(b'\x80' + b'\x00' * 16)),
+                         1<<(8 * 16 + 7))
+        self.assertEqual(bytesToNumber(bytearray(b'\xff'*16)),
+                         (1<<(8*16))-1)
