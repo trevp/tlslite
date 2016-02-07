@@ -121,13 +121,7 @@ def HKDF_expand(PRK, info, L, algorithm):
 # **************************************************************************
 
 def bytesToNumber(b):
-    total = 0
-    multiplier = 1
-    for count in range(len(b)-1, -1, -1):
-        byte = b[count]
-        total += multiplier * byte
-        multiplier *= 256
-    return total
+    return sum(i << j for i, j in zip(b, range((len(b)-1)*8, -1, -8)))
 
 def numberToByteArray(n, howManyBytes=None):
     """Convert an integer into a bytearray, zero-pad to howManyBytes.
