@@ -120,8 +120,13 @@ def HKDF_expand(PRK, info, L, algorithm):
 # Converter Functions
 # **************************************************************************
 
-def bytesToNumber(b):
-    return sum(i << j for i, j in zip(b, range((len(b)-1)*8, -1, -8)))
+def bytesToNumber(b, endian="big"):
+    if endian == "big":
+        return sum(i << j for i, j in zip(b, range((len(b)-1)*8, -1, -8)))
+    elif endian == "little":
+        return sum(i << j for i, j in zip(b, range(0, len(b)*8, 8)))
+    else:
+        raise ValueError("Only 'big' and 'little' endian supported")
 
 def numberToByteArray(n, howManyBytes=None):
     """Convert an integer into a bytearray, zero-pad to howManyBytes.

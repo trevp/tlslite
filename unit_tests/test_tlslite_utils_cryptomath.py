@@ -361,7 +361,39 @@ class TestBytesToNumber(unittest.TestCase):
                          number)
 
     def test_very_long_numbers(self):
+        self.assertEqual(bytesToNumber(bytearray(b'\x00' * 16 + b'\x80')),
+                         0x80)
         self.assertEqual(bytesToNumber(bytearray(b'\x80' + b'\x00' * 16)),
                          1<<(8 * 16 + 7))
         self.assertEqual(bytesToNumber(bytearray(b'\xff'*16)),
                          (1<<(8*16))-1)
+
+    @given(integers(min_value=0, max_value=0xff))
+    @example(0)
+    @example(0xff)
+    def test_small_numbers_little_endian(self, number):
+        self.assertEqual(bytesToNumber(bytearray(struct.pack("<B", number)),
+                                       "little"),
+                         number)
+
+    @given(integers(min_value=0, max_value=0xffffffff))
+    @example(0xffffffff)
+    def test_multi_byte_numbers_little_endian(self, number):
+        self.assertEqual(bytesToNumber(bytearray(struct.pack("<I", number)),
+                                       "little"),
+                         number)
+
+    def test_very_long_numbers_little_endian(self):
+        self.assertEqual(bytesToNumber(bytearray(b'\x80' + b'\x00' * 16),
+                                       "little"),
+                         0x80)
+        self.assertEqual(bytesToNumber(bytearray(b'\x00'*16 + b'\x80'),
+                                       "little"),
+                         1<<(8 * 16 + 7))
+        self.assertEqual(bytesToNumber(bytearray(b'\xff'*16),
+                                       "little"),
+                         (1<<(8*16))-1)
+
+    def test_with_unknown_type(self):
+        with self.assertRaises(ValueError):
+            bytesToNumber(bytearray(b'\xf0'), "middle")
