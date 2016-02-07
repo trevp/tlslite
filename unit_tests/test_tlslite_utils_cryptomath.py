@@ -109,6 +109,24 @@ class TestNumberToBytesFunctions(unittest.TestCase):
         self.assertEqual(numberToByteArray(0x0a0b0c, 2),
                          bytearray(b'\x0b\x0c'))
 
+    @given(integers(min_value=0, max_value=0xff))
+    @example(0)
+    @example(0xff)
+    def test_small_number(self, number):
+        self.assertEqual(numberToByteArray(number, 1),
+                         bytearray(struct.pack(">B", number)))
+
+    @given(integers(min_value=0, max_value=0xffffffff))
+    @example(0xffffffff)
+    def test_big_number(self, number):
+        self.assertEqual(numberToByteArray(number, 4),
+                         bytearray(struct.pack(">L", number)))
+
+    def test_very_large_number(self):
+        self.assertEqual(numberToByteArray((1<<128)-1),
+                         bytearray(b'\xff'*16))
+
+
 class TestNumBits(unittest.TestCase):
 
     @staticmethod
