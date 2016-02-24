@@ -72,6 +72,8 @@ dnf install m2crypto python-crypto python3-crypto python-gmpy2 python3-gmpy2
 * Make commits of logical units and describe them properly in commits
   * When creating a comment, keep the first line short and separate it from
     the rest by whiteline
+  * See also [OpenStack guide](https://wiki.openstack.org/wiki/GitCommitMessages)
+    for general good ideas about git commit messages
 * Check for unnecessary whitespace with `git diff --check` before committing
 
 * Generally newly submitted code should have test coverage so that it can
