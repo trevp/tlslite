@@ -10,6 +10,11 @@ from __future__ import division
 from .compat import compat26Str
 import copy
 import struct
+try:
+    # in Python 3 the native zip returns iterator
+    from itertools import izip
+except ImportError:
+    izip = zip
 
 class ChaCha(object):
 
@@ -25,59 +30,88 @@ class ChaCha(object):
     @staticmethod
     def quarter_round(x, a, b, c, d):
         """Perform a ChaCha quarter round"""
-        x[a] = (x[a] + x[b]) & 0xffffffff
-        x[d] = x[d] ^ x[a]
-        x[d] = ChaCha.rotl32(x[d], 16)
+        xa = x[a]
+        xb = x[b]
+        xc = x[c]
+        xd = x[d]
 
-        x[c] = (x[c] + x[d]) & 0xffffffff
-        x[b] = x[b] ^ x[c]
-        x[b] = ChaCha.rotl32(x[b], 12)
+        xa = (xa + xb) & 0xffffffff
+        xd = xd ^ xa
+        xd = ((xd << 16) & 0xffffffff | (xd >> 16))
 
-        x[a] = (x[a] + x[b]) & 0xffffffff
-        x[d] = x[d] ^ x[a]
-        x[d] = ChaCha.rotl32(x[d], 8)
+        xc = (xc + xd) & 0xffffffff
+        xb = xb ^ xc
+        xb = ((xb << 12) & 0xffffffff | (xb >> 20))
 
-        x[c] = (x[c] + x[d]) & 0xffffffff
-        x[b] = x[b] ^ x[c]
-        x[b] = ChaCha.rotl32(x[b], 7)
+        xa = (xa + xb) & 0xffffffff
+        xd = xd ^ xa
+        xd = ((xd << 8) & 0xffffffff | (xd >> 24))
 
-    @staticmethod
-    def double_round(x):
+        xc = (xc + xd) & 0xffffffff
+        xb = xb ^ xc
+        xb = ((xb << 7) & 0xffffffff | (xb >> 25))
+
+        x[a] = xa
+        x[b] = xb
+        x[c] = xc
+        x[d] = xd
+
+    _round_mixup_box = [(0, 4, 8, 12),
+                        (1, 5, 9, 13),
+                        (2, 6, 10, 14),
+                        (3, 7, 11, 15),
+                        (0, 5, 10, 15),
+                        (1, 6, 11, 12),
+                        (2, 7, 8, 13),
+                        (3, 4, 9, 14)]
+
+    @classmethod
+    def double_round(cls, x):
         """Perform two rounds of ChaCha cipher"""
-        ChaCha.quarter_round(x, 0, 4, 8, 12)
-        ChaCha.quarter_round(x, 1, 5, 9, 13)
-        ChaCha.quarter_round(x, 2, 6, 10, 14)
-        ChaCha.quarter_round(x, 3, 7, 11, 15)
-        ChaCha.quarter_round(x, 0, 5, 10, 15)
-        ChaCha.quarter_round(x, 1, 6, 11, 12)
-        ChaCha.quarter_round(x, 2, 7, 8, 13)
-        ChaCha.quarter_round(x, 3, 4, 9, 14)
+        for a, b, c, d in cls._round_mixup_box:
+            xa = x[a]
+            xb = x[b]
+            xc = x[c]
+            xd = x[d]
+
+            xa = (xa + xb) & 0xffffffff
+            xd = xd ^ xa
+            xd = ((xd << 16) & 0xffffffff | (xd >> 16))
+
+            xc = (xc + xd) & 0xffffffff
+            xb = xb ^ xc
+            xb = ((xb << 12) & 0xffffffff | (xb >> 20))
+
+            xa = (xa + xb) & 0xffffffff
+            xd = xd ^ xa
+            xd = ((xd << 8) & 0xffffffff | (xd >> 24))
+
+            xc = (xc + xd) & 0xffffffff
+            xb = xb ^ xc
+            xb = ((xb << 7) & 0xffffffff | (xb >> 25))
+
+            x[a] = xa
+            x[b] = xb
+            x[c] = xc
+            x[d] = xd
 
     @staticmethod
     def chacha_block(key, counter, nonce, rounds):
         """Generate a state of a single block"""
-        state = []
-        state.extend(ChaCha.constants)
-        state.extend(key)
-        state.append(counter)
-        state.extend(nonce)
+        state = ChaCha.constants + key + [counter] + nonce
 
-        working_state = copy.copy(state)
-        for i in range(0, rounds // 2):
-            ChaCha.double_round(working_state)
+        working_state = state[:]
+        dbl_round = ChaCha.double_round
+        for _ in range(0, rounds // 2):
+            dbl_round(working_state)
 
-        for i, _ in enumerate(working_state):
-            state[i] = (state[i] + working_state[i]) & 0xffffffff
-
-        return state
+        return [(st + wrkSt) & 0xffffffff for st, wrkSt
+                in izip(state, working_state)]
 
     @staticmethod
     def word_to_bytearray(state):
         """Convert state to little endian bytestream"""
-        ret = bytearray()
-        for i in state:
-            ret += struct.pack('<L', i)
-        return ret
+        return bytearray(struct.pack('<LLLLLLLLLLLLLLLL', *state))
 
     @staticmethod
     def _bytearray_to_words(data):
@@ -106,19 +140,15 @@ class ChaCha(object):
     def encrypt(self, plaintext):
         """Encrypt the data"""
         encrypted_message = bytearray()
-        if len(plaintext) % 64 != 0:
-            extra = 1
-        else:
-            extra = 0
-        for i in range(0, len(plaintext) // 64 + extra):
+        for i, block in enumerate(plaintext[i:i+64] for i
+                                  in range(0, len(plaintext), 64)):
             key_stream = ChaCha.chacha_block(self.key,
                                              self.counter + i,
                                              self.nonce,
                                              self.rounds)
             key_stream = ChaCha.word_to_bytearray(key_stream)
-            block = plaintext[i*64:(i+1)*64]
-            encrypted_message += bytearray((x ^ y for x, y \
-                                            in zip(key_stream, block)))
+            encrypted_message += bytearray(x ^ y for x, y
+                                           in izip(key_stream, block))
 
         return encrypted_message
 
