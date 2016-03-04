@@ -13,89 +13,76 @@ from tlslite.utils.constanttime import ct_lt_u32, ct_gt_u32, ct_le_u32, \
         ct_lsb_prop_u8, ct_isnonzero_u32, ct_neq_u32, ct_eq_u32, \
         ct_check_cbc_mac_and_pad, ct_compare_digest
 
+from hypothesis import given, example
+import hypothesis.strategies as st
 from tlslite.utils.compat import compatHMAC
 from tlslite.recordlayer import RecordLayer
 import tlslite.utils.tlshashlib as hashlib
 import hmac
 
 class TestContanttime(unittest.TestCase):
-    def test_ct_lt_u32(self):
-        for i in range(0, 256):
-            for j in range(0, 256):
-                self.assertEqual((i < j), (ct_lt_u32(i, j) == 1))
 
-        for i in range(2**32-256, 2**32):
-            for j in range(2**32-256, 2**32):
-                self.assertEqual((i < j), (ct_lt_u32(i, j) == 1))
+    @given(i=st.integers(0,2**32 - 1), j=st.integers(0,2**32 - 1))
+    @example(i=0, j=0)
+    @example(i=0, j=1)
+    @example(i=1, j=0)
+    @example(i=2**32 - 1, j=2**32 - 1)
+    @example(i=2**32 - 2, j=2**32 - 1)
+    @example(i=2**32 - 1, j=2**32 - 2)
+    def test_ct_lt_u32(self, i, j):
+        self.assertEqual((i < j), (ct_lt_u32(i, j) == 1))
 
-        for i in range(0, 256):
-            for j in range(2**32-256, 2**32):
-                self.assertEqual((i < j), (ct_lt_u32(i, j) == 1))
+    @given(i=st.integers(0,2**32 - 1), j=st.integers(0,2**32 - 1))
+    @example(i=0, j=0)
+    @example(i=0, j=1)
+    @example(i=1, j=0)
+    @example(i=2**32 - 1, j=2**32 - 1)
+    @example(i=2**32 - 2, j=2**32 - 1)
+    @example(i=2**32 - 1, j=2**32 - 2)
+    def test_ct_gt_u32(self, i, j):
+        self.assertEqual((i > j), (ct_gt_u32(i, j) == 1))
 
-        for i in range(2**32-256, 2**32):
-            for j in range(0, 256):
-                self.assertEqual((i < j), (ct_lt_u32(i, j) == 1))
+    @given(i=st.integers(0,2**32 - 1), j=st.integers(0,2**32 - 1))
+    @example(i=0, j=0)
+    @example(i=0, j=1)
+    @example(i=1, j=0)
+    @example(i=2**32 - 1, j=2**32 - 1)
+    @example(i=2**32 - 2, j=2**32 - 1)
+    @example(i=2**32 - 1, j=2**32 - 2)
+    def test_ct_le_u32(self, i, j):
+        self.assertEqual((i <= j), (ct_le_u32(i, j) == 1))
 
-    def test_ct_gt_u32(self):
-        for i in range(0, 256):
-            for j in range(0, 256):
-                self.assertEqual((i > j), (ct_gt_u32(i, j) == 1))
+    @given(i=st.integers(0,2**32 - 1), j=st.integers(0,2**32 - 1))
+    @example(i=0, j=0)
+    @example(i=0, j=1)
+    @example(i=1, j=0)
+    @example(i=2**32 - 1, j=2**32 - 1)
+    @example(i=2**32 - 2, j=2**32 - 1)
+    @example(i=2**32 - 1, j=2**32 - 2)
+    def test_ct_neq_u32(self, i, j):
+        self.assertEqual((i != j), (ct_neq_u32(i, j) == 1))
 
-        for i in range(2**32-256, 2**32):
-            for j in range(2**32-256, 2**32):
-                self.assertEqual((i > j), (ct_gt_u32(i, j) == 1))
+    @given(i=st.integers(0,2**32 - 1), j=st.integers(0,2**32 - 1))
+    @example(i=0, j=0)
+    @example(i=0, j=1)
+    @example(i=1, j=0)
+    @example(i=2**32 - 1, j=2**32 - 1)
+    @example(i=2**32 - 2, j=2**32 - 1)
+    @example(i=2**32 - 1, j=2**32 - 2)
+    def test_ct_eq_u32(self, i, j):
+        self.assertEqual((i == j), (ct_eq_u32(i, j) == 1))
 
-        for i in range(0, 256):
-            for j in range(2**32-256, 2**32):
-                self.assertEqual((i > j), (ct_gt_u32(i, j) == 1))
+    @given(i=st.integers(0,255))
+    @example(i=0)
+    @example(i=255)
+    def test_ct_lsb_prop_u8(self, i):
+        self.assertEqual(((i & 0x1) == 1), (ct_lsb_prop_u8(i) == 0xff))
+        self.assertEqual(((i & 0x1) == 0), (ct_lsb_prop_u8(i) == 0x00))
 
-        for i in range(2**32-256, 2**32):
-            for j in range(0, 256):
-                self.assertEqual((i > j), (ct_gt_u32(i, j) == 1))
-
-    def test_ct_le_u32(self):
-        for i in range(0, 256):
-            for j in range(0, 256):
-                self.assertEqual((i <= j), (ct_le_u32(i, j) == 1))
-
-        for i in range(2**32-256, 2**32):
-            for j in range(2**32-256, 2**32):
-                self.assertEqual((i <= j), (ct_le_u32(i, j) == 1))
-
-        for i in range(0, 256):
-            for j in range(2**32-256, 2**32):
-                self.assertEqual((i <= j), (ct_le_u32(i, j) == 1))
-
-        for i in range(2**32-256, 2**32):
-            for j in range(0, 256):
-                self.assertEqual((i <= j), (ct_le_u32(i, j) == 1))
-
-    def test_ct_lsb_prop_u8(self):
-        for i in range(0, 256):
-            self.assertEqual(((i & 0x1) == 1), (ct_lsb_prop_u8(i) == 0xff))
-            self.assertEqual(((i & 0x1) == 0), (ct_lsb_prop_u8(i) == 0x00))
-
-    def test_ct_isnonzero_u32(self):
-        for i in range(0, 256):
-            self.assertEqual((i != 0), (ct_isnonzero_u32(i) == 1))
-
-    def test_ct_neq_u32(self):
-        for i in range(0, 256):
-            for j in range(0, 256):
-                self.assertEqual((i != j), (ct_neq_u32(i, j) == 1))
-
-        for i in range(2**32-128, 2**32):
-            for j in range(2**32-128, 2**32):
-                self.assertEqual((i != j), (ct_neq_u32(i, j) == 1))
-
-    def test_ct_eq_u32(self):
-        for i in range(0, 256):
-            for j in range(0, 256):
-                self.assertEqual((i == j), (ct_eq_u32(i, j) == 1))
-
-        for i in range(2**32-128, 2**32):
-            for j in range(2**32-128, 2**32):
-                self.assertEqual((i == j), (ct_eq_u32(i, j) == 1))
+    @given(i=st.integers(0,2**32 - 1))
+    @example(i=0)
+    def test_ct_isnonzero_u32(self, i):
+        self.assertEqual((i != 0), (ct_isnonzero_u32(i) == 1))
 
 class TestContanttimeCBCCheck(unittest.TestCase):
 
