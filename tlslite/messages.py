@@ -521,7 +521,7 @@ class ClientHello(HandshakeMsg):
         @type random: bytearray
         @param random: client provided random value, in old versions of TLS
             (before 1.2) the first 32 bits should include system time, also
-            used as the "challange" field in SSLv2
+            used as the "challenge" field in SSLv2
 
         @type session_id: bytearray
         @param session_id: ID of session, set when doing session resumption
