@@ -57,8 +57,9 @@ class AESGCM(object):
         Encrypts (or decrypts) plaintext with AES-CTR. counter is modified.
         """
         out = bytearray(len(inp))
+        rawAesEncrypt = self._rawAesEncrypt
         for i in range(0, len(out), 16):
-            mask = self._rawAesEncrypt(counter)
+            mask = rawAesEncrypt(counter)
             for j in range(i, min(len(out), i + 16)):
                 out[j] = inp[j] ^ mask[j-i]
             self._inc32(counter)
