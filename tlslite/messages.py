@@ -82,22 +82,71 @@ class RecordHeader3(RecordHeader):
                 format(self.type, self.version, self.length)
 
 class RecordHeader2(RecordHeader):
+    """
+    SSLv2 record header
 
-    """SSLv2 record header (just reading)"""
+    @type padding: int
+    @ivar padding: number of bytes added at end of message to make it multiple
+    of block cipher size
+    @type securityEscape: boolean
+    @ivar securityEscape: whether the record contains a security escape message
+    """
 
     def __init__(self):
         """Define a SSLv2 style class"""
         super(RecordHeader2, self).__init__(ssl2=True)
+        self.padding = 0
+        self.securityEscape = False
 
     def parse(self, parser):
         """Deserialise object from Parser"""
-        if parser.get(1) != 128:
-            raise SyntaxError()
+        firstByte = parser.get(1)
+        secondByte = parser.get(1)
+        if firstByte & 0x80:
+            self.length = ((firstByte & 0x7f) << 8) | secondByte
+        else:
+            self.length = ((firstByte & 0x3f) << 8) | secondByte
+            self.securityEscape = firstByte & 0x40 != 0
+            self.padding = parser.get(1)
+
         self.type = ContentType.handshake
         self.version = (2, 0)
-        #XXX We don't support 2-byte-length-headers; could be a problem
-        self.length = parser.get(1)
         return self
+
+    def create(self, length, padding=0, securityEscape=False):
+        """Set object's values"""
+        self.length = length
+        self.padding = padding
+        self.securityEscape = securityEscape
+        return self
+
+    def write(self):
+        """Serialise object to bytearray"""
+        writer = Writer()
+
+        if not (self.padding or self.securityEscape):
+            shortHeader = True
+        else:
+            shortHeader = False
+
+        if ((shortHeader and self.length >= 0x8000) or
+                (not shortHeader and self.length >= 0x4000)):
+            raise ValueError("length too large")
+
+        firstByte = 0
+        if shortHeader:
+            firstByte |= 0x80
+        if self.securityEscape:
+            firstByte |= 0x40
+        firstByte |= self.length >> 8
+        secondByte = self.length & 0xff
+
+        writer.add(firstByte, 1)
+        writer.add(secondByte, 1)
+        if not shortHeader:
+            writer.add(self.padding, 1)
+
+        return writer.bytes
 
 class Message(object):
 
@@ -471,7 +520,8 @@ class ClientHello(HandshakeMsg):
 
         @type random: bytearray
         @param random: client provided random value, in old versions of TLS
-            (before 1.2) the first 32 bits should include system time
+            (before 1.2) the first 32 bits should include system time, also
+            used as the "challenge" field in SSLv2
 
         @type session_id: bytearray
         @param session_id: ID of session, set when doing session resumption
@@ -520,20 +570,23 @@ class ClientHello(HandshakeMsg):
         return self
 
     def parse(self, p):
+        """Deserialise object from on the wire data"""
         if self.ssl2:
             self.client_version = (p.get(1), p.get(1))
             cipherSpecsLength = p.get(2)
             sessionIDLength = p.get(2)
             randomLength = p.get(2)
+            p.setLengthCheck(cipherSpecsLength +
+                             sessionIDLength +
+                             randomLength)
             self.cipher_suites = p.getFixList(3, cipherSpecsLength//3)
             self.session_id = p.getFixBytes(sessionIDLength)
             self.random = p.getFixBytes(randomLength)
             if len(self.random) < 32:
                 zeroBytes = 32-len(self.random)
                 self.random = bytearray(zeroBytes) + self.random
-            self.compression_methods = [0]#Fake this value
-
-            #We're not doing a stopLengthCheck() for SSLv2, oh well..
+            self.compression_methods = [0]  # Fake this value
+            p.stopLengthCheck()
         else:
             p.startLengthCheck(3)
             self.client_version = (p.get(1), p.get(1))
@@ -550,7 +603,29 @@ class ClientHello(HandshakeMsg):
             p.stopLengthCheck()
         return self
 
-    def write(self):
+    def _writeSSL2(self):
+        """Serialise SSLv2 object to on the wire data"""
+        writer = Writer()
+        writer.add(self.handshakeType, 1)
+        writer.add(self.client_version[0], 1)
+        writer.add(self.client_version[1], 1)
+
+        ciphersWriter = Writer()
+        ciphersWriter.addFixSeq(self.cipher_suites, 3)
+
+        writer.add(len(ciphersWriter.bytes), 2)
+        writer.add(len(self.session_id), 2)
+        writer.add(len(self.random), 2)
+
+        writer.bytes += ciphersWriter.bytes
+        writer.bytes += self.session_id
+        writer.bytes += self.random
+
+        # postWrite() is necessary only for SSLv3/TLS
+        return writer.bytes
+
+    def _write(self):
+        """Serialise SSLv3 or TLS object to on the wire data"""
         w = Writer()
         w.add(self.client_version[0], 1)
         w.add(self.client_version[1], 1)
@@ -567,6 +642,13 @@ class ClientHello(HandshakeMsg):
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes
         return self.postWrite(w)
+
+    def write(self):
+        """Serialise object to on the wire data"""
+        if self.ssl2:
+            return self._writeSSL2()
+        else:
+            return self._write()
 
 class ServerHello(HandshakeMsg):
     """server_hello message
@@ -824,6 +906,91 @@ class ServerHello(HandshakeMsg):
             w.add(len(w2.bytes), 2)
             w.bytes += w2.bytes        
         return self.postWrite(w)
+
+class ServerHello2(HandshakeMsg):
+    """
+    SERVER-HELLO message from SSLv2
+
+    @type session_id_hit: int
+    @ivar session_id_hit: non zero if the client provided session ID was
+        matched in server's session cache
+
+    @type certificate_type: int
+    @ivar certificate_type: type of certificate sent
+
+    @type server_version: tuple of ints
+    @ivar server_version: protocol version selected by server
+
+    @type certificate: bytearray
+    @ivar certificate: certificate sent by server
+
+    @type ciphers: array of int
+    @ivar ciphers: list of ciphers supported by server
+
+    @type session_id: bytearray
+    @ivar session_id: idendifier of negotiated session
+    """
+
+    def __init__(self):
+        super(ServerHello2, self).__init__(SSL2HandshakeType.server_hello)
+        self.session_id_hit = 0
+        self.certificate_type = 0
+        self.server_version = (0, 0)
+        self.certificate = bytearray(0)
+        self.ciphers = []
+        self.session_id = bytearray(0)
+
+    def create(self, session_id_hit, certificate_type, server_version,
+               certificate, ciphers, session_id):
+        """Initialize fields of the SERVER-HELLO message"""
+        self.session_id_hit = session_id_hit
+        self.certificate_type = certificate_type
+        self.server_version = server_version
+        self.certificate = certificate
+        self.ciphers = ciphers
+        self.session_id = session_id
+        return self
+
+    def write(self):
+        """Serialise object to on the wire data"""
+        writer = Writer()
+        writer.add(self.handshakeType, 1)
+        writer.add(self.session_id_hit, 1)
+        writer.add(self.certificate_type, 1)
+        if len(self.server_version) != 2:
+            raise ValueError("server version must be a 2-element tuple")
+        writer.addFixSeq(self.server_version, 1)
+        writer.add(len(self.certificate), 2)
+
+        ciphersWriter = Writer()
+        ciphersWriter.addFixSeq(self.ciphers, 3)
+
+        writer.add(len(ciphersWriter.bytes), 2)
+        writer.add(len(self.session_id), 2)
+
+        writer.bytes += self.certificate
+        writer.bytes += ciphersWriter.bytes
+        writer.bytes += self.session_id
+
+        # postWrite() is necessary only for SSLv3/TLS
+        return writer.bytes
+
+    def parse(self, parser):
+        """Deserialise object from on the wire data"""
+        self.session_id_hit = parser.get(1)
+        self.certificate_type = parser.get(1)
+        self.server_version = (parser.get(1), parser.get(1))
+        certificateLength = parser.get(2)
+        ciphersLength = parser.get(2)
+        sessionIDLength = parser.get(2)
+        parser.setLengthCheck(certificateLength +
+                              ciphersLength +
+                              sessionIDLength)
+        self.certificate = parser.getFixBytes(certificateLength)
+        self.ciphers = parser.getFixList(3, ciphersLength // 3)
+        self.session_id = parser.getFixBytes(sessionIDLength)
+        parser.stopLengthCheck()
+        return self
 
 class Certificate(HandshakeMsg):
     def __init__(self, certificateType):
@@ -1273,6 +1440,68 @@ class ClientKeyExchange(HandshakeMsg):
             raise AssertionError()
         return self.postWrite(w)
 
+class ClientMasterKey(HandshakeMsg):
+    """
+    Handling of SSLv2 CLIENT-MASTER-KEY message
+
+    @type cipher: int
+    @ivar cipher: negotiated cipher
+
+    @type clear_key: bytearray
+    @ivar clear_key: the part of master secret key that is sent in clear for
+    export cipher suites
+
+    @type encrypted_key: bytearray
+    @ivar encrypted_key: (part of) master secret encrypted using server key
+
+    @type key_argument: bytearray
+    @ivar key_argument: additional key argument for block ciphers
+    """
+
+    def __init__(self):
+        super(ClientMasterKey,
+              self).__init__(SSL2HandshakeType.client_master_key)
+        self.cipher = 0
+        self.clear_key = bytearray(0)
+        self.encrypted_key = bytearray(0)
+        self.key_argument = bytearray(0)
+
+    def create(self, cipher, clear_key, encrypted_key, key_argument):
+        """Set values of the CLIENT-MASTER-KEY object"""
+        self.cipher = cipher
+        self.clear_key = clear_key
+        self.encrypted_key = encrypted_key
+        self.key_argument = key_argument
+        return self
+
+    def write(self):
+        """Serialise the object to on the wire data"""
+        writer = Writer()
+        writer.add(self.handshakeType, 1)
+        writer.add(self.cipher, 3)
+        writer.add(len(self.clear_key), 2)
+        writer.add(len(self.encrypted_key), 2)
+        writer.add(len(self.key_argument), 2)
+        writer.bytes += self.clear_key
+        writer.bytes += self.encrypted_key
+        writer.bytes += self.key_argument
+        return writer.bytes
+
+    def parse(self, parser):
+        """Deserialise object from on the wire data"""
+        self.cipher = parser.get(3)
+        clear_key_length = parser.get(2)
+        encrypted_key_length = parser.get(2)
+        key_argument_length = parser.get(2)
+        parser.setLengthCheck(clear_key_length +
+                              encrypted_key_length +
+                              key_argument_length)
+        self.clear_key = parser.getFixBytes(clear_key_length)
+        self.encrypted_key = parser.getFixBytes(encrypted_key_length)
+        self.key_argument = parser.getFixBytes(key_argument_length)
+        parser.stopLengthCheck()
+        return self
+
 class CertificateVerify(HandshakeMsg):
 
     """Serializer for TLS handshake protocol Certificate Verify message"""
@@ -1394,6 +1623,57 @@ class Finished(HandshakeMsg):
         w = Writer()
         w.addFixSeq(self.verify_data, 1)
         return self.postWrite(w)
+
+
+class SSL2Finished(HandshakeMsg):
+    """Handling of the SSL2 FINISHED messages"""
+
+    def __init__(self, msg_type):
+        super(SSL2Finished, self).__init__(msg_type)
+        self.verify_data = bytearray(0)
+
+    def create(self, verify_data):
+        """Set the message payload"""
+        self.verify_data = verify_data
+        return self
+
+    def parse(self, parser):
+        """Deserialise the message from on the wire data"""
+        self.verify_data = parser.getFixBytes(parser.getRemainingLength())
+        return self
+
+    def write(self):
+        """Serialise the message to on the wire data"""
+        writer = Writer()
+        writer.add(self.handshakeType, 1)
+        writer.addFixSeq(self.verify_data, 1)
+        # does not use postWrite() as it's a SSLv2 message
+        return writer.bytes
+
+
+class ClientFinished(SSL2Finished):
+    """
+    Handling of SSLv2 CLIENT-FINISHED message
+
+    @type verify_data: bytearray
+    @ivar verify_data: payload of the message, should be the CONNECTION-ID
+    """
+
+    def __init__(self):
+        super(ClientFinished, self).__init__(SSL2HandshakeType.client_finished)
+
+
+class ServerFinished(SSL2Finished):
+    """
+    Handling of SSLv2 SERVER-FINISHED message
+
+    @type verify_data: bytearray
+    @ivar verify_data: payload of the message, should be SESSION-ID
+    """
+
+    def __init__(self):
+        super(ServerFinished, self).__init__(SSL2HandshakeType.server_finished)
+
 
 class ApplicationData(object):
     def __init__(self):

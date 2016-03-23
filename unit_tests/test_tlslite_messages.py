@@ -9,11 +9,13 @@ except ImportError:
     import unittest
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
-        CertificateRequest, CertificateVerify, ServerHelloDone
+        CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
+        ClientMasterKey, ClientFinished, ServerFinished
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
-        HashAlgorithm, SignatureAlgorithm, ECCurveType, GroupName
+        HashAlgorithm, SignatureAlgorithm, ECCurveType, GroupName, \
+        SSL2HandshakeType
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension
 from tlslite.errors import TLSInternalError
@@ -590,7 +592,7 @@ class TestClientHello(unittest.TestCase):
 
         client_hello = client_hello.parse(parser)
 
-        # XXX the value on the wire is LSB, but should be interpreted MSB for
+        # the value on the wire is LSB, but should be interpreted MSB for
         # SSL2
         self.assertEqual((0, 2), client_hello.client_version)
         self.assertEqual(bytearray(0), client_hello.session_id)
@@ -600,6 +602,54 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual(bytearray(b'\x00'*16 + b'\x01'*16),
                          client_hello.random)
         self.assertEqual([0], client_hello.compression_methods)
+
+    def test_parse_with_SSLv2_client_hello(self):
+        parser = Parser(bytearray(
+            # length and type is handled by hello protocol parser
+            #b'\x80\x2e' +           # length - 46 bytes
+            #b'\x01' +               # message type - client hello
+            b'\x03\x02' +           # version - TLSv1.1
+            b'\x00\x06' +           # cipher spec length - 6 bytes
+            b'\x00\x10' +           # session ID length - 16 bytes
+            b'\x00\x20' +           # challange length - 32 bytes
+            b'\x07\x00\xc0' +       # cipher - SSL2_DES_192_EDE3_CBC_WITH_MD5
+            b'\x00\x00\x2f' +       # cipher - TLS_RSA_WITH_AES_128_CBC_SHA
+            b'\xff' * 16 +          # session_id
+            b'\x01' * 32            # challenge
+            ))
+        client_hello = ClientHello(ssl2=True)
+
+        client_hello = client_hello.parse(parser)
+
+        # the value on the wire is LSB, but should be interpreted MSB for
+        # SSL2
+        self.assertEqual((3, 2), client_hello.client_version)
+        self.assertEqual(bytearray(b'\xff'*16), client_hello.session_id)
+        self.assertEqual([458944, CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA],
+                         client_hello.cipher_suites)
+        self.assertEqual(bytearray(b'\x01'*32),
+                         client_hello.random)
+        self.assertEqual([0], client_hello.compression_methods)
+
+    def test_write_with_SSLv2(self):
+        client_hello = ClientHello(ssl2=True)
+        ciphers = [0x0700c0,
+                   CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA]
+
+        client_hello.create((3, 2), random=bytearray(b'\xab'*16),
+                            session_id=bytearray(0),
+                            cipher_suites=ciphers)
+
+        self.assertEqual(bytearray(
+            b'\x01' +             # type of message - CLIENT HELLO
+            b'\x03\x02' +         # version - TLSv1.1
+            b'\x00\x06' +         # cipher list length
+            b'\x00\x00' +         # session id length
+            b'\x00\x10' +         # challange length
+            b'\x07\x00\xc0' +     # cipher - SSL2_DES_192_EDE3_CBC_WITH_MD5
+            b'\x00\x00\x2f' +     # cipher - TLS_RSA_WITH_AES_128_CBC_SHA
+            b'\xab'*16),          # challange
+            client_hello.write())
 
 class TestServerHello(unittest.TestCase):
     def test___init__(self):
@@ -922,6 +972,78 @@ class TestServerHello(unittest.TestCase):
                 "cipher_suite=34500, compression_method=0, _tack_ext=None, "\
                 "extensions=[])", repr(server_hello))
 
+class TestServerHello2(unittest.TestCase):
+    def test___init__(self):
+        sh = ServerHello2()
+
+        self.assertIsNotNone(sh)
+
+    def test_create(self):
+        sh = ServerHello2()
+
+        sh = sh.create(1, 2, (3, 4), bytearray(b'\x05'), [6, 7],
+                       bytearray(b'\x08\x09'))
+
+        self.assertEqual(sh.session_id_hit, 1)
+        self.assertEqual(sh.certificate_type, 2)
+        self.assertEqual(sh.server_version, (3, 4))
+        self.assertEqual(sh.certificate, bytearray(b'\x05'))
+        self.assertEqual(sh.ciphers, [6, 7])
+        self.assertEqual(sh.session_id, bytearray(b'\x08\x09'))
+
+    def test_write(self):
+        sh = ServerHello2()
+        sh = sh.create(1, 2, (3, 4), bytearray(b'\x05'), [6, 7],
+                       bytearray(b'\x08\x09'))
+
+        self.assertEqual(bytearray(
+            b'\x04' +           # type - SERVER-HELLO
+            b'\x01' +           # session ID hit
+            b'\x02' +           # certificate_type
+            b'\x03\x04' +       # version
+            b'\x00\x01' +       # certificate length
+            b'\x00\x06' +       # ciphers length
+            b'\x00\x02' +       # session ID length
+            b'\x05' +           # certificate
+            b'\x00\x00\x06' +   # first cipher
+            b'\x00\x00\x07' +   # second cipher
+            b'\x08\x09'         # session ID
+            ), sh.write())
+
+    def test_parse(self):
+        p = Parser(bytearray(
+            # don't include type of message as it is handled by the
+            # record layer protocol
+            #b'\x04' +           # type - SERVER-HELLO
+            b'\x01' +           # session ID hit
+            b'\x02' +           # certificate_type
+            b'\x03\x04' +       # version
+            b'\x00\x01' +       # certificate length
+            b'\x00\x06' +       # ciphers length
+            b'\x00\x02' +       # session ID length
+            b'\x05' +           # certificate
+            b'\x00\x00\x06' +   # first cipher
+            b'\x00\x00\x07' +   # second cipher
+            b'\x08\x09'         # session ID
+            ))
+        sh = ServerHello2()
+        sh = sh.parse(p)
+
+        self.assertEqual(sh.session_id_hit, 1)
+        self.assertEqual(sh.certificate_type, 2)
+        self.assertEqual(sh.server_version, (3, 4))
+        self.assertEqual(sh.certificate, bytearray(b'\x05'))
+        self.assertEqual(sh.ciphers, [6, 7])
+        self.assertEqual(sh.session_id, bytearray(b'\x08\x09'))
+
+    def test_write_with_invalid_version(self):
+        sh = ServerHello2()
+        sh = sh.create(1, 2, (3, 4, 12), bytearray(b'\x05'), [6, 7],
+                       bytearray(b'\x08\x09'))
+
+        with self.assertRaises(ValueError):
+            sh.write()
+
 class TestRecordHeader2(unittest.TestCase):
     def test___init__(self):
         rh = RecordHeader2()
@@ -962,11 +1084,121 @@ class TestRecordHeader2(unittest.TestCase):
 
         rh = RecordHeader2()
 
-        #XXX can't handle two-byte length
-        with self.assertRaises(SyntaxError):
-            rh = rh.parse(parser)
+        rh = rh.parse(parser)
 
-        #self.assertEqual(512, rh.length)
+        self.assertEqual(512, rh.length)
+        self.assertEqual(0, rh.padding)
+
+    def test_parse_with_3_byte_long_header(self):
+        parser = Parser(bytearray(
+            b'\x02' +       # 3 byte header and nibble of length
+            b'\x00' +       # second byte of length
+            b'\x0a'         # padding length
+            ))
+
+        rh = RecordHeader2()
+        rh = rh.parse(parser)
+
+        self.assertEqual(512, rh.length)
+        self.assertEqual(10, rh.padding)
+
+    def test_parse_with_2_byte_header_and_security_escape_bit_set(self):
+        parser = Parser(bytearray(
+            b'\xc0' +
+            b'\x12'))
+
+        rh = RecordHeader2()
+        rh = rh.parse(parser)
+        self.assertEqual(0x4012, rh.length)
+        self.assertEqual(0, rh.padding)
+        self.assertFalse(rh.securityEscape)
+
+    def test_parse_with_3_byte_header_and_security_escape_bit_set(self):
+        parser = Parser(bytearray(
+            b'\x40' +
+            b'\x12' +
+            b'\x01'))
+
+        rh = RecordHeader2()
+        rh = rh.parse(parser)
+        self.assertEqual(0x0012, rh.length)
+        self.assertEqual(1, rh.padding)
+        self.assertTrue(rh.securityEscape)
+
+    def test_create(self):
+        rh = RecordHeader2()
+        rh.create(512)
+
+        self.assertEqual(512, rh.length)
+        self.assertEqual(0, rh.padding)
+        self.assertFalse(rh.securityEscape)
+
+    def test_write(self):
+        rh = RecordHeader2()
+        rh.create(0x0123)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\x81'
+            b'\x23'), data)
+
+    def test_write_with_padding(self):
+        rh = RecordHeader2()
+        rh.create(0x0123, padding=12)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\x01'
+            b'\x23'
+            b'\x0c'), data)
+
+    def test_write_with_security_escape(self):
+        rh = RecordHeader2()
+        rh.create(0x0123, securityEscape=True)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\x41'
+            b'\x23'
+            b'\x00'), data)
+
+    def test_write_with_large_data_and_short_header(self):
+        rh = RecordHeader2()
+        rh.create(0x7fff)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\xff'
+            b'\xff'), data)
+
+    def test_write_with_too_long_length_and_short_header(self):
+        rh = RecordHeader2()
+        rh.create(0x8000)
+
+        with self.assertRaises(ValueError):
+            rh.write()
+
+    def test_write_with_long_length_and_long_header(self):
+        rh = RecordHeader2()
+        rh.create(0x3fff, padding=1)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\x3f'
+            b'\xff'
+            b'\x01'), data)
+
+    def test_write_with_too_long_length_and_long_header(self):
+        rh = RecordHeader2()
+        rh.create(0x4000, padding=1)
+
+        with self.assertRaises(ValueError):
+            rh.write()
 
 class TestRecordHeader3(unittest.TestCase):
     def test___init__(self):
@@ -1307,6 +1539,61 @@ class TestClientKeyExchange(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             cke.parse(parser)
+
+class TestClientMasterKey(unittest.TestCase):
+    def test___init__(self):
+        cmk = ClientMasterKey()
+
+        self.assertIsNotNone(cmk)
+        self.assertEqual(cmk.handshakeType,
+                         SSL2HandshakeType.client_master_key)
+
+    def test_create(self):
+        cmk = ClientMasterKey()
+        cmk = cmk.create(1, bytearray(b'\x02'), bytearray(b'\x03\x04'),
+                         bytearray(b'\x05\x06\x07'))
+
+        self.assertEqual(cmk.cipher, 1)
+        self.assertEqual(cmk.clear_key, bytearray(b'\x02'))
+        self.assertEqual(cmk.encrypted_key, bytearray(b'\x03\x04'))
+        self.assertEqual(cmk.key_argument, bytearray(b'\x05\x06\x07'))
+
+    def test_write(self):
+        cmk = ClientMasterKey()
+        cmk = cmk.create(1, bytearray(b'\x02'), bytearray(b'\x03\x04'),
+                         bytearray(b'\x05\x06\x07'))
+
+        self.assertEqual(bytearray(
+            b'\x02' +           # message type
+            b'\x00\x00\x01' +   # cipher spec
+            b'\x00\x01' +       # clear key length
+            b'\x00\x02' +       # encrypted key length
+            b'\x00\x03' +       # key argument length
+            b'\x02' +           # clear key
+            b'\x03\x04' +       # encrypted key
+            b'\x05\x06\x07'     # key argument
+            ), cmk.write())
+
+    def test_parse(self):
+        cmk = ClientMasterKey()
+
+        parser = Parser(bytearray(
+            # type is handled by handshake protocol
+            #b'\x02' +           # message type
+            b'\x00\x00\x01' +   # cipher spec
+            b'\x00\x01' +       # clear key length
+            b'\x00\x02' +       # encrypted key length
+            b'\x00\x03' +       # key argument length
+            b'\x02' +           # clear key
+            b'\x03\x04' +       # encrypted key
+            b'\x05\x06\x07'))   # key argument
+
+        cmk = cmk.parse(parser)
+
+        self.assertEqual(cmk.cipher, 1)
+        self.assertEqual(cmk.clear_key, bytearray(b'\x02'))
+        self.assertEqual(cmk.encrypted_key, bytearray(b'\x03\x04'))
+        self.assertEqual(cmk.key_argument, bytearray(b'\x05\x06\x07'))
 
 class TestServerKeyExchange(unittest.TestCase):
     def test___init__(self):
@@ -1889,6 +2176,72 @@ class TestServerHelloDone(unittest.TestCase):
         shd = ServerHelloDone()
 
         self.assertEqual("ServerHelloDone()", repr(shd))
+
+class TestClientFinished(unittest.TestCase):
+    def test___init__(self):
+        fin = ClientFinished()
+
+        self.assertIsNotNone(fin)
+        self.assertEqual(fin.handshakeType, SSL2HandshakeType.client_finished)
+
+    def test_create(self):
+        fin = ClientFinished()
+        fin.create(bytearray(b'\xc0\xfe'))
+
+        self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
+
+    def test_write(self):
+        fin = ClientFinished()
+        fin = fin.create(bytearray(b'\xc0\xfe'))
+
+        self.assertEqual(bytearray(
+            b'\x03' +   # message type
+            b'\xc0\xfe' # message payload
+            ), fin.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            # type is handled by higher protocol level
+            b'\xc0\xfe'))
+
+        fin = ClientFinished()
+        fin = fin.parse(parser)
+
+        self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
+        self.assertEqual(fin.handshakeType, SSL2HandshakeType.client_finished)
+
+class TestServerFinished(unittest.TestCase):
+    def test___init__(self):
+        fin = ServerFinished()
+
+        self.assertIsNotNone(fin)
+        self.assertEqual(fin.handshakeType, SSL2HandshakeType.server_finished)
+
+    def test_create(self):
+        fin = ServerFinished()
+        fin = fin.create(bytearray(b'\xc0\xfe'))
+
+        self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
+
+    def test_write(self):
+        fin = ServerFinished()
+        fin.create(bytearray(b'\xc0\xfe'))
+
+        self.assertEqual(bytearray(
+            b'\x06' +   # message type
+            b'\xc0\xfe' # message payload
+            ), fin.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            # type is handled by higher protocol level
+            b'\xc0\xfe'))
+
+        fin = ServerFinished()
+        fin = fin.parse(parser)
+
+        self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
+        self.assertEqual(fin.handshakeType, SSL2HandshakeType.server_finished)
 
 if __name__ == '__main__':
     unittest.main()

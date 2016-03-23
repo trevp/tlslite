@@ -57,6 +57,28 @@ class ClientCertificateType:
     rsa_fixed_dh = 3
     dss_fixed_dh = 4
 
+class SSL2HandshakeType(TLSEnum):
+    """SSL2 Handshake Protocol message types"""
+    error = 0
+    client_hello = 1
+    client_master_key = 2
+    client_finished = 3
+    server_hello = 4
+    server_verify = 5
+    server_finished = 6
+    request_certificate = 7
+    client_certificate = 8
+
+
+class SSL2ErrorDescription(TLSEnum):
+    """SSL2 Handshake protocol error message descriptions"""
+
+    no_cipher = 0x0001
+    no_certificate = 0x0002
+    bad_certificate = 0x0004
+    unsupported_certificate_type = 0x0006
+
+
 class HandshakeType(TLSEnum):
     """Message types in TLS Handshake protocol"""
 
@@ -298,6 +320,60 @@ class CipherSuite:
 
 # the ciphesuite names come from IETF, we want to keep them
 #pylint: disable = invalid-name
+
+    # SSLv2 from draft-hickman-netscape-ssl-00.txt
+    SSL_CK_RC4_128_WITH_MD5 = 0x010080
+    ietfNames[0x010080] = 'SSL_CK_RC4_128_WITH_MD5'
+    SSL_CK_RC4_128_EXPORT40_WITH_MD5 = 0x020080
+    ietfNames[0x020080] = 'SSL_CK_RC4_128_EXPORT40_WITH_MD5'
+    SSL_CK_RC2_128_CBC_WITH_MD5 = 0x030080
+    ietfNames[0x030080] = 'SSL_CK_RC2_128_CBC_WITH_MD5'
+    SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5 = 0x040080
+    ietfNames[0x040080] = 'SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5'
+    SSL_CK_IDEA_128_CBC_WITH_MD5 = 0x050080
+    ietfNames[0x050080] = 'SSL_CK_IDEA_128_CBC_WITH_MD5'
+    SSL_CK_DES_64_CBC_WITH_MD5 = 0x060040
+    ietfNames[0x060040] = 'SSL_CK_DES_64_CBC_WITH_MD5'
+    SSL_CK_DES_192_EDE3_CBC_WITH_MD5 = 0x0700C0
+    ietfNames[0x0700C0] = 'SSL_CK_DES_192_EDE3_CBC_WITH_MD5'
+
+    # SSL2 ciphersuites which use RC4 symmetric cipher
+    ssl2rc4 = []
+    ssl2rc4.append(SSL_CK_RC4_128_WITH_MD5)
+    ssl2rc4.append(SSL_CK_RC4_128_EXPORT40_WITH_MD5)
+
+    # SSL2 ciphersuites which use RC2 symmetric cipher
+    ssl2rc2 = []
+    ssl2rc2.append(SSL_CK_RC2_128_CBC_WITH_MD5)
+    ssl2rc2.append(SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5)
+
+    # SSL2 ciphersuites which use IDEA symmetric cipher
+    ssl2idea = [SSL_CK_IDEA_128_CBC_WITH_MD5]
+
+    # SSL2 ciphersuites which use (single) DES symmetric cipher
+    ssl2des = [SSL_CK_DES_64_CBC_WITH_MD5]
+
+    # SSL2 ciphersuites which use 3DES symmetric cipher
+    ssl2_3des = [SSL_CK_DES_192_EDE3_CBC_WITH_MD5]
+
+    # SSL2 ciphersuites which encrypt only part (40 bits) of the key
+    ssl2export = []
+    ssl2export.append(SSL_CK_RC4_128_EXPORT40_WITH_MD5)
+    ssl2export.append(SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5)
+
+    # SSL2 ciphersuties which use 128 bit key
+    ssl2_128Key = []
+    ssl2_128Key.append(SSL_CK_RC4_128_WITH_MD5)
+    ssl2_128Key.append(SSL_CK_RC4_128_EXPORT40_WITH_MD5)
+    ssl2_128Key.append(SSL_CK_RC2_128_CBC_WITH_MD5)
+    ssl2_128Key.append(SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5)
+    ssl2_128Key.append(SSL_CK_IDEA_128_CBC_WITH_MD5)
+
+    # SSL2 ciphersuites which use 64 bit key
+    ssl2_64Key = [SSL_CK_DES_64_CBC_WITH_MD5]
+
+    # SSL2 ciphersuites which use 192 bit key
+    ssl2_192Key = [SSL_CK_DES_192_EDE3_CBC_WITH_MD5]
 
     # Weird pseudo-ciphersuite from RFC 5746
     # Signals that "secure renegotiation" is supported
