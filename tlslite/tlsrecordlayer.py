@@ -21,6 +21,7 @@ from .constants import *
 from .recordlayer import RecordLayer
 from .defragmenter import Defragmenter
 from .handshakehashes import HandshakeHashes
+from .bufferedsocket import BufferedSocket
 
 import socket
 import traceback
@@ -105,6 +106,7 @@ class TLSRecordLayer(object):
     """
 
     def __init__(self, sock):
+        sock = BufferedSocket(sock)
         self.sock = sock
         self._recordLayer = RecordLayer(sock)
 
@@ -528,6 +530,9 @@ class TLSRecordLayer(object):
 
 
     def _sendError(self, alertDescription, errorStr=None):
+        # make sure that the message goes out
+        self.sock.flush()
+        self.sock.buffer_writes = False
         alert = Alert().create(alertDescription, AlertLevel.fatal)
         for result in self._sendMsg(alert):
             yield result
@@ -535,11 +540,15 @@ class TLSRecordLayer(object):
         raise TLSLocalAlert(alert, errorStr)
 
     def _sendMsgs(self, msgs):
+        # send messages together
+        self.sock.buffer_writes = True
         randomizeFirstBlock = True
         for msg in msgs:
             for result in self._sendMsg(msg, randomizeFirstBlock):
                 yield result
             randomizeFirstBlock = True
+        self.sock.flush()
+        self.sock.buffer_writes = False
 
     def _sendMsg(self, msg, randomizeFirstBlock = True):
         """Fragment and send message through socket"""
