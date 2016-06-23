@@ -13,6 +13,7 @@ import os.path
 import socket
 import time
 import getopt
+import binascii
 try:
     import httplib
     from SocketServer import *
@@ -32,6 +33,7 @@ from tlslite.api import *
 from tlslite.constants import CipherSuite, HashAlgorithm, SignatureAlgorithm, \
         GroupName
 from tlslite import __version__
+from tlslite.utils.compat import b2a_hex
 
 try:
     from tack.structures.Tack import Tack
@@ -70,12 +72,15 @@ def printUsage(s=None):
     print("""Commands:
 
   server  
-    [-k KEY] [-c CERT] [-t TACK] [-v VERIFIERDB] [-d DIR]
+    [-k KEY] [-c CERT] [-t TACK] [-v VERIFIERDB] [-d DIR] [-l LABEL] [-L LENGTH]
     [--reqcert] HOST:PORT
 
   client
-    [-k KEY] [-c CERT] [-u USER] [-p PASS]
+    [-k KEY] [-c CERT] [-u USER] [-p PASS] [-l LABEL] [-L LENGTH]
     HOST:PORT
+
+  LABEL - TLS exporter label
+  LENGTH - amount of info to export using TLS exporter
 """)
     sys.exit(-1)
 
@@ -102,6 +107,8 @@ def handleArgs(argv, argString, flagsList=[]):
     verifierDB = None
     reqCert = False
     directory = None
+    expLabel = None
+    expLength = 20
     
     for opt, arg in opts:
         if opt == "-k":
@@ -131,6 +138,10 @@ def handleArgs(argv, argString, flagsList=[]):
             directory = arg
         elif opt == "--reqcert":
             reqCert = True
+        elif opt == "-l":
+            expLabel = arg
+        elif opt == "-L":
+            expLength = int(arg)
         else:
             assert(False)
             
@@ -163,6 +174,10 @@ def handleArgs(argv, argString, flagsList=[]):
         retList.append(directory)
     if "reqcert" in flagsList:
         retList.append(reqCert)
+    if "l" in argString:
+        retList.append(expLabel)
+    if "L" in argString:
+        retList.append(expLength)
     return retList
 
 
@@ -206,9 +221,20 @@ def printGoodConnection(connection, seconds):
     print("  Extended Master Secret: {0}".format(
                                                connection.extendedMasterSecret))
 
+def printExporter(connection, expLabel, expLength):
+    if expLabel is None:
+        return
+    expLabel = bytearray(expLabel, "utf-8")
+    exp = connection.keyingMaterialExporter(expLabel, expLength)
+    exp = b2a_hex(exp).upper()
+    print("  Exporter label: {0}".format(expLabel))
+    print("  Exporter length: {0}".format(expLength))
+    print("  Keying material: {0}".format(exp))
+
 def clientCmd(argv):
-    (address, privateKey, certChain, username, password) = \
-        handleArgs(argv, "kcup")
+    (address, privateKey, certChain, username, password, expLabel,
+            expLength) = \
+        handleArgs(argv, "kcuplL")
         
     if (certChain and not privateKey) or (not certChain and privateKey):
         raise SyntaxError("Must specify CERT and KEY together")
@@ -216,6 +242,8 @@ def clientCmd(argv):
         raise SyntaxError("Must specify USER with PASS")
     if certChain and username:
         raise SyntaxError("Can use SRP or client cert for auth, not both")
+    if expLabel is not None and not expLabel:
+        raise ValueError("Label must be non-empty")
 
     #Connect to server
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -259,12 +287,13 @@ def clientCmd(argv):
             raise
         sys.exit(-1)
     printGoodConnection(connection, stop-start)
+    printExporter(connection, expLabel, expLength)
     connection.close()
 
 
 def serverCmd(argv):
-    (address, privateKey, certChain, tacks, 
-        verifierDB, directory, reqCert) = handleArgs(argv, "kctbvd", ["reqcert"])
+    (address, privateKey, certChain, tacks, verifierDB, directory, reqCert,
+            expLabel, expLength) = handleArgs(argv, "kctbvdlL", ["reqcert"])
 
 
     if (certChain and not privateKey) or (not certChain and privateKey):
@@ -344,6 +373,7 @@ def serverCmd(argv):
                 
             connection.ignoreAbruptClose = True
             printGoodConnection(connection, stop-start)
+            printExporter(connection, expLabel, expLength)
             return True
 
     httpd = MyHTTPServer(address, SimpleHTTPRequestHandler)
