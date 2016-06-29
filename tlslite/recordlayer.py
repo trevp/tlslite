@@ -790,6 +790,9 @@ class RecordLayer(object):
         elif cipherSuite in CipherSuite.sha256Suites:
             macLength = 32
             digestmod = hashlib.sha256
+        elif cipherSuite in CipherSuite.sha384Suites:
+            macLength = 48
+            digestmod = hashlib.sha384
         elif cipherSuite in CipherSuite.md5Suites:
             macLength = 16
             digestmod = hashlib.md5
