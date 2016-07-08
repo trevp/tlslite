@@ -18,6 +18,7 @@ from tlslite.x509 import X509
 from tlslite.x509certchain import X509CertChain
 from tlslite.utils.keyfactory import parsePEMKey
 from tlslite.handshakesettings import HandshakeSettings
+from tlslite.session import Session
 
 from unit_tests.mocksock import MockSocket
 
@@ -235,6 +236,89 @@ class TestTLSConnection(unittest.TestCase):
             b'\x01\x00\x02\x00'))
         # 5 bytes is record layer header, 4 bytes is handshake protocol header
         self.assertEqual(len(sock.sent[0]) - 5 - 4, 512)
+
+    def test_keyingMaterialExporter_tls1_2_sha384(self):
+        sock = MockSocket(bytearray(0))
+        conn = TLSConnection(sock)
+        conn._clientRandom = bytearray(b'012345678901234567890123456789ab')
+        conn._serverRandom = bytearray(b'987654321098765432109876543210ab')
+        conn._recordLayer.version = (3, 3)
+        conn.session = Session()
+        conn.session.cipherSuite = \
+            CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+
+        mat = conn.keyingMaterialExporter(bytearray(b'test'), 20)
+        self.assertEqual(mat,
+                bytearray(b'1\xb8X\xef\x9b\xa5\n9p\x13\xfaxXI\\$\xdf\xb5\xc7i'))
+
+    def test_keyingMaterialExporter_ssl3(self):
+        sock = MockSocket(bytearray(0))
+        conn = TLSConnection(sock)
+        conn._clientRandom = bytearray(b'012345678901234567890123456789ab')
+        conn._serverRandom = bytearray(b'987654321098765432109876543210ab')
+        conn._recordLayer.version = (3, 0)
+        conn.session = Session()
+        conn.session.cipherSuite = \
+            CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA
+
+        with self.assertRaises(ValueError):
+            conn.keyingMaterialExporter(bytearray(b'test'), 20)
+
+    def test_keyingMaterialExporter_tls1_3(self):
+        sock = MockSocket(bytearray(0))
+        conn = TLSConnection(sock)
+        conn._clientRandom = bytearray(b'012345678901234567890123456789ab')
+        conn._serverRandom = bytearray(b'987654321098765432109876543210ab')
+        conn._recordLayer.version = (3, 4)
+        conn.session = Session()
+        conn.session.cipherSuite = \
+            CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+
+        with self.assertRaises(AssertionError):
+            conn.keyingMaterialExporter(bytearray(b'test'), 20)
+
+    def test_keyingMaterialExporter_invalid_label(self):
+        sock = MockSocket(bytearray(0))
+        conn = TLSConnection(sock)
+        conn._clientRandom = bytearray(b'012345678901234567890123456789ab')
+        conn._serverRandom = bytearray(b'987654321098765432109876543210ab')
+        conn._recordLayer.version = (3, 1)
+        conn.session = Session()
+        conn.session.cipherSuite = \
+            CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA
+
+        with self.assertRaises(ValueError):
+            conn.keyingMaterialExporter(bytearray(b'server finished'), 20)
+
+    def test_keyingMaterialExporter_tls1_2_sha256(self):
+        sock = MockSocket(bytearray(0))
+        conn = TLSConnection(sock)
+        conn._clientRandom = bytearray(b'012345678901234567890123456789ab')
+        conn._serverRandom = bytearray(b'987654321098765432109876543210ab')
+        conn._recordLayer.version = (3, 3)
+        conn.session = Session()
+        conn.session.cipherSuite = \
+            CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+
+        mat = conn.keyingMaterialExporter(bytearray(b'test'), 20)
+        self.assertEqual(mat,
+                bytearray(b'\xe6EQ\x93\xcb!\xe7\x87\x1e\xdd\x85' +
+                          b'\xb2\x08|\xc9\xbfDh\r\x90'))
+
+    def test_keyingMaterialExporter_tls1_1(self):
+        sock = MockSocket(bytearray(0))
+        conn = TLSConnection(sock)
+        conn._clientRandom = bytearray(b'012345678901234567890123456789ab')
+        conn._serverRandom = bytearray(b'987654321098765432109876543210ab')
+        conn._recordLayer.version = (3, 2)
+        conn.session = Session()
+        conn.session.cipherSuite = \
+            CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+
+        mat = conn.keyingMaterialExporter(bytearray(b'test'), 20)
+        self.assertEqual(mat,
+                bytearray(b'\x1f\xf8\x18\x01:\x9f\x15a\xd5x\xaa;Y>' +
+                          b'\xafG\x92AH\xa4'))
 
 if __name__ == '__main__':
     unittest.main()
