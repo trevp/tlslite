@@ -3,6 +3,7 @@
 .pydevproject
 .settings
 .coverage
+.hypothesis
 coverage.xml
 pylint_report.txt
 build/

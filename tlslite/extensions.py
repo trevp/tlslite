@@ -1,4 +1,4 @@
-# Copyright (c) 2014, Hubert Kario
+# Copyright (c) 2014, 2015 Hubert Kario
 #
 # See the LICENSE file for legal information regarding use of this file.
 
@@ -14,12 +14,33 @@ from .errors import TLSInternalError
 
 class TLSExtension(object):
     """
+    Base class for handling handshake protocol hello messages extensions.
+
     This class handles the generic information about TLS extensions used by
     both sides of connection in Client Hello and Server Hello messages.
     See U{RFC 4366<https://tools.ietf.org/html/rfc4366>} for more info.
 
     It is used as a base class for specific users and as a way to store
     extensions that are not implemented in library.
+
+    To implement a new extension you will need to create a new class which
+    calls this class contructor (__init__), usually specifying just the
+    extType parameter. The other methods which need to be implemented are:
+    L{extData}, L{create}, L{parse} and L{__repr__}. If the parser can be used
+    for client and optionally server extensions, the extension constructor
+    should be added to L{_universalExtensions}. Otherwise, when the client and
+    server extensions have completely different forms, you should add client
+    form to the L{_universalExtensions} and the server form to
+    L{_serverExtensions}. Since the server MUST NOT send extensions not
+    advertised by client, there are no purely server-side extensions. But
+    if the client side extension is just marked by presence and has no payload,
+    the client side (thus the L{_universalExtensions} may be skipped, then
+    the L{TLSExtension} class will be used for implementing it. See
+    end of the file for type-to-constructor bindings.
+
+    Though please note that subclassing for the purpose of parsing extensions
+    is not an officially supported part of API (just as underscores in their
+    names would indicate.
 
     @type extType: int
     @ivar extType: a 2^16-1 limited integer specifying the type of the
@@ -50,40 +71,83 @@ class TLSExtension(object):
     _universalExtensions = {}
     _serverExtensions = {}
 
-    def __init__(self, server=False):
+    def __init__(self, server=False, extType=None):
         """
-        Creates a generic TLS extension that can be used either for
-        client hello or server hello message parsing or creation.
+        Creates a generic TLS extension.
 
         You'll need to use L{create} or L{parse} methods to create an extension
         that is actually usable.
 
         @type server: boolean
-        @param server: whatever to select ClientHello or ServerHello version
+        @param server: whether to select ClientHello or ServerHello version
             for parsing
+        @type extType: int
+        @param extType: type of extension encoded as an integer, to be used
+            by subclasses
         """
-        self.extType = None
-        self.extData = bytearray(0)
+        self.extType = extType
+        self._extData = bytearray(0)
         self.serverType = server
 
-    def create(self, extType, data):
+    @property
+    def extData(self):
         """
-        Initializes a generic TLS extension that can later be used in
-        client hello or server hello messages
+        Return the on the wire encoding of extension
+
+        Child classes need to override this property so that it returns just
+        the payload of an extension, that is, without the 4 byte generic header
+        common to all extension. In other words, without the extension ID and
+        overall extension length.
+
+        @rtype: bytearray
+        """
+        return self._extData
+
+    def _oldCreate(self, extType, data):
+        """Legacy handling of create method"""
+        self.extType = extType
+        self._extData = data
+
+    def _newCreate(self, data):
+        """New format for create method"""
+        self._extData = data
+
+    def create(self, *args, **kwargs):
+        """
+        Initializes a generic TLS extension.
+
+        The extension can carry arbitrary data and have arbitrary payload, can
+        be used in client hello or server hello messages.
+
+        The legacy calling method uses two arguments - the extType and data.
+        If the new calling method is used, only one argument is passed in -
+        data.
+
+        Child classes need to override this method so that it is possible
+        to set values for all fields used by the extension.
 
         @type  extType: int
-        @param extType: type of the extension encoded as an integer between
-            M{0} and M{2^16-1}
+        @param extType: if int: type of the extension encoded as an integer
+            between M{0} and M{2^16-1}
         @type  data: bytearray
         @param data: raw data representing extension on the wire
         @rtype: L{TLSExtension}
         """
-        self.extType = extType
-        self.extData = data
+        # old style
+        if len(args) + len(kwargs) == 2:
+            self._oldCreate(*args, **kwargs)
+        # new style
+        elif len(args) + len(kwargs) == 1:
+            self._newCreate(*args, **kwargs)
+        else:
+            raise TypeError("Invalid number of arguments")
+
         return self
 
     def write(self):
-        """ Returns encoded extension, as encoded on the wire
+        """Returns encoded extension, as encoded on the wire
+
+        Note that child classes in general don't need to override this method.
 
         @rtype: bytearray
         @return: An array of bytes formatted as is supposed to be written on
@@ -92,7 +156,6 @@ class TLSExtension(object):
 
         @raise AssertionError: when the object was not initialized
         """
-
         assert self.extType is not None
 
         w = Writer()
@@ -101,8 +164,22 @@ class TLSExtension(object):
         w.addFixSeq(self.extData, 1)
         return w.bytes
 
+    @staticmethod
+    def _parseExt(parser, extType, extLength, extList):
+        """Parse a extension using a predefined constructor"""
+        ext = extList[extType]()
+        extParser = Parser(parser.getFixBytes(extLength))
+        ext = ext.parse(extParser)
+        return ext
+
     def parse(self, p):
-        """ Parses extension from the wire format
+        """Parses extension from on the wire format
+
+        Child classes should override this method so that it parses the
+        extension from on the wire data. Note that child class parsers will
+        not receive the generic header of the extension, but just a parser
+        with the payload. In other words, the method should be the exact
+        reverse of the L{extData} property.
 
         @type p: L{tlslite.util.codec.Parser}
         @param p:  data to be parsed
@@ -112,33 +189,30 @@ class TLSExtension(object):
 
         @rtype: L{TLSExtension}
         """
-
         extType = p.get(2)
-        ext_length = p.get(2)
+        extLength = p.get(2)
 
         # first check if we shouldn't use server side parser
         if self.serverType and extType in self._serverExtensions:
-            ext = self._serverExtensions[extType]()
-            ext_parser = Parser(p.getFixBytes(ext_length))
-            ext = ext.parse(ext_parser)
-            return ext
+            return self._parseExt(p, extType, extLength,
+                                  self._serverExtensions)
 
         # then fallback to universal/ClientHello-specific parsers
         if extType in self._universalExtensions:
-            ext = self._universalExtensions[extType]()
-            ext_parser = Parser(p.getFixBytes(ext_length))
-            ext = ext.parse(ext_parser)
-            return ext
+            return self._parseExt(p, extType, extLength,
+                                  self._universalExtensions)
 
         # finally, just save the extension data as there are extensions which
         # don't require specific handlers and indicate option by mere presence
         self.extType = extType
-        self.extData = p.getFixBytes(ext_length)
-        assert len(self.extData) == ext_length
+        self._extData = p.getFixBytes(extLength)
+        assert len(self._extData) == extLength
         return self
 
     def __eq__(self, that):
-        """ Test if two TLS extensions will result in the same on the wire
+        """Test if two TLS extensions are effectively the same
+
+        Will check if encoding them will result in the same on the wire
         representation.
 
         Will return False for every object that's not an extension.
@@ -150,13 +224,95 @@ class TLSExtension(object):
             return False
 
     def __repr__(self):
-        """ Output human readable representation of object
+        """Output human readable representation of object
+
+        Child classes should override this method to support more appropriate
+        string rendering of the extension.
 
         @rtype: str
         """
         return "TLSExtension(extType={0!r}, extData={1!r},"\
                 " serverType={2!r})".format(self.extType, self.extData,
                                             self.serverType)
+
+class VarListExtension(TLSExtension):
+    """
+    Abstract extension for handling extensions comprised only of a value list
+
+    Extension for handling arbitrary extensions comprising of just a list
+    of same-sized elementes inside an array
+    """
+
+    def __init__(self, elemLength, lengthLength, fieldName, extType):
+        super(VarListExtension, self).__init__(extType=extType)
+        self._fieldName = fieldName
+        self._internalList = None
+        self._elemLength = elemLength
+        self._lengthLength = lengthLength
+
+    @property
+    def extData(self):
+        """Return raw data encoding of the extension
+
+        @rtype: bytearray
+        """
+        if self._internalList is None:
+            return bytearray(0)
+
+        writer = Writer()
+        writer.addVarSeq(self._internalList,
+                         self._elemLength,
+                         self._lengthLength)
+        return writer.bytes
+
+    def create(self, values):
+        """Set the list to specified values
+
+        @type values: list of int
+        @param values: list of values to save
+        """
+        self._internalList = values
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on-the-wire data
+
+        @type parser: L{Parser}
+        @rtype: Extension
+        """
+        if parser.getRemainingLength() == 0:
+            self._internalList = None
+            return self
+
+        self._internalList = parser.getVarList(self._elemLength,
+                                               self._lengthLength)
+        return self
+
+    def __getattr__(self, name):
+        """Return the special field name value"""
+        if name == '_fieldName':
+            raise AttributeError("type object '{0}' has no attribute '{1}'"\
+                    .format(self.__class__.__name__, name))
+        if name == self._fieldName:
+            return self._internalList
+        raise AttributeError("type object '{0}' has no attribute '{1}'"\
+                .format(self.__class__.__name__, name))
+
+    def __setattr__(self, name, value):
+        """Set the special field value"""
+        if name == '_fieldName':
+            super(VarListExtension, self).__setattr__(name, value)
+            return
+        if hasattr(self, '_fieldName') and name == self._fieldName:
+            self._internalList = value
+            return
+        super(VarListExtension, self).__setattr__(name, value)
+
+    def __repr__(self):
+        return "{0}({1}={2!r})".format(self.__class__.__name__,
+                                       self._fieldName,
+                                       self._internalList)
 
 class SNIExtension(TLSExtension):
     """
@@ -209,6 +365,7 @@ class SNIExtension(TLSExtension):
 
         See also: L{create} and L{parse}.
         """
+        super(SNIExtension, self).__init__(extType=ExtensionType.server_name)
         self.serverNames = None
 
     def __repr__(self):
@@ -262,14 +419,6 @@ class SNIExtension(TLSExtension):
             self.serverNames += serverNames
 
         return self
-
-    @property
-    def extType(self):
-        """ Return the type of TLS extension, in this case - 0
-
-        @rtype: int
-        """
-        return ExtensionType.server_name
 
     @property
     def hostNames(self):
@@ -376,10 +525,11 @@ class SNIExtension(TLSExtension):
 
         return self
 
-class ClientCertTypeExtension(TLSExtension):
+class ClientCertTypeExtension(VarListExtension):
     """
-    This class handles the Certificate Type extension (variant sent by client)
-    defined in RFC 6091.
+    This class handles the (client variant of) Certificate Type extension
+
+    See RFC 6091.
 
     @type extType: int
     @ivar extType: numeric type of Certificate Type extension, i.e. 9
@@ -397,74 +547,8 @@ class ClientCertTypeExtension(TLSExtension):
 
         See also: L{create} and L{parse}
         """
-
-        self.certTypes = None
-
-    def __repr__(self):
-        """ Return programmer-centric representation of extension
-
-        @rtype: str
-        """
-        return "ClientCertTypeExtension(certTypes={0!r})"\
-                .format(self.certTypes)
-
-    @property
-    def extType(self):
-        """
-        Return the type of TLS extension, in this case - 9
-
-        @rtype: int
-        """
-
-        return ExtensionType.cert_type
-
-    @property
-    def extData(self):
-        """
-        Return the raw encoding of this extension
-
-        @rtype: bytearray
-        """
-
-        if self.certTypes is None:
-            return bytearray(0)
-
-        w = Writer()
-        w.add(len(self.certTypes), 1)
-        for c_type in self.certTypes:
-            w.add(c_type, 1)
-
-        return w.bytes
-
-    def create(self, certTypes=None):
-        """
-        Return instance of this extension with specified certificate types
-
-        @type certTypes: iterable list of int
-        @param certTypes: list of certificate types to advertise, all values
-            should be between 0 and 2^8-1 inclusive
-
-        @raises ValueError: when the list includes too big or negative integers
-        """
-        self.certTypes = certTypes
-        return self
-
-    def parse(self, p):
-        """
-        Parse the extension from binary data
-
-        @type p: L{tlslite.util.codec.Parser}
-        @param p: data to be parsed
-
-        @raise SyntaxError: when the size of the passed element doesn't match
-            the internal representation
-
-        @rtype: L{ClientCertTypeExtension}
-        """
-
-        self.certTypes = p.getVarList(1, 1)
-
-        return self
+        super(ClientCertTypeExtension, self).__init__(1, 1, 'certTypes', \
+                ExtensionType.cert_type)
 
 class ServerCertTypeExtension(TLSExtension):
     """
@@ -472,7 +556,7 @@ class ServerCertTypeExtension(TLSExtension):
     defined in RFC 6091.
 
     @type extType: int
-    @ivar extType: byneruc ttoe if Certificate Type extension, i.e. 9
+    @ivar extType: binary type of Certificate Type extension, i.e. 9
 
     @type extData: bytearray
     @ivar extData: raw representation of the extension data
@@ -487,7 +571,8 @@ class ServerCertTypeExtension(TLSExtension):
 
         See also: L{create} and L{parse}
         """
-
+        super(ServerCertTypeExtension, self).__init__(server=True, \
+                                               extType=ExtensionType.cert_type)
         self.cert_type = None
 
     def __repr__(self):
@@ -496,15 +581,6 @@ class ServerCertTypeExtension(TLSExtension):
         @rtype: str
         """
         return "ServerCertTypeExtension(cert_type={0!r})".format(self.cert_type)
-
-    @property
-    def extType(self):
-        """
-        Return the type of TLS extension, in this case - 9
-
-        @rtype: int
-        """
-        return ExtensionType.cert_type
 
     @property
     def extData(self):
@@ -563,6 +639,7 @@ class SRPExtension(TLSExtension):
 
         See also: L{create} and L{parse}
         """
+        super(SRPExtension, self).__init__(extType=ExtensionType.srp)
 
         self.identity = None
 
@@ -573,16 +650,6 @@ class SRPExtension(TLSExtension):
         @rtype: str
         """
         return "SRPExtension(identity={0!r})".format(self.identity)
-
-    @property
-    def extType(self):
-        """
-        Return the type of TLS extension, in this case - 12
-
-        @rtype: int
-        """
-
-        return ExtensionType.srp
 
     @property
     def extData(self):
@@ -656,6 +723,7 @@ class NPNExtension(TLSExtension):
 
         See also: L{create} and L{parse}
         """
+        super(NPNExtension, self).__init__(extType=ExtensionType.supports_npn)
 
         self.protocols = None
 
@@ -666,14 +734,6 @@ class NPNExtension(TLSExtension):
         @rtype: str
         """
         return "NPNExtension(protocols={0!r})".format(self.protocols)
-
-    @property
-    def extType(self):
-        """ Return the type of TLS extension, in this case - 13172
-
-        @rtype: int
-        """
-        return ExtensionType.supports_npn
 
     @property
     def extData(self):
@@ -842,6 +902,7 @@ class TACKExtension(TLSExtension):
 
         See also: L{create} and L{parse}
         """
+        super(TACKExtension, self).__init__(extType=ExtensionType.tack)
 
         self.tacks = []
         self.activation_flags = 0
@@ -854,15 +915,6 @@ class TACKExtension(TLSExtension):
         """
         return "TACKExtension(activation_flags={0!r}, tacks={1!r})".format(
                 self.activation_flags, self.tacks)
-
-    @property
-    def extType(self):
-        """
-        Returns the type of TLS extension, in this case - 62208
-
-        @rtype: int
-        """
-        return ExtensionType.tack
 
     @property
     def extData(self):
@@ -883,7 +935,7 @@ class TACKExtension(TLSExtension):
 
     def create(self, tacks, activation_flags):
         """
-        Initialize the insance of TACKExtension
+        Initialize the instance of TACKExtension
 
         @rtype: TACKExtension
         """
@@ -912,12 +964,162 @@ class TACKExtension(TLSExtension):
 
         return self
 
-TLSExtension._universalExtensions = {
-        ExtensionType.server_name : SNIExtension,
-        ExtensionType.cert_type : ClientCertTypeExtension,
-        ExtensionType.srp : SRPExtension,
-        ExtensionType.supports_npn : NPNExtension}
+class SupportedGroupsExtension(VarListExtension):
+    """
+    Client side list of supported groups of (EC)DHE key exchage.
 
-TLSExtension._serverExtensions = {
-        ExtensionType.cert_type : ServerCertTypeExtension,
-        ExtensionType.tack : TACKExtension}
+    See RFC4492, RFC7027 and RFC-ietf-tls-negotiated-ff-dhe-10
+
+    @type groups: int
+    @ivar groups: list of groups that the client supports
+    """
+
+    def __init__(self):
+        """Create instance of class"""
+        super(SupportedGroupsExtension, self).__init__(2, 2, 'groups', \
+            ExtensionType.supported_groups)
+
+class ECPointFormatsExtension(VarListExtension):
+    """
+    Client side list of supported ECC point formats.
+
+    See RFC4492.
+
+    @type formats: list of int
+    @ivar formats: list of point formats supported by peer
+    """
+
+    def __init__(self):
+        """Create instance of class"""
+        super(ECPointFormatsExtension, self).__init__(1, 1, 'formats', \
+                ExtensionType.ec_point_formats)
+
+class SignatureAlgorithmsExtension(TLSExtension):
+
+    """
+    Client side list of supported signature algorithms.
+
+    Should be used by server to select certificate and signing method for
+    Server Key Exchange messages. In practice used only for the latter.
+
+    See RFC5246.
+    """
+
+    def __init__(self):
+        """Create instance of class"""
+        super(SignatureAlgorithmsExtension, self).__init__(extType=
+                                                           ExtensionType.
+                                                           signature_algorithms)
+        self.sigalgs = None
+
+    @property
+    def extData(self):
+        """
+        Return raw encoding of the extension
+
+        @rtype: bytearray
+        """
+        if self.sigalgs is None:
+            return bytearray(0)
+
+        writer = Writer()
+        # elements 1 byte each, overall length encoded in 2 bytes
+        writer.addVarTupleSeq(self.sigalgs, 1, 2)
+        return writer.bytes
+
+    def create(self, sigalgs):
+        """
+        Set the list of supported algorithm types
+
+        @type sigalgs: list of tuples
+        @param sigalgs: list of pairs of a hash algorithm and signature
+        algorithm
+        """
+        self.sigalgs = sigalgs
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on the wire data
+
+        @type parser: L{Parser}
+        @rtype: SignatureAlgorithmsExtension
+        """
+        if parser.getRemainingLength() == 0:
+            self.sigalgs = None
+            return self
+
+        self.sigalgs = parser.getVarTupleList(1, 2, 2)
+
+        if parser.getRemainingLength() != 0:
+            raise SyntaxError()
+
+        return self
+
+
+class PaddingExtension(TLSExtension):
+    """
+    ClientHello message padding with a desired size.
+
+    Can be used to pad ClientHello messages to a desired size
+    in order to avoid implementation bugs caused by certain
+    ClientHello sizes.
+
+    See RFC7685.
+    """
+
+    def __init__(self):
+        """Create instance of class."""
+        extType = ExtensionType.client_hello_padding
+        super(PaddingExtension, self).__init__(extType=extType)
+        self.paddingData = bytearray(0)
+
+    @property
+    def extData(self):
+        """
+        Return raw encoding of the extension.
+
+        @rtype: bytearray
+        """
+        return self.paddingData
+
+    def create(self, size):
+        """
+        Set the padding size and create null byte padding of defined size.
+
+        @type size: int
+        @param size: required padding size in bytes
+        """
+        self.paddingData = bytearray(size)
+        return self
+
+    def parse(self, p):
+        """
+        Deserialise extension from on the wire data.
+
+        @type p: L{tlslite.util.codec.Parser}
+        @param p:  data to be parsed
+
+        @raise SyntaxError: when the size of the passed element doesn't match
+        the internal representation
+
+        @rtype: L{TLSExtension}
+        """
+        self.paddingData = p.getFixBytes(p.getRemainingLength())
+        return self
+
+TLSExtension._universalExtensions = \
+    {
+        ExtensionType.server_name: SNIExtension,
+        ExtensionType.cert_type: ClientCertTypeExtension,
+        ExtensionType.supported_groups: SupportedGroupsExtension,
+        ExtensionType.ec_point_formats: ECPointFormatsExtension,
+        ExtensionType.srp: SRPExtension,
+        ExtensionType.signature_algorithms: SignatureAlgorithmsExtension,
+        ExtensionType.supports_npn: NPNExtension,
+        ExtensionType.client_hello_padding: PaddingExtension}
+
+TLSExtension._serverExtensions = \
+    {
+        ExtensionType.cert_type: ServerCertTypeExtension,
+        ExtensionType.tack: TACKExtension}

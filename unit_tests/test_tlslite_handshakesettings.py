@@ -69,7 +69,7 @@ class TestHandshakeSettings(unittest.TestCase):
 
     def test_cipherNames_with_unknown_name(self):
         hs = HandshakeSettings()
-        hs.cipherNames = ["aes256gcm", "aes256"]
+        hs.cipherNames = ["camellia256gcm", "aes256"]
 
         with self.assertRaises(ValueError):
             hs.validate()
@@ -152,3 +152,113 @@ class TestHandshakeSettings(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             hs.getCertificateTypes()
+
+    def test_useEncryptThenMAC(self):
+        hs = HandshakeSettings()
+        self.assertTrue(hs.useEncryptThenMAC)
+
+        hs.useEncryptThenMAC = False
+
+        n_hs = hs.validate()
+
+        self.assertFalse(n_hs.useEncryptThenMAC)
+
+    def test_useEncryptThenMAC_with_wrong_value(self):
+        hs = HandshakeSettings()
+        hs.useEncryptThenMAC = None
+
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_useExtendedMasterSecret(self):
+        hs = HandshakeSettings()
+        self.assertTrue(hs.useExtendedMasterSecret)
+
+        hs.useExtendedMasterSecret = False
+
+        n_hs = hs.validate()
+
+        self.assertFalse(n_hs.useExtendedMasterSecret)
+
+    def test_useExtendedMasterSecret_with_wrong_value(self):
+        hs = HandshakeSettings()
+        hs.useExtendedMasterSecret = None
+
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_requireExtendedMasterSecret(self):
+        hs = HandshakeSettings()
+        self.assertFalse(hs.requireExtendedMasterSecret)
+
+        hs.requireExtendedMasterSecret = True
+
+        n_hs = hs.validate()
+
+        self.assertTrue(n_hs.requireExtendedMasterSecret)
+
+    def test_requireExtendedMasterSecret_with_wrong_value(self):
+        hs = HandshakeSettings()
+        hs.requireExtendedMasterSecret = None
+
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_requireExtendedMasterSecret_with_incompatible_use_EMS(self):
+        hs = HandshakeSettings()
+        hs.useExtendedMasterSecret = False
+        hs.requireExtendedMasterSecret = True
+
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_invalid_MAC(self):
+        hs = HandshakeSettings()
+        hs.macNames = ['sha1', 'whirpool']
+
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_invalid_KEX(self):
+        hs = HandshakeSettings()
+        hs.keyExchangeNames = ['rsa', 'ecdhe_rsa', 'gost']
+
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_invalid_signature_algorithm(self):
+        hs = HandshakeSettings()
+        hs.rsaSigHashes += ['md2']
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_no_signature_hashes_set_with_TLS1_2(self):
+        hs = HandshakeSettings()
+        hs.rsaSigHashes = []
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_no_signature_hashes_set_with_TLS1_1(self):
+        hs = HandshakeSettings()
+        hs.rsaSigHashes = []
+        hs.maxVersion = (3, 2)
+        self.assertIsNotNone(hs.validate())
+
+    def test_invalid_curve_name(self):
+        hs = HandshakeSettings()
+        hs.eccCurves = ['P-256']
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_usePaddingExtension(self):
+        hs = HandshakeSettings()
+        self.assertTrue(hs.usePaddingExtension)
+
+    def test_invalid_usePaddingExtension(self):
+        hs = HandshakeSettings()
+        hs.usePaddingExtension = -1
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+if __name__ == '__main__':
+    unittest.main()

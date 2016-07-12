@@ -6,6 +6,8 @@
 import os
 
 from tlslite.utils import python_aes
+from tlslite.utils import python_aesgcm
+from tlslite.utils import python_chacha20_poly1305
 from tlslite.utils import python_rc4
 
 from tlslite.utils import cryptomath
@@ -20,6 +22,7 @@ if cryptomath.m2cryptoLoaded:
 
 if cryptomath.pycryptoLoaded:
     from tlslite.utils import pycrypto_aes
+    from tlslite.utils import pycrypto_aesgcm
     from tlslite.utils import pycrypto_rc4
     from tlslite.utils import pycrypto_tripledes
     tripleDESPresent = True
@@ -40,7 +43,7 @@ def createAES(key, IV, implList=None):
     @rtype: L{tlslite.utils.AES}
     @return: An AES object.
     """
-    if implList == None:
+    if implList is None:
         implList = ["openssl", "pycrypto", "python"]
 
     for impl in implList:
@@ -50,6 +53,42 @@ def createAES(key, IV, implList=None):
             return pycrypto_aes.new(key, 2, IV)
         elif impl == "python":
             return python_aes.new(key, 2, IV)
+    raise NotImplementedError()
+
+def createAESGCM(key, implList=None):
+    """Create a new AESGCM object.
+
+    @type key: bytearray
+    @param key: A 16 or 32 byte byte array.
+
+    @rtype: L{tlslite.utils.AESGCM}
+    @return: An AESGCM object.
+    """
+    if implList is None:
+        implList = ["pycrypto", "python"]
+
+    for impl in implList:
+        if impl == "pycrypto" and cryptomath.pycryptoLoaded:
+            return pycrypto_aesgcm.new(key)
+        if impl == "python":
+            return python_aesgcm.new(key)
+    raise NotImplementedError()
+
+def createCHACHA20(key, implList=None):
+    """Create a new CHACHA20_POLY1305 object.
+
+    @type key: bytearray
+    @param key: a 32 byte array to serve as key
+
+    @rtype: L{tlslite.utils.CHACHA20_POLY1305}
+    @return: A ChaCha20/Poly1305 object
+    """
+    if implList is None:
+        implList = ["python"]
+
+    for impl in implList:
+        if impl == "python":
+            return python_chacha20_poly1305.new(key)
     raise NotImplementedError()
 
 def createRC4(key, IV, implList=None):
@@ -64,7 +103,7 @@ def createRC4(key, IV, implList=None):
     @rtype: L{tlslite.utils.RC4}
     @return: An RC4 object.
     """
-    if implList == None:
+    if implList is None:
         implList = ["openssl", "pycrypto", "python"]
 
     if len(IV) != 0:
@@ -91,7 +130,7 @@ def createTripleDES(key, IV, implList=None):
     @rtype: L{tlslite.utils.TripleDES}
     @return: A 3DES object.
     """
-    if implList == None:
+    if implList is None:
         implList = ["openssl", "pycrypto"]
 
     for impl in implList:

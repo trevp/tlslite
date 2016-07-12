@@ -2,6 +2,7 @@
 #   Trevor Perrin
 #   Dave Baggett (Arcode Corporation) - MD5 support for MAC_SSL
 #   Yngve Pettersen (ported by Paul Sokolovsky) - TLS 1.2
+#   Hubert Kario - SHA384 PRF
 #
 # See the LICENSE file for legal information regarding use of this file.
 
@@ -9,6 +10,8 @@
 
 from .utils.compat import *
 from .utils.cryptomath import *
+from .constants import CipherSuite
+from .utils import tlshashlib as hashlib
 
 import hmac
 
@@ -51,7 +54,12 @@ def PRF(secret, label, seed, length):
     return p_md5
 
 def PRF_1_2(secret, label, seed, length):
+    """Pseudo Random Function for TLS1.2 ciphers that use SHA256"""
     return P_hash(HMAC_SHA256, secret, label + seed, length)
+
+def PRF_1_2_SHA384(secret, label, seed, length):
+    """Pseudo Random Function for TLS1.2 ciphers that use SHA384"""
+    return P_hash(HMAC_SHA384, secret, label + seed, length)
 
 def PRF_SSL(secret, seed, length):
     bytes = bytearray(length)
@@ -67,7 +75,32 @@ def PRF_SSL(secret, seed, length):
             index += 1
     return bytes
 
-def calcMasterSecret(version, premasterSecret, clientRandom, serverRandom):
+def calcExtendedMasterSecret(version, cipherSuite, premasterSecret,
+                             handshakeHashes):
+    """Derive Extended Master Secret from premaster and handshake msgs"""
+    assert version in ((3, 1), (3, 2), (3, 3))
+    if version in ((3, 1), (3, 2)):
+        masterSecret = PRF(premasterSecret, b"extended master secret",
+                           handshakeHashes.digest('md5') +
+                           handshakeHashes.digest('sha1'),
+                           48)
+    else:
+        if cipherSuite in CipherSuite.sha384PrfSuites:
+            masterSecret = PRF_1_2_SHA384(premasterSecret,
+                                          b"extended master secret",
+                                          handshakeHashes.digest('sha384'),
+                                          48)
+        else:
+            masterSecret = PRF_1_2(premasterSecret,
+                                   b"extended master secret",
+                                   handshakeHashes.digest('sha256'),
+                                   48)
+    return masterSecret
+
+
+def calcMasterSecret(version, cipherSuite, premasterSecret, clientRandom,
+                     serverRandom):
+    """Derive Master Secret from premaster secret and random values"""
     if version == (3,0):
         masterSecret = PRF_SSL(premasterSecret,
                             clientRandom + serverRandom, 48)
@@ -75,12 +108,58 @@ def calcMasterSecret(version, premasterSecret, clientRandom, serverRandom):
         masterSecret = PRF(premasterSecret, b"master secret",
                             clientRandom + serverRandom, 48)
     elif version == (3,3):
-        masterSecret = PRF_1_2(premasterSecret, b"master secret",
-                            clientRandom + serverRandom, 48)
+        if cipherSuite in CipherSuite.sha384PrfSuites:
+            masterSecret = PRF_1_2_SHA384(premasterSecret,
+                                          b"master secret",
+                                          clientRandom + serverRandom,
+                                          48)
+        else:
+            masterSecret = PRF_1_2(premasterSecret,
+                                   b"master secret",
+                                   clientRandom + serverRandom,
+                                   48)
     else:
         raise AssertionError()
     return masterSecret
 
+def calcFinished(version, masterSecret, cipherSuite, handshakeHashes,
+                 isClient):
+    """Calculate the Handshake protocol Finished value
+
+    @param version: TLS protocol version tuple
+    @param masterSecret: negotiated master secret of the connection
+    @param cipherSuite: negotiated cipher suite of the connection,
+    @param handshakeHashes: running hash of the handshake messages
+    @param isClient: whether the calculation should be performed for message
+    sent by client (True) or by server (False) side of connection
+    """
+    assert version in ((3, 0), (3, 1), (3, 2), (3, 3))
+    if version == (3,0):
+        if isClient:
+            senderStr = b"\x43\x4C\x4E\x54"
+        else:
+            senderStr = b"\x53\x52\x56\x52"
+
+        verifyData = handshakeHashes.digestSSL(masterSecret, senderStr)
+    else:
+        if isClient:
+            label = b"client finished"
+        else:
+            label = b"server finished"
+
+        if version in ((3,1), (3,2)):
+            handshakeHash = handshakeHashes.digest()
+            verifyData = PRF(masterSecret, label, handshakeHash, 12)
+        else: # version == (3,3):
+            if cipherSuite in CipherSuite.sha384PrfSuites:
+                handshakeHash = handshakeHashes.digest('sha384')
+                verifyData = PRF_1_2_SHA384(masterSecret, label,
+                                            handshakeHash, 12)
+            else:
+                handshakeHash = handshakeHashes.digest('sha256')
+                verifyData = PRF_1_2(masterSecret, label, handshakeHash, 12)
+
+    return verifyData
 
 def makeX(salt, username, password):
     if len(username)>=256:
@@ -114,7 +193,9 @@ def makeK(N, g):
   return bytesToNumber(SHA1(numberToByteArray(N) + PAD(N, g)))
 
 def createHMAC(k, digestmod=hashlib.sha1):
-    return hmac.HMAC(k, digestmod=digestmod)
+    h = hmac.HMAC(k, digestmod=digestmod)
+    h.block_size = digestmod().block_size
+    return h
 
 def createMAC_SSL(k, digestmod=None):
     mac = MAC_SSL()
@@ -125,6 +206,7 @@ def createMAC_SSL(k, digestmod=None):
 class MAC_SSL(object):
     def create(self, k, digestmod=None):
         self.digestmod = digestmod or hashlib.sha1
+        self.block_size = self.digestmod().block_size
         # Repeat pad bytes 48 times for MD5; 40 times for other hash functions.
         self.digest_size = 16 if (self.digestmod is hashlib.md5) else 20
         repeat = 40 if self.digest_size == 20 else 48
@@ -143,6 +225,7 @@ class MAC_SSL(object):
         new.ohash = self.ohash.copy()
         new.digestmod = self.digestmod
         new.digest_size = self.digest_size
+        new.block_size = self.block_size
         return new
 
     def digest(self):

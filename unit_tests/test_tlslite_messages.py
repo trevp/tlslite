@@ -8,13 +8,29 @@ try:
 except ImportError:
     import unittest
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
-        RecordHeader2
+        RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
+        CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
+        ClientMasterKey, ClientFinished, ServerFinished
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
-        AlertLevel, AlertDescription, ExtensionType
+        AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
+        HashAlgorithm, SignatureAlgorithm, ECCurveType, GroupName, \
+        SSL2HandshakeType
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension
 from tlslite.errors import TLSInternalError
+
+class TestMessage(unittest.TestCase):
+    def test___init__(self):
+        msg = Message(ContentType.application_data, bytearray(0))
+
+        self.assertEqual(ContentType.application_data, msg.contentType)
+        self.assertEqual(bytearray(0), msg.data)
+
+    def test_write(self):
+        msg = Message(0, bytearray(10))
+
+        self.assertEqual(bytearray(10), msg.write())
 
 class TestClientHello(unittest.TestCase):
     def test___init__(self):
@@ -576,7 +592,7 @@ class TestClientHello(unittest.TestCase):
 
         client_hello = client_hello.parse(parser)
 
-        # XXX the value on the wire is LSB, but should be interpreted MSB for
+        # the value on the wire is LSB, but should be interpreted MSB for
         # SSL2
         self.assertEqual((0, 2), client_hello.client_version)
         self.assertEqual(bytearray(0), client_hello.session_id)
@@ -586,6 +602,54 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual(bytearray(b'\x00'*16 + b'\x01'*16),
                          client_hello.random)
         self.assertEqual([0], client_hello.compression_methods)
+
+    def test_parse_with_SSLv2_client_hello(self):
+        parser = Parser(bytearray(
+            # length and type is handled by hello protocol parser
+            #b'\x80\x2e' +           # length - 46 bytes
+            #b'\x01' +               # message type - client hello
+            b'\x03\x02' +           # version - TLSv1.1
+            b'\x00\x06' +           # cipher spec length - 6 bytes
+            b'\x00\x10' +           # session ID length - 16 bytes
+            b'\x00\x20' +           # challange length - 32 bytes
+            b'\x07\x00\xc0' +       # cipher - SSL2_DES_192_EDE3_CBC_WITH_MD5
+            b'\x00\x00\x2f' +       # cipher - TLS_RSA_WITH_AES_128_CBC_SHA
+            b'\xff' * 16 +          # session_id
+            b'\x01' * 32            # challenge
+            ))
+        client_hello = ClientHello(ssl2=True)
+
+        client_hello = client_hello.parse(parser)
+
+        # the value on the wire is LSB, but should be interpreted MSB for
+        # SSL2
+        self.assertEqual((3, 2), client_hello.client_version)
+        self.assertEqual(bytearray(b'\xff'*16), client_hello.session_id)
+        self.assertEqual([458944, CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA],
+                         client_hello.cipher_suites)
+        self.assertEqual(bytearray(b'\x01'*32),
+                         client_hello.random)
+        self.assertEqual([0], client_hello.compression_methods)
+
+    def test_write_with_SSLv2(self):
+        client_hello = ClientHello(ssl2=True)
+        ciphers = [0x0700c0,
+                   CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA]
+
+        client_hello.create((3, 2), random=bytearray(b'\xab'*16),
+                            session_id=bytearray(0),
+                            cipher_suites=ciphers)
+
+        self.assertEqual(bytearray(
+            b'\x01' +             # type of message - CLIENT HELLO
+            b'\x03\x02' +         # version - TLSv1.1
+            b'\x00\x06' +         # cipher list length
+            b'\x00\x00' +         # session id length
+            b'\x00\x10' +         # challange length
+            b'\x07\x00\xc0' +     # cipher - SSL2_DES_192_EDE3_CBC_WITH_MD5
+            b'\x00\x00\x2f' +     # cipher - TLS_RSA_WITH_AES_128_CBC_SHA
+            b'\xab'*16),          # challange
+            client_hello.write())
 
 class TestServerHello(unittest.TestCase):
     def test___init__(self):
@@ -619,6 +683,24 @@ class TestServerHello(unittest.TestCase):
         self.assertEqual(0, server_hello.compression_method)
         self.assertEqual(None, server_hello.tackExt)
         self.assertEqual(None, server_hello.next_protos_advertised)
+
+    def test_create_with_minimal_options(self):
+        server_hello = ServerHello().create(
+                (3, 3),                                 # server version
+                bytearray(b'\x02'*31+b'\x01'),          # random
+                bytearray(4),                           # session ID
+                CipherSuite.TLS_RSA_WITH_RC4_128_MD5)   # ciphersuite
+
+        self.assertEqual(bytearray(
+            b'\x02' +                   # type of message
+            b'\x00\x00\x2a' +           # length
+            b'\x03\x03' +               # server version
+            b'\x02'*31+b'\x01' +        # random
+            b'\x04' +                   # Session ID length
+            b'\x00'*4 +                 # session id
+            b'\x00\x04' +               # selected ciphersuite
+            b'\x00'                     # selected compression method
+            ), server_hello.write())
 
     def test_parse(self):
         p = Parser(bytearray(
@@ -881,7 +963,7 @@ class TestServerHello(unittest.TestCase):
                 None,
                 extensions=[])
         self.maxDiff = None
-        self.assertEqual("ServerHello(server_version=(3.0), "\
+        self.assertEqual("ServerHello(server_version=(3, 0), "\
                 "random=bytearray(b'\\x00\\x00"\
                 "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00"\
                 "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00"\
@@ -889,6 +971,78 @@ class TestServerHello(unittest.TestCase):
                 "session_id=bytearray(b''), "\
                 "cipher_suite=34500, compression_method=0, _tack_ext=None, "\
                 "extensions=[])", repr(server_hello))
+
+class TestServerHello2(unittest.TestCase):
+    def test___init__(self):
+        sh = ServerHello2()
+
+        self.assertIsNotNone(sh)
+
+    def test_create(self):
+        sh = ServerHello2()
+
+        sh = sh.create(1, 2, (3, 4), bytearray(b'\x05'), [6, 7],
+                       bytearray(b'\x08\x09'))
+
+        self.assertEqual(sh.session_id_hit, 1)
+        self.assertEqual(sh.certificate_type, 2)
+        self.assertEqual(sh.server_version, (3, 4))
+        self.assertEqual(sh.certificate, bytearray(b'\x05'))
+        self.assertEqual(sh.ciphers, [6, 7])
+        self.assertEqual(sh.session_id, bytearray(b'\x08\x09'))
+
+    def test_write(self):
+        sh = ServerHello2()
+        sh = sh.create(1, 2, (3, 4), bytearray(b'\x05'), [6, 7],
+                       bytearray(b'\x08\x09'))
+
+        self.assertEqual(bytearray(
+            b'\x04' +           # type - SERVER-HELLO
+            b'\x01' +           # session ID hit
+            b'\x02' +           # certificate_type
+            b'\x03\x04' +       # version
+            b'\x00\x01' +       # certificate length
+            b'\x00\x06' +       # ciphers length
+            b'\x00\x02' +       # session ID length
+            b'\x05' +           # certificate
+            b'\x00\x00\x06' +   # first cipher
+            b'\x00\x00\x07' +   # second cipher
+            b'\x08\x09'         # session ID
+            ), sh.write())
+
+    def test_parse(self):
+        p = Parser(bytearray(
+            # don't include type of message as it is handled by the
+            # record layer protocol
+            #b'\x04' +           # type - SERVER-HELLO
+            b'\x01' +           # session ID hit
+            b'\x02' +           # certificate_type
+            b'\x03\x04' +       # version
+            b'\x00\x01' +       # certificate length
+            b'\x00\x06' +       # ciphers length
+            b'\x00\x02' +       # session ID length
+            b'\x05' +           # certificate
+            b'\x00\x00\x06' +   # first cipher
+            b'\x00\x00\x07' +   # second cipher
+            b'\x08\x09'         # session ID
+            ))
+        sh = ServerHello2()
+        sh = sh.parse(p)
+
+        self.assertEqual(sh.session_id_hit, 1)
+        self.assertEqual(sh.certificate_type, 2)
+        self.assertEqual(sh.server_version, (3, 4))
+        self.assertEqual(sh.certificate, bytearray(b'\x05'))
+        self.assertEqual(sh.ciphers, [6, 7])
+        self.assertEqual(sh.session_id, bytearray(b'\x08\x09'))
+
+    def test_write_with_invalid_version(self):
+        sh = ServerHello2()
+        sh = sh.create(1, 2, (3, 4, 12), bytearray(b'\x05'), [6, 7],
+                       bytearray(b'\x08\x09'))
+
+        with self.assertRaises(ValueError):
+            sh.write()
 
 class TestRecordHeader2(unittest.TestCase):
     def test___init__(self):
@@ -930,11 +1084,121 @@ class TestRecordHeader2(unittest.TestCase):
 
         rh = RecordHeader2()
 
-        #XXX can't handle two-byte length
-        with self.assertRaises(SyntaxError):
-            rh = rh.parse(parser)
+        rh = rh.parse(parser)
 
-        #self.assertEqual(512, rh.length)
+        self.assertEqual(512, rh.length)
+        self.assertEqual(0, rh.padding)
+
+    def test_parse_with_3_byte_long_header(self):
+        parser = Parser(bytearray(
+            b'\x02' +       # 3 byte header and nibble of length
+            b'\x00' +       # second byte of length
+            b'\x0a'         # padding length
+            ))
+
+        rh = RecordHeader2()
+        rh = rh.parse(parser)
+
+        self.assertEqual(512, rh.length)
+        self.assertEqual(10, rh.padding)
+
+    def test_parse_with_2_byte_header_and_security_escape_bit_set(self):
+        parser = Parser(bytearray(
+            b'\xc0' +
+            b'\x12'))
+
+        rh = RecordHeader2()
+        rh = rh.parse(parser)
+        self.assertEqual(0x4012, rh.length)
+        self.assertEqual(0, rh.padding)
+        self.assertFalse(rh.securityEscape)
+
+    def test_parse_with_3_byte_header_and_security_escape_bit_set(self):
+        parser = Parser(bytearray(
+            b'\x40' +
+            b'\x12' +
+            b'\x01'))
+
+        rh = RecordHeader2()
+        rh = rh.parse(parser)
+        self.assertEqual(0x0012, rh.length)
+        self.assertEqual(1, rh.padding)
+        self.assertTrue(rh.securityEscape)
+
+    def test_create(self):
+        rh = RecordHeader2()
+        rh.create(512)
+
+        self.assertEqual(512, rh.length)
+        self.assertEqual(0, rh.padding)
+        self.assertFalse(rh.securityEscape)
+
+    def test_write(self):
+        rh = RecordHeader2()
+        rh.create(0x0123)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\x81'
+            b'\x23'), data)
+
+    def test_write_with_padding(self):
+        rh = RecordHeader2()
+        rh.create(0x0123, padding=12)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\x01'
+            b'\x23'
+            b'\x0c'), data)
+
+    def test_write_with_security_escape(self):
+        rh = RecordHeader2()
+        rh.create(0x0123, securityEscape=True)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\x41'
+            b'\x23'
+            b'\x00'), data)
+
+    def test_write_with_large_data_and_short_header(self):
+        rh = RecordHeader2()
+        rh.create(0x7fff)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\xff'
+            b'\xff'), data)
+
+    def test_write_with_too_long_length_and_short_header(self):
+        rh = RecordHeader2()
+        rh.create(0x8000)
+
+        with self.assertRaises(ValueError):
+            rh.write()
+
+    def test_write_with_long_length_and_long_header(self):
+        rh = RecordHeader2()
+        rh.create(0x3fff, padding=1)
+
+        data = rh.write()
+
+        self.assertEqual(bytearray(
+            b'\x3f'
+            b'\xff'
+            b'\x01'), data)
+
+    def test_write_with_too_long_length_and_long_header(self):
+        rh = RecordHeader2()
+        rh.create(0x4000, padding=1)
+
+        with self.assertRaises(ValueError):
+            rh.write()
 
 class TestRecordHeader3(unittest.TestCase):
     def test___init__(self):
@@ -1088,6 +1352,896 @@ class TestAlert(unittest.TestCase):
 
         self.assertEqual(bytearray(
             b'\x02\x16'), alert.write())
+
+class TestClientKeyExchange(unittest.TestCase):
+    def test___init__(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA)
+
+        self.assertIsNotNone(cke)
+        self.assertIsNone(cke.version)
+        self.assertEqual(0, cke.srp_A)
+        self.assertEqual(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                         cke.cipherSuite)
+        self.assertEqual(bytearray(0), cke.encryptedPreMasterSecret)
+
+    def test_createSRP(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
+
+        cke.createSRP(2**128+3)
+
+        bts = cke.write()
+
+        self.assertEqual(bts, bytearray(
+            b'\x10' +           # CKE
+            b'\x00\x00\x13' +   # Handshake message length
+            b'\x00\x11' +       # length of value
+            b'\x01' +           # 2...
+            b'\x00'*15 +        # ...**128...
+            b'\x03'))           # ...+3
+
+    def test_createRSA(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
+                                (3, 3))
+
+        cke.createRSA(bytearray(12))
+
+        bts = cke.write()
+
+        self.assertEqual(bts, bytearray(
+            b'\x10' +           # CKE
+            b'\x00\x00\x0e' +   # Handshake message length
+            b'\x00\x0c' +       # length of encrypted value
+            b'\x00'*12))
+
+    def test_createRSA_with_SSL3(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
+                                (3, 0))
+
+        cke.createRSA(bytearray(12))
+
+        bts = cke.write()
+
+        self.assertEqual(bts, bytearray(
+            b'\x10' +           # CKE
+            b'\x00\x00\x0c' +   # Handshake message length
+            b'\x00'*12))
+
+    def test_createDH(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+
+        cke.createDH(2**64+3)
+
+        bts = cke.write()
+
+        self.assertEqual(bts, bytearray(
+            b'\x10' +
+            b'\x00\x00\x0b' +
+            b'\x00\x09' +
+            b'\x01' + b'\x00'*7 + b'\x03'))
+
+    def test_createECDH(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
+
+        cke.createECDH(bytearray(b'\x04\xff\xab'))
+
+        bts = cke.write()
+
+        self.assertEqual(bts, bytearray(
+            b'\x10'         # type - CKE
+            b'\x00\x00\x04' # overall length
+            b'\x03'         # length of point encoding
+            b'\x04\xff\xab' # point encoding
+            ))
+
+    def test_createRSA_with_unset_protocol(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA)
+
+        cke.createRSA(bytearray(12))
+
+        with self.assertRaises(AssertionError):
+            cke.write()
+
+    def test_write_with_unknown_cipher_suite(self):
+        cke = ClientKeyExchange(0)
+
+        with self.assertRaises(AssertionError):
+            cke.write()
+
+    def test_write_with_DHE_RSA(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
+                                (3, 1))
+
+        cke.createDH(2**64+3)
+
+        self.assertEqual(cke.write(), bytearray(
+            b'\x10' +
+            b'\x00\x00\x0b' +
+            b'\x00\x09' +
+            b'\x01' + b'\x00'*7 + b'\x03'))
+
+    def test_parse_with_RSA(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+                                (3, 1))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x0e' +
+            b'\x00\x0c' +
+            b'\x00'*12))
+
+        cke.parse(parser)
+
+        self.assertEqual(bytearray(12), cke.encryptedPreMasterSecret)
+
+    def test_parse_with_RSA_in_SSL3(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+                                (3, 0))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x0c' +
+            b'\x00'*12))
+
+        cke.parse(parser)
+
+        self.assertEqual(bytearray(12), cke.encryptedPreMasterSecret)
+
+    def test_parse_with_RSA_and_unset_protocol(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x0c' +
+            b'x\00'*12))
+
+        with self.assertRaises(AssertionError):
+            cke.parse(parser)
+
+    def test_parse_with_SRP(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x0a' +
+            b'\x00\x08' +
+            b'\x00'*7 + b'\xff'))
+
+        cke.parse(parser)
+
+        self.assertEqual(255, cke.srp_A)
+
+    def test_parse_with_DH(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x0a' +
+            b'\x00\x08' +
+            b'\x01' + b'\x00'*7))
+
+        cke.parse(parser)
+
+        self.assertEqual(2**56, cke.dh_Yc)
+
+    def test_parse_with_ECDH(self):
+        cke = ClientKeyExchange(CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x04'
+            b'\x03'
+            b'\x04\xff\xcd'
+            ))
+
+        cke.parse(parser)
+
+        self.assertEqual(cke.ecdh_Yc, bytearray(b'\x04\xff\xcd'))
+
+    def test_parse_with_unknown_cipher(self):
+        cke = ClientKeyExchange(0)
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x00'))
+
+        with self.assertRaises(AssertionError):
+            cke.parse(parser)
+
+class TestClientMasterKey(unittest.TestCase):
+    def test___init__(self):
+        cmk = ClientMasterKey()
+
+        self.assertIsNotNone(cmk)
+        self.assertEqual(cmk.handshakeType,
+                         SSL2HandshakeType.client_master_key)
+
+    def test_create(self):
+        cmk = ClientMasterKey()
+        cmk = cmk.create(1, bytearray(b'\x02'), bytearray(b'\x03\x04'),
+                         bytearray(b'\x05\x06\x07'))
+
+        self.assertEqual(cmk.cipher, 1)
+        self.assertEqual(cmk.clear_key, bytearray(b'\x02'))
+        self.assertEqual(cmk.encrypted_key, bytearray(b'\x03\x04'))
+        self.assertEqual(cmk.key_argument, bytearray(b'\x05\x06\x07'))
+
+    def test_write(self):
+        cmk = ClientMasterKey()
+        cmk = cmk.create(1, bytearray(b'\x02'), bytearray(b'\x03\x04'),
+                         bytearray(b'\x05\x06\x07'))
+
+        self.assertEqual(bytearray(
+            b'\x02' +           # message type
+            b'\x00\x00\x01' +   # cipher spec
+            b'\x00\x01' +       # clear key length
+            b'\x00\x02' +       # encrypted key length
+            b'\x00\x03' +       # key argument length
+            b'\x02' +           # clear key
+            b'\x03\x04' +       # encrypted key
+            b'\x05\x06\x07'     # key argument
+            ), cmk.write())
+
+    def test_parse(self):
+        cmk = ClientMasterKey()
+
+        parser = Parser(bytearray(
+            # type is handled by handshake protocol
+            #b'\x02' +           # message type
+            b'\x00\x00\x01' +   # cipher spec
+            b'\x00\x01' +       # clear key length
+            b'\x00\x02' +       # encrypted key length
+            b'\x00\x03' +       # key argument length
+            b'\x02' +           # clear key
+            b'\x03\x04' +       # encrypted key
+            b'\x05\x06\x07'))   # key argument
+
+        cmk = cmk.parse(parser)
+
+        self.assertEqual(cmk.cipher, 1)
+        self.assertEqual(cmk.clear_key, bytearray(b'\x02'))
+        self.assertEqual(cmk.encrypted_key, bytearray(b'\x03\x04'))
+        self.assertEqual(cmk.key_argument, bytearray(b'\x05\x06\x07'))
+
+class TestServerKeyExchange(unittest.TestCase):
+    def test___init__(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                                (3, 1))
+
+        self.assertIsNotNone(ske)
+        self.assertEqual(ske.cipherSuite,
+                         CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA)
+        self.assertEqual(ske.srp_N, 0)
+        self.assertEqual(ske.srp_g, 0)
+        self.assertEqual(ske.srp_s, bytearray(0))
+        self.assertEqual(ske.srp_B, 0)
+        self.assertEqual(ske.dh_p, 0)
+        self.assertEqual(ske.dh_g, 0)
+        self.assertEqual(ske.dh_Ys, 0)
+        self.assertEqual(ske.signature, bytearray(0))
+        self.assertEqual(ske.version, (3, 1))
+
+    def test___repr__(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA,
+                                (3, 1))
+
+        self.assertEqual("ServerKeyExchange("
+                "cipherSuite=CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA, "
+                "version=(3, 1))",
+                repr(ske))
+
+    def test__repr___with_ADH(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA,
+                                (3, 1))
+
+        ske.createDH(dh_p=31,
+                     dh_g=2,
+                     dh_Ys=16)
+
+        self.assertEqual("ServerKeyExchange("
+                "cipherSuite=CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA, "
+                "version=(3, 1), dh_p=31, dh_g=2, dh_Ys=16)",
+                repr(ske))
+
+    def test___repr___with_DHE(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256,
+                                (3, 3))
+
+        ske.createDH(dh_p=31,
+                     dh_g=2,
+                     dh_Ys=16)
+        ske.signature = bytearray(b'\xff'*4)
+        ske.signAlg = SignatureAlgorithm.rsa
+        ske.hashAlg = HashAlgorithm.sha384
+
+        self.assertEqual("ServerKeyExchange("
+                "cipherSuite=CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256, "
+                "version=(3, 3), dh_p=31, dh_g=2, dh_Ys=16, "
+                "hashAlg=5, signAlg=1, "
+                "signature=bytearray(b'\\xff\\xff\\xff\\xff'))",
+                repr(ske))
+
+    def test___repr___with_SRP(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA,
+                                (3, 3))
+
+        ske.createSRP(srp_N=1,
+                      srp_g=2,
+                      srp_s=bytearray(3),
+                      srp_B=4)
+
+        self.assertEqual("ServerKeyExchange("
+                "cipherSuite=CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA, "
+                "version=(3, 3), "
+                "srp_N=1, srp_g=2, "
+                "srp_s=bytearray(b'\\x00\\x00\\x00'), srp_B=4)",
+                repr(ske))
+
+    def test_createSRP(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA,
+                                (3, 3))
+
+        ske.createSRP(srp_N=1,
+                      srp_g=2,
+                      srp_s=bytearray(3),
+                      srp_B=4)
+
+        self.assertEqual(ske.write(), bytearray(
+            b'\x0c' +               # message type
+            b'\x00\x00\x0d' +       # overall length
+            b'\x00\x01' +           # N parameter length
+            b'\x01' +               # N value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x01' +           # B parameter length
+            b'\x04'                 # B value
+            ))
+
+    def test_createSRP_with_signature(self):
+        ske = ServerKeyExchange(
+                CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
+                (3, 1))
+
+        ske.createSRP(srp_N=1,
+                      srp_g=2,
+                      srp_s=bytearray(3),
+                      srp_B=4)
+        ske.signature = bytearray(b'\xc0\xff\xee')
+
+        self.assertEqual(ske.write(), bytearray(
+            b'\x0c' +               # message type
+            b'\x00\x00\x12' +       # overall length
+            b'\x00\x01' +           # N parameter length
+            b'\x01' +               # N value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x01' +           # B parameter length
+            b'\x04'                 # B value
+            b'\x00\x03' +           # signature length
+            b'\xc0\xff\xee'         # signature value
+            ))
+
+    def test_createSRP_with_signature_in_TLS_v1_2(self):
+        ske = ServerKeyExchange(
+                CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
+                (3, 3))
+
+        ske.createSRP(srp_N=1,
+                      srp_g=2,
+                      srp_s=bytearray(3),
+                      srp_B=4)
+        ske.hashAlg = HashAlgorithm.sha512
+        ske.signAlg = SignatureAlgorithm.rsa
+        ske.signature = bytearray(b'\xc0\xff\xee')
+
+        self.assertEqual(ske.write(), bytearray(
+            b'\x0c' +               # message type
+            b'\x00\x00\x14' +       # overall length
+            b'\x00\x01' +           # N parameter length
+            b'\x01' +               # N value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x01' +           # B parameter length
+            b'\x04' +               # B value
+            b'\x06\x01' +           # SHA512+RSA
+            b'\x00\x03' +           # signature length
+            b'\xc0\xff\xee'         # signature value
+            ))
+
+    def test_createDH(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA,
+                                (3, 3))
+
+        ske.createDH(dh_p=31,
+                     dh_g=2,
+                     dh_Ys=16)
+
+        self.assertEqual(ske.write(), bytearray(
+            b'\x0c' +               # message type
+            b'\x00\x00\x09' +       # overall length
+            b'\x00\x01' +           # p parameter length
+            b'\x1f' +               # p value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x00\x01' +           # Ys parameter length
+            b'\x10'                 # Ys value
+            ))
+
+    def test_createECDH(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+                                (3, 3))
+
+        point = bytearray(b'\x04\x0a\x0a\x0b\x0b')
+        ske.createECDH(ECCurveType.named_curve,
+                       named_curve=GroupName.secp256r1,
+                       point=point)
+        ske.hashAlg = HashAlgorithm.sha1
+        ske.signAlg = SignatureAlgorithm.rsa
+        ske.signature = bytearray(b'\xff'*16)
+
+        self.assertEqual(ske.write(), bytearray(
+            b'\x0c'                 # message type - SKE
+            b'\x00\x00\x1d'         # overall length
+            b'\x03'                 # named_curve
+            b'\x00\x17'             # secp256r1
+            b'\x05'                 # length of point encoding
+            b'\x04\x0a\x0a\x0b\x0b' # point
+            b'\x02\x01'             # RSA+SHA1
+            b'\x00\x10'             # length of signature
+            # signature:
+            b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+            ))
+
+    def test_parse_with_unknown_cipher(self):
+        ske = ServerKeyExchange(0, (3, 1))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x03' +
+            b'\x00\x01' +
+            b'\xff'
+            ))
+
+        with self.assertRaises(AssertionError):
+            ske.parse(parser)
+
+    def test_parse_with_read_past_message_end(self):
+        ske = ServerKeyExchange(\
+                CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
+                (3, 1))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x13' +       # overall length
+            b'\x00\x01' +           # N parameter length
+            b'\x01' +               # N value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x01' +           # B parameter length
+            b'\x04' +               # B value
+            b'\x00\x06' +           # signature length
+            b'\xff'*4))
+
+        with self.assertRaises(SyntaxError):
+            ske.parse(parser)
+
+    def test_parse_with_SRP(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA,
+                                (3, 3))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x0d' +       # overall length
+            b'\x00\x01' +           # N parameter length
+            b'\x01' +               # N value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x01' +           # B parameter length
+            b'\x04'                 # B value
+            ))
+
+        ske.parse(parser)
+
+        self.assertEqual(ske.srp_N, 1)
+        self.assertEqual(ske.srp_g, 2)
+        self.assertEqual(ske.srp_s, bytearray(3))
+        self.assertEqual(ske.srp_B, 4)
+
+    def test_parser_with_SRP_RSA(self):
+        ske = ServerKeyExchange(
+                CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
+                (3, 1))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x12' +       # overall length
+            b'\x00\x01' +           # N parameter length
+            b'\x01' +               # N value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x01' +           # B parameter length
+            b'\x04'                 # B value
+            b'\x00\x03' +           # signature length
+            b'\xc0\xff\xee'         # signature value
+            ))
+
+        ske.parse(parser)
+
+        self.assertEqual(ske.srp_N, 1)
+        self.assertEqual(ske.srp_g, 2)
+        self.assertEqual(ske.srp_s, bytearray(3))
+        self.assertEqual(ske.srp_B, 4)
+        self.assertEqual(ske.signature, bytearray(b'\xc0\xff\xee'))
+
+    def test_parser_with_SRP_RSA_in_TLS_v1_2(self):
+        ske = ServerKeyExchange(
+                CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
+                (3, 3))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x14' +       # overall length
+            b'\x00\x01' +           # N parameter length
+            b'\x01' +               # N value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x01' +           # B parameter length
+            b'\x04'                 # B value
+            b'\x06\x01' +           # SHA512+RSA
+            b'\x00\x03' +           # signature length
+            b'\xc0\xff\xee'         # signature value
+            ))
+
+        ske.parse(parser)
+
+        self.assertEqual(ske.srp_N, 1)
+        self.assertEqual(ske.srp_g, 2)
+        self.assertEqual(ske.srp_s, bytearray(3))
+        self.assertEqual(ske.srp_B, 4)
+        self.assertEqual(ske.signature, bytearray(b'\xc0\xff\xee'))
+        self.assertEqual(ske.hashAlg, HashAlgorithm.sha512)
+        self.assertEqual(ske.signAlg, SignatureAlgorithm.rsa)
+
+    def test_parser_with_DH(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA,
+                                (3, 3))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x09' +       # overall length
+            b'\x00\x01' +           # p parameter length
+            b'\x1f' +               # p value
+            b'\x00\x01' +           # g parameter length
+            b'\x02' +               # g value
+            b'\x00\x01' +           # Ys parameter length
+            b'\x10'                 # Ys value
+            ))
+
+        ske.parse(parser)
+
+        self.assertEqual(ske.dh_p, 31)
+        self.assertEqual(ske.dh_g, 2)
+        self.assertEqual(ske.dh_Ys, 16)
+
+    def test_parser_with_ECDH(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+                                (3, 3))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x1d'         # overall length
+            b'\x03'                 # named_curve
+            b'\x00\x17'             # secp256r1
+            b'\x05'                 # length of point encoding
+            b'\x04\x0a\x0a\x0b\x0b' # point
+            b'\x02\x01'             # RSA+SHA1
+            b'\x00\x10'             # length of signature
+            # signature:
+            b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+            ))
+
+        ske.parse(parser)
+
+        self.assertEqual(ske.curve_type, ECCurveType.named_curve)
+        self.assertEqual(ske.named_curve, GroupName.secp256r1)
+        self.assertEqual(ske.ecdh_Ys, bytearray(b'\x04\x0a\x0a\x0b\x0b'))
+        self.assertEqual(ske.signature, bytearray(b'\xff'*16))
+
+    def test_hash(self):
+        ske = ServerKeyExchange(
+                CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
+                (3, 1))
+
+        ske.createSRP(srp_N=1,
+                      srp_g=2,
+                      srp_s=bytearray(3),
+                      srp_B=4)
+
+        hash1 = ske.hash(bytearray(32), bytearray(32))
+
+        self.assertEqual(hash1, bytearray(
+            b'\xcb\xe6\xd3=\x8b$\xff\x97e&\xb2\x89\x1dA\xab>' +
+            b'\x8e?YW\xcd\xad\xc6\x83\x91\x1d.fe,\x17y' +
+            b'=\xc4T\x89'))
+
+    def test_hash_with_invalid_ciphersuite(self):
+        ske = ServerKeyExchange(0, (3, 1))
+
+        with self.assertRaises(AssertionError):
+            ske.hash(bytearray(32), bytearray(32))
+
+    def test_hash_with_sha1_hash_algorithm_for_TLS_v1_2(self):
+        ske = ServerKeyExchange(
+                CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
+                (3, 3))
+
+        ske.createSRP(srp_N=1,
+                      srp_g=2,
+                      srp_s=bytearray(3),
+                      srp_B=4)
+        ske.hashAlg = HashAlgorithm.sha1
+
+        hash1 = ske.hash(bytearray(32), bytearray(32))
+
+        self.assertEqual(hash1, bytearray(
+            b'\x8e?YW\xcd\xad\xc6\x83\x91\x1d.fe,\x17y=\xc4T\x89'
+            ))
+
+    def test_hash_with_invalid_hash_algorithm(self):
+       ske = ServerKeyExchange(
+               CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
+               (3, 3))
+
+       ske.createDH(1, 2, 3)
+       ske.hashAlg = 300
+
+       with self.assertRaises(AssertionError):
+           ske.hash(bytearray(32), bytearray(32))
+
+class TestCertificateRequest(unittest.TestCase):
+    def test___init__(self):
+        cr = CertificateRequest((3, 0))
+
+        self.assertIsNotNone(cr)
+        self.assertEqual(cr.version, (3, 0))
+        self.assertEqual(cr.certificate_types, [])
+        self.assertEqual(cr.certificate_authorities, [])
+        self.assertEqual(cr.supported_signature_algs, [])
+
+    def test_create(self):
+        cr = CertificateRequest((3, 0))
+        cr.create([ClientCertificateType.rsa_sign], [])
+
+        self.assertEqual(cr.certificate_authorities, [])
+        self.assertEqual(cr.certificate_types, [ClientCertificateType.rsa_sign])
+
+        # XXX type change from array!
+        self.assertEqual(cr.supported_signature_algs, tuple())
+
+    def test_parse(self):
+        cr = CertificateRequest((3, 1))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x04' +       # overall length
+            b'\x01' +               # length of certificate types
+            b'\x01' +               # type rsa_sign
+            b'\x00\x00'             # length of CA list
+            ))
+
+        cr.parse(parser)
+
+        self.assertEqual(cr.certificate_authorities, [])
+        self.assertEqual(cr.certificate_types,
+                         [ClientCertificateType.rsa_sign])
+
+    def test_parse_with_TLSv1_2(self):
+        cr = CertificateRequest((3, 3))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x1a' +       # overall length
+            b'\x01' +               # length of certificate types
+            b'\x01' +               # type rsa_sign
+            b'\x00\x0a' +           # length of signature types
+            b'\x06\x01' +           # SHA512+RSA
+            b'\x05\x01' +           # SHA384+RSA
+            b'\x04\x01' +           # SHA256+RSA
+            b'\x03\x01' +           # SHA224+RSA
+            b'\x02\x01' +           # SHA1+RSA
+            b'\x00\x0a' +           # length of CA list
+            b'\x00'*10              # opaque data type
+            ))
+
+        cr.parse(parser)
+
+        self.assertEqual(cr.certificate_types, [ClientCertificateType.rsa_sign])
+        self.assertEqual(cr.supported_signature_algs,
+                         [(HashAlgorithm.sha512, SignatureAlgorithm.rsa),
+                          (HashAlgorithm.sha384, SignatureAlgorithm.rsa),
+                          (HashAlgorithm.sha256, SignatureAlgorithm.rsa),
+                          (HashAlgorithm.sha224, SignatureAlgorithm.rsa),
+                          (HashAlgorithm.sha1, SignatureAlgorithm.rsa)])
+
+        self.assertEqual(len(cr.certificate_authorities), 5)
+        for cert_auth in cr.certificate_authorities:
+            self.assertEqual(cert_auth, bytearray(0))
+
+    def test_write(self):
+        cr = CertificateRequest((3, 1))
+        cr.create([ClientCertificateType.rsa_sign], [bytearray(b'\xff\xff')])
+
+        self.assertEqual(cr.write(), bytearray(
+            b'\x0d' +               # type
+            b'\x00\x00\x08' +       # overall length
+            b'\x01' +               # length of certificate types
+            b'\x01' +               # type rsa sign
+            b'\x00\x04' +           # length of CA list
+            b'\x00\x02' +           # length of entry
+            b'\xff\xff'             # opaque
+            ))
+
+    def test_write_in_TLS_v1_2(self):
+        cr = CertificateRequest((3, 3))
+        self.assertEqual(cr.version, (3, 3))
+        cr.create([ClientCertificateType.rsa_sign],
+                  [],
+                  [(6, 1), (4, 1), (2, 1)])
+
+        self.assertEqual(cr.write(), bytearray(
+            b'\x0d' +               # type
+            b'\x00\x00\x0c' +       # overall length
+            b'\x01' +               # length of certificate types
+            b'\x01' +               # type rsa sign
+            b'\x00\x06' +           # signature types
+            b'\x06\x01' +           # SHA512+RSA
+            b'\x04\x01' +           # SHA256+RSA
+            b'\x02\x01' +           # SHA1+RSA
+            b'\x00\x00'             # length of CA list
+            ))
+
+class TestCertificateVerify(unittest.TestCase):
+    def test___init__(self):
+        cv = CertificateVerify((3, 1))
+
+        self.assertIsNotNone(cv)
+        self.assertEqual(cv.signature, bytearray(0))
+
+    def test_create(self):
+        cv = CertificateVerify((3, 1))
+
+        cv.create(bytearray(b'\xf0\x0f'))
+
+        self.assertEqual(cv.signature, bytearray(b'\xf0\x0f'))
+
+    def test_write(self):
+        cv = CertificateVerify((3, 1))
+
+        cv.create(bytearray(b'\xf0\x0f'))
+
+        self.assertEqual(cv.write(), bytearray(
+            b'\x0f' +               # type
+            b'\x00\x00\x04' +       # overall length
+            b'\x00\x02' +           # length of signature
+            b'\xf0\x0f'             # signature
+            ))
+
+    def test_parse(self):
+        cv = CertificateVerify((3, 1))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x04' +       # length
+            b'\x00\x02' +           # length of signature
+            b'\xf0\x0f'             # signature
+            ))
+
+        cv.parse(parser)
+
+        self.assertEqual(cv.signature, bytearray(b'\xf0\x0f'))
+
+    def test_parse_with_TLSv1_2(self):
+        cv = CertificateVerify((3, 3))
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x06' +       # length
+            b'\x02\x01' +           # SHA1 + RSA
+            b'\x00\x02' +           # length of signature
+            b'\xab\xcd'             # signature
+            ))
+
+        cv.parse(parser)
+
+        self.assertEqual(cv.signature, bytearray(b'\xab\xcd'))
+        self.assertEqual(cv.signatureAlgorithm, (HashAlgorithm.sha1,
+                                                 SignatureAlgorithm.rsa))
+
+    def test_write_with_TLSv1_2(self):
+        cv = CertificateVerify((3, 3))
+
+        cv.create(bytearray(b'\xff\xba'), (HashAlgorithm.sha512,
+                                           SignatureAlgorithm.rsa))
+
+        self.assertEqual(cv.write(), bytearray(
+            b'\x0f' +               # type
+            b'\x00\x00\x06' +       # overall length
+            b'\x06\x01' +           # SHA512+RSA
+            b'\x00\x02' +           # signature length
+            b'\xff\xba'             # signature
+            ))
+
+class TestServerHelloDone(unittest.TestCase):
+    def test___init__(self):
+        shd = ServerHelloDone()
+
+        self.assertIsNotNone(shd)
+
+    def test___repr__(self):
+        shd = ServerHelloDone()
+
+        self.assertEqual("ServerHelloDone()", repr(shd))
+
+class TestClientFinished(unittest.TestCase):
+    def test___init__(self):
+        fin = ClientFinished()
+
+        self.assertIsNotNone(fin)
+        self.assertEqual(fin.handshakeType, SSL2HandshakeType.client_finished)
+
+    def test_create(self):
+        fin = ClientFinished()
+        fin.create(bytearray(b'\xc0\xfe'))
+
+        self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
+
+    def test_write(self):
+        fin = ClientFinished()
+        fin = fin.create(bytearray(b'\xc0\xfe'))
+
+        self.assertEqual(bytearray(
+            b'\x03' +   # message type
+            b'\xc0\xfe' # message payload
+            ), fin.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            # type is handled by higher protocol level
+            b'\xc0\xfe'))
+
+        fin = ClientFinished()
+        fin = fin.parse(parser)
+
+        self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
+        self.assertEqual(fin.handshakeType, SSL2HandshakeType.client_finished)
+
+class TestServerFinished(unittest.TestCase):
+    def test___init__(self):
+        fin = ServerFinished()
+
+        self.assertIsNotNone(fin)
+        self.assertEqual(fin.handshakeType, SSL2HandshakeType.server_finished)
+
+    def test_create(self):
+        fin = ServerFinished()
+        fin = fin.create(bytearray(b'\xc0\xfe'))
+
+        self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
+
+    def test_write(self):
+        fin = ServerFinished()
+        fin.create(bytearray(b'\xc0\xfe'))
+
+        self.assertEqual(bytearray(
+            b'\x06' +   # message type
+            b'\xc0\xfe' # message payload
+            ), fin.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            # type is handled by higher protocol level
+            b'\xc0\xfe'))
+
+        fin = ServerFinished()
+        fin = fin.parse(parser)
+
+        self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
+        self.assertEqual(fin.handshakeType, SSL2HandshakeType.server_finished)
 
 if __name__ == '__main__':
     unittest.main()

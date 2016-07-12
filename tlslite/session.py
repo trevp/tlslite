@@ -41,7 +41,11 @@ class Session(object):
     @ivar tackExt: The server's TackExtension (or None).
 
     @type tackInHelloExt: L{bool}
-    @ivar tackInHelloExt: True if a TACK was presented via TLS Extension.
+    @ivar tackInHelloExt:True if a TACK was presented via TLS Extension.
+
+    @type encryptThenMAC: bool
+    @ivar encryptThenMAC: True if connection uses CBC cipher in
+    encrypt-then-MAC mode
     """
 
     def __init__(self):
@@ -55,10 +59,13 @@ class Session(object):
         self.tackInHelloExt = False
         self.serverName = ""
         self.resumable = False
+        self.encryptThenMAC = False
+        self.extendedMasterSecret = False
 
     def create(self, masterSecret, sessionID, cipherSuite,
-            srpUsername, clientCertChain, serverCertChain, 
-            tackExt, tackInHelloExt, serverName, resumable=True):
+               srpUsername, clientCertChain, serverCertChain,
+               tackExt, tackInHelloExt, serverName, resumable=True,
+               encryptThenMAC=False, extendedMasterSecret=False):
         self.masterSecret = masterSecret
         self.sessionID = sessionID
         self.cipherSuite = cipherSuite
@@ -69,6 +76,8 @@ class Session(object):
         self.tackInHelloExt = tackInHelloExt  
         self.serverName = serverName
         self.resumable = resumable
+        self.encryptThenMAC = encryptThenMAC
+        self.extendedMasterSecret = extendedMasterSecret
 
     def _clone(self):
         other = Session()
@@ -82,6 +91,8 @@ class Session(object):
         other.tackInHelloExt = self.tackInHelloExt
         other.serverName = self.serverName
         other.resumable = self.resumable
+        other.encryptThenMAC = self.encryptThenMAC
+        other.extendedMasterSecret = self.extendedMasterSecret
         return other
 
     def valid(self):

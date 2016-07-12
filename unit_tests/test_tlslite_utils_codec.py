@@ -169,6 +169,35 @@ class TestParser(unittest.TestCase):
         self.assertEqual(5, p.get(1))
         self.assertEqual(0, p.getRemainingLength())
 
+    def test_getVarTupleList(self):
+        p = Parser(bytearray(
+            b'\x00\x06' +       # length of list
+            b'\x01\x00' +       # first tuple
+            b'\x01\x05' +       # second tuple
+            b'\x04\x00'         # third tuple
+            ))
+
+        self.assertEqual(p.getVarTupleList(1, 2, 2),
+                [(1, 0),
+                 (1, 5),
+                 (4, 0)])
+
+    def test_getVarTupleList_with_missing_elements(self):
+        p = Parser(bytearray(
+            b'\x00\x02' +
+            b'\x00'))
+
+        with self.assertRaises(SyntaxError):
+            p.getVarTupleList(1, 2, 2)
+
+    def test_getVarTupleList_with_incorrect_length(self):
+        p = Parser(bytearray(
+            b'\x00\x03' +
+            b'\x00'*3))
+
+        with self.assertRaises(SyntaxError):
+            p.getVarTupleList(1, 2, 2)
+
 class TestWriter(unittest.TestCase):
     def test___init__(self):
         w = Writer()
@@ -221,6 +250,38 @@ class TestWriter(unittest.TestCase):
         w.add(15, 1)
 
         self.assertEqual(bytearray(b'\xbe\xef\x0f'), w.bytes)
+
+    def test_addVarTupleSeq(self):
+        w = Writer()
+        w.addVarTupleSeq([(1, 2), (2, 9)], 1, 2)
+
+        self.assertEqual(bytearray(
+            b'\x00\x04' + # length
+            b'\x01\x02' + # first tuple
+            b'\x02\x09'   # second tuple
+            ), w.bytes)
+
+    def test_addVarTupleSeq_with_single_element_tuples(self):
+        w = Writer()
+        w.addVarTupleSeq([[1], [9], [12]], 2, 3)
+
+        self.assertEqual(bytearray(
+            b'\x00\x00\x06' + # length
+            b'\x00\x01' + # 1st element
+            b'\x00\x09' + # 2nd element
+            b'\x00\x0c'), w.bytes)
+
+    def test_addVarTupleSeq_with_empty_array(self):
+        w = Writer()
+        w.addVarTupleSeq([], 1, 2)
+
+        self.assertEqual(bytearray(
+            b'\x00\x00'), w.bytes)
+
+    def test_addVarTupleSeq_with_invalid_sized_tuples(self):
+        w = Writer()
+        with self.assertRaises(ValueError):
+            w.addVarTupleSeq([(1, 2), (2, 3, 9)], 1, 2)
 
 if __name__ == '__main__':
     unittest.main()

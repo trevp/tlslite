@@ -13,8 +13,9 @@ import os
 import math
 import base64
 import binascii
+import sys
 
-from .compat import *
+from .compat import compat26Str, compatHMAC, compatLong
 
 
 # **************************************************************************
@@ -25,6 +26,14 @@ from .compat import *
 try:
     from M2Crypto import m2
     m2cryptoLoaded = True
+
+    try:
+        with open('/proc/sys/crypto/fips_enabled', 'r') as fipsFile:
+            if '1' in fipsFile.read():
+                m2cryptoLoaded = False
+    except (IOError, OSError):
+        # looks like we're running in container, likely not FIPS mode
+        m2cryptoLoaded = True
 
 except ImportError:
     m2cryptoLoaded = False
@@ -50,9 +59,7 @@ except ImportError:
 
 # Check that os.urandom works
 import zlib
-length = len(zlib.compress(os.urandom(1000)))
-assert(length > 900)
-del length
+assert len(zlib.compress(os.urandom(1000))) > 900
 
 def getRandomBytes(howMany):
     b = bytearray(os.urandom(howMany))
@@ -66,13 +73,21 @@ prngName = "os.urandom"
 # **************************************************************************
 
 import hmac
-import hashlib
+from . import tlshashlib as hashlib
 
 def MD5(b):
-    return bytearray(hashlib.md5(compat26Str(b)).digest())
+    """Return a MD5 digest of data"""
+    return secureHash(b, 'md5')
 
 def SHA1(b):
-    return bytearray(hashlib.sha1(compat26Str(b)).digest())
+    """Return a SHA1 digest of data"""
+    return secureHash(b, 'sha1')
+
+def secureHash(data, algorithm):
+    """Return a digest of `data` using `algorithm`"""
+    hashInstance = hashlib.new(algorithm)
+    hashInstance.update(compat26Str(data))
+    return bytearray(hashInstance.digest())
 
 def HMAC_MD5(k, b):
     k = compatHMAC(k)
@@ -88,6 +103,11 @@ def HMAC_SHA256(k, b):
     k = compatHMAC(k)
     b = compatHMAC(b)
     return bytearray(hmac.new(k, b, hashlib.sha256).digest())
+
+def HMAC_SHA384(k, b):
+    k = compatHMAC(k)
+    b = compatHMAC(b)
+    return bytearray(hmac.new(k, b, hashlib.sha384).digest())
 
 # **************************************************************************
 # Converter Functions
@@ -144,22 +164,22 @@ def numberToMPI(n):
 # **************************************************************************
 
 def numBits(n):
+    """Return number of bits necessary to represent the integer in binary"""
     if n==0:
         return 0
-    s = "%x" % n
-    return ((len(s)-1)*4) + \
-    {'0':0, '1':1, '2':2, '3':2,
-     '4':3, '5':3, '6':3, '7':3,
-     '8':4, '9':4, 'a':4, 'b':4,
-     'c':4, 'd':4, 'e':4, 'f':4,
-     }[s[0]]
-    return int(math.floor(math.log(n, 2))+1)
+    if sys.version_info < (2, 7):
+        # bit_length() was introduced in 2.7, and it is an order of magnitude
+        # faster than the below code
+        return len(bin(n))-2
+    else:
+        return n.bit_length()
 
 def numBytes(n):
+    """Return number of bytes necessary to represent the integer in bytes"""
     if n==0:
         return 0
     bits = numBits(n)
-    return int(math.ceil(bits / 8.0))
+    return (bits + 7) // 8
 
 # **************************************************************************
 # Big Number Math

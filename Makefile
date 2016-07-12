@@ -18,10 +18,14 @@ install:
 
 .PHONY : clean
 clean:
+	rm -rf tlslite/__pycache__
+	rm -rf tlslite/integration/__pycache__
+	rm -rf tlslite/utils/__pycache__
 	rm -rf tlslite/*.pyc
 	rm -rf tlslite/utils/*.pyc
-	rm -rf tlslite/integration/*.pyc	
+	rm -rf tlslite/integration/*.pyc
 	rm -rf unit_tests/*.pyc
+	rm -rf unit_tests/__pycache__
 	rm -rf dist
 	rm -rf docs
 	rm -rf build
