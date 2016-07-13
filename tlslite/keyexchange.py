@@ -24,7 +24,7 @@ class KeyExchange(object):
     NOT stable, will get moved from this file
     """
 
-    def __init__(self, cipherSuite, clientHello, serverHello, privateKey):
+    def __init__(self, cipherSuite, clientHello, serverHello, privateKey=None):
         """Initialize KeyExchange. privateKey is the signing private key"""
         self.cipherSuite = cipherSuite
         self.clientHello = clientHello
@@ -228,30 +228,31 @@ class RSAKeyExchange(KeyExchange):
         clientKeyExchange.createRSA(self.encPremasterSecret)
         return clientKeyExchange
 
-# the DHE_RSA part comes from IETF ciphersuite names, we want to keep it
-#pylint: disable = invalid-name
-class DHE_RSAKeyExchange(KeyExchange):
-    """
-    Handling of ephemeral Diffe-Hellman Key exchange
 
-    NOT stable API, do NOT use
+class ADHKeyExchange(KeyExchange):
+    """
+    Handling of anonymous Diffe-Hellman Key exchange
+
+    FFDHE without signing serverKeyExchange useful for anonymous DH
     """
 
-    def __init__(self, cipherSuite, clientHello, serverHello, privateKey):
-        super(DHE_RSAKeyExchange, self).__init__(cipherSuite, clientHello,
-                                                 serverHello, privateKey)
+    def __init__(self, cipherSuite, clientHello, serverHello):
+        super(ADHKeyExchange, self).__init__(cipherSuite, clientHello,
+                                             serverHello)
 #pylint: enable = invalid-name
         self.dh_Xs = None
         self.dh_Yc = None
 
     # 2048-bit MODP Group (RFC 3526, Section 3)
+    # TODO make configurable
     dh_g, dh_p = goodGroupParameters[2]
 
     # RFC 3526, Section 8.
     strength = 160
-
-    def makeServerKeyExchange(self, sigHash=None):
-        """Prepare server side of key exchange with selected parameters"""
+    def makeServerKeyExchange(self):
+        """
+        Prepare server side of anonymous key exchange with selected parameters
+        """
         # Per RFC 3526, Section 1, the exponent should have double the entropy
         # of the strength of the curve.
         self.dh_Xs = bytesToNumber(getRandomBytes(self.strength * 2 // 8))
@@ -260,7 +261,7 @@ class DHE_RSAKeyExchange(KeyExchange):
         version = self.serverHello.server_version
         serverKeyExchange = ServerKeyExchange(self.cipherSuite, version)
         serverKeyExchange.createDH(self.dh_p, self.dh_g, dh_Ys)
-        self.signServerKeyExchange(serverKeyExchange, sigHash)
+        # No sign for anonymous ServerKeyExchange.
         return serverKeyExchange
 
     def processClientKeyExchange(self, clientKeyExchange):
@@ -292,9 +293,30 @@ class DHE_RSAKeyExchange(KeyExchange):
 
     def makeClientKeyExchange(self):
         """Create client key share for the key exchange"""
-        cke = super(DHE_RSAKeyExchange, self).makeClientKeyExchange()
+        cke = super(ADHKeyExchange, self).makeClientKeyExchange()
         cke.createDH(self.dh_Yc)
         return cke
+
+# the DHE_RSA part comes from IETF ciphersuite names, we want to keep it
+#pylint: disable = invalid-name
+class DHE_RSAKeyExchange(ADHKeyExchange):
+    """
+    Handling of ephemeral Diffe-Hellman Key exchange
+
+    NOT stable API, do NOT use
+    """
+
+    def __init__(self, cipherSuite, clientHello, serverHello, privateKey):
+        super(DHE_RSAKeyExchange, self).__init__(cipherSuite, clientHello,
+                                                 serverHello)
+#pylint: enable = invalid-name
+        self.privateKey = privateKey
+
+    def makeServerKeyExchange(self, sigHash=None):
+        """Prepare server side of key exchange with selected parameters"""
+        ske = super(DHE_RSAKeyExchange, self).makeServerKeyExchange()
+        self.signServerKeyExchange(ske, sigHash)
+        return ske
 
 # The ECDHE_RSA part comes from the IETF names of ciphersuites, so we want to
 # keep it
@@ -475,4 +497,3 @@ class SRPKeyExchange(KeyExchange):
         cke = super(SRPKeyExchange, self).makeClientKeyExchange()
         cke.createSRP(self.A)
         return cke
-
