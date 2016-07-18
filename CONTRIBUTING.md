@@ -46,6 +46,18 @@ dnf install python-ecdsa python3-ecdsa pylint python3-pylint python-diff-cover \
     python3-hypothesis python3-libs python-unittest2 python-mock
 ```
 
+On RHEL 7 you will need to enable [EPEL](https://fedoraproject.org/wiki/EPEL),
+and install [pip](https://pip.pypa.io/en/stable/installing/) for Python3,
+after which you can install the dependencies using:
+
+```
+yum install python-ecdsa python34-ecdsa pylint \
+    python-coverage python34-coverage python2-hypothesis \
+    python34-libs python-unittest2 python-mock python-pip
+pip2 install diff-cover
+pip3 install hypothesis diff-cover pylint
+```
+
 Optional module dependencies:
 
 * tackpy
