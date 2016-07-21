@@ -118,6 +118,13 @@ dnf install m2crypto python-crypto python3-crypto python-gmpy2 python3-gmpy2
   * if you are not sure if the pull will pass the checks it is OK to submit
     a test pull request, but please mark it as such ('[WIP]' in title is
     enough)
+* Once you recieve feedback from reviewers or from the automated systems,
+  modify your local patches (that usually means that you need to prepare
+  "fixup" patches or interactively
+  [rebase](https://help.github.com/articles/about-git-rebase/)) and push
+  updated branch to github (that usually will require to perform a
+  [force push](http://movingfast.io/articles/git-force-pushing/))
+* Wait again for review or automated checks.
 
 ## Additional Resources
 
