@@ -27,6 +27,8 @@ The list goes as follows:
 * git
 * GNU make
 * pip
+* epydoc (you need to [patch](https://sourceforge.net/p/epydoc/bugs/342/)
+  the `epydoc/docparser.py`!)
 
 The python module dependencies are as follows:
 
@@ -43,8 +45,11 @@ On Fedora they can be installed using:
 ```
 dnf install python-ecdsa python3-ecdsa pylint python3-pylint python-diff-cover \
     python3-diff-cover python-coverage python3-coverage python2-hypothesis \
-    python3-hypothesis python3-libs python-unittest2 python-mock
+    python3-hypothesis python3-libs python-unittest2 python-mock epydoc
 ```
+
+Then edit `epydoc/docparser.py` using
+[patch](https://sourceforge.net/p/epydoc/bugs/342/)
 
 On RHEL 7 you will need to enable [EPEL](https://fedoraproject.org/wiki/EPEL),
 and install [pip](https://pip.pypa.io/en/stable/installing/) for Python3,
@@ -54,9 +59,12 @@ after which you can install the dependencies using:
 yum install python-ecdsa python34-ecdsa pylint \
     python-coverage python34-coverage python2-hypothesis \
     python34-libs python-unittest2 python-mock python-pip
-pip2 install diff-cover
+pip2 install diff-cover epydoc
 pip3 install hypothesis diff-cover pylint
 ```
+
+Then edit `epydoc/docparser.py` using
+[patch](https://sourceforge.net/p/epydoc/bugs/342/)
 
 Optional module dependencies:
 
