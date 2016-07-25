@@ -509,7 +509,7 @@ class ClientHello(HandshakeMsg):
 
     def create(self, version, random, session_id, cipher_suites,
                certificate_types=None, srpUsername=None,
-               tack=False, supports_npn=False, serverName=None,
+               tack=False, supports_npn=None, serverName=None,
                extensions=None):
         """
         Create a ClientHello message for sending.
@@ -564,7 +564,8 @@ class ClientHello(HandshakeMsg):
         if not srpUsername is None:
             self.srp_username = bytearray(srpUsername, "utf-8")
         self.tack = tack
-        self.supports_npn = supports_npn
+        if supports_npn is not None:
+            self.supports_npn = supports_npn
         if not serverName is None:
             self.server_name = bytearray(serverName, "utf-8")
         return self

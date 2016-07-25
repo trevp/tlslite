@@ -86,8 +86,7 @@ class TestClientHello(unittest.TestCase):
                             extensions=[NPNExtension()])
 
         self.assertEqual((3, 0), client_hello.client_version)
-        # XXX
-        self.assertEqual([], client_hello.extensions)
+        self.assertEqual([NPNExtension()], client_hello.extensions)
 
     def test_parse(self):
         p = Parser(bytearray(
