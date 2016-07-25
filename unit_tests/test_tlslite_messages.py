@@ -17,7 +17,7 @@ from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         HashAlgorithm, SignatureAlgorithm, ECCurveType, GroupName, \
         SSL2HandshakeType
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
-    SRPExtension, TLSExtension
+    SRPExtension, TLSExtension, NPNExtension
 from tlslite.errors import TLSInternalError
 
 class TestMessage(unittest.TestCase):
@@ -79,6 +79,15 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual(bytearray(0), client_hello.session_id)
         self.assertEqual([], client_hello.cipher_suites)
         self.assertEqual([0], client_hello.compression_methods)
+
+    def test_create_with_NPN_in_extensions(self):
+        client_hello = ClientHello()
+        client_hello.create((3, 0), bytearray(32), bytearray(0), [1],
+                            extensions=[NPNExtension()])
+
+        self.assertEqual((3, 0), client_hello.client_version)
+        # XXX
+        self.assertEqual([], client_hello.extensions)
 
     def test_parse(self):
         p = Parser(bytearray(
