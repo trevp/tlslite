@@ -14,7 +14,7 @@ import math
 
 from tlslite.utils.cryptomath import isPrime, numBits, numBytes, \
         numberToByteArray, MD5, SHA1, secureHash, HMAC_MD5, HMAC_SHA1, \
-        HMAC_SHA256, HMAC_SHA384
+        HMAC_SHA256, HMAC_SHA384, HKDF_expand
 
 class TestIsPrime(unittest.TestCase):
     def test_with_small_primes(self):
@@ -132,15 +132,124 @@ class TestHMACMethods(unittest.TestCase):
     def test_HMAC_SHA256(self):
         self.assertEqual(HMAC_SHA256(b'abc', b'def'),
                          bytearray(b' \xeb\xc0\xf0\x93DG\x014\xf3P@\xf6>'
-                                   b'\xa9\x8b\x1d\x8eAB\x12\x94\x9e\xe5\xc5\x00B'
+                                   b'\xa9\x8b\x1d\x8eAB\x12\x94\x9e\xe5'
+                                   b'\xc5\x00B'
                                    b'\x9d\x15\xea\xb0\x81'))
 
     def test_HMAC_SHA384(self):
         self.assertEqual(HMAC_SHA384(b'abc', b'def'),
-                         bytearray(b'\xec\x14\xd6\x94\x86\tHp\x84\x07\xect\x0e\t~'
-                                   b'\x85?\xe8\xfd\xba\xd4\x86s\x05\xaa\xe8\xfcB\xd0'
-                                   b'\xe8\xaa\xa6V\xe07\x9e\xc5\xc9n\x15\x97\xe0\xbc'
-                                   b'\xefZ\xa6\xdb\x05'))
+                         bytearray(b'\xec\x14\xd6\x94\x86\tHp\x84\x07\xect\x0e'
+                                   b'\t~\x85?\xe8\xfd\xba\xd4\x86s\x05\xaa\xe8'
+                                   b'\xfcB\xd0\xe8\xaa\xa6V\xe07\x9e\xc5\xc9n'
+                                   b'\x15\x97\xe0\xbc\xefZ\xa6\xdb\x05'))
+
+    def test_HMAC_expand_1(self):
+        # RFC 5869 Appendix A.1 Test Vector 1
+        self.assertEqual(HKDF_expand(numberToByteArray(int('0x077709362c2e32df'
+                                                           '0ddc3f0dc47bba6390'
+                                                           'b6c73bb50f9c3122ec'
+                                                           '844ad7c2b3e5',
+                                                           16), 32),
+                                     numberToByteArray(0xf0f1f2f3f4f5f6f7f8f9,
+                                                       10), 42, 'sha256'),
+                         numberToByteArray(int('0x3cb25f25faacd57a90434f64d036'
+                                               '2f2a2d2d0a90cf1a5a4c5db02d56ec'
+                                               'c4c5bf34007208d5b887185865',
+                                               16), 42))
+
+    def test_HMAC_expand_2(self):
+        # RFC 5869 Appendix A.2 Test Vector 2
+        self.assertEqual(HKDF_expand(
+            numberToByteArray(int('0x06a6b88c5853361a06104c9ceb35b45cef7600149'
+                                  '04671014a193f40c15fc244', 16), 32),
+                                     numberToByteArray(int('0xb0b1b2b3b4b5b6b7'
+                                                           'b8b9babbbcbdbebfc0'
+                                                           'c1c2c3c4c5c6c7c8c9'
+                                                           'cacbcccdcecfd0d1d2'
+                                                           'd3d4d5d6d7d8d9dadb'
+                                                           'dcdddedfe0e1e2e3e4'
+                                                           'e5e6e7e8e9eaebeced'
+                                                           'eeeff0f1f2f3f4f5f6'
+                                                           'f7f8f9fafbfcfdf'
+                                                           'eff', 16),
+                                                       80), 82, 'sha256'),
+                         numberToByteArray(int('0xb11e398dc80327a1c8e7f78c596a'
+                                               '49344f012eda2d4efad8a050cc4c19'
+                                               'afa97c59045a99cac7827271cb41c6'
+                                               '5e590e09da3275600c2f09b8367793'
+                                               'a9aca3db71cc30c58179ec3e87c14c'
+                                               '01d5c1f3434f1d87', 16), 82))
+
+    def test_HMAC_expand_3(self):
+        # RFC 5869 Appendix A.3 Test Vector 3
+        self.assertEqual(HKDF_expand(numberToByteArray(int('0x19ef24a32c717b16'
+                                                           '7f33a91d6f648bdf96'
+                                                           '596776afdb6377ac43'
+                                                           '4c1c293ccb04', 16),
+                                                       32), bytearray(),
+                                     42, 'sha256'),
+                         numberToByteArray(int('0x8da4e775a563c18f715f802a063c'
+                                               '5a31b8a11f5c5ee1879ec3454e5f3c'
+                                               '738d2d9d201395faa4b61a96c8',
+                                               16), 42))
+
+    def test_HMAC_expand_4(self):
+        # RFC 5869 Appendix A.4 Test Vector 4
+        self.assertEqual(HKDF_expand(numberToByteArray(int('0x9b6c18c432a7bf8f'
+                                                           '0e71c8eb88f4b30baa'
+                                                           '2ba243', 16), 20),
+                                     numberToByteArray(int('0xf0f1f2f3f4f5f6f7'
+                                                           'f8f9', 16),
+                                                       10), 42, 'sha1'),
+                         numberToByteArray(int('0x085a01ea1b10f36933068b56efa5'
+                                               'ad81a4f14b822f5b091568a9cdd4f1'
+                                               '55fda2c22e422478d305f3f896',
+                                               16), 42))
+
+    def test_HMAC_expand_5(self):
+        # RFC 5869 Appendix A.5 Test Vector 5
+        self.assertEqual(HKDF_expand(numberToByteArray(int('0x8adae09a2a307059'
+                                                           '478d309b26c4115a22'
+                                                           '4cfaf6', 16), 20),
+                                     numberToByteArray(int('0xb0b1b2b3b4b5b6b7'
+                                                           'b8b9babbbcbdbebfc0'
+                                                           'c1c2c3c4c5c6c7c8c9'
+                                                           'cacbcccdcecfd0d1d2'
+                                                           'd3d4d5d6d7d8d9dadb'
+                                                           'dcdddedfe0e1e2e3e4'
+                                                           'e5e6e7e8e9eaebeced'
+                                                           'eeeff0f1f2f3f4f5f6'
+                                                           'f7f8f9fafbfcfdfe'
+                                                           'ff', 16), 80),
+                                     82, 'sha1'),
+                         numberToByteArray(int('0x0bd770a74d1160f7c9f12cd5912a'
+                                               '06ebff6adcae899d92191fe4305673'
+                                               'ba2ffe8fa3f1a4e5ad79f3f334b3b2'
+                                               '02b2173c486ea37ce3d397ed034c7f'
+                                               '9dfeb15c5e927336d0441f4c4300e2'
+                                               'cff0d0900b52d3b4', 16), 82))
+
+    def test_HMAC_expand_6(self):
+        # RFC 5869 Appendix A.6 Test Vector 6
+        self.assertEqual(HKDF_expand(numberToByteArray(int('0xda8c8a73c7fa7728'
+                                                           '8ec6f5e7c297786aa0'
+                                                           'd32d01', 16), 20),
+                                     bytearray(), 42, 'sha1'),
+                         numberToByteArray(int('0x0ac1af7002b3d761d1e55298da9d'
+                                               '0506b9ae52057220a306e07b6b87e8'
+                                               'df21d0ea00033de03984d34918',
+                                               16), 42))
+
+    def test_HMAC_expand_7(self):
+        # RFC 5869 Appendix A.7 Test Vector 7
+        self.assertEqual(HKDF_expand(numberToByteArray(int('0x2adccada18779e7c'
+                                                           '2077ad2eb19d3f3e73'
+                                                           '1385dd', 16), 20),
+                                     bytearray(), 42, 'sha1'),
+                         numberToByteArray(int('0x2c91117204d745f3500d636a62f6'
+                                               '4f0ab3bae548aa53d423b0d1f27ebb'
+                                               'a6f5e5673a081d70cce7acfc48',
+                                               16), 42))
 
 class TestHashMethods(unittest.TestCase):
     def test_MD5(self):

@@ -15,6 +15,8 @@ import base64
 import binascii
 import sys
 
+from .poly1305 import Poly1305
+
 from .compat import compat26Str, compatHMAC, compatLong
 
 
@@ -106,6 +108,15 @@ def HMAC_SHA256(k, b):
 
 def HMAC_SHA384(k, b):
     return secureHMAC(k, b, 'sha384')
+
+def HKDF_expand(PRK, info, L, algorithm):
+    N = Poly1305.divceil(L, getattr(hashlib, algorithm)().digest_size)
+    T = bytearray()
+    Titer = bytearray()
+    for x in range(1, N+2):
+        T += Titer
+        Titer = secureHMAC(PRK, Titer + info + bytearray([x]), algorithm)
+    return T[:L]
 
 # **************************************************************************
 # Converter Functions
