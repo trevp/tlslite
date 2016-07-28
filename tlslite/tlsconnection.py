@@ -1220,6 +1220,25 @@ class TLSConnection(TLSRecordLayer):
                         "Failed to negotiate Extended Master Secret"):
                     yield result
 
+        # notify client that we understood it's renegotiation info extension
+        # or SCSV
+        secureRenego = False
+        renegoExt = clientHello.getExtension(ExtensionType.renegotiation_info)
+        if renegoExt:
+            if renegoExt.renegotiated_connection:
+                for result in self._sendError(
+                        AlertDescription.handshake_failure,
+                        "Non empty renegotiation info extension in "
+                        "initial Client Hello"):
+                    yield result
+            secureRenego = True
+        elif CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV in \
+                clientHello.cipher_suites:
+            secureRenego = True
+        if secureRenego:
+            extensions.append(RenegotiationInfoExtension()
+                              .create(bytearray(0)))
+
         # don't send empty list of extensions
         if not extensions:
             extensions = None
