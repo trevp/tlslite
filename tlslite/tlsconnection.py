@@ -1239,6 +1239,13 @@ class TLSConnection(TLSRecordLayer):
             extensions.append(RenegotiationInfoExtension()
                               .create(bytearray(0)))
 
+        # tell the client what point formats we support
+        if clientHello.getExtension(ExtensionType.ec_point_formats):
+            # even though the selected cipher may not use ECC, client may want
+            # to send a CA certificate with ECDSA...
+            extensions.append(ECPointFormatsExtension().create(
+                [ECPointFormat.uncompressed]))
+
         # don't send empty list of extensions
         if not extensions:
             extensions = None
