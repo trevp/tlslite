@@ -566,6 +566,15 @@ class TestDHE_RSAKeyExchange(unittest.TestCase):
 
         self.assertEqual(client_premaster, server_premaster)
 
+    def test_DHE_RSA_key_exchange_with_invalid_client_key_share(self):
+        clientKeyExchange = ClientKeyExchange(self.cipher_suite,
+                                              (3, 3))
+        clientKeyExchange.createDH(2**16000-1)
+
+        with self.assertRaises(TLSIllegalParameterException):
+            self.keyExchange.processClientKeyExchange(clientKeyExchange)
+
+
     def test_DHE_RSA_key_exchange_with_small_prime(self):
         client_keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
                                                 self.client_hello,

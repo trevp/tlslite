@@ -1220,7 +1220,7 @@ class TLSConnection(TLSRecordLayer):
                         "Failed to negotiate Extended Master Secret"):
                     yield result
 
-        # notify client that we understood it's renegotiation info extension
+        # notify client that we understood its renegotiation info extension
         # or SCSV
         secureRenego = False
         renegoExt = clientHello.getExtension(ExtensionType.renegotiation_info)
@@ -1664,8 +1664,9 @@ class TLSConnection(TLSRecordLayer):
         try:
             premasterSecret = \
                 keyExchange.processClientKeyExchange(clientKeyExchange)
-        except TLSLocalAlert as alert:
-            for result in self._sendError(alert.description, alert.message):
+        except TLSIllegalParameterException as alert:
+            for result in self._sendError(AlertDescription.illegal_parameter,
+                                          str(alert)):
                 yield result
 
         #Get and check CertificateVerify, if relevant
