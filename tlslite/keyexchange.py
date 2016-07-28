@@ -344,8 +344,12 @@ class ECDHE_RSAKeyExchange(KeyExchange):
     def processClientKeyExchange(self, clientKeyExchange):
         """Calculate premaster secret from previously generated SKE and CKE"""
         curveName = GroupName.toRepr(self.group_id)
-        ecdhYc = decodeX962Point(clientKeyExchange.ecdh_Yc,
-                                 getCurveByName(curveName))
+        try:
+            ecdhYc = decodeX962Point(clientKeyExchange.ecdh_Yc,
+                                     getCurveByName(curveName))
+        # TODO update python-ecdsa library to raise something more on point
+        except AssertionError:
+            raise TLSIllegalParameterException("Invalid ECC point")
 
         sharedSecret = ecdhYc * self.ecdhXs
 

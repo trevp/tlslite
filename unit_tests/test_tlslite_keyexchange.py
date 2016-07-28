@@ -842,6 +842,31 @@ class TestECDHE_RSAKeyExchange(unittest.TestCase):
 
         self.assertEqual(cln_premaster, srv_premaster)
 
+    def test_ECDHE_key_exchange_with_invalid_CKE(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        KeyExchange.verifyServerKeyExchange(srv_key_ex,
+                                            self.srv_pub_key,
+                                            self.client_hello.random,
+                                            self.server_hello.random,
+                                            [(HashAlgorithm.sha1,
+                                              SignatureAlgorithm.rsa)])
+
+        curveName = GroupName.toStr(srv_key_ex.named_curve)
+        curve = getCurveByName(curveName)
+        generator = curve.generator
+        cln_Xc = ecdsa.util.randrange(generator.order())
+        cln_Ys = decodeX962Point(srv_key_ex.ecdh_Ys, curve)
+        cln_Yc = encodeX962Point(generator * cln_Xc)
+
+        cln_key_ex = ClientKeyExchange(self.cipher_suite, (3, 3))
+        cln_key_ex.createECDH(cln_Yc)
+
+        cln_key_ex.ecdh_Yc[-1] ^= 0x01
+
+        with self.assertRaises(TLSIllegalParameterException):
+            self.keyExchange.processClientKeyExchange(cln_key_ex)
+
     def test_ECDHE_key_exchange_with_missing_curves(self):
         self.client_hello.extensions = [SNIExtension().create(bytearray(b"a"))]
         with self.assertRaises(TLSInternalError):
