@@ -476,6 +476,12 @@ class TLSRecordLayer(object):
         # If this is the last close() on the outstanding fileobjects / 
         # TLSConnection, then the "actual" close alerts will be sent,
         # socket closed, etc.
+
+        # for writes, we MUST buffer otherwise the lengths of headers leak
+        # through record layer boundaries
+        if 'w' in mode and bufsize == 0:
+            bufsize = 2**14
+
         if sys.version_info < (3,):
             return socket._fileobject(self, mode, bufsize, close=True)
         else:
