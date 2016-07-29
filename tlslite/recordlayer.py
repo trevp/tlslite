@@ -704,6 +704,10 @@ class RecordLayer(object):
         else:
             data = self._decryptStreamThenMAC(header.type, data)
 
+        # RFC 5246, section 6.2.1
+        if len(data) > 2**14:
+            raise TLSRecordOverflow()
+
         yield (header, Parser(data))
 
     #
