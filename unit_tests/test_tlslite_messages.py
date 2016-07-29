@@ -681,9 +681,8 @@ class TestClientHello(unittest.TestCase):
             ))
 
         client_hello = ClientHello()
-        # XXX for TLS1.0 and later this is invalid message
-        #with self.assertRaises(SyntaxError):
-        client_hello.parse(p)
+        with self.assertRaises(SyntaxError):
+            client_hello.parse(p)
 
     def test_parse_with_short_message_trunc_extension_header(self):
         p = Parser(bytearray(
@@ -718,9 +717,8 @@ class TestClientHello(unittest.TestCase):
             ))
 
         client_hello = ClientHello()
-        # XXX does not check if extensions were not truncated
-        #with self.assertRaises(SyntaxError):
-        client_hello.parse(p)
+        with self.assertRaises(SyntaxError):
+            client_hello.parse(p)
 
     def test_parse_with_padded_message(self):
         p = Parser(bytearray(
@@ -737,9 +735,8 @@ class TestClientHello(unittest.TestCase):
             ))
 
         client_hello = ClientHello()
-        # XXX does not check if there is extreneus data after extensions
-        #with self.assertRaises(SyntaxError):
-        client_hello.parse(p)
+        with self.assertRaises(SyntaxError):
+            client_hello.parse(p)
 
 
 class TestServerHello(unittest.TestCase):
