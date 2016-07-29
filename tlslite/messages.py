@@ -22,10 +22,10 @@ from .extensions import *
 
 
 class RecordHeader(object):
-    """Generic interface to SSLv2 and SSLv3 (and later) record headers"""
+    """Generic interface to SSLv2 and SSLv3 (and later) record headers."""
 
     def __init__(self, ssl2):
-        """define instance variables"""
+        """Define instance variables."""
         self.type = 0
         self.version = (0, 0)
         self.length = 0
@@ -33,21 +33,21 @@ class RecordHeader(object):
 
 
 class RecordHeader3(RecordHeader):
-    """SSLv3 (and later) TLS record header"""
+    """SSLv3 (and later) TLS record header."""
 
     def __init__(self):
-        """Define a SSLv3 style class"""
+        """Define a SSLv3 style class."""
         super(RecordHeader3, self).__init__(ssl2=False)
 
     def create(self, version, type, length):
-        """Set object values for writing (serialisation)"""
+        """Set object values for writing (serialisation)."""
         self.type = type
         self.version = version
         self.length = length
         return self
 
     def write(self):
-        """Serialise object to bytearray"""
+        """Serialise object to bytearray."""
         writer = Writer()
         writer.add(self.type, 1)
         writer.add(self.version[0], 1)
@@ -56,7 +56,7 @@ class RecordHeader3(RecordHeader):
         return writer.bytes
 
     def parse(self, parser):
-        """Deserialise object from Parser"""
+        """Deserialise object from Parser."""
         self.type = parser.get(1)
         self.version = (parser.get(1), parser.get(1))
         self.length = parser.get(2)
@@ -85,7 +85,7 @@ class RecordHeader3(RecordHeader):
 
 class RecordHeader2(RecordHeader):
     """
-    SSLv2 record header
+    SSLv2 record header.
 
     @type padding: int
     @ivar padding: number of bytes added at end of message to make it multiple
@@ -95,13 +95,13 @@ class RecordHeader2(RecordHeader):
     """
 
     def __init__(self):
-        """Define a SSLv2 style class"""
+        """Define a SSLv2 style class."""
         super(RecordHeader2, self).__init__(ssl2=True)
         self.padding = 0
         self.securityEscape = False
 
     def parse(self, parser):
-        """Deserialise object from Parser"""
+        """Deserialise object from Parser."""
         firstByte = parser.get(1)
         secondByte = parser.get(1)
         if firstByte & 0x80:
@@ -116,14 +116,14 @@ class RecordHeader2(RecordHeader):
         return self
 
     def create(self, length, padding=0, securityEscape=False):
-        """Set object's values"""
+        """Set object's values."""
         self.length = length
         self.padding = padding
         self.securityEscape = securityEscape
         return self
 
     def write(self):
-        """Serialise object to bytearray"""
+        """Serialise object to bytearray."""
         writer = Writer()
 
         shortHeader = not (self.padding or self.securityEscape)
@@ -149,11 +149,11 @@ class RecordHeader2(RecordHeader):
 
 
 class Message(object):
-    """Generic TLS message"""
+    """Generic TLS message."""
 
     def __init__(self, contentType, data):
         """
-        Initialize object with specified contentType and data
+        Initialize object with specified contentType and data.
 
         @type contentType: int
         @param contentType: TLS record layer content type of associated data
@@ -164,7 +164,7 @@ class Message(object):
         self.data = data
 
     def write(self):
-        """Return serialised object data"""
+        """Return serialised object data."""
         return self.data
 
 
@@ -233,8 +233,7 @@ class HandshakeMsg(object):
 
 class ClientHello(HandshakeMsg):
     """
-    Class for handling the ClientHello TLS message, supports both the SSLv2
-    and SSLv3 style messages.
+    Class for handling the ClientHello SSLv2/SSLv3/TLS message.
 
     @type certificate_types: list
     @ivar certificate_types: list of supported certificate types (deprecated)
@@ -269,7 +268,7 @@ class ClientHello(HandshakeMsg):
 
     def __str__(self):
         """
-        Return human readable representation of Client Hello
+        Return human readable representation of Client Hello.
 
         @rtype: str
         """
@@ -291,7 +290,7 @@ class ClientHello(HandshakeMsg):
 
     def __repr__(self):
         """
-        Return machine readable representation of Client Hello
+        Return machine readable representation of Client Hello.
 
         @rtype: str
         """
@@ -304,7 +303,7 @@ class ClientHello(HandshakeMsg):
 
     def getExtension(self, extType):
         """
-        Returns extension of given type if present, None otherwise
+        Return extension of given type if present, None otherwise.
 
         @rtype: L{tlslite.extensions.TLSExtension}
         @raise TLSInternalError: when there are multiple extensions of the
@@ -324,7 +323,7 @@ class ClientHello(HandshakeMsg):
 
     def addExtension(self, ext):
         """
-        Adds extension to internal list of extensions
+        Add extension to internal list of extensions.
 
         @type ext: TLSExtension
         @param ext: extension object to add to list
@@ -337,7 +336,7 @@ class ClientHello(HandshakeMsg):
     @property
     def certificate_types(self):
         """
-        Returns the list of certificate types supported.
+        Return the list of certificate types supported.
 
         @deprecated: use extensions field to get the extension for inspection
         """
@@ -352,6 +351,8 @@ class ClientHello(HandshakeMsg):
     @certificate_types.setter
     def certificate_types(self, val):
         """
+        Set list of supported certificate types.
+
         Sets the list of supported types to list given in L{val} if the
         cert_type extension is present. Creates the extension and places it
         last in the list otherwise.
@@ -371,7 +372,7 @@ class ClientHello(HandshakeMsg):
     @property
     def srp_username(self):
         """
-        Returns username for the SRP.
+        Return username for the SRP.
 
         @deprecated: use extensions field to get the extension for inspection
         """
@@ -385,7 +386,7 @@ class ClientHello(HandshakeMsg):
     @srp_username.setter
     def srp_username(self, name):
         """
-        Sets the username for SRP.
+        Set the username for SRP.
 
         @type name: bytearray
         @param name: UTF-8 encoded username
@@ -401,7 +402,7 @@ class ClientHello(HandshakeMsg):
     @property
     def tack(self):
         """
-        Returns whatever the client supports TACK
+        Return whether the client supports TACK.
 
         @rtype: boolean
         @deprecated: use extensions field to get the extension for inspection
@@ -416,7 +417,7 @@ class ClientHello(HandshakeMsg):
     @tack.setter
     def tack(self, present):
         """
-        Creates or deletes the TACK extension.
+        Create or delete the TACK extension.
 
         @type present: boolean
         @param present: True will create extension while False will remove
@@ -439,7 +440,7 @@ class ClientHello(HandshakeMsg):
     @property
     def supports_npn(self):
         """
-        Returns whatever client supports NPN extension
+        Return whether client supports NPN extension.
 
         @rtype: boolean
         @deprecated: use extensions field to get the extension for inspection
@@ -454,7 +455,7 @@ class ClientHello(HandshakeMsg):
     @supports_npn.setter
     def supports_npn(self, present):
         """
-        Creates or deletes the NPN extension
+        Create or delete the NPN extension.
 
         @type present: boolean
         @param present: selects whatever to create or remove the extension
@@ -478,7 +479,7 @@ class ClientHello(HandshakeMsg):
     @property
     def server_name(self):
         """
-        Returns first host_name present in SNI extension
+        Return first host_name present in SNI extension.
 
         @rtype: bytearray
         @deprecated: use extensions field to get the extension for inspection
@@ -495,7 +496,7 @@ class ClientHello(HandshakeMsg):
     @server_name.setter
     def server_name(self, hostname):
         """
-        Sets the first host_name present in SNI extension
+        Set the first host_name present in SNI extension.
 
         @type hostname: bytearray
         @param hostname: name of the host_name to set
@@ -572,7 +573,7 @@ class ClientHello(HandshakeMsg):
         return self
 
     def parse(self, p):
-        """Deserialise object from on the wire data"""
+        """Deserialise object from on the wire data."""
         if self.ssl2:
             self.client_version = (p.get(1), p.get(1))
             cipherSpecsLength = p.get(2)
@@ -606,7 +607,7 @@ class ClientHello(HandshakeMsg):
         return self
 
     def _writeSSL2(self):
-        """Serialise SSLv2 object to on the wire data"""
+        """Serialise SSLv2 object to on the wire data."""
         writer = Writer()
         writer.add(self.handshakeType, 1)
         writer.add(self.client_version[0], 1)
@@ -627,7 +628,7 @@ class ClientHello(HandshakeMsg):
         return writer.bytes
 
     def _write(self):
-        """Serialise SSLv3 or TLS object to on the wire data"""
+        """Serialise SSLv3 or TLS object to on the wire data."""
         w = Writer()
         w.add(self.client_version[0], 1)
         w.add(self.client_version[1], 1)
@@ -646,7 +647,7 @@ class ClientHello(HandshakeMsg):
         return self.postWrite(w)
 
     def write(self):
-        """Serialise object to on the wire data"""
+        """Serialise object to on the wire data."""
         if self.ssl2:
             return self._writeSSL2()
         else:
@@ -654,7 +655,8 @@ class ClientHello(HandshakeMsg):
 
 
 class ServerHello(HandshakeMsg):
-    """server_hello message
+    """
+    Handling of Server Hello messages.
 
     @type server_version: tuple
     @ivar server_version: protocol version encoded as two int tuple
@@ -686,7 +688,7 @@ class ServerHello(HandshakeMsg):
     """
 
     def __init__(self):
-        """Initialise ServerHello object"""
+        """Initialise ServerHello object."""
         HandshakeMsg.__init__(self, HandshakeType.server_hello)
         self.server_version = (0, 0)
         self.random = bytearray(32)
@@ -720,8 +722,8 @@ class ServerHello(HandshakeMsg):
                     self.extensions)
 
     def getExtension(self, extType):
-        """Return extension of a given type, None if extension of given type
-        is not present
+        """
+        Return extension of a given type if present, None otherwise.
 
         @rtype: L{TLSExtension}
         @raise TLSInternalError: multiple extensions of the same type present
@@ -740,7 +742,7 @@ class ServerHello(HandshakeMsg):
 
     def addExtension(self, ext):
         """
-        Add extension to internal list of extensions
+        Add extension to internal list of extensions.
 
         @type ext: TLSExtension
         @param ext: extension to add to list
@@ -751,7 +753,7 @@ class ServerHello(HandshakeMsg):
 
     @property
     def tackExt(self):
-        """Returns the TACK extension"""
+        """Return the TACK extension."""
         if self._tack_ext is None:
             ext = self.getExtension(ExtensionType.tack)
             if ext is None or not tackpyLoaded:
@@ -762,7 +764,7 @@ class ServerHello(HandshakeMsg):
 
     @tackExt.setter
     def tackExt(self, val):
-        """Set the TACK extension"""
+        """Set the TACK extension."""
         self._tack_ext = val
         # makes sure that extensions are included in the on the wire encoding
         if val is not None:
@@ -772,7 +774,7 @@ class ServerHello(HandshakeMsg):
     @property
     def certificate_type(self):
         """
-        Returns the certificate type selected by server
+        Return the certificate type selected by server.
 
         @rtype: int
         """
@@ -786,7 +788,7 @@ class ServerHello(HandshakeMsg):
     @certificate_type.setter
     def certificate_type(self, val):
         """
-        Sets the certificate type supported
+        Set the certificate type supported.
 
         @type val: int
         @param val: type of certificate
@@ -805,7 +807,7 @@ class ServerHello(HandshakeMsg):
     @property
     def next_protos(self):
         """
-        Returns the advertised protocols in NPN extension
+        Return the advertised protocols in NPN extension.
 
         @rtype: list of bytearrays
         """
@@ -819,7 +821,7 @@ class ServerHello(HandshakeMsg):
     @next_protos.setter
     def next_protos(self, val):
         """
-        Sets the advertised protocols in NPN extension
+        Set the advertised protocols in NPN extension.
 
         @type val: list
         @param val: list of protocols to advertise as UTF-8 encoded names
@@ -841,7 +843,7 @@ class ServerHello(HandshakeMsg):
     @property
     def next_protos_advertised(self):
         """
-        Returns the advertised protocols in NPN extension
+        Return the advertised protocols in NPN extension.
 
         @rtype: list of bytearrays
         """
@@ -849,7 +851,8 @@ class ServerHello(HandshakeMsg):
 
     @next_protos_advertised.setter
     def next_protos_advertised(self, val):
-        """Sets the advertised protocols in NPN extension
+        """
+        Set the advertised protocols in NPN extension.
 
         @type val: list
         @param val: list of protocols to advertise as UTF-8 encoded names
@@ -860,7 +863,7 @@ class ServerHello(HandshakeMsg):
                certificate_type=None, tackExt=None,
                next_protos_advertised=None,
                extensions=None):
-        """Initialize the object for deserialisation"""
+        """Initialize the object for deserialisation."""
         self.extensions = extensions
         self.server_version = version
         self.random = random
@@ -917,7 +920,7 @@ class ServerHello(HandshakeMsg):
 
 class ServerHello2(HandshakeMsg):
     """
-    SERVER-HELLO message from SSLv2
+    SERVER-HELLO message from SSLv2.
 
     @type session_id_hit: int
     @ivar session_id_hit: non zero if the client provided session ID was
@@ -950,7 +953,7 @@ class ServerHello2(HandshakeMsg):
 
     def create(self, session_id_hit, certificate_type, server_version,
                certificate, ciphers, session_id):
-        """Initialize fields of the SERVER-HELLO message"""
+        """Initialize fields of the SERVER-HELLO message."""
         self.session_id_hit = session_id_hit
         self.certificate_type = certificate_type
         self.server_version = server_version
@@ -960,7 +963,7 @@ class ServerHello2(HandshakeMsg):
         return self
 
     def write(self):
-        """Serialise object to on the wire data"""
+        """Serialise object to on the wire data."""
         writer = Writer()
         writer.add(self.handshakeType, 1)
         writer.add(self.session_id_hit, 1)
@@ -984,7 +987,7 @@ class ServerHello2(HandshakeMsg):
         return writer.bytes
 
     def parse(self, parser):
-        """Deserialise object from on the wire data"""
+        """Deserialise object from on the wire data."""
         self.session_id_hit = parser.get(1)
         self.certificate_type = parser.get(1)
         self.server_version = (parser.get(1), parser.get(1))
@@ -1100,7 +1103,7 @@ class CertificateRequest(HandshakeMsg):
 
 class ServerKeyExchange(HandshakeMsg):
     """
-    Handling TLS Handshake protocol Server Key Exchange messages
+    Handling TLS Handshake protocol Server Key Exchange messages.
 
     @type cipherSuite: int
     @cvar cipherSuite: id of ciphersuite selected in Server Hello message
@@ -1134,7 +1137,7 @@ class ServerKeyExchange(HandshakeMsg):
 
     def __init__(self, cipherSuite, version):
         """
-        Initialise Server Key Exchange for reading or writing
+        Initialise Server Key Exchange for reading or writing.
 
         @type cipherSuite: int
         @param cipherSuite: id of ciphersuite selected by server
@@ -1180,7 +1183,7 @@ class ServerKeyExchange(HandshakeMsg):
         return ret
 
     def createSRP(self, srp_N, srp_g, srp_s, srp_B):
-        """Set SRP protocol parameters"""
+        """Set SRP protocol parameters."""
         self.srp_N = srp_N
         self.srp_g = srp_g
         self.srp_s = srp_s
@@ -1188,21 +1191,21 @@ class ServerKeyExchange(HandshakeMsg):
         return self
 
     def createDH(self, dh_p, dh_g, dh_Ys):
-        """Set FFDH protocol parameters"""
+        """Set FFDH protocol parameters."""
         self.dh_p = dh_p
         self.dh_g = dh_g
         self.dh_Ys = dh_Ys
         return self
 
     def createECDH(self, curve_type, named_curve=None, point=None):
-        """Set ECDH protocol parameters"""
+        """Set ECDH protocol parameters."""
         self.curve_type = curve_type
         self.named_curve = named_curve
         self.ecdh_Ys = point
 
     def parse(self, parser):
         """
-        Deserialise message from L{Parser}
+        Deserialise message from L{Parser}.
 
         @type parser: L{Parser}
         @param parser: parser to read data from
@@ -1237,7 +1240,7 @@ class ServerKeyExchange(HandshakeMsg):
 
     def writeParams(self):
         """
-        Serialise the key exchange parameters
+        Serialise the key exchange parameters.
 
         @rtype: bytearray
         """
@@ -1262,7 +1265,7 @@ class ServerKeyExchange(HandshakeMsg):
 
     def write(self):
         """
-        Serialise complete message
+        Serialise complete message.
 
         @rtype: bytearray
         """
@@ -1278,7 +1281,7 @@ class ServerKeyExchange(HandshakeMsg):
 
     def hash(self, clientRandom, serverRandom):
         """
-        Calculate hash of parameters to sign
+        Calculate hash of parameters to sign.
 
         @rtype: bytearray
         """
@@ -1309,13 +1312,13 @@ class ServerHelloDone(HandshakeMsg):
         return self.postWrite(w)
 
     def __repr__(self):
-        """Human readable representation of object"""
+        """Human readable representation of object."""
         return "ServerHelloDone()"
 
 
 class ClientKeyExchange(HandshakeMsg):
     """
-    Handling of TLS Handshake protocol ClientKeyExchange message
+    Handling of TLS Handshake protocol ClientKeyExchange message.
 
     @type cipherSuite: int
     @ivar cipherSuite: the cipher suite id used for the connection
@@ -1334,7 +1337,7 @@ class ClientKeyExchange(HandshakeMsg):
 
     def __init__(self, cipherSuite, version=None):
         """
-        Initialise ClientKeyExchange for reading or writing
+        Initialise ClientKeyExchange for reading or writing.
 
         @type cipherSuite: int
         @param cipherSuite: id of the ciphersuite selected by server
@@ -1351,7 +1354,7 @@ class ClientKeyExchange(HandshakeMsg):
 
     def createSRP(self, srp_A):
         """
-        Set the SRP client answer
+        Set the SRP client answer.
 
         returns self
 
@@ -1364,7 +1367,7 @@ class ClientKeyExchange(HandshakeMsg):
 
     def createRSA(self, encryptedPreMasterSecret):
         """
-        Set the encrypted PreMaster Secret
+        Set the encrypted PreMaster Secret.
 
         returns self
 
@@ -1376,7 +1379,7 @@ class ClientKeyExchange(HandshakeMsg):
 
     def createDH(self, dh_Yc):
         """
-        Set the client FFDH key share
+        Set the client FFDH key share.
 
         returns self
 
@@ -1388,7 +1391,7 @@ class ClientKeyExchange(HandshakeMsg):
 
     def createECDH(self, ecdh_Yc):
         """
-        Set the client ECDH key share
+        Set the client ECDH key share.
 
         returns self
 
@@ -1400,7 +1403,7 @@ class ClientKeyExchange(HandshakeMsg):
 
     def parse(self, parser):
         """
-        Deserialise the message from L{Parser}
+        Deserialise the message from L{Parser},
 
         returns self
 
@@ -1429,7 +1432,7 @@ class ClientKeyExchange(HandshakeMsg):
 
     def write(self):
         """
-        Serialise the object
+        Serialise the object.
 
         @rtype: bytearray
         """
@@ -1454,7 +1457,7 @@ class ClientKeyExchange(HandshakeMsg):
 
 class ClientMasterKey(HandshakeMsg):
     """
-    Handling of SSLv2 CLIENT-MASTER-KEY message
+    Handling of SSLv2 CLIENT-MASTER-KEY message.
 
     @type cipher: int
     @ivar cipher: negotiated cipher
@@ -1479,7 +1482,7 @@ class ClientMasterKey(HandshakeMsg):
         self.key_argument = bytearray(0)
 
     def create(self, cipher, clear_key, encrypted_key, key_argument):
-        """Set values of the CLIENT-MASTER-KEY object"""
+        """Set values of the CLIENT-MASTER-KEY object."""
         self.cipher = cipher
         self.clear_key = clear_key
         self.encrypted_key = encrypted_key
@@ -1487,7 +1490,7 @@ class ClientMasterKey(HandshakeMsg):
         return self
 
     def write(self):
-        """Serialise the object to on the wire data"""
+        """Serialise the object to on the wire data."""
         writer = Writer()
         writer.add(self.handshakeType, 1)
         writer.add(self.cipher, 3)
@@ -1500,7 +1503,7 @@ class ClientMasterKey(HandshakeMsg):
         return writer.bytes
 
     def parse(self, parser):
-        """Deserialise object from on the wire data"""
+        """Deserialise object from on the wire data."""
         self.cipher = parser.get(3)
         clear_key_length = parser.get(2)
         encrypted_key_length = parser.get(2)
@@ -1516,11 +1519,11 @@ class ClientMasterKey(HandshakeMsg):
 
 
 class CertificateVerify(HandshakeMsg):
-    """Serializer for TLS handshake protocol Certificate Verify message"""
+    """Serializer for TLS handshake protocol Certificate Verify message."""
 
     def __init__(self, version):
         """
-        Create message
+        Create message.
 
         @param version: TLS protocol version in use
         """
@@ -1531,7 +1534,7 @@ class CertificateVerify(HandshakeMsg):
 
     def create(self, signature, signatureAlgorithm=None):
         """
-        Provide data for serialisation of message
+        Provide data for serialisation of message.
 
         @param signature: signature carried in the message
         @param signatureAlgorithm: signature algorithm used to make the
@@ -1543,7 +1546,7 @@ class CertificateVerify(HandshakeMsg):
 
     def parse(self, parser):
         """
-        Deserialize message from parser
+        Deserialize message from parser.
 
         @param parser: parser with data to read
         """
@@ -1556,7 +1559,7 @@ class CertificateVerify(HandshakeMsg):
 
     def write(self):
         """
-        Serialize the data to bytearray
+        Serialize the data to bytearray.
 
         @rtype: bytearray
         """
@@ -1641,24 +1644,24 @@ class Finished(HandshakeMsg):
 
 
 class SSL2Finished(HandshakeMsg):
-    """Handling of the SSL2 FINISHED messages"""
+    """Handling of the SSL2 FINISHED messages."""
 
     def __init__(self, msg_type):
         super(SSL2Finished, self).__init__(msg_type)
         self.verify_data = bytearray(0)
 
     def create(self, verify_data):
-        """Set the message payload"""
+        """Set the message payload."""
         self.verify_data = verify_data
         return self
 
     def parse(self, parser):
-        """Deserialise the message from on the wire data"""
+        """Deserialise the message from on the wire data."""
         self.verify_data = parser.getFixBytes(parser.getRemainingLength())
         return self
 
     def write(self):
-        """Serialise the message to on the wire data"""
+        """Serialise the message to on the wire data."""
         writer = Writer()
         writer.add(self.handshakeType, 1)
         writer.addFixSeq(self.verify_data, 1)
@@ -1668,7 +1671,7 @@ class SSL2Finished(HandshakeMsg):
 
 class ClientFinished(SSL2Finished):
     """
-    Handling of SSLv2 CLIENT-FINISHED message
+    Handling of SSLv2 CLIENT-FINISHED message.
 
     @type verify_data: bytearray
     @ivar verify_data: payload of the message, should be the CONNECTION-ID
@@ -1680,7 +1683,7 @@ class ClientFinished(SSL2Finished):
 
 class ServerFinished(SSL2Finished):
     """
-    Handling of SSLv2 SERVER-FINISHED message
+    Handling of SSLv2 SERVER-FINISHED message.
 
     @type verify_data: bytearray
     @ivar verify_data: payload of the message, should be SESSION-ID
