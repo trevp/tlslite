@@ -1,4 +1,4 @@
-# Authors: 
+# Authors:
 #   Trevor Perrin
 #   Google - handling CertificateRequest.certificate_types
 #   Google (adapted by Sam Rushing and Marcelo Fernandez) - NPN support
@@ -20,6 +20,7 @@ from .x509certchain import X509CertChain
 from .utils.tackwrapper import *
 from .extensions import *
 
+
 class RecordHeader(object):
 
     """Generic interface to SSLv2 and SSLv3 (and later) record headers"""
@@ -30,6 +31,7 @@ class RecordHeader(object):
         self.version = (0, 0)
         self.length = 0
         self.ssl2 = ssl2
+
 
 class RecordHeader3(RecordHeader):
 
@@ -75,11 +77,13 @@ class RecordHeader3(RecordHeader):
     def __str__(self):
         return "SSLv3 record,version({0[0]}.{0[1]}),"\
                 "content type({1}),length({2})".format(self.version,
-                        self.typeName, self.length)
+                                                       self.typeName,
+                                                       self.length)
 
     def __repr__(self):
         return "RecordHeader3(type={0}, version=({1[0]}.{1[1]}), length={2})".\
                 format(self.type, self.version, self.length)
+
 
 class RecordHeader2(RecordHeader):
     """
@@ -148,6 +152,7 @@ class RecordHeader2(RecordHeader):
 
         return writer.bytes
 
+
 class Message(object):
 
     """Generic TLS message"""
@@ -167,6 +172,7 @@ class Message(object):
     def write(self):
         """Return serialised object data"""
         return self.data
+
 
 class Alert(object):
     def __init__(self):
@@ -195,7 +201,7 @@ class Alert(object):
     @property
     def levelName(self):
         matching = [x[0] for x in AlertLevel.__dict__.items()
-                if x[1] == self.level]
+                    if x[1] == self.level]
         if len(matching) == 0:
             return "unknown({0})".format(self.level)
         else:
@@ -204,7 +210,7 @@ class Alert(object):
     @property
     def descriptionName(self):
         matching = [x[0] for x in AlertDescription.__dict__.items()
-                if x[1] == self.description]
+                    if x[1] == self.description]
         if len(matching) == 0:
             return "unknown({0})".format(self.description)
         else:
@@ -212,22 +218,24 @@ class Alert(object):
 
     def __str__(self):
         return "Alert, level:{0}, description:{1}".format(self.levelName,
-                self.descriptionName)
+                                                          self.descriptionName)
 
     def __repr__(self):
         return "Alert(level={0}, description={1})".format(self.level,
-                self.description)
+                                                          self.description)
+
 
 class HandshakeMsg(object):
     def __init__(self, handshakeType):
         self.contentType = ContentType.handshake
         self.handshakeType = handshakeType
-    
+
     def postWrite(self, w):
         headerWriter = Writer()
         headerWriter.add(self.handshakeType, 1)
         headerWriter.add(len(w.bytes), 3)
         return headerWriter.bytes + w.bytes
+
 
 class ClientHello(HandshakeMsg):
     """
@@ -257,7 +265,7 @@ class ClientHello(HandshakeMsg):
     def __init__(self, ssl2=False):
         HandshakeMsg.__init__(self, HandshakeType.client_hello)
         self.ssl2 = ssl2
-        self.client_version = (0,0)
+        self.client_version = (0, 0)
         self.random = bytearray(32)
         self.session_id = bytearray(0)
         self.cipher_suites = []         # a list of 16-bit values
@@ -272,15 +280,15 @@ class ClientHello(HandshakeMsg):
         """
 
         if self.session_id.count(bytearray(b'\x00')) == len(self.session_id)\
-            and len(self.session_id) != 0:
+                and len(self.session_id) != 0:
             session = "bytearray(b'\\x00'*{0})".format(len(self.session_id))
         else:
             session = repr(self.session_id)
         ret = "client_hello,version({0[0]}.{0[1]}),random(...),"\
-                "session ID({1!s}),cipher suites({2!r}),"\
-                "compression methods({3!r})".format(
-                        self.client_version, session,
-                        self.cipher_suites, self.compression_methods)
+              "session ID({1!s}),cipher suites({2!r}),"\
+              "compression methods({3!r})".format(
+                  self.client_version, session,
+                  self.cipher_suites, self.compression_methods)
 
         if self.extensions is not None:
             ret += ",extensions({0!r})".format(self.extensions)
@@ -294,10 +302,11 @@ class ClientHello(HandshakeMsg):
         @rtype: str
         """
         return "ClientHello(ssl2={0}, client_version=({1[0]}.{1[1]}), "\
-                "random={2!r}, session_id={3!r}, cipher_suites={4!r}, "\
-                "compression_methods={5}, extensions={6})".format(\
-                self.ssl2, self.client_version, self.random, self.session_id,
-                self.cipher_suites, self.compression_methods, self.extensions)
+               "random={2!r}, session_id={3!r}, cipher_suites={4!r}, "\
+               "compression_methods={5}, extensions={6})".format(
+                   self.ssl2, self.client_version, self.random,
+                   self.session_id, self.cipher_suites,
+                   self.compression_methods, self.extensions)
 
     def getExtension(self, extType):
         """
@@ -313,7 +322,7 @@ class ClientHello(HandshakeMsg):
         exts = [ext for ext in self.extensions if ext.extType == extType]
         if len(exts) > 1:
             raise TLSInternalError(
-                    "Multiple extensions of the same type present")
+                "Multiple extensions of the same type present")
         elif len(exts) == 1:
             return exts[0]
         else:
@@ -460,16 +469,15 @@ class ClientHello(HandshakeMsg):
         if present:
             npn_ext = self.getExtension(ExtensionType.supports_npn)
             if npn_ext is None:
-                ext = TLSExtension().create(
-                        ExtensionType.supports_npn,
-                        bytearray(0))
+                ext = TLSExtension().create(ExtensionType.supports_npn,
+                                            bytearray(0))
                 self.addExtension(ext)
             else:
                 return
         else:
             if self.extensions is None:
                 return
-            #remove all extension of this type without changing reference
+            # remove all extension of this type without changing reference
             self.extensions[:] = [ext for ext in self.extensions if
                                   ext.extType != ExtensionType.supports_npn]
 
@@ -650,6 +658,7 @@ class ClientHello(HandshakeMsg):
         else:
             return self._write()
 
+
 class ServerHello(HandshakeMsg):
     """server_hello message
 
@@ -685,7 +694,7 @@ class ServerHello(HandshakeMsg):
         """Initialise ServerHello object"""
 
         HandshakeMsg.__init__(self, HandshakeType.server_hello)
-        self.server_version = (0,0)
+        self.server_version = (0, 0)
         self.random = bytearray(32)
         self.session_id = bytearray(0)
         self.cipher_suite = 0
@@ -711,10 +720,10 @@ class ServerHello(HandshakeMsg):
     def __repr__(self):
         return "ServerHello(server_version=({0[0]}, {0[1]}), random={1!r}, "\
                 "session_id={2!r}, cipher_suite={3}, compression_method={4}, "\
-                "_tack_ext={5}, extensions={6!r})".format(\
-                self.server_version, self.random, self.session_id,
-                self.cipher_suite, self.compression_method, self._tack_ext,
-                self.extensions)
+                "_tack_ext={5}, extensions={6!r})".format(
+                    self.server_version, self.random, self.session_id,
+                    self.cipher_suite, self.compression_method, self._tack_ext,
+                    self.extensions)
 
     def getExtension(self, extType):
         """Return extension of a given type, None if extension of given type
@@ -729,7 +738,7 @@ class ServerHello(HandshakeMsg):
         exts = [ext for ext in self.extensions if ext.extType == extType]
         if len(exts) > 1:
             raise TLSInternalError(
-                    "Multiple extensions of the same type present")
+                "Multiple extensions of the same type present")
         elif len(exts) == 1:
             return exts[0]
         else:
@@ -822,8 +831,8 @@ class ServerHello(HandshakeMsg):
         if val is None:
             return
         else:
-        # convinience function, make sure the values are properly encoded
-            val = [ bytearray(x) for x in val ]
+            # convinience function, make sure the values are properly encoded
+            val = [bytearray(x) for x in val]
 
         npn_ext = self.getExtension(ExtensionType.supports_npn)
 
@@ -851,7 +860,8 @@ class ServerHello(HandshakeMsg):
         self.next_protos = val
 
     def create(self, version, random, session_id, cipher_suite,
-               certificate_type=None, tackExt=None, next_protos_advertised=None,
+               certificate_type=None, tackExt=None,
+               next_protos_advertised=None,
                extensions=None):
         """Initialize the object for deserialisation"""
         self.extensions = extensions
@@ -904,8 +914,9 @@ class ServerHello(HandshakeMsg):
                 w2.bytes += b
 
             w.add(len(w2.bytes), 2)
-            w.bytes += w2.bytes        
+            w.bytes += w2.bytes
         return self.postWrite(w)
+
 
 class ServerHello2(HandshakeMsg):
     """
@@ -992,6 +1003,7 @@ class ServerHello2(HandshakeMsg):
         parser.stopLengthCheck()
         return self
 
+
 class Certificate(HandshakeMsg):
     def __init__(self, certificateType):
         HandshakeMsg.__init__(self, HandshakeType.certificate)
@@ -1030,11 +1042,11 @@ class Certificate(HandshakeMsg):
                 certificate_list = self.certChain.x509List
             else:
                 certificate_list = []
-            #determine length
+            # determine length
             for cert in certificate_list:
                 bytes = cert.writeBytes()
                 chainLength += len(bytes)+3
-            #add bytes
+            # add bytes
             w.add(chainLength, 3)
             for cert in certificate_list:
                 bytes = cert.writeBytes()
@@ -1042,6 +1054,7 @@ class Certificate(HandshakeMsg):
         else:
             raise AssertionError()
         return self.postWrite(w)
+
 
 class CertificateRequest(HandshakeMsg):
     def __init__(self, version):
@@ -1060,32 +1073,33 @@ class CertificateRequest(HandshakeMsg):
     def parse(self, p):
         p.startLengthCheck(3)
         self.certificate_types = p.getVarList(1, 1)
-        if self.version >= (3,3):
+        if self.version >= (3, 3):
             self.supported_signature_algs = p.getVarTupleList(1, 2, 2)
         ca_list_length = p.get(2)
         index = 0
         self.certificate_authorities = []
         while index != ca_list_length:
-          ca_bytes = p.getVarBytes(2)
-          self.certificate_authorities.append(ca_bytes)
-          index += len(ca_bytes)+2
+            ca_bytes = p.getVarBytes(2)
+            self.certificate_authorities.append(ca_bytes)
+            index += len(ca_bytes)+2
         p.stopLengthCheck()
         return self
 
     def write(self):
         w = Writer()
         w.addVarSeq(self.certificate_types, 1, 1)
-        if self.version >= (3,3):
+        if self.version >= (3, 3):
             w.addVarTupleSeq(self.supported_signature_algs, 1, 2)
         caLength = 0
-        #determine length
+        # determine length
         for ca_dn in self.certificate_authorities:
             caLength += len(ca_dn)+2
         w.add(caLength, 2)
-        #add bytes
+        # add bytes
         for ca_dn in self.certificate_authorities:
             w.addVarSeq(ca_dn, 1, 2)
         return self.postWrite(w)
+
 
 class ServerKeyExchange(HandshakeMsg):
 
@@ -1156,20 +1170,19 @@ class ServerKeyExchange(HandshakeMsg):
               "".format(CipherSuite.ietfNames[self.cipherSuite], self.version)
 
         if self.srp_N != 0:
-            ret += ", srp_N={0}, srp_g={1}, srp_s={2!r}, srp_B={3}".format(\
-                   self.srp_N, self.srp_g, self.srp_s, self.srp_B)
+            ret += ", srp_N={0}, srp_g={1}, srp_s={2!r}, srp_B={3}".format(
+                self.srp_N, self.srp_g, self.srp_s, self.srp_B)
         if self.dh_p != 0:
-            ret += ", dh_p={0}, dh_g={1}, dh_Ys={2}".format(\
-                   self.dh_p, self.dh_g, self.dh_Ys)
+            ret += ", dh_p={0}, dh_g={1}, dh_Ys={2}".format(
+                self.dh_p, self.dh_g, self.dh_Ys)
         if self.signAlg != 0:
-            ret += ", hashAlg={0}, signAlg={1}".format(\
-                   self.hashAlg, self.signAlg)
+            ret += ", hashAlg={0}, signAlg={1}".format(
+                self.hashAlg, self.signAlg)
         if self.signature != bytearray(0):
             ret += ", signature={0!r}".format(self.signature)
         ret += ")"
 
         return ret
-
 
     def createSRP(self, srp_N, srp_g, srp_s, srp_B):
         """Set SRP protocol parameters"""
@@ -1276,10 +1289,11 @@ class ServerKeyExchange(HandshakeMsg):
         if self.version >= (3, 3):
             hashAlg = HashAlgorithm.toRepr(self.hashAlg)
             if hashAlg is None:
-                raise AssertionError("Unknown hash algorithm: {0}".\
+                raise AssertionError("Unknown hash algorithm: {0}".
                                      format(self.hashAlg))
             return secureHash(bytesToHash, hashAlg)
         return MD5(bytesToHash) + SHA1(bytesToHash)
+
 
 class ServerHelloDone(HandshakeMsg):
     def __init__(self):
@@ -1300,6 +1314,7 @@ class ServerHelloDone(HandshakeMsg):
     def __repr__(self):
         """Human readable representation of object"""
         return "ServerHelloDone()"
+
 
 class ClientKeyExchange(HandshakeMsg):
 
@@ -1362,7 +1377,7 @@ class ClientKeyExchange(HandshakeMsg):
         """
         self.encryptedPreMasterSecret = encryptedPreMasterSecret
         return self
-    
+
     def createDH(self, dh_Yc):
         """
         Set the client FFDH key share
@@ -1400,9 +1415,9 @@ class ClientKeyExchange(HandshakeMsg):
         if self.cipherSuite in CipherSuite.srpAllSuites:
             self.srp_A = bytesToNumber(parser.getVarBytes(2))
         elif self.cipherSuite in CipherSuite.certSuites:
-            if self.version in ((3,1), (3,2), (3,3)):
+            if self.version in ((3, 1), (3, 2), (3, 3)):
                 self.encryptedPreMasterSecret = parser.getVarBytes(2)
-            elif self.version == (3,0):
+            elif self.version == (3, 0):
                 self.encryptedPreMasterSecret = \
                     parser.getFixBytes(parser.getRemainingLength())
             else:
@@ -1426,9 +1441,9 @@ class ClientKeyExchange(HandshakeMsg):
         if self.cipherSuite in CipherSuite.srpAllSuites:
             w.addVarSeq(numberToByteArray(self.srp_A), 1, 2)
         elif self.cipherSuite in CipherSuite.certSuites:
-            if self.version in ((3,1), (3,2), (3,3)):
+            if self.version in ((3, 1), (3, 2), (3, 3)):
                 w.addVarSeq(self.encryptedPreMasterSecret, 1, 2)
-            elif self.version == (3,0):
+            elif self.version == (3, 0):
                 w.addFixSeq(self.encryptedPreMasterSecret, 1)
             else:
                 raise AssertionError()
@@ -1439,6 +1454,7 @@ class ClientKeyExchange(HandshakeMsg):
         else:
             raise AssertionError()
         return self.postWrite(w)
+
 
 class ClientMasterKey(HandshakeMsg):
     """
@@ -1502,6 +1518,7 @@ class ClientMasterKey(HandshakeMsg):
         parser.stopLengthCheck()
         return self
 
+
 class CertificateVerify(HandshakeMsg):
 
     """Serializer for TLS handshake protocol Certificate Verify message"""
@@ -1554,6 +1571,7 @@ class CertificateVerify(HandshakeMsg):
         writer.addVarSeq(self.signature, 1, 2)
         return self.postWrite(writer)
 
+
 class ChangeCipherSpec(object):
     def __init__(self):
         self.contentType = ContentType.change_cipher_spec
@@ -1571,7 +1589,7 @@ class ChangeCipherSpec(object):
 
     def write(self):
         w = Writer()
-        w.add(self.type,1)
+        w.add(self.type, 1)
         return w.bytes
 
 
@@ -1598,6 +1616,7 @@ class NextProtocol(HandshakeMsg):
         w.addVarSeq(bytearray(paddingLen), 1, 1)
         return self.postWrite(w)
 
+
 class Finished(HandshakeMsg):
     def __init__(self, version):
         HandshakeMsg.__init__(self, HandshakeType.finished)
@@ -1610,9 +1629,9 @@ class Finished(HandshakeMsg):
 
     def parse(self, p):
         p.startLengthCheck(3)
-        if self.version == (3,0):
+        if self.version == (3, 0):
             self.verify_data = p.getFixBytes(36)
-        elif self.version in ((3,1), (3,2), (3,3)):
+        elif self.version in ((3, 1), (3, 2), (3, 3)):
             self.verify_data = p.getFixBytes(12)
         else:
             raise AssertionError()
@@ -1683,7 +1702,7 @@ class ApplicationData(object):
     def create(self, bytes):
         self.bytes = bytes
         return self
-        
+
     def splitFirstByte(self):
         newMsg = ApplicationData().create(self.bytes[:1])
         self.bytes = self.bytes[1:]
