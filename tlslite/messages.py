@@ -231,7 +231,43 @@ class HandshakeMsg(object):
         return headerWriter.bytes + w.bytes
 
 
-class ClientHello(HandshakeMsg):
+class HelloMessage(HandshakeMsg):
+    """Class for sharing code between L{ClientHello} and L{ServerHello}"""
+
+    def getExtension(self, extType):
+        """
+        Return extension of given type if present, None otherwise.
+
+        @rtype: L{tlslite.extensions.TLSExtension}
+        @raise TLSInternalError: when there are multiple extensions of the
+            same type
+        """
+        if self.extensions is None:
+            return None
+
+        exts = [ext for ext in self.extensions if ext.extType == extType]
+        if len(exts) > 1:
+            raise TLSInternalError(
+                "Multiple extensions of the same type present")
+        elif len(exts) == 1:
+            return exts[0]
+        else:
+            return None
+
+    def addExtension(self, ext):
+        """
+        Add extension to internal list of extensions.
+
+        @type ext: TLSExtension
+        @param ext: extension object to add to list
+        """
+        if self.extensions is None:
+            self.extensions = []
+
+        self.extensions.append(ext)
+
+
+class ClientHello(HelloMessage):
     """
     Class for handling the ClientHello SSLv2/SSLv3/TLS message.
 
@@ -300,38 +336,6 @@ class ClientHello(HandshakeMsg):
                    self.ssl2, self.client_version, self.random,
                    self.session_id, self.cipher_suites,
                    self.compression_methods, self.extensions)
-
-    def getExtension(self, extType):
-        """
-        Return extension of given type if present, None otherwise.
-
-        @rtype: L{tlslite.extensions.TLSExtension}
-        @raise TLSInternalError: when there are multiple extensions of the
-            same type
-        """
-        if self.extensions is None:
-            return None
-
-        exts = [ext for ext in self.extensions if ext.extType == extType]
-        if len(exts) > 1:
-            raise TLSInternalError(
-                "Multiple extensions of the same type present")
-        elif len(exts) == 1:
-            return exts[0]
-        else:
-            return None
-
-    def addExtension(self, ext):
-        """
-        Add extension to internal list of extensions.
-
-        @type ext: TLSExtension
-        @param ext: extension object to add to list
-        """
-        if self.extensions is None:
-            self.extensions = []
-
-        self.extensions.append(ext)
 
     @property
     def certificate_types(self):
@@ -654,7 +658,7 @@ class ClientHello(HandshakeMsg):
             return self._write()
 
 
-class ServerHello(HandshakeMsg):
+class ServerHello(HelloMessage):
     """
     Handling of Server Hello messages.
 
@@ -720,36 +724,6 @@ class ServerHello(HandshakeMsg):
                     self.server_version, self.random, self.session_id,
                     self.cipher_suite, self.compression_method, self._tack_ext,
                     self.extensions)
-
-    def getExtension(self, extType):
-        """
-        Return extension of a given type if present, None otherwise.
-
-        @rtype: L{TLSExtension}
-        @raise TLSInternalError: multiple extensions of the same type present
-        """
-        if self.extensions is None:
-            return None
-
-        exts = [ext for ext in self.extensions if ext.extType == extType]
-        if len(exts) > 1:
-            raise TLSInternalError(
-                "Multiple extensions of the same type present")
-        elif len(exts) == 1:
-            return exts[0]
-        else:
-            return None
-
-    def addExtension(self, ext):
-        """
-        Add extension to internal list of extensions.
-
-        @type ext: TLSExtension
-        @param ext: extension to add to list
-        """
-        if self.extensions is None:
-            self.extensions = []
-        self.extensions.append(ext)
 
     @property
     def tackExt(self):
