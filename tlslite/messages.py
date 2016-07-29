@@ -22,7 +22,6 @@ from .extensions import *
 
 
 class RecordHeader(object):
-
     """Generic interface to SSLv2 and SSLv3 (and later) record headers"""
 
     def __init__(self, ssl2):
@@ -34,7 +33,6 @@ class RecordHeader(object):
 
 
 class RecordHeader3(RecordHeader):
-
     """SSLv3 (and later) TLS record header"""
 
     def __init__(self):
@@ -151,7 +149,6 @@ class RecordHeader2(RecordHeader):
 
 
 class Message(object):
-
     """Generic TLS message"""
 
     def __init__(self, contentType, data):
@@ -259,6 +256,7 @@ class ClientHello(HandshakeMsg):
     @ivar extensions: list of TLS extensions parsed from wire or to send, see
         L{TLSExtension} and child classes for exact examples
     """
+
     def __init__(self, ssl2=False):
         HandshakeMsg.__init__(self, HandshakeType.client_hello)
         self.ssl2 = ssl2
@@ -275,7 +273,6 @@ class ClientHello(HandshakeMsg):
 
         @rtype: str
         """
-
         if self.session_id.count(bytearray(b'\x00')) == len(self.session_id)\
                 and len(self.session_id) != 0:
             session = "bytearray(b'\\x00'*{0})".format(len(self.session_id))
@@ -687,9 +684,9 @@ class ServerHello(HandshakeMsg):
     @ivar extensions: list of TLS extensions present in server_hello message,
         see L{TLSExtension} and child classes for exact examples
     """
+
     def __init__(self):
         """Initialise ServerHello object"""
-
         HandshakeMsg.__init__(self, HandshakeType.server_hello)
         self.server_version = (0, 0)
         self.random = bytearray(32)
@@ -754,8 +751,7 @@ class ServerHello(HandshakeMsg):
 
     @property
     def tackExt(self):
-        """ Returns the TACK extension
-        """
+        """Returns the TACK extension"""
         if self._tack_ext is None:
             ext = self.getExtension(ExtensionType.tack)
             if ext is None or not tackpyLoaded:
@@ -766,8 +762,7 @@ class ServerHello(HandshakeMsg):
 
     @tackExt.setter
     def tackExt(self, val):
-        """ Set the TACK extension
-        """
+        """Set the TACK extension"""
         self._tack_ext = val
         # makes sure that extensions are included in the on the wire encoding
         if val is not None:
@@ -776,7 +771,8 @@ class ServerHello(HandshakeMsg):
 
     @property
     def certificate_type(self):
-        """Returns the certificate type selected by server
+        """
+        Returns the certificate type selected by server
 
         @rtype: int
         """
@@ -789,7 +785,8 @@ class ServerHello(HandshakeMsg):
 
     @certificate_type.setter
     def certificate_type(self, val):
-        """Sets the certificate type supported
+        """
+        Sets the certificate type supported
 
         @type val: int
         @param val: type of certificate
@@ -807,7 +804,8 @@ class ServerHello(HandshakeMsg):
 
     @property
     def next_protos(self):
-        """Returns the advertised protocols in NPN extension
+        """
+        Returns the advertised protocols in NPN extension
 
         @rtype: list of bytearrays
         """
@@ -820,7 +818,8 @@ class ServerHello(HandshakeMsg):
 
     @next_protos.setter
     def next_protos(self, val):
-        """Sets the advertised protocols in NPN extension
+        """
+        Sets the advertised protocols in NPN extension
 
         @type val: list
         @param val: list of protocols to advertise as UTF-8 encoded names
@@ -841,7 +840,8 @@ class ServerHello(HandshakeMsg):
 
     @property
     def next_protos_advertised(self):
-        """Returns the advertised protocols in NPN extension
+        """
+        Returns the advertised protocols in NPN extension
 
         @rtype: list of bytearrays
         """
@@ -1099,7 +1099,6 @@ class CertificateRequest(HandshakeMsg):
 
 
 class ServerKeyExchange(HandshakeMsg):
-
     """
     Handling TLS Handshake protocol Server Key Exchange messages
 
@@ -1162,7 +1161,6 @@ class ServerKeyExchange(HandshakeMsg):
         self.signAlg = 0
 
     def __repr__(self):
-
         ret = "ServerKeyExchange(cipherSuite=CipherSuite.{0}, version={1}"\
               "".format(CipherSuite.ietfNames[self.cipherSuite], self.version)
 
@@ -1203,7 +1201,8 @@ class ServerKeyExchange(HandshakeMsg):
         self.ecdh_Ys = point
 
     def parse(self, parser):
-        """Deserialise message from L{Parser}
+        """
+        Deserialise message from L{Parser}
 
         @type parser: L{Parser}
         @param parser: parser to read data from
@@ -1237,7 +1236,8 @@ class ServerKeyExchange(HandshakeMsg):
         return self
 
     def writeParams(self):
-        """Serialise the key exchange parameters
+        """
+        Serialise the key exchange parameters
 
         @rtype: bytearray
         """
@@ -1314,7 +1314,6 @@ class ServerHelloDone(HandshakeMsg):
 
 
 class ClientKeyExchange(HandshakeMsg):
-
     """
     Handling of TLS Handshake protocol ClientKeyExchange message
 
@@ -1517,11 +1516,11 @@ class ClientMasterKey(HandshakeMsg):
 
 
 class CertificateVerify(HandshakeMsg):
-
     """Serializer for TLS handshake protocol Certificate Verify message"""
 
     def __init__(self, version):
-        """Create message
+        """
+        Create message
 
         @param version: TLS protocol version in use
         """
