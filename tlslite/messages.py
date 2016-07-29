@@ -128,10 +128,7 @@ class RecordHeader2(RecordHeader):
         """Serialise object to bytearray"""
         writer = Writer()
 
-        if not (self.padding or self.securityEscape):
-            shortHeader = True
-        else:
-            shortHeader = False
+        shortHeader = not (self.padding or self.securityEscape)
 
         if ((shortHeader and self.length >= 0x8000) or
                 (not shortHeader and self.length >= 0x4000)):
@@ -565,15 +562,15 @@ class ClientHello(HandshakeMsg):
         self.session_id = session_id
         self.cipher_suites = cipher_suites
         self.compression_methods = [0]
-        if not extensions is None:
+        if extensions is not None:
             self.extensions = extensions
-        if not certificate_types is None:
+        if certificate_types is not None:
             self.certificate_types = certificate_types
-        if not srpUsername is None:
+        if srpUsername is not None:
             self.srp_username = bytearray(srpUsername, "utf-8")
         self.tack = tack
         self.supports_npn = supports_npn
-        if not serverName is None:
+        if serverName is not None:
             self.server_name = bytearray(serverName, "utf-8")
         return self
 
@@ -642,7 +639,7 @@ class ClientHello(HandshakeMsg):
         w.addVarSeq(self.cipher_suites, 2, 2)
         w.addVarSeq(self.compression_methods, 1, 1)
 
-        if not self.extensions is None:
+        if self.extensions is not None:
             w2 = Writer()
             for ext in self.extensions:
                 w2.bytes += ext.write()
@@ -773,7 +770,7 @@ class ServerHello(HandshakeMsg):
         """
         self._tack_ext = val
         # makes sure that extensions are included in the on the wire encoding
-        if not val is None:
+        if val is not None:
             if self.extensions is None:
                 self.extensions = []
 
@@ -902,7 +899,7 @@ class ServerHello(HandshakeMsg):
         w.add(self.cipher_suite, 2)
         w.add(self.compression_method, 1)
 
-        if not self.extensions is None:
+        if self.extensions is not None:
             w2 = Writer()
             for ext in self.extensions:
                 w2.bytes += ext.write()
