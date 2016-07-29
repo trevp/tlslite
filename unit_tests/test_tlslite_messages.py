@@ -738,6 +738,23 @@ class TestClientHello(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             client_hello.parse(p)
 
+    def test_parse_with_short_message_trunc_extension(self):
+        p = Parser(bytearray(
+            #b'\x01' type of message
+            b'\x00\x00\x2c' +     # length
+            b'\x03\x03' +         # version
+            b'\x00'*32 +          # client random
+            b'\x00' +             # session id length
+            b'\x00\x00'           # cipher suites length
+            b'\x00'               # compression methods
+            b'\x00\x04'           # extensions length
+            b'\xff\xab'           # extension ID
+            b'\x00\x02'           # extensions length
+            ))
+
+        client_hello = ClientHello()
+        with self.assertRaises(SyntaxError):
+            client_hello.parse(p)
 
 class TestServerHello(unittest.TestCase):
     def test___init__(self):
