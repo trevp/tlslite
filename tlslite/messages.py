@@ -234,6 +234,11 @@ class HandshakeMsg(object):
 class HelloMessage(HandshakeMsg):
     """Class for sharing code between L{ClientHello} and L{ServerHello}"""
 
+    def __init__(self, *args, **kwargs):
+        """Initialize object."""
+        super(HelloMessage, self).__init__(*args, **kwargs)
+        self.extensions = None
+
     def getExtension(self, extType):
         """
         Return extension of given type if present, None otherwise.
@@ -266,6 +271,34 @@ class HelloMessage(HandshakeMsg):
 
         self.extensions.append(ext)
 
+    def _addExt(self, extType):
+        """Add en empty extension of given type, if not already present"""
+        ext = self.getExtension(extType)
+        if ext is None:
+            ext = TLSExtension(extType=extType).create(bytearray(0))
+            self.addExtension(ext)
+
+    def _removeExt(self, extType):
+        """Remove extension of given type"""
+        if self.extensions is not None:
+            self.extensions[:] = (i for i in self.extensions
+                                  if i.extType != extType)
+
+
+    def _addOrRemoveExt(self, extType, add):
+        """
+        Remove or add an empty extension of given type.
+
+        @type extType: int
+        @param extType: numeric id of extension to add or remove
+        @type add: boolean
+        @param add: whether to add (True) or remove (False) the extension
+        """
+        if add:
+            self._addExt(extType)
+        else:
+            self._removeExt(extType)
+
 
 class ClientHello(HelloMessage):
     """
@@ -293,14 +326,13 @@ class ClientHello(HelloMessage):
     """
 
     def __init__(self, ssl2=False):
-        HandshakeMsg.__init__(self, HandshakeType.client_hello)
+        super(ClientHello, self).__init__(HandshakeType.client_hello)
         self.ssl2 = ssl2
         self.client_version = (0, 0)
         self.random = bytearray(32)
         self.session_id = bytearray(0)
         self.cipher_suites = []         # a list of 16-bit values
         self.compression_methods = []   # a list of 8-bit values
-        self.extensions = None
 
     def __str__(self):
         """
@@ -411,12 +443,7 @@ class ClientHello(HelloMessage):
         @rtype: boolean
         @deprecated: use extensions field to get the extension for inspection
         """
-        tack_ext = self.getExtension(ExtensionType.tack)
-
-        if tack_ext is None:
-            return False
-        else:
-            return True
+        return self.getExtension(ExtensionType.tack) is not None
 
     @tack.setter
     def tack(self, present):
@@ -427,19 +454,7 @@ class ClientHello(HelloMessage):
         @param present: True will create extension while False will remove
             extension from client hello
         """
-        if present:
-            tack_ext = self.getExtension(ExtensionType.tack)
-            if tack_ext is None:
-                ext = TLSExtension().create(ExtensionType.tack, bytearray(0))
-                self.addExtension(ext)
-            else:
-                return
-        else:
-            if self.extensions is None:
-                return
-            # remove all extensions of this type without changing reference
-            self.extensions[:] = [ext for ext in self.extensions if
-                                  ext.extType != ExtensionType.tack]
+        self._addOrRemoveExt(ExtensionType.tack, present)
 
     @property
     def supports_npn(self):
@@ -449,12 +464,7 @@ class ClientHello(HelloMessage):
         @rtype: boolean
         @deprecated: use extensions field to get the extension for inspection
         """
-        npn_ext = self.getExtension(ExtensionType.supports_npn)
-
-        if npn_ext is None:
-            return False
-        else:
-            return True
+        return self.getExtension(ExtensionType.supports_npn) is not None
 
     @supports_npn.setter
     def supports_npn(self, present):
@@ -465,20 +475,7 @@ class ClientHello(HelloMessage):
         @param present: selects whatever to create or remove the extension
             from list of supported ones
         """
-        if present:
-            npn_ext = self.getExtension(ExtensionType.supports_npn)
-            if npn_ext is None:
-                ext = TLSExtension().create(ExtensionType.supports_npn,
-                                            bytearray(0))
-                self.addExtension(ext)
-            else:
-                return
-        else:
-            if self.extensions is None:
-                return
-            # remove all extension of this type without changing reference
-            self.extensions[:] = [ext for ext in self.extensions if
-                                  ext.extType != ExtensionType.supports_npn]
+        self._addOrRemoveExt(ExtensionType.supports_npn, present)
 
     @property
     def server_name(self):
@@ -693,14 +690,13 @@ class ServerHello(HelloMessage):
 
     def __init__(self):
         """Initialise ServerHello object."""
-        HandshakeMsg.__init__(self, HandshakeType.server_hello)
+        super(ServerHello, self).__init__(HandshakeType.server_hello)
         self.server_version = (0, 0)
         self.random = bytearray(32)
         self.session_id = bytearray(0)
         self.cipher_suite = 0
         self.compression_method = 0
         self._tack_ext = None
-        self.extensions = None
 
     def __str__(self):
         base = "server_hello,length({0}),version({1[0]}.{1[1]}),random(...),"\
