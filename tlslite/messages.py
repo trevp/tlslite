@@ -192,23 +192,22 @@ class Alert(object):
         w.add(self.description, 1)
         return w.bytes
 
+    @staticmethod
+    def _noneAsUnknown(text, number):
+        """if text is None or empty, format number as 'unknown(number)'"""
+        if not text:
+            text = "unknown({0})".format(number)
+        return text
+
     @property
     def levelName(self):
-        matching = [x[0] for x in AlertLevel.__dict__.items()
-                    if x[1] == self.level]
-        if len(matching) == 0:
-            return "unknown({0})".format(self.level)
-        else:
-            return str(matching[0])
+        return self._noneAsUnknown(AlertLevel.toRepr(self.level),
+                                   self.level)
 
     @property
     def descriptionName(self):
-        matching = [x[0] for x in AlertDescription.__dict__.items()
-                    if x[1] == self.description]
-        if len(matching) == 0:
-            return "unknown({0})".format(self.description)
-        else:
-            return str(matching[0])
+        return self._noneAsUnknown(AlertDescription.toRepr(self.description),
+                                   self.description)
 
     def __str__(self):
         return "Alert, level:{0}, description:{1}".format(self.levelName,
