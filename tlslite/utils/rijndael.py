@@ -33,8 +33,6 @@ If any strings are of the wrong length a ValueError is thrown
 # code, in which case it can be made public domain by
 # deleting all the comments and renaming all the variables
 
-import copy
-
 shifts = [[[0, 0], [1, 3], [2, 2], [3, 1]],
           [[0, 0], [1, 5], [2, 4], [3, 3]],
           [[0, 0], [1, 7], [3, 5], [4, 4]]]
@@ -310,7 +308,7 @@ class rijndael:
                         T2[(t[(i + s1) % BC] >> 16) & 0xFF] ^
                         T3[(t[(i + s2) % BC] >>  8) & 0xFF] ^
                         T4[ t[(i + s3) % BC]        & 0xFF]  ) ^ Ke[r][i]
-            t = copy.copy(a)
+            t = a[:]
         # last round is special
         result = []
         for i in range(BC):
@@ -354,7 +352,7 @@ class rijndael:
                         T6[(t[(i + s1) % BC] >> 16) & 0xFF] ^
                         T7[(t[(i + s2) % BC] >>  8) & 0xFF] ^
                         T8[ t[(i + s3) % BC]        & 0xFF]  ) ^ Kd[r][i]
-            t = copy.copy(a)
+            t = a[:]
         # last round is special
         result = []
         for i in range(BC):
