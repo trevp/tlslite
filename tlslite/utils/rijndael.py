@@ -202,6 +202,22 @@ del mul4
 del cox
 del iG
 
+S = tuple(S)
+Si = tuple(Si)
+T1 = tuple(T1)
+T2 = tuple(T2)
+T3 = tuple(T3)
+T4 = tuple(T4)
+T5 = tuple(T5)
+T6 = tuple(T6)
+T7 = tuple(T7)
+T8 = tuple(T8)
+U1 = tuple(U1)
+U2 = tuple(U2)
+U3 = tuple(U3)
+U4 = tuple(U4)
+rcon = tuple(rcon)
+
 class rijndael:
     def __init__(self, key, block_size = 16):
         if block_size != 16 and block_size != 24 and block_size != 32:

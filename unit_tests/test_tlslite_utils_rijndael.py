@@ -156,21 +156,21 @@ class TestConstants(unittest.TestCase):
             r = mul(2, r)
             rcon.append(r)
 
-        self.S = S
-        self.Si = Si
-        self.T1 = T1
-        self.T2 = T2
-        self.T3 = T3
-        self.T4 = T4
-        self.T5 = T5
-        self.T6 = T6
-        self.T7 = T7
-        self.T8 = T8
-        self.U1 = U1
-        self.U2 = U2
-        self.U3 = U3
-        self.U4 = U4
-        self.rcon = rcon
+        self.S = tuple(S)
+        self.Si = tuple(Si)
+        self.T1 = tuple(T1)
+        self.T2 = tuple(T2)
+        self.T3 = tuple(T3)
+        self.T4 = tuple(T4)
+        self.T5 = tuple(T5)
+        self.T6 = tuple(T6)
+        self.T7 = tuple(T7)
+        self.T8 = tuple(T8)
+        self.U1 = tuple(U1)
+        self.U2 = tuple(U2)
+        self.U3 = tuple(U3)
+        self.U4 = tuple(U4)
+        self.rcon = tuple(rcon)
 
     def test_S_box(self):
         self.assertEqual(rijndael.S, self.S)
