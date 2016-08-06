@@ -495,9 +495,16 @@ class CipherSuite:
 
     # draft-ietf-tls-chacha20-poly1305-00
     # ChaCha20/Poly1305 based Cipher Suites for TLS1.2
-    TLS_DHE_RSA_WITH_CHACHA20_POLY1305 = 0xcca3
-    ietfNames[0xcca3] = 'TLS_DHE_RSA_WITH_CHACHA20_POLY1305'
+    TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_draft_00 = 0xcca1
+    ietfNames[0xcca1] = 'TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_draft_00'
+    TLS_DHE_RSA_WITH_CHACHA20_POLY1305_draft_00 = 0xcca3
+    ietfNames[0xcca3] = 'TLS_DHE_RSA_WITH_CHACHA20_POLY1305_draft_00'
 
+    # RFC 7905 - ChaCha20-Poly1305 Cipher Suites for TLS
+    TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 = 0xcca8
+    ietfNames[0xcca8] = 'TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256'
+    TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256 = 0xccaa
+    ietfNames[0xccaa] = 'TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256'
 
     # RFC 5289 - ECC Ciphers with SHA-256/SHA284 HMAC and AES-GCM
     TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 = 0xC027
@@ -565,9 +572,15 @@ class CipherSuite:
     aes256GcmSuites.append(TLS_DH_ANON_WITH_AES_256_GCM_SHA384)
     aes256GcmSuites.append(TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384)
 
-    # CHACHA20 cipher (implicit POLY1305 authenticator)
+    # CHACHA20 cipher, 00'th IETF draft (implicit POLY1305 authenticator)
+    chacha20draft00Suites = []
+    chacha20draft00Suites.append(TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_draft_00)
+    chacha20draft00Suites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305_draft_00)
+
+    # CHACHA20 cipher (implicit POLY1305 authenticator, SHA256 PRF)
     chacha20Suites = []
-    chacha20Suites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305)
+    chacha20Suites.append(TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256)
+    chacha20Suites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256)
 
     # RC4 128 stream cipher
     rc4Suites = []
@@ -637,6 +650,7 @@ class CipherSuite:
     aeadSuites.extend(aes128GcmSuites)
     aeadSuites.extend(aes256GcmSuites)
     aeadSuites.extend(chacha20Suites)
+    aeadSuites.extend(chacha20draft00Suites)
 
     # TLS1.2 with SHA384 PRF
     sha384PrfSuites = []
@@ -692,6 +706,8 @@ class CipherSuite:
         cipherSuites = []
         if "chacha20-poly1305" in cipherNames and version >= (3, 3):
             cipherSuites += CipherSuite.chacha20Suites
+        if "chacha20-poly1305_draft00" in cipherNames and version >= (3, 3):
+            cipherSuites += CipherSuite.chacha20draft00Suites
         if "aes128gcm" in cipherNames and version >= (3, 3):
             cipherSuites += CipherSuite.aes128GcmSuites
         if "aes256gcm" in cipherNames and version >= (3, 3):
@@ -777,7 +793,8 @@ class CipherSuite:
 
     # FFDHE key exchange, RSA authentication
     dheCertSuites = []
-    dheCertSuites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305)
+    dheCertSuites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256)
+    dheCertSuites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305_draft_00)
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_256_GCM_SHA384)
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
     dheCertSuites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
@@ -793,6 +810,8 @@ class CipherSuite:
 
     # ECDHE key exchange, RSA authentication
     ecdheCertSuites = []
+    ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256)
+    ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_draft_00)
     ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384)
     ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
     ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384)
@@ -859,6 +878,8 @@ class CipherSuite:
             return "3des"
         elif ciphersuite in CipherSuite.nullSuites:
             return "null"
+        elif ciphersuite in CipherSuite.chacha20draft00Suites:
+            return "chacha20-poly1305_draft00"
         elif ciphersuite in CipherSuite.chacha20Suites:
             return "chacha20-poly1305"
         else:
