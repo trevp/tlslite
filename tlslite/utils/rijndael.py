@@ -42,6 +42,9 @@ num_rounds = {16: {16: 10, 24: 12, 32: 14},
               24: {16: 12, 24: 12, 32: 14},
               32: {16: 14, 24: 14, 32: 14}}
 
+# see unit_tests/test_tlslite_utils_rijndael.py for algorithm used to
+# calculate S, Si, T, U and rcon arrays
+
 # S box
 S = (99, 124, 119, 123, 242, 107, 111, 197,
      48, 1, 103, 43, 254, 215, 171, 118,
