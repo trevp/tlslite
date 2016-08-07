@@ -6,11 +6,10 @@
 
 from .mathtls import goodGroupParameters, makeK, makeU, makeX, calcMasterSecret
 from .errors import TLSInsufficientSecurity, TLSUnknownPSKIdentity, \
-        TLSIllegalParameterException, TLSDecryptionFailed, TLSInternalError, \
-        TLSLocalAlert
+        TLSIllegalParameterException, TLSDecryptionFailed, TLSInternalError
 from .messages import ServerKeyExchange, ClientKeyExchange, CertificateVerify
 from .constants import SignatureAlgorithm, HashAlgorithm, CipherSuite, \
-        ExtensionType, GroupName, ECCurveType, AlertDescription
+        ExtensionType, GroupName, ECCurveType
 from .utils.ecc import decodeX962Point, encodeX962Point, getCurveByName, \
         getPointByteSize
 from .utils.rsakey import RSAKey
@@ -271,8 +270,7 @@ class DHE_RSAKeyExchange(KeyExchange):
         # First half of RFC 2631, Section 2.1.5. Validate the client's public
         # key.
         if not 2 <= dh_Yc <= self.dh_p - 1:
-            raise TLSLocalAlert(AlertDescription.illegal_parameter,
-                                "Invalid dh_Yc value")
+            raise TLSIllegalParameterException("Invalid dh_Yc value")
 
         S = powMod(dh_Yc, self.dh_Xs, self.dh_p)
         return numberToByteArray(S)
@@ -346,8 +344,12 @@ class ECDHE_RSAKeyExchange(KeyExchange):
     def processClientKeyExchange(self, clientKeyExchange):
         """Calculate premaster secret from previously generated SKE and CKE"""
         curveName = GroupName.toRepr(self.group_id)
-        ecdhYc = decodeX962Point(clientKeyExchange.ecdh_Yc,
-                                 getCurveByName(curveName))
+        try:
+            ecdhYc = decodeX962Point(clientKeyExchange.ecdh_Yc,
+                                     getCurveByName(curveName))
+        # TODO update python-ecdsa library to raise something more on point
+        except AssertionError:
+            raise TLSIllegalParameterException("Invalid ECC point")
 
         sharedSecret = ecdhYc * self.ecdhXs
 

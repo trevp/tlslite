@@ -1220,6 +1220,32 @@ class TLSConnection(TLSRecordLayer):
                         "Failed to negotiate Extended Master Secret"):
                     yield result
 
+        # notify client that we understood its renegotiation info extension
+        # or SCSV
+        secureRenego = False
+        renegoExt = clientHello.getExtension(ExtensionType.renegotiation_info)
+        if renegoExt:
+            if renegoExt.renegotiated_connection:
+                for result in self._sendError(
+                        AlertDescription.handshake_failure,
+                        "Non empty renegotiation info extension in "
+                        "initial Client Hello"):
+                    yield result
+            secureRenego = True
+        elif CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV in \
+                clientHello.cipher_suites:
+            secureRenego = True
+        if secureRenego:
+            extensions.append(RenegotiationInfoExtension()
+                              .create(bytearray(0)))
+
+        # tell the client what point formats we support
+        if clientHello.getExtension(ExtensionType.ec_point_formats):
+            # even though the selected cipher may not use ECC, client may want
+            # to send a CA certificate with ECDSA...
+            extensions.append(ECPointFormatsExtension().create(
+                [ECPointFormat.uncompressed]))
+
         # don't send empty list of extensions
         if not extensions:
             extensions = None
@@ -1449,6 +1475,21 @@ class TLSConnection(TLSRecordLayer):
                                                 extended_master_secret,
                                                 bytearray(0))
                     extensions.append(ems)
+                secureRenego = False
+                renegoExt = clientHello.\
+                    getExtension(ExtensionType.renegotiation_info)
+                if renegoExt:
+                    if renegoExt.renegotiated_connection:
+                        for result in self._sendError(
+                                AlertDescription.handshake_failure):
+                            yield result
+                    secureRenego = True
+                elif CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV in \
+                        clientHello.cipher_suites:
+                    secureRenego = True
+                if secureRenego:
+                    extensions.append(RenegotiationInfoExtension()
+                                      .create(bytearray(0)))
                 # don't send empty extensions
                 if not extensions:
                     extensions = None
@@ -1645,8 +1686,9 @@ class TLSConnection(TLSRecordLayer):
         try:
             premasterSecret = \
                 keyExchange.processClientKeyExchange(clientKeyExchange)
-        except TLSLocalAlert as alert:
-            for result in self._sendError(alert.description, alert.message):
+        except TLSIllegalParameterException as alert:
+            for result in self._sendError(AlertDescription.illegal_parameter,
+                                          str(alert)):
                 yield result
 
         #Get and check CertificateVerify, if relevant

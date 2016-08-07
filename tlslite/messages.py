@@ -601,8 +601,9 @@ class ClientHello(HelloMessage):
             if not p.atLengthCheck():
                 self.extensions = []
                 totalExtLength = p.get(2)
-                while not p.atLengthCheck():
-                    ext = TLSExtension().parse(p)
+                p2 = Parser(p.getFixBytes(totalExtLength))
+                while p2.getRemainingLength() > 0:
+                    ext = TLSExtension().parse(p2)
                     self.extensions += [ext]
             p.stopLengthCheck()
         return self

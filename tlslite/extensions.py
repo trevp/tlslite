@@ -1108,6 +1108,59 @@ class PaddingExtension(TLSExtension):
         self.paddingData = p.getFixBytes(p.getRemainingLength())
         return self
 
+class RenegotiationInfoExtension(TLSExtension):
+    """
+    Client and Server Hello secure renegotiation extension from RFC 5746
+
+    Should have an empty renegotiated_connection field in case of initial
+    connection
+    """
+
+    def __init__(self):
+        """Create instance"""
+        extType = ExtensionType.renegotiation_info
+        super(RenegotiationInfoExtension, self).__init__(extType=extType)
+        self.renegotiated_connection = None
+
+    @property
+    def extData(self):
+        """
+        Return raw encoding of the extension.
+
+        @rtype: bytearray
+        """
+        if self.renegotiated_connection is None:
+            return bytearray(0)
+        writer = Writer()
+        writer.add(len(self.renegotiated_connection), 1)
+        writer.bytes += self.renegotiated_connection
+        return writer.bytes
+
+    def create(self, renegotiated_connection):
+        """
+        Set the finished message payload from previous connection.
+
+        @type renegotiated_connection: bytearray
+        """
+        self.renegotiated_connection = renegotiated_connection
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on the wire data.
+
+        @type parser: L{tlslite.util.codec.Parser}
+        @param parser: data to be parsed
+
+        @rtype: L{RenegotiationInfoExtension}
+        """
+        if parser.getRemainingLength() == 0:
+            self.renegotiated_connection = None
+        else:
+            self.renegotiated_connection = parser.getVarBytes(1)
+
+        return self
+
 TLSExtension._universalExtensions = \
     {
         ExtensionType.server_name: SNIExtension,
@@ -1117,7 +1170,8 @@ TLSExtension._universalExtensions = \
         ExtensionType.srp: SRPExtension,
         ExtensionType.signature_algorithms: SignatureAlgorithmsExtension,
         ExtensionType.supports_npn: NPNExtension,
-        ExtensionType.client_hello_padding: PaddingExtension}
+        ExtensionType.client_hello_padding: PaddingExtension,
+        ExtensionType.renegotiation_info: RenegotiationInfoExtension}
 
 TLSExtension._serverExtensions = \
     {

@@ -11,7 +11,8 @@ except ImportError:
 from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension,\
         TACKExtension, SupportedGroupsExtension, ECPointFormatsExtension,\
-        SignatureAlgorithmsExtension, PaddingExtension, VarListExtension
+        SignatureAlgorithmsExtension, PaddingExtension, VarListExtension, \
+        RenegotiationInfoExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType, ExtensionType, GroupName,\
         ECPointFormat, HashAlgorithm, SignatureAlgorithm
@@ -1423,6 +1424,66 @@ class TestPaddingExtension(unittest.TestCase):
         ext.parse(parser)
 
         self.assertEqual(bytearray(b'\x00\x00\x00\x00'), ext.paddingData)
+
+class TestRenegotiationInfoExtension(unittest.TestCase):
+    def test__init__(self):
+        ext = RenegotiationInfoExtension()
+
+        self.assertIsNotNone(ext)
+        self.assertEqual(ext.extType, 0xff01)
+        self.assertIsNone(ext.renegotiated_connection)
+
+    def test_create(self):
+        ext = RenegotiationInfoExtension()
+        ext = ext.create(bytearray(0))
+
+        self.assertIsNotNone(ext)
+        self.assertEqual(ext.extType, 0xff01)
+        self.assertEqual(ext.renegotiated_connection, bytearray(0))
+
+    def test_write(self):
+        ext = RenegotiationInfoExtension()
+        ext.create(bytearray(range(0, 6)))
+
+        self.assertEqual(bytearray(
+            b'\xff\x01'
+            b'\x00\x07'
+            b'\x06'
+            b'\x00\x01\x02\x03\x04\x05'),
+            ext.write())
+
+    def test_write_with_empty_data(self):
+        ext = RenegotiationInfoExtension()
+
+        self.assertEqual(bytearray(
+            b'\xff\x01'
+            b'\x00\x00'),
+            ext.write())
+
+    def test_parse_with_empty_data(self):
+        parser = Parser(bytearray(0))
+
+        ext = RenegotiationInfoExtension()
+        ext.parse(parser)
+
+        self.assertIsNone(ext.renegotiated_connection)
+
+    def test_parse_with_empty_array(self):
+        parser = Parser(bytearray(b'\x00'))
+
+        ext = RenegotiationInfoExtension()
+        ext.parse(parser)
+
+        self.assertEqual(ext.renegotiated_connection, bytearray(0))
+
+    def test_parse_with_data(self):
+        parser = Parser(bytearray(b'\x03abc'))
+
+        ext = RenegotiationInfoExtension()
+        ext.parse(parser)
+
+        self.assertEqual(ext.renegotiated_connection, bytearray(b'abc'))
+
 
 if __name__ == '__main__':
     unittest.main()
