@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.6.0-alpha5                                    2016-06-09
+tlslite-ng version 0.6.0-beta1                                     2016-08-08
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -49,11 +49,14 @@ Implemented features of TLS include:
 
 * SSLv3, TLSv1.0, TLSv1.1 and TLSv1.2
 * ciphersuites with DHE, ECDHE, RSA and SRP key exchange together with
-  AES (including GCM variant), 3DES, RC4 and (the experimental) ChaCha20
-  symmetric ciphers.
+  AES (including GCM variant), 3DES, RC4 and ChaCha20 (both the official
+  standard and the IETF draft) symmetric ciphers.
 * Secure Renegotiation
 * Encrypt Then MAC extension
 * TLS_FALLBACK_SCSV
+* Extended master secret
+* padding extension
+* keying material exporter
 * (experimental) TACK extension
 
 2 Licenses/Acknowledgements
@@ -583,6 +586,22 @@ encrypt-then-MAC mode for CBC ciphers.
 
 0.6.0 - WIP
 
+* make the Client Hello parser more strict, it will now abort if the
+  extensions extend past the length of extension field
+* make the decoder honour the 2^14 byte protocol limit on plaintext per record
+* fix sending correct alerts on receiving malformed or invalid messages in
+  handshake
+* proper signalling for Secure Renegotiation (renegotiation remains unsupported
+  but server now indicates that the extension was understood and will abort
+  if receiving a renegotiated hello)
+* stop server from leaking lengths of headers in HTTP responses when using
+  standard library modules
+* HMAC-based Extract-and-Expand Key Derivation Function (HKDF) implementation
+  from RFC 5869 (Tomas Foukal)
+* added protection against
+  [RSA-CRT key leaks](https://people.redhat.com/~fweimer/rsa-crt-leaks.pdf)
+  (Tomas Foukal)
+* Keying material exporter from RFC 5705
 * Session Hash a.k.a. Extended Master Secret extension from RFC 7627
 * make the library work on systems working in FIPS mode
 * support for the padding extension from RFC 7685 (Karel Srot)
@@ -594,9 +613,9 @@ encrypt-then-MAC mode for CBC ciphers.
   messages in TLS 1.2
 * mark library as compatible with Python 3.5 (it was previously, but now
   it is verified with Continous Integration)
-* small cleanups and more documentation
-* add support for ChaCha20 and Poly1305
-* add TLS_DHE_RSA_WITH_CHACHA20_POLY1305 ciphersuite
+* cleanups (style fixes, deduplication of code) and more documentation
+* add support for ChaCha20 and Poly1305 (both the IETF draft and released
+  standard) with both ECDHE_RSA and DHE_RSA key exchange
 * expose padding and MAC-ing functions and blockSize property in RecordLayer
 
 0.5.1 - 2015-11-05
