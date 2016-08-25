@@ -182,7 +182,7 @@ tls.py server -v verifierDB localhost:4443
 Then try connecting to the server with:
 
 ```
-tls.py client localhost:4443 alice abra123cadabra
+tls.py client -u alice -p abra123cadabra localhost:4443
 ```
 
 HTTPS
