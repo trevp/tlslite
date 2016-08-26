@@ -48,9 +48,9 @@ tlslite-ng aims to be a drop in replacement for the original TLS Lite.
 Implemented features of TLS include:
 
 * SSLv3, TLSv1.0, TLSv1.1 and TLSv1.2
-* ciphersuites with DHE, ECDHE, RSA and SRP key exchange together with
-  AES (including GCM variant), 3DES, RC4 and ChaCha20 (both the official
-  standard and the IETF draft) symmetric ciphers.
+* ciphersuites with DHE, ADH, ECDHE, AECDH, RSA and SRP key exchange together
+  with AES (including GCM variant), 3DES, RC4 and ChaCha20 (both the official
+  standard and the IETF draft) symmetric ciphers and NULL encryption.
 * Secure Renegotiation
 * Encrypt Then MAC extension
 * TLS_FALLBACK_SCSV
@@ -586,6 +586,8 @@ encrypt-then-MAC mode for CBC ciphers.
 
 0.6.0 - WIP
 
+* fixed compatibility with Python 2.7.3
+* AECDH support on server side (Milan Lysonek)
 * make the Client Hello parser more strict, it will now abort if the
   extensions extend past the length of extension field
 * make the decoder honour the 2^14 byte protocol limit on plaintext per record

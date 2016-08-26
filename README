@@ -18,7 +18,7 @@ Functionality implemented include:
    for ECDHE_RSA key exchange (support for last two depends on the version
    of ecdsa library used)
  - anonymous DHE key exchange
- - anonymous ECDH key exchange in client
+ - anonymous ECDH key exchange
  - NULL encryption ciphersuites
  - FALLBACK_SCSV (RFC 7507)
  - encrypt-then-MAC mode of operation for CBC ciphersuites (RFC 7366)
