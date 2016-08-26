@@ -283,6 +283,7 @@ class AlertDescription(TLSEnum):
     unsupported_extension = 110  # RFC 5246
     unrecognized_name = 112  # RFC 6066
     unknown_psk_identity = 115
+    no_application_protocol = 120  # RFC 7301
 
 
 class CipherSuite:
