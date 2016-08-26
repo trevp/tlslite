@@ -355,6 +355,7 @@ def serverCmd(argv):
                                               sessionCache=sessionCache,
                                               settings=settings,
                                               nextProtos=[b"http/1.1"],
+                                              alpn=[bytearray(b'http/1.1')],
                                               reqCert=reqCert)
                                               # As an example (does not work here):
                                               #nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
