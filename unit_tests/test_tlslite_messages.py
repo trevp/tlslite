@@ -324,10 +324,16 @@ class TestClientHello(unittest.TestCase):
                 b'\x01'                 # type - OpenPGP
                 )), list(client_hello.write()))
 
+    def test_invalid_srp_username(self):
+        with self.assertRaises(TypeError):
+            ClientHello().create((3, 1),
+                    bytearray(b'\x00'*32), bytearray(0),
+                    [], srpUsername='test')
+
     def test_write_with_srp_username(self):
         client_hello = ClientHello().create((3,1),
                 bytearray(b'\x00'*31 + b'\xff'), bytearray(0),
-                [], srpUsername="example-test")
+                [], srpUsername=bytearray(b"example-test"))
 
         self.assertEqual(list(bytearray(
                 b'\x01' +               # type of message - client_hello

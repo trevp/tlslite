@@ -189,10 +189,10 @@ class TLSConnection(TLSRecordLayer):
         If an exception is raised, the connection will have been
         automatically closed (if it was ever open).
 
-        @type username: str
+        @type username: bytearray
         @param username: The SRP username.
 
-        @type password: str
+        @type password: bytearray
         @param password: The SRP password.
 
         @type session: L{tlslite.session.Session}
@@ -237,6 +237,11 @@ class TLSConnection(TLSRecordLayer):
         @raise tlslite.errors.TLSAuthenticationError: If the checker
         doesn't like the other party's authentication credentials.
         """
+        # TODO add deprecation warning
+        if isinstance(username, str):
+            username = bytearray(username, 'utf-8')
+        if isinstance(password, str):
+            password = bytearray(password, 'utf-8')
         handshaker = self._handshakeClientAsync(srpParams=(username, password),
                         session=session, settings=settings, checker=checker,
                         reqTack=reqTack, serverName=serverName)
@@ -435,9 +440,9 @@ class TLSConnection(TLSRecordLayer):
 
         #Add Faults to parameters
         if srpUsername and self.fault == Fault.badUsername:
-            srpUsername += "GARBAGE"
+            srpUsername += bytearray(b"GARBAGE")
         if password and self.fault == Fault.badPassword:
-            password += "GARBAGE"
+            password += bytearray(b"GARBAGE")
 
         #Tentatively set the version to the client's minimum version.
         #We'll use this for the ClientHello, and if an error occurs

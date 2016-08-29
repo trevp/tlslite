@@ -565,7 +565,9 @@ class ClientHello(HelloMessage):
         if certificate_types is not None:
             self.certificate_types = certificate_types
         if srpUsername is not None:
-            self.srp_username = bytearray(srpUsername, "utf-8")
+            if not isinstance(srpUsername, bytearray):
+                raise TypeError("srpUsername must be a bytearray object")
+            self.srp_username = srpUsername
         self.tack = tack
         if supports_npn is not None:
             self.supports_npn = supports_npn

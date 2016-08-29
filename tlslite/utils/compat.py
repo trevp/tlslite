@@ -36,7 +36,9 @@ if sys.version_info >= (3,0):
 
     def a2b_base64(s):
         try:
-            b = bytearray(binascii.a2b_base64(bytearray(s, "ascii")))
+            if isinstance(s, str):
+                s = bytearray(s, "ascii")
+            b = bytearray(binascii.a2b_base64(s))
         except Exception as e:
             raise SyntaxError("base64 error: %s" % e)
         return b

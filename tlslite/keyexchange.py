@@ -442,10 +442,14 @@ class SRPKeyExchange(KeyExchange):
         self.srpUsername = srpUsername
         self.password = password
         self.settings = settings
+        if srpUsername is not None and not isinstance(srpUsername, bytearray):
+            raise TypeError("srpUsername must be a bytearray object")
+        if password is not None and not isinstance(password, bytearray):
+            raise TypeError("password must be a bytearray object")
 
     def makeServerKeyExchange(self, sigHash=None):
         """Create SRP version of Server Key Exchange"""
-        srpUsername = self.clientHello.srp_username.decode("utf-8")
+        srpUsername = bytes(self.clientHello.srp_username)
         #Get parameters from username
         try:
             entry = self.verifierDB[srpUsername]
@@ -503,8 +507,7 @@ class SRPKeyExchange(KeyExchange):
         self.A = powMod(g, a, N)
 
         #Calculate client's static DH values (x, v)
-        x = makeX(s, bytearray(self.srpUsername, "utf-8"),
-                  bytearray(self.password, "utf-8"))
+        x = makeX(s, self.srpUsername, self.password)
         v = powMod(g, x, N)
 
         #Calculate u
