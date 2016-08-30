@@ -260,7 +260,7 @@ class TLSConnection(TLSRecordLayer):
     def handshakeClientCert(self, certChain=None, privateKey=None,
                             session=None, settings=None, checker=None,
                             nextProtos=None, reqTack=True, serverName=None,
-                            async=False):
+                            async=False, alpn=None):
         """Perform a certificate-based handshake in the role of client.
 
         This function performs an SSL or TLS handshake.  The server
@@ -325,6 +325,11 @@ class TLSConnection(TLSRecordLayer):
         waiting to write to the socket, or will raise StopIteration if
         the handshake operation is completed.
 
+        @type alpn: list of bytearrays
+        @param alpn: protocol names to advertise to server as supported by
+        client in the Application Layer Protocol Negotiation extension.
+        Example items in the array include b'http/1.1' or b'h2'.
+
         @rtype: None or an iterable
         @return: If 'async' is True, a generator object will be
         returned.
@@ -342,7 +347,8 @@ class TLSConnection(TLSRecordLayer):
                                            checker=checker,
                                            serverName=serverName,
                                            nextProtos=nextProtos,
-                                           reqTack=reqTack)
+                                           reqTack=reqTack,
+                                           alpn=alpn)
         # The handshaker is a Python Generator which executes the handshake.
         # It allows the handshake to be run in a "piecewise", asynchronous
         # fashion, returning 1 when it is waiting to able to write, 0 when
@@ -358,7 +364,8 @@ class TLSConnection(TLSRecordLayer):
 
     def _handshakeClientAsync(self, srpParams=(), certParams=(), anonParams=(),
                               session=None, settings=None, checker=None,
-                              nextProtos=None, serverName=None, reqTack=True):
+                              nextProtos=None, serverName=None, reqTack=True,
+                              alpn=None):
 
         handshaker = self._handshakeClientAsyncHelper(srpParams=srpParams,
                 certParams=certParams,
@@ -367,14 +374,16 @@ class TLSConnection(TLSRecordLayer):
                 settings=settings,
                 serverName=serverName,
                 nextProtos=nextProtos,
-                reqTack=reqTack)
+                reqTack=reqTack,
+                alpn=alpn)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
 
     def _handshakeClientAsyncHelper(self, srpParams, certParams, anonParams,
-                               session, settings, serverName, nextProtos, reqTack):
-        
+                               session, settings, serverName, nextProtos,
+                               reqTack, alpn):
+
         self._handshakeStart(client=True)
 
         #Unpack parameters
@@ -413,7 +422,9 @@ class TLSConnection(TLSRecordLayer):
         if nextProtos is not None:
             if len(nextProtos) == 0:
                 raise ValueError("Caller passed no nextProtos")
-        
+        if alpn is not None and not alpn:
+            raise ValueError("Caller passed empty alpn list")
+
         # Validates the settings and filters out any unsupported ciphers
         # or crypto libraries that were requested        
         if not settings:
@@ -456,7 +467,7 @@ class TLSConnection(TLSRecordLayer):
         for result in self._clientSendClientHello(settings, session, 
                                         srpUsername, srpParams, certParams,
                                         anonParams, serverName, nextProtos,
-                                        reqTack):
+                                        reqTack, alpn):
             if result in (0,1): yield result
             else: break
         clientHello = result
@@ -490,6 +501,11 @@ class TLSConnection(TLSRecordLayer):
             self._handshakeDone(resumed=True)
             self._serverRandom = serverHello.random
             self._clientRandom = clientHello.random
+            # alpn protocol is independent of resumption and renegotiation
+            # and needs to be negotiated every time
+            alpnExt = serverHello.getExtension(ExtensionType.alpn)
+            if alpnExt:
+                session.appProto = alpnExt.protocol_names[0]
             return
 
         #If the server selected an SRP ciphersuite, the client finishes
@@ -552,6 +568,12 @@ class TLSConnection(TLSRecordLayer):
                 else: break
         masterSecret = result
 
+        # check if an application layer protocol was negotiated
+        alpnProto = None
+        alpnExt = serverHello.getExtension(ExtensionType.alpn)
+        if alpnExt:
+            alpnProto = alpnExt.protocol_names[0]
+
         # Create the session object which is used for resumptions
         self.session = Session()
         self.session.create(masterSecret, serverHello.session_id, cipherSuite,
@@ -559,15 +581,16 @@ class TLSConnection(TLSRecordLayer):
                             tackExt, (serverHello.tackExt is not None),
                             serverName,
                             encryptThenMAC=self._recordLayer.encryptThenMAC,
-                            extendedMasterSecret=self.extendedMasterSecret)
+                            extendedMasterSecret=self.extendedMasterSecret,
+                            appProto=alpnProto)
         self._handshakeDone(resumed=False)
         self._serverRandom = serverHello.random
         self._clientRandom = clientHello.random
 
 
     def _clientSendClientHello(self, settings, session, srpUsername,
-                                srpParams, certParams, anonParams, 
-                                serverName, nextProtos, reqTack):
+                                srpParams, certParams, anonParams,
+                                serverName, nextProtos, reqTack, alpn):
         #Initialize acceptable ciphersuites
         cipherSuites = [CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
         if srpParams:
@@ -615,6 +638,9 @@ class TLSConnection(TLSRecordLayer):
             assert len(sigList) > 0
             extensions.append(SignatureAlgorithmsExtension().\
                               create(sigList))
+        # if we know any protocols for ALPN, advertise them
+        if alpn:
+            extensions.append(ALPNExtension().create(alpn))
         # don't send empty list of extensions or extensions in SSLv3
         if not extensions or settings.maxVersion == (3, 0):
             extensions = None
@@ -720,6 +746,26 @@ class TLSConnection(TLSRecordLayer):
                     AlertDescription.insufficient_security,
                     "Negotiation of Extended master Secret failed"):
                 yield result
+        alpnExt = serverHello.getExtension(ExtensionType.alpn)
+        if alpnExt:
+            if not alpnExt.protocol_names or \
+                    len(alpnExt.protocol_names) != 1:
+                for result in self._sendError(
+                        AlertDescription.illegal_parameter,
+                        "Server responded with invalid ALPN extension"):
+                    yield result
+            clntAlpnExt = clientHello.getExtension(ExtensionType.alpn)
+            if not clntAlpnExt:
+                for result in self._sendError(
+                        AlertDescription.unsupported_extension,
+                        "Server sent ALPN extension without one in "
+                        "client hello"):
+                    yield result
+            if alpnExt.protocol_names[0] not in clntAlpnExt.protocol_names:
+                for result in self._sendError(
+                        AlertDescription.illegal_parameter,
+                        "Server selected ALPN protocol we did not advertise"):
+                    yield result
         yield serverHello
 
     def _clientSelectNextProto(self, nextProtos, serverHello):
@@ -1024,7 +1070,7 @@ class TLSConnection(TLSRecordLayer):
                         sessionCache=None, settings=None, checker=None,
                         reqCAs = None, 
                         tacks=None, activationFlags=0,
-                        nextProtos=None, anon=False):
+                        nextProtos=None, anon=False, alpn=None):
         """Perform a handshake in the role of server.
 
         This function performs an SSL or TLS handshake.  Depending on
@@ -1093,6 +1139,11 @@ class TLSConnection(TLSRecordLayer):
         clients through the Next-Protocol Negotiation Extension, 
         if they support it.
 
+        @type alpn: list of bytearrays
+        @param alpn: names of application layer protocols supported.
+        Note that it will be used instead of NPN if both were advertised by
+        client.
+
         @raise socket.error: If a socket error occurs.
         @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
         without a preceding alert.
@@ -1104,7 +1155,7 @@ class TLSConnection(TLSRecordLayer):
                 certChain, privateKey, reqCert, sessionCache, settings,
                 checker, reqCAs, 
                 tacks=tacks, activationFlags=activationFlags, 
-                nextProtos=nextProtos, anon=anon):
+                nextProtos=nextProtos, anon=anon, alpn=alpn):
             pass
 
 
@@ -1113,7 +1164,7 @@ class TLSConnection(TLSRecordLayer):
                              sessionCache=None, settings=None, checker=None,
                              reqCAs=None, 
                              tacks=None, activationFlags=0,
-                             nextProtos=None, anon=False
+                             nextProtos=None, anon=False, alpn=None
                              ):
         """Start a server handshake operation on the TLS connection.
 
@@ -1132,7 +1183,7 @@ class TLSConnection(TLSRecordLayer):
             sessionCache=sessionCache, settings=settings, 
             reqCAs=reqCAs, 
             tacks=tacks, activationFlags=activationFlags, 
-            nextProtos=nextProtos, anon=anon)
+            nextProtos=nextProtos, anon=anon, alpn=alpn)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
@@ -1141,7 +1192,7 @@ class TLSConnection(TLSRecordLayer):
                              certChain, privateKey, reqCert, sessionCache,
                              settings, reqCAs, 
                              tacks, activationFlags, 
-                             nextProtos, anon):
+                             nextProtos, anon, alpn):
 
         self._handshakeStart(client=False)
 
@@ -1162,6 +1213,8 @@ class TLSConnection(TLSRecordLayer):
                 raise ValueError("tackpy is not loaded")
             if not settings or not settings.useExperimentalTackExtension:
                 raise ValueError("useExperimentalTackExtension not enabled")
+        if alpn is not None and not alpn:
+            raise ValueError("Empty list of ALPN protocols")
 
         if not settings:
             settings = HandshakeSettings()
@@ -1171,9 +1224,9 @@ class TLSConnection(TLSRecordLayer):
         # ******************************
         
         # Handle ClientHello and resumption
-        for result in self._serverGetClientHello(settings, certChain,\
-                                            verifierDB, sessionCache,
-                                            anon):
+        for result in self._serverGetClientHello(settings, certChain,
+                                                 verifierDB, sessionCache,
+                                                 anon, alpn):
             if result in (0,1): yield result
             elif result == None:
                 self._handshakeDone(resumed=True)                
@@ -1190,6 +1243,11 @@ class TLSConnection(TLSRecordLayer):
             sessionID = bytearray(0)
         
         if not clientHello.supports_npn:
+            nextProtos = None
+
+        alpnExt = clientHello.getExtension(ExtensionType.alpn)
+        if alpnExt and alpn:
+            # if there's ALPN, don't do NPN
             nextProtos = None
 
         # If not doing a certificate-based suite, discard the TACK
@@ -1225,6 +1283,19 @@ class TLSConnection(TLSRecordLayer):
                         "Failed to negotiate Extended Master Secret"):
                     yield result
 
+        selectedALPN = None
+        if alpnExt and alpn:
+            for protoName in alpnExt.protocol_names:
+                if protoName in alpn:
+                    selectedALPN = protoName
+                    ext = ALPNExtension().create([protoName])
+                    extensions.append(ext)
+                    break
+            else:
+                for result in self._sendError(
+                        AlertDescription.no_application_protocol,
+                        "No mutually supported application layer protocols"):
+                    yield result
         # notify client that we understood its renegotiation info extension
         # or SCSV
         secureRenego = False
@@ -1347,7 +1418,8 @@ class TLSConnection(TLSRecordLayer):
                             srpUsername, clientCertChain, serverCertChain,
                             tackExt, (serverHello.tackExt is not None),
                             serverName,
-                            encryptThenMAC=self._recordLayer.encryptThenMAC)
+                            encryptThenMAC=self._recordLayer.encryptThenMAC,
+                            appProto=selectedALPN)
             
         #Add the session object to the session cache
         if sessionCache and sessionID:
@@ -1359,7 +1431,7 @@ class TLSConnection(TLSRecordLayer):
 
 
     def _serverGetClientHello(self, settings, certChain, verifierDB,
-                                sessionCache, anon):
+                              sessionCache, anon, alpn):
         #Tentatively set version to most-desirable version, so if an error
         #occurs parsing the ClientHello, this is what we'll use for the
         #error alert
@@ -1379,6 +1451,16 @@ class TLSConnection(TLSRecordLayer):
                   AlertDescription.protocol_version,
                   "Too old version: %s" % str(clientHello.client_version)):
                 yield result
+
+        # Sanity check the ALPN extension
+        alpnExt = clientHello.getExtension(ExtensionType.alpn)
+        if alpnExt:
+            for protocolName in alpnExt.protocol_names:
+                if not protocolName:
+                    for result in self._sendError(
+                            AlertDescription.illegal_parameter,
+                            "Client sent empty name in ALPN extension"):
+                        yield result
 
         #If client's version is too high, propose my highest version
         elif clientHello.client_version > settings.maxVersion:
@@ -1504,6 +1586,23 @@ class TLSConnection(TLSRecordLayer):
                 if secureRenego:
                     extensions.append(RenegotiationInfoExtension()
                                       .create(bytearray(0)))
+                selectedALPN = None
+                if alpn:
+                    alpnExt = clientHello.getExtension(ExtensionType.alpn)
+                    if alpnExt:
+                        for protocolName in alpnExt.protocol_names:
+                            if protocolName in alpn:
+                                ext = ALPNExtension().create([protocolName])
+                                extensions.append(ext)
+                                selectedALPN = protocolName
+                                break
+                        else:
+                            for result in self._sendError(
+                                    AlertDescription.no_application_protocol,
+                                    "No commonly supported application layer"
+                                    "protocol supported"):
+                                yield result
+
                 # don't send empty extensions
                 if not extensions:
                     extensions = None
@@ -1534,6 +1633,7 @@ class TLSConnection(TLSRecordLayer):
                 self.session = session
                 self._clientRandom = clientHello.random
                 self._serverRandom = serverHello.random
+                self.session.appProto = selectedALPN
                 yield None # Handshake done!
 
         #Calculate the first cipher suite intersection.
