@@ -1178,7 +1178,7 @@ class ALPNExtension(TLSExtension):
 
     def __init__(self):
         """
-        Create instance of NPNExtension
+        Create instance of ALPNExtension
 
         See also: L{create} and L{parse}
         """
