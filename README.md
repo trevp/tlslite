@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.6.0-beta1                                     2016-08-08
+tlslite-ng version 0.6.0                                           2016-09-07
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -584,8 +584,11 @@ encrypt-then-MAC mode for CBC ciphers.
 12 History
 ===========
 
-0.6.0 - WIP
+0.6.0 - 2016-09-07
 
+* added support for ALPN from RFC 7301
+* fixed handling of SRP databases
+* fixed compatibility issues with Python 3
 * fixed compatibility with Python 2.7.3
 * AECDH support on server side (Milan Lysonek)
 * make the Client Hello parser more strict, it will now abort if the
