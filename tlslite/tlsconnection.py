@@ -1452,6 +1452,14 @@ class TLSConnection(TLSRecordLayer):
                   "Too old version: %s" % str(clientHello.client_version)):
                 yield result
 
+        # there MUST be at least one value in both of those
+        if not clientHello.cipher_suites or \
+                not clientHello.compression_methods:
+            for result in self._sendError(
+                    AlertDescription.decode_error,
+                    "Malformed Client Hello message"):
+                yield result
+
         # Sanity check the ALPN extension
         alpnExt = clientHello.getExtension(ExtensionType.alpn)
         if alpnExt:
