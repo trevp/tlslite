@@ -1460,6 +1460,13 @@ class TLSConnection(TLSRecordLayer):
                     "Malformed Client Hello message"):
                 yield result
 
+        # client hello MUST advertise uncompressed method
+        if 0 not in clientHello.compression_methods:
+            for result in self._sendError(
+                    AlertDescription.illegal_parameter,
+                    "Client Hello missing uncompressed method"):
+                yield result
+
         # Sanity check the ALPN extension
         alpnExt = clientHello.getExtension(ExtensionType.alpn)
         if alpnExt:
