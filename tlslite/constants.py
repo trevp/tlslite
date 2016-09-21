@@ -116,6 +116,7 @@ class ExtensionType(TLSEnum):
     """TLS Extension Type registry values"""
 
     server_name = 0  # RFC 6066 / 4366
+    status_request = 5  # RFC 6066 / 4366
     cert_type = 9  # RFC 6091
     supported_groups = 10  # RFC 4492, RFC-ietf-tls-negotiated-ff-dhe-10
     ec_point_formats = 11  # RFC 4492
@@ -225,6 +226,13 @@ class ECCurveType(TLSEnum):
 
 class NameType:
     host_name = 0
+
+
+class CertificateStatusType(TLSEnum):
+    """Type of responses in the status_request and CertificateStatus msgs."""
+
+    ocsp = 1
+
 
 class AlertLevel(TLSEnum):
     """Enumeration of TLS Alert protocol levels"""

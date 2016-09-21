@@ -12,10 +12,11 @@ from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension,\
         TACKExtension, SupportedGroupsExtension, ECPointFormatsExtension,\
         SignatureAlgorithmsExtension, PaddingExtension, VarListExtension, \
-        RenegotiationInfoExtension, ALPNExtension
+        RenegotiationInfoExtension, ALPNExtension, StatusRequestExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType, ExtensionType, GroupName,\
-        ECPointFormat, HashAlgorithm, SignatureAlgorithm
+        ECPointFormat, HashAlgorithm, SignatureAlgorithm, \
+        CertificateStatusType
 from tlslite.errors import TLSInternalError
 
 class TestTLSExtension(unittest.TestCase):
@@ -1586,6 +1587,97 @@ class TestAPLNExtension(unittest.TestCase):
         self.assertEqual(ext2.protocol_names, [bytearray(b'http/1.1'),
                                                bytearray(b'spdy/1')])
 
+
+class TestStatusRequestExtension(unittest.TestCase):
+    def setUp(self):
+        self.ext = StatusRequestExtension()
+
+    def test___init__(self):
+        self.assertIsNotNone(self.ext)
+        self.assertEqual(self.ext.extType, 5)
+        self.assertEqual(self.ext.extData, bytearray())
+        self.assertIsNone(self.ext.status_type)
+        self.assertEqual(self.ext.responder_id_list, [])
+        self.assertEqual(self.ext.request_extensions, bytearray())
+
+    def test__repr__(self):
+        self.assertEqual("StatusRequestExtension(status_type=None, "
+                         "responder_id_list=[], "
+                         "request_extensions=bytearray(b''))", repr(self.ext))
+
+    def test_create(self):
+        e = self.ext.create()
+        self.assertIs(e, self.ext)
+        self.assertEqual(e.status_type, 1)
+        self.assertEqual(e.responder_id_list, [])
+        self.assertEqual(e.request_extensions, bytearray())
+
+    def test_extData_with_default(self):
+        self.ext.create()
+        self.assertEqual(self.ext.extData,
+                         bytearray(b'\x01\x00\x00\x00\x00'))
+
+    def test_extData_with_data(self):
+        self.ext.create(status_type=15,
+                        responder_id_list=[bytearray(b'abba'),
+                                           bytearray(b'xxx')],
+                        request_extensions=bytearray(b'\x08\x09'))
+
+        self.assertEqual(self.ext.extData,
+                         bytearray(b'\x0f'
+                                   b'\x00\x0b'
+                                   b'\x00\x04abba'
+                                   b'\x00\x03xxx'
+                                   b'\x00\x02'
+                                   b'\x08\x09'))
+
+
+    def test_parse_empty(self):
+        parser = Parser(bytearray())
+
+        e = self.ext.parse(parser)
+        self.assertIs(e, self.ext)
+
+        self.assertIsNone(e.status_type)
+        self.assertEqual(e.responder_id_list, [])
+        self.assertEqual(e.request_extensions, bytearray())
+
+    def test_parse_typical(self):
+        parser = Parser(bytearray(b'\x01\x00\x00\x00\x00'))
+
+        e = self.ext.parse(parser)
+        self.assertIs(e, self.ext)
+
+        self.assertEqual(self.ext.status_type, CertificateStatusType.ocsp)
+        self.assertEqual(self.ext.responder_id_list, [])
+        self.assertEqual(self.ext.request_extensions, bytearray())
+
+    def test_parse_with_values(self):
+        parser = Parser(bytearray(b'\x0f'
+                                  b'\x00\x0b'
+                                  b'\x00\x04abba'
+                                  b'\x00\x03xxx'
+                                  b'\x00\x02'
+                                  b'\x08\x09'))
+
+        self.ext.parse(parser)
+
+        self.assertEqual(self.ext.status_type, 15)
+        self.assertEqual(self.ext.responder_id_list, [bytearray(b'abba'),
+                                                      bytearray(b'xxx')])
+        self.assertEqual(self.ext.request_extensions, bytearray(b'\x08\x09'))
+
+    def test_parse_with_trailing_data(self):
+        parser = Parser(bytearray(b'\x0f'
+                                  b'\x00\x0b'
+                                  b'\x00\x04abba'
+                                  b'\x00\x03xxx'
+                                  b'\x00\x02'
+                                  b'\x08\x09'
+                                  b'\x00'))
+
+        with self.assertRaises(SyntaxError):
+            self.ext.parse(parser)
 
 if __name__ == '__main__':
     unittest.main()
