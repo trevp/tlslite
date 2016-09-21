@@ -294,7 +294,10 @@ class AlertDescription(TLSEnum):
     user_canceled = 90
     no_renegotiation = 100
     unsupported_extension = 110  # RFC 5246
+    certificate_unobtainable = 111  # RFC 6066
     unrecognized_name = 112  # RFC 6066
+    bad_certificate_status_response = 113  # RFC 6066
+    bad_certificate_hash_value = 114  # RFC 6066
     unknown_psk_identity = 115
     no_application_protocol = 120  # RFC 7301
 
