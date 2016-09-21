@@ -111,20 +111,24 @@ class ContentType(TLSEnum):
         blacklist.append('all')
         return super(ContentType, cls).toRepr(value, blacklist)
 
-class ExtensionType:    # RFC 6066 / 4366
-    server_name = 0     # RFC 6066 / 4366
-    cert_type = 9       # RFC 6091
-    supported_groups = 10 # RFC 4492, RFC-ietf-tls-negotiated-ff-dhe-10
-    ec_point_formats = 11 # RFC 4492
-    srp = 12            # RFC 5054
-    signature_algorithms = 13 # RFC 5246
+
+class ExtensionType(TLSEnum):
+    """TLS Extension Type registry values"""
+
+    server_name = 0  # RFC 6066 / 4366
+    cert_type = 9  # RFC 6091
+    supported_groups = 10  # RFC 4492, RFC-ietf-tls-negotiated-ff-dhe-10
+    ec_point_formats = 11  # RFC 4492
+    srp = 12  # RFC 5054
+    signature_algorithms = 13  # RFC 5246
     alpn = 16  # RFC 7301
-    client_hello_padding = 21 # RFC 7685
-    encrypt_then_mac = 22 # RFC 7366
-    extended_master_secret = 23 # RFC 7627
-    tack = 0xF300
+    client_hello_padding = 21  # RFC 7685
+    encrypt_then_mac = 22  # RFC 7366
+    extended_master_secret = 23  # RFC 7627
     supports_npn = 13172
-    renegotiation_info = 0xff01
+    tack = 0xF300
+    renegotiation_info = 0xff01  # RFC 5746
+
 
 class HashAlgorithm(TLSEnum):
     """Hash algorithm IDs used in TLSv1.2"""
