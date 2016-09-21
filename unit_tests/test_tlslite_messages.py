@@ -10,12 +10,12 @@ except ImportError:
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
-        ClientMasterKey, ClientFinished, ServerFinished
+        ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
         HashAlgorithm, SignatureAlgorithm, ECCurveType, GroupName, \
-        SSL2HandshakeType
+        SSL2HandshakeType, CertificateStatusType
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension, NPNExtension
 from tlslite.errors import TLSInternalError
@@ -2361,6 +2361,48 @@ class TestServerFinished(unittest.TestCase):
 
         self.assertEqual(fin.verify_data, bytearray(b'\xc0\xfe'))
         self.assertEqual(fin.handshakeType, SSL2HandshakeType.server_finished)
+
+
+class TestCertificateStatus(unittest.TestCase):
+    def setUp(self):
+        self.msg = CertificateStatus()
+
+    def test___init__(self):
+        self.assertIsNotNone(self.msg)
+        self.assertEqual(self.msg.handshakeType,
+                         22)
+
+    def test_create(self):
+        m = self.msg.create(12, bytearray(b'\xab\xba'))
+        self.assertIs(m, self.msg)
+
+        self.assertEqual(m.status_type, 12)
+        self.assertEqual(m.ocsp, bytearray(b'\xab\xba'))
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            # type is handled by the dispatcher
+            b'\x00\x00\x05'  # overall length
+            b'\x10'  # type of the payload
+            b'\x00\x00\x01'  # patyload length
+            b'\xfa'))
+
+        m = self.msg.parse(parser)
+        self.assertIs(m, self.msg)
+
+        self.assertEqual(m.status_type, 16)
+        self.assertEqual(m.ocsp, bytearray(b'\xfa'))
+
+    def test_write(self):
+        self.msg.create(CertificateStatusType.ocsp, bytearray(b'\xbc\xaa'))
+
+        self.assertEqual(self.msg.write(), bytearray(
+            b'\x16'
+            b'\x00\x00\x06'
+            b'\x01'
+            b'\x00\x00\x02'
+            b'\xbc\xaa'))
+
 
 if __name__ == '__main__':
     unittest.main()

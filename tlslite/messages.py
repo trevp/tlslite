@@ -1666,6 +1666,49 @@ class ServerFinished(SSL2Finished):
         super(ServerFinished, self).__init__(SSL2HandshakeType.server_finished)
 
 
+class CertificateStatus(HandshakeMsg):
+    """
+    Handling of the CertificateStatus message from RFC 6066.
+
+    Handling of the handshake protocol message that includes the OCSP staple.
+
+    @type status_type: int
+    @ivar status_type: type of response returned
+
+    @type ocsp: bytearray
+    @ivar ocsp: OCSPResponse from RFC 2560
+    """
+
+    def __init__(self):
+        """Create the objet, set its type."""
+        super(CertificateStatus, self).__init__(
+                HandshakeType.certificate_status)
+        self.status_type = None
+        self.ocsp = bytearray()
+
+    def create(self, status_type, ocsp):
+        """Set up message payload."""
+        self.status_type = status_type
+        self.ocsp = ocsp
+        return self
+
+    def parse(self, parser):
+        """Deserialise the message from one the wire data."""
+        parser.startLengthCheck(3)
+        self.status_type = parser.get(1)
+        self.ocsp = parser.getVarBytes(3)
+        parser.stopLengthCheck()
+        return self
+
+    def write(self):
+        """Serialise the message."""
+        writer = Writer()
+        writer.add(self.status_type, 1)
+        writer.add(len(self.ocsp), 3)
+        writer.bytes += self.ocsp
+        return self.postWrite(writer)
+
+
 class ApplicationData(object):
     def __init__(self):
         self.contentType = ContentType.application_data

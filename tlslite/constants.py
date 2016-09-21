@@ -92,6 +92,7 @@ class HandshakeType(TLSEnum):
     certificate_verify = 15
     client_key_exchange = 16
     finished = 20
+    certificate_status = 22
     next_protocol = 67
 
 class ContentType(TLSEnum):
