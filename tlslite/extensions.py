@@ -9,7 +9,7 @@ and ServerHello messages.
 from __future__ import generators
 from .utils.codec import Writer, Parser
 from collections import namedtuple
-from .constants import NameType, ExtensionType
+from .constants import NameType, ExtensionType, CertificateStatusType
 from .errors import TLSInternalError
 
 class TLSExtension(object):
@@ -1248,9 +1248,118 @@ class ALPNExtension(TLSExtension):
         return self
 
 
+class StatusRequestExtension(TLSExtension):
+    """
+    Handling of the Certificate Status Request extension from RFC 6066.
+
+    @type status_type: int
+    @ivar status_type: type of the status request
+
+    @type responder_id_list: list of bytearray
+    @ivar responder_id_list: list of DER encoded OCSP responder identifiers
+        that the client trusts
+
+    @type request_extensions: bytearray
+    @ivar request_extensions: DER encoded list of OCSP extensions, as defined
+        in RFC 2560
+    """
+
+    def __init__(self):
+        super(StatusRequestExtension, self).__init__(
+                extType=ExtensionType.status_request)
+        """Create instance of StatusRequestExtension."""
+        self.status_type = None
+        self.responder_id_list = []
+        self.request_extensions = bytearray()
+
+    def __repr__(self):
+        """
+        Create programmer-readable representation of object
+
+        @rtype: str
+        """
+        return ("StatusRequestExtension(status_type={0}, "
+                "responder_id_list={1!r}, "
+                "request_extensions={2!r})").format(
+                    self.status_type, self.responder_id_list,
+                    self.request_extensions)
+
+    @property
+    def extData(self):
+        """
+        Return encoded payload of the extension.
+
+        @rtype: bytearray
+        """
+        if self.status_type is None:
+            return bytearray()
+
+        writer = Writer()
+        writer.add(self.status_type, 1)
+        writer2 = Writer()
+        for i in self.responder_id_list:
+            writer2.add(len(i), 2)
+            writer2.bytes += i
+        writer.add(len(writer2.bytes), 2)
+        writer.bytes += writer2.bytes
+        writer.add(len(self.request_extensions), 2)
+        writer.bytes += self.request_extensions
+
+        return writer.bytes
+
+    def create(self, status_type=CertificateStatusType.ocsp,
+               responder_id_list=tuple(),
+               request_extensions=b''):
+        """
+        Create an instance of StatusRequestExtension with specified options.
+
+        @type status_type: int
+        @param status_type: type of status returned
+
+        @type responder_id_list: list
+        @param responder_id_list: list of encoded OCSP responder identifiers
+            that the client trusts
+
+        @type request_extensions: bytearray
+        @param request_extensions: DER encoding of requested OCSP extensions
+        """
+        self.status_type = status_type
+        self.responder_id_list = list(responder_id_list)
+        self.request_extensions = bytearray(request_extensions)
+        return self
+
+    def parse(self, parser):
+        """
+        Parse the extension from on the wire format.
+
+        @type parser: L{tlslite.util.codec.Parser}
+        @param parser: data to be parsed as extension
+
+        @rtype: L{StatusRequestExtension}
+        """
+        # handling of server side message
+        if parser.getRemainingLength() == 0:
+            self.status_type = None
+            self.responder_id_list = []
+            self.request_extensions = bytearray()
+            return self
+
+        self.status_type = parser.get(1)
+        self.responder_id_list = []
+        parser.startLengthCheck(2)
+        while not parser.atLengthCheck():
+            self.responder_id_list.append(parser.getVarBytes(2))
+        parser.stopLengthCheck()
+        self.request_extensions = parser.getVarBytes(2)
+        if parser.getRemainingLength() != 0:
+            raise SyntaxError("Trailing data after CertificateStatusRequest")
+        return self
+
+
 TLSExtension._universalExtensions = \
     {
         ExtensionType.server_name: SNIExtension,
+        ExtensionType.status_request: StatusRequestExtension,
         ExtensionType.cert_type: ClientCertTypeExtension,
         ExtensionType.supported_groups: SupportedGroupsExtension,
         ExtensionType.ec_point_formats: ECPointFormatsExtension,

@@ -92,6 +92,7 @@ class HandshakeType(TLSEnum):
     certificate_verify = 15
     client_key_exchange = 16
     finished = 20
+    certificate_status = 22
     next_protocol = 67
 
 class ContentType(TLSEnum):
@@ -111,20 +112,25 @@ class ContentType(TLSEnum):
         blacklist.append('all')
         return super(ContentType, cls).toRepr(value, blacklist)
 
-class ExtensionType:    # RFC 6066 / 4366
-    server_name = 0     # RFC 6066 / 4366
-    cert_type = 9       # RFC 6091
-    supported_groups = 10 # RFC 4492, RFC-ietf-tls-negotiated-ff-dhe-10
-    ec_point_formats = 11 # RFC 4492
-    srp = 12            # RFC 5054
-    signature_algorithms = 13 # RFC 5246
+
+class ExtensionType(TLSEnum):
+    """TLS Extension Type registry values"""
+
+    server_name = 0  # RFC 6066 / 4366
+    status_request = 5  # RFC 6066 / 4366
+    cert_type = 9  # RFC 6091
+    supported_groups = 10  # RFC 4492, RFC-ietf-tls-negotiated-ff-dhe-10
+    ec_point_formats = 11  # RFC 4492
+    srp = 12  # RFC 5054
+    signature_algorithms = 13  # RFC 5246
     alpn = 16  # RFC 7301
-    client_hello_padding = 21 # RFC 7685
-    encrypt_then_mac = 22 # RFC 7366
-    extended_master_secret = 23 # RFC 7627
-    tack = 0xF300
+    client_hello_padding = 21  # RFC 7685
+    encrypt_then_mac = 22  # RFC 7366
+    extended_master_secret = 23  # RFC 7627
     supports_npn = 13172
-    renegotiation_info = 0xff01
+    tack = 0xF300
+    renegotiation_info = 0xff01  # RFC 5746
+
 
 class HashAlgorithm(TLSEnum):
     """Hash algorithm IDs used in TLSv1.2"""
@@ -222,6 +228,13 @@ class ECCurveType(TLSEnum):
 class NameType:
     host_name = 0
 
+
+class CertificateStatusType(TLSEnum):
+    """Type of responses in the status_request and CertificateStatus msgs."""
+
+    ocsp = 1
+
+
 class AlertLevel(TLSEnum):
     """Enumeration of TLS Alert protocol levels"""
 
@@ -282,7 +295,10 @@ class AlertDescription(TLSEnum):
     user_canceled = 90
     no_renegotiation = 100
     unsupported_extension = 110  # RFC 5246
+    certificate_unobtainable = 111  # RFC 6066
     unrecognized_name = 112  # RFC 6066
+    bad_certificate_status_response = 113  # RFC 6066
+    bad_certificate_hash_value = 114  # RFC 6066
     unknown_psk_identity = 115
     no_application_protocol = 120  # RFC 7301
 
