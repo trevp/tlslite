@@ -272,7 +272,8 @@ class ADHKeyExchange(KeyExchange):
 
         # First half of RFC 2631, Section 2.1.5. Validate the client's public
         # key.
-        if not 2 <= dh_Yc <= self.dh_p - 1:
+        # use of safe primes also means that the p-1 is invalid
+        if not 2 <= dh_Yc < self.dh_p - 1:
             raise TLSIllegalParameterException("Invalid dh_Yc value")
 
         S = powMod(dh_Yc, self.dh_Xs, self.dh_p)
