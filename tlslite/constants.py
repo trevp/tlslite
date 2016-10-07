@@ -47,18 +47,22 @@ class TLSEnum(object):
         else:
             return '{0}'.format(value)
 
-class CertificateType:
+
+class CertificateType(TLSEnum):
     x509 = 0
     openpgp = 1
 
-class ClientCertificateType:
+
+class ClientCertificateType(TLSEnum):
     rsa_sign = 1
     dss_sign = 2
     rsa_fixed_dh = 3
     dss_fixed_dh = 4
 
+
 class SSL2HandshakeType(TLSEnum):
-    """SSL2 Handshake Protocol message types"""
+    """SSL2 Handshake Protocol message types."""
+
     error = 0
     client_hello = 1
     client_master_key = 2
@@ -94,6 +98,7 @@ class HandshakeType(TLSEnum):
     finished = 20
     certificate_status = 22
     next_protocol = 67
+
 
 class ContentType(TLSEnum):
     """TLS record layer content types of payloads"""
@@ -206,9 +211,9 @@ class GroupName(TLSEnum):
         blacklist += ['all', 'allEC', 'allFF']
         return super(GroupName, cls).toRepr(value, blacklist)
 
-class ECPointFormat(object):
 
-    """Names and ID's of supported EC point formats"""
+class ECPointFormat(TLSEnum):
+    """Names and ID's of supported EC point formats."""
 
     uncompressed = 0
     ansiX962_compressed_prime = 1
@@ -218,6 +223,15 @@ class ECPointFormat(object):
            ansiX962_compressed_prime,
            ansiX962_compressed_char2]
 
+    @classmethod
+    def toRepr(cls, value, blacklist=None):
+        """Convert numeric type to name representation."""
+        if blacklist is None:
+            blacklist = []
+        blacklist.append('all')
+        return super(ECPointFormat, cls).toRepr(value, blacklist)
+
+
 class ECCurveType(TLSEnum):
     """Types of ECC curves supported in TLS from RFC4492"""
 
@@ -225,7 +239,10 @@ class ECCurveType(TLSEnum):
     explicit_char2 = 2
     named_curve = 3
 
-class NameType:
+
+class NameType(TLSEnum):
+    """Type of entries in Server Name Indication extension."""
+
     host_name = 0
 
 
@@ -240,6 +257,7 @@ class AlertLevel(TLSEnum):
 
     warning = 1
     fatal = 2
+
 
 class AlertDescription(TLSEnum):
     """
