@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.6.0                                           2016-09-07
+tlslite-ng version 0.7.0-alpha1                                    2016-10-11
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -583,6 +583,11 @@ encrypt-then-MAC mode for CBC ciphers.
 
 12 History
 ===========
+
+0.7.0 - in-dev
+
+* basic support for RSA-PSS (Tomas Foukal)
+* better documentation for Parser and ASN1Parser
 
 0.6.0 - 2016-09-07
 
