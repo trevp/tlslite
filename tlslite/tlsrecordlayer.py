@@ -712,8 +712,9 @@ class TLSRecordLayer(object):
                         else:
                             if subType == HandshakeType.client_hello:
                                 reneg = True
-                        #Send no_renegotiation, then try again
-                        if reneg:
+                        # Send no_renegotiation if we're not negotiating
+                        # a connection now, then try again
+                        if reneg and self.session:
                             alertMsg = Alert()
                             alertMsg.create(AlertDescription.no_renegotiation,
                                             AlertLevel.warning)
