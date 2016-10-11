@@ -1467,6 +1467,15 @@ class TLSConnection(TLSRecordLayer):
                     "Client Hello missing uncompressed method"):
                 yield result
 
+        # the list of signatures methods is defined as <2..2^16-2>, which
+        # means it can't be empty, but it's only applicable to TLSv1.2 protocol
+        ext = clientHello.getExtension(ExtensionType.signature_algorithms)
+        if clientHello.client_version >= (3, 3) and ext and not ext.sigalgs:
+            for result in self._sendError(
+                    AlertDescription.decode_error,
+                    "Malformed signature_algorithms extension"):
+                yield result
+
         # Sanity check the ALPN extension
         alpnExt = clientHello.getExtension(ExtensionType.alpn)
         if alpnExt:
