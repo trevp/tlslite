@@ -1706,7 +1706,13 @@ class TLSConnection(TLSRecordLayer):
                                      privateKey,
                                      verifierDB)
 
-        sigHash = self._pickServerKeyExchangeSig(settings, clientHello)
+        try:
+            sigHash = self._pickServerKeyExchangeSig(settings, clientHello)
+        except TLSHandshakeFailure as alert:
+            for result in self._sendError(
+                    AlertDescription.handshake_failure,
+                    str(alert)):
+                yield result
 
         #Create ServerKeyExchange, signing it if necessary
         try:
@@ -1757,7 +1763,13 @@ class TLSConnection(TLSRecordLayer):
 
         msgs.append(serverHello)
         msgs.append(Certificate(CertificateType.x509).create(serverCertChain))
-        sigHashAlg = self._pickServerKeyExchangeSig(settings, clientHello)
+        try:
+            sigHashAlg = self._pickServerKeyExchangeSig(settings, clientHello)
+        except TLSHandshakeFailure as alert:
+            for result in self._sendError(
+                    AlertDescription.handshake_failure,
+                    str(alert)):
+                yield result
         serverKeyExchange = keyExchange.makeServerKeyExchange(sigHashAlg)
         if serverKeyExchange is not None:
             msgs.append(serverKeyExchange)
@@ -2066,8 +2078,8 @@ class TLSConnection(TLSRecordLayer):
             if hashID in rsaHashes:
                 return hashName
 
-        # if none match, default to sha1
-        return "sha1"
+        # if no match, we must abort per RFC 5246
+        raise TLSHandshakeFailure("No common signature algorithms")
 
     @staticmethod
     def _sigHashesToList(settings):

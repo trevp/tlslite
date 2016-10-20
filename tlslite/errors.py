@@ -233,6 +233,13 @@ class TLSUnknownPSKIdentity(TLSProtocolException):
 
     pass
 
+
+class TLSHandshakeFailure(TLSProtocolException):
+    """Could not find acceptable set of handshake parameters"""
+
+    pass
+
+
 class MaskTooLongError(EncryptionError):
     """The maskLen passed into function is too high"""
 
