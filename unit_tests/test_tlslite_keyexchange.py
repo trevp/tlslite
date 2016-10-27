@@ -378,6 +378,28 @@ class TestMakeCertificateVerify(unittest.TestCase):
             b'\x19~&\xd9\xaa\xc2\t,s\xde\xb1'
             ))
 
+    def test_with_failed_signature(self):
+        certificate_request = CertificateRequest((3, 3))
+        certificate_request.create([CertificateType.x509],
+                                   [],
+                                   [(HashAlgorithm.sha256,
+                                     SignatureAlgorithm.rsa),
+                                    (HashAlgorithm.sha1,
+                                     SignatureAlgorithm.rsa)])
+        self.clnt_private_key.sign = mock.Mock(return_value=bytearray(20))
+
+        with self.assertRaises(TLSInternalError):
+            certVerify = KeyExchange.makeCertificateVerify(
+                (3, 3),
+                self.handshake_hashes,
+                [(HashAlgorithm.sha1,
+                  SignatureAlgorithm.rsa),
+                 (HashAlgorithm.sha512,
+                  SignatureAlgorithm.rsa)],
+                self.clnt_private_key,
+                certificate_request,
+                None, None, None)
+
 class TestRSAKeyExchange(unittest.TestCase):
     def setUp(self):
         self.srv_private_key = parsePEMKey(srv_raw_key, private=True)

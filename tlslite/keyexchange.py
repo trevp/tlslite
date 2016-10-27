@@ -170,6 +170,8 @@ class KeyExchange(object):
                                                   clientRandom,
                                                   serverRandom)
         signedBytes = privateKey.sign(verifyBytes)
+        if not privateKey.verify(signedBytes, verifyBytes):
+            raise TLSInternalError("Certificate Verify signature invalid")
         certificateVerify = CertificateVerify(version)
         certificateVerify.create(signedBytes, signatureAlgorithm)
 

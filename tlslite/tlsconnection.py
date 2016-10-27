@@ -980,7 +980,8 @@ class TLSConnection(TLSRecordLayer):
         #CertificateVerify
         if certificateRequest and privateKey:
             validSigAlgs = self._sigHashesToList(settings)
-            certificateVerify = KeyExchange.makeCertificateVerify(\
+            try:
+                certificateVerify = KeyExchange.makeCertificateVerify(
                     self.version,
                     self._handshake_hash,
                     validSigAlgs,
@@ -989,6 +990,10 @@ class TLSConnection(TLSRecordLayer):
                     premasterSecret,
                     clientRandom,
                     serverRandom)
+            except TLSInternalError as exception:
+                for result in self._sendError(
+                        AlertDescription.internal_error, exception):
+                    yield result
             for result in self._sendMsg(certificateVerify):
                 yield result
 
