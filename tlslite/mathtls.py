@@ -15,7 +15,7 @@ from .utils import tlshashlib as hashlib
 
 import hmac
 
-# 1024, 1536, 2048, 3072, 4096, 6144, and 8192 bit groups]
+# 1024, 1536, 2048, 3072, 4096, 6144, and 8192 bit groups
 # Formatted to match lines in RFC
                        # RFC 5054, 1, 1024-bit Group
 goodGroupParameters = [(2, int("EEAF0AB9ADB38DD69C33F80AFA8FC5E860726187"
