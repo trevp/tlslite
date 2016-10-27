@@ -266,6 +266,45 @@ goodGroupParameters = [(2, int("EEAF0AB9ADB38DD69C33F80AFA8FC5E860726187"
 # from old tlslite, so add the old invalid value to the "known good" list
 goodGroupParameters.append((2, goodGroupParameters[3][1]))
 
+
+def paramStrength(param):
+    """
+    Return level of security for DH, DSA and RSA parameters.
+
+    Provide the approximate level of security for algorithms based on finite
+    field (DSA, DH) or integer factorisation cryptography (RSA) when provided
+    with the prime defining the field or the modulus of the public key.
+
+    @param param: prime or modulus
+    @type param: int
+    """
+    size = numBits(param)
+    if size < 512:
+        return 48
+    elif size < 768:
+        return 56
+    elif size < 816:
+        return 64
+    elif size < 1023:
+        return 72
+    elif size < 1535:
+        return 80  # NIST SP 800-57
+    elif size < 2047:
+        return 88  # rounded RFC 3526
+    elif size < 3071:
+        return 112  # NIST SP 800-57
+    elif size < 4095:
+        return 128  # NIST SP 800-57
+    elif size < 6144:
+        return 152  # rounded RFC 3526
+    elif size < 7679:
+        return 168  # rounded RFC 3526
+    elif size < 15359:
+        return 192  # NIST SP 800-57
+    else:
+        return 256  # NIST SP 800-57
+
+
 def P_hash(macFunc, secret, seed, length):
     bytes = bytearray(length)
     A = seed
