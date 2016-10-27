@@ -3,6 +3,8 @@
 # See the LICENSE file for legal information regarding use of this file.
 """Implementation of Poly1305 authenticator for RFC 7539"""
 
+from .cryptomath import divceil
+
 class Poly1305(object):
 
     """Poly1305 authenticator"""
@@ -27,12 +29,6 @@ class Poly1305(object):
             num >>= 8
         return bytearray(ret)
 
-    @staticmethod
-    def divceil(divident, divisor):
-        """Integer division with rounding up"""
-        quot, r = divmod(divident, divisor)
-        return quot + int(bool(r))
-
     def __init__(self, key):
         """Set the authenticator key"""
         if len(key) != 32:
@@ -44,7 +40,7 @@ class Poly1305(object):
 
     def create_tag(self, data):
         """Calculate authentication tag for data"""
-        for i in range(0, self.divceil(len(data), 16)):
+        for i in range(0, divceil(len(data), 16)):
             n = self.le_bytes_to_num(data[i*16:(i+1)*16] + b'\x01')
             self.acc += n
             self.acc = (self.r * self.acc) % self.P
