@@ -177,6 +177,19 @@ class KeyExchange(object):
 
         return certificateVerify
 
+class AuthenticatedKeyExchange(KeyExchange):
+    """
+    Common methods for key exchanges that authenticate Server Key Exchange
+
+    Methods for signing Server Key Exchange message
+    """
+
+    def makeServerKeyExchange(self, sigHash=None):
+        """Prepare server side of key exchange with selected parameters"""
+        ske = super(AuthenticatedKeyExchange, self).makeServerKeyExchange()
+        self.signServerKeyExchange(ske, sigHash)
+        return ske
+
 
 class RSAKeyExchange(KeyExchange):
     """
@@ -319,7 +332,7 @@ class ADHKeyExchange(KeyExchange):
 
 # the DHE_RSA part comes from IETF ciphersuite names, we want to keep it
 #pylint: disable = invalid-name
-class DHE_RSAKeyExchange(ADHKeyExchange):
+class DHE_RSAKeyExchange(AuthenticatedKeyExchange, ADHKeyExchange):
     """
     Handling of ephemeral Diffe-Hellman Key exchange
 
@@ -331,12 +344,6 @@ class DHE_RSAKeyExchange(ADHKeyExchange):
                                                  serverHello)
 #pylint: enable = invalid-name
         self.privateKey = privateKey
-
-    def makeServerKeyExchange(self, sigHash=None):
-        """Prepare server side of key exchange with selected parameters"""
-        ske = super(DHE_RSAKeyExchange, self).makeServerKeyExchange()
-        self.signServerKeyExchange(ske, sigHash)
-        return ske
 
 
 class AECDHKeyExchange(KeyExchange):
@@ -423,7 +430,7 @@ class AECDHKeyExchange(KeyExchange):
 # The ECDHE_RSA part comes from the IETF names of ciphersuites, so we want to
 # keep it
 #pylint: disable = invalid-name
-class ECDHE_RSAKeyExchange(AECDHKeyExchange):
+class ECDHE_RSAKeyExchange(AuthenticatedKeyExchange, AECDHKeyExchange):
     """Helper class for conducting ECDHE key exchange"""
 
     def __init__(self, cipherSuite, clientHello, serverHello, privateKey,
@@ -433,12 +440,6 @@ class ECDHE_RSAKeyExchange(AECDHKeyExchange):
                                                    acceptedCurves)
 #pylint: enable = invalid-name
         self.privateKey = privateKey
-
-    def makeServerKeyExchange(self, sigHash=None):
-        """Create ECDHE version of Server Key Exchange"""
-        ske = super(ECDHE_RSAKeyExchange, self).makeServerKeyExchange()
-        self.signServerKeyExchange(ske, sigHash)
-        return ske
 
 
 class SRPKeyExchange(KeyExchange):
