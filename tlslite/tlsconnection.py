@@ -1361,7 +1361,8 @@ class TLSConnection(TLSRecordLayer):
                 keyExchange = DHE_RSAKeyExchange(cipherSuite,
                                                  clientHello,
                                                  serverHello,
-                                                 privateKey)
+                                                 privateKey,
+                                                 settings.dhParams)
             elif cipherSuite in CipherSuite.ecdheCertSuites:
                 acceptedCurves = self._curveNamesToList(settings)
                 keyExchange = ECDHE_RSAKeyExchange(cipherSuite,

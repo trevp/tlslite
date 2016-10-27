@@ -10,7 +10,7 @@
 from .constants import CertificateType
 from .utils import cryptomath
 from .utils import cipherfactory
-from .utils.compat import ecdsaAllCurves
+from .utils.compat import ecdsaAllCurves, int_types
 
 CIPHER_NAMES = ["chacha20-poly1305",
                 "aes256gcm", "aes128gcm",
@@ -157,6 +157,7 @@ class HandshakeSettings(object):
         self.usePaddingExtension = True
         self.useExtendedMasterSecret = True
         self.requireExtendedMasterSecret = False
+        self.dhParams = None
 
     @staticmethod
     def _sanityCheckKeySizes(other):
@@ -267,6 +268,7 @@ class HandshakeSettings(object):
         other.eccCurves = self.eccCurves
         other.useExtendedMasterSecret = self.useExtendedMasterSecret
         other.requireExtendedMasterSecret = self.requireExtendedMasterSecret
+        other.dhParams = self.dhParams
 
         if not cipherfactory.tripleDESPresent:
             other.cipherNames = [i for i in self.cipherNames if i != "3des"]
@@ -299,6 +301,11 @@ class HandshakeSettings(object):
 
         if len(other.rsaSigHashes) == 0 and other.maxVersion >= (3, 3):
             raise ValueError("TLS 1.2 requires signature algorithms to be set")
+
+        if other.dhParams and (len(other.dhParams) != 2 or
+                               not isinstance(other.dhParams[0], int_types) or
+                               not isinstance(other.dhParams[1], int_types)):
+            raise ValueError("DH parameters need to be a tuple of integers")
 
         return other
 

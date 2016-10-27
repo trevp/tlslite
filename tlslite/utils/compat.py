@@ -55,6 +55,8 @@ if sys.version_info >= (3,0):
     def compatLong(num):
         return int(num)
 
+    int_types = tuple([int])
+
     def formatExceptionTrace(e):
         """Return exception information formatted as string"""
         return str(e)
@@ -94,6 +96,8 @@ else:
 
     def compatLong(num):
         return long(num)
+
+    int_types = (int, long)
 
     # pylint on Python3 goes nuts for the sys dereferences...
 

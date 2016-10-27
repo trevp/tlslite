@@ -260,5 +260,11 @@ class TestHandshakeSettings(unittest.TestCase):
         with self.assertRaises(ValueError):
             hs.validate()
 
+    def test_invalid_dhParams(self):
+        hs = HandshakeSettings()
+        hs.dhParams = (2, 'bd')
+        with self.assertRaises(ValueError):
+            hs.validate()
+
 if __name__ == '__main__':
     unittest.main()
