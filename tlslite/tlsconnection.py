@@ -625,13 +625,20 @@ class TLSConnection(TLSRecordLayer):
             extensions.append(TLSExtension().create(ExtensionType.
                                                     extended_master_secret,
                                                     bytearray(0)))
+        groups = []
         #Send the ECC extensions only if we advertise ECC ciphers
         if next((cipher for cipher in cipherSuites \
                 if cipher in CipherSuite.ecdhAllSuites), None) is not None:
-            extensions.append(SupportedGroupsExtension().\
-                              create(self._curveNamesToList(settings)))
+            groups.extend(self._curveNamesToList(settings))
             extensions.append(ECPointFormatsExtension().\
                               create([ECPointFormat.uncompressed]))
+        # Advertise FFDHE groups if we have DHE ciphers
+        if next((cipher for cipher in cipherSuites
+                 if cipher in CipherSuite.dhAllSuites), None) is not None:
+            groups.extend(self._groupNamesToList(settings))
+        # Send the extension only if it will be non empty
+        if groups:
+            extensions.append(SupportedGroupsExtension().create(groups))
         # In TLS1.2 advertise support for additional signature types
         if settings.maxVersion >= (3, 3):
             sigList = self._sigHashesToList(settings)
