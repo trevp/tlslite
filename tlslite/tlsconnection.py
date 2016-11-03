@@ -1358,11 +1358,13 @@ class TLSConnection(TLSRecordLayer):
                                              serverHello,
                                              privateKey)
             elif cipherSuite in CipherSuite.dheCertSuites:
+                dhGroups = self._groupNamesToList(settings)
                 keyExchange = DHE_RSAKeyExchange(cipherSuite,
                                                  clientHello,
                                                  serverHello,
                                                  privateKey,
-                                                 settings.dhParams)
+                                                 settings.dhParams,
+                                                 dhGroups)
             elif cipherSuite in CipherSuite.ecdheCertSuites:
                 acceptedCurves = self._curveNamesToList(settings)
                 keyExchange = ECDHE_RSAKeyExchange(cipherSuite,
@@ -1384,8 +1386,10 @@ class TLSConnection(TLSRecordLayer):
         elif (cipherSuite in CipherSuite.anonSuites or
               cipherSuite in CipherSuite.ecdhAnonSuites):
             if cipherSuite in CipherSuite.anonSuites:
+                dhGroups = self._groupNamesToList(settings)
                 keyExchange = ADHKeyExchange(cipherSuite, clientHello,
-                                             serverHello)
+                                             serverHello, settings.dhParams,
+                                             dhGroups)
             else:
                 acceptedCurves = self._curveNamesToList(settings)
                 keyExchange = AECDHKeyExchange(cipherSuite, clientHello,
@@ -1487,12 +1491,26 @@ class TLSConnection(TLSRecordLayer):
         #server
         client_groups = clientHello.getExtension(ExtensionType.supported_groups)
         group_intersect = []
+        # if there is no extension, then allow DHE
+        ffgroup_intersect = [GroupName.ffdhe2048]
         if client_groups is not None:
             client_groups = client_groups.groups
             if client_groups is None:
                 client_groups = []
             server_groups = self._curveNamesToList(settings)
             group_intersect = [x for x in client_groups if x in server_groups]
+            # RFC 7919 groups
+            server_groups = self._groupNamesToList(settings)
+            ffgroup_intersect = [i for i in client_groups
+                                 if i in server_groups]
+            # if there is no overlap, but there are no FFDHE groups listed,
+            # allow DHE, prohibit otherwise
+            if not ffgroup_intersect:
+                if any(i for i in client_groups if i in range(256, 512)):
+                    ffgroup_intersect = []
+                else:
+                    ffgroup_intersect = [GroupName.ffdhe2048]
+
 
         #Now that the version is known, limit to only the ciphers available to
         #that version and client capabilities.
@@ -1506,7 +1524,9 @@ class TLSConnection(TLSRecordLayer):
             if group_intersect:
                 cipherSuites += CipherSuite.getEcdheCertSuites(settings,
                                                                self.version)
-            cipherSuites += CipherSuite.getDheCertSuites(settings, self.version)
+            if ffgroup_intersect:
+                cipherSuites += CipherSuite.getDheCertSuites(settings,
+                                                             self.version)
             cipherSuites += CipherSuite.getCertSuites(settings, self.version)
         elif anon:
             cipherSuites += CipherSuite.getAnonSuites(settings, self.version)
@@ -2064,3 +2084,8 @@ class TLSConnection(TLSRecordLayer):
     def _curveNamesToList(settings):
         """Convert list of acceptable curves to array identifiers"""
         return [getattr(GroupName, val) for val in settings.eccCurves]
+
+    @staticmethod
+    def _groupNamesToList(settings):
+        """Convert list of acceptable ff groups to TLS identifiers."""
+        return [getattr(GroupName, val) for val in settings.dhGroups]
