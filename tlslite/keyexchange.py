@@ -5,7 +5,7 @@
 """Handling of cryptographic operations for key exchange"""
 
 from .mathtls import goodGroupParameters, makeK, makeU, makeX, \
-        calcMasterSecret, paramStrength
+        calcMasterSecret, paramStrength, RFC7919_GROUPS
 from .errors import TLSInsufficientSecurity, TLSUnknownPSKIdentity, \
         TLSIllegalParameterException, TLSDecryptionFailed, TLSInternalError
 from .messages import ServerKeyExchange, ClientKeyExchange, CertificateVerify
@@ -254,7 +254,7 @@ class ADHKeyExchange(KeyExchange):
     """
 
     def __init__(self, cipherSuite, clientHello, serverHello,
-                 dhParams=None):
+                 dhParams=None, dhGroups=None):
         super(ADHKeyExchange, self).__init__(cipherSuite, clientHello,
                                              serverHello)
 #pylint: enable = invalid-name
@@ -265,11 +265,22 @@ class ADHKeyExchange(KeyExchange):
         else:
             # 2048-bit MODP Group (RFC 5054, group 3)
             self.dh_g, self.dh_p = goodGroupParameters[2]
+        self.dhGroups = dhGroups
 
     def makeServerKeyExchange(self):
         """
         Prepare server side of anonymous key exchange with selected parameters
         """
+        # Check for RFC 7919 support
+        ext = self.clientHello.getExtension(ExtensionType.supported_groups)
+        if ext and self.dhGroups:
+            commonGroup = getFirstMatching(ext.groups, self.dhGroups)
+            if commonGroup:
+                self.dh_g, self.dh_p = RFC7919_GROUPS[commonGroup - 256]
+            elif getFirstMatching(ext.groups, range(256, 512)):
+                raise TLSInternalError("DHE key exchange attempted despite no "
+                                       "overlap between supported groups")
+
         # Per RFC 3526, Section 1, the exponent should have double the entropy
         # of the strength of the group.
         randBytesNeeded = divceil(paramStrength(self.dh_p) * 2, 8)
@@ -339,7 +350,7 @@ class DHE_RSAKeyExchange(AuthenticatedKeyExchange, ADHKeyExchange):
     """
 
     def __init__(self, cipherSuite, clientHello, serverHello, privateKey,
-                 dhParams=None):
+                 dhParams=None, dhGroups=None):
         """
         Create helper object for Diffie-Hellamn key exchange.
 
@@ -350,7 +361,8 @@ class DHE_RSAKeyExchange(AuthenticatedKeyExchange, ADHKeyExchange):
         @type dhParams: 2-element tuple of int
         """
         super(DHE_RSAKeyExchange, self).__init__(cipherSuite, clientHello,
-                                                 serverHello, dhParams)
+                                                 serverHello, dhParams,
+                                                 dhGroups)
 #pylint: enable = invalid-name
         self.privateKey = privateKey
 
