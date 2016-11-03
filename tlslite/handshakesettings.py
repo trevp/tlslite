@@ -32,6 +32,8 @@ CURVE_NAMES = ["secp384r1", "secp256r1", "secp521r1"]
 ALL_CURVE_NAMES = CURVE_NAMES + ["secp256k1"]
 if ecdsaAllCurves:
     ALL_CURVE_NAMES += ["secp224r1", "secp192r1"]
+ALL_DH_GROUP_NAMES = ["ffdhe2048", "ffdhe3072", "ffdhe4096", "ffdhe6144",
+                      "ffdhe8192"]
 
 class HandshakeSettings(object):
     """This class encapsulates various parameters that can be used with
@@ -158,6 +160,7 @@ class HandshakeSettings(object):
         self.useExtendedMasterSecret = True
         self.requireExtendedMasterSecret = False
         self.dhParams = None
+        self.dhGroups = list(ALL_DH_GROUP_NAMES)
 
     @staticmethod
     def _sanityCheckKeySizes(other):
@@ -212,6 +215,12 @@ class HandshakeSettings(object):
         if unknownSigHash:
             raise ValueError("Unknown RSA signature hash: '{0}'".\
                              format(unknownSigHash))
+
+        unknownDHGroup = [val for val in other.dhGroups
+                          if val not in ALL_DH_GROUP_NAMES]
+        if unknownDHGroup:
+            raise ValueError("Unknown FFDHE group name: '{0}'"
+                             .format(unknownDHGroup))
 
     @staticmethod
     def _sanityCheckProtocolVersions(other):
@@ -269,6 +278,7 @@ class HandshakeSettings(object):
         other.useExtendedMasterSecret = self.useExtendedMasterSecret
         other.requireExtendedMasterSecret = self.requireExtendedMasterSecret
         other.dhParams = self.dhParams
+        other.dhGroups = self.dhGroups
 
         if not cipherfactory.tripleDESPresent:
             other.cipherNames = [i for i in self.cipherNames if i != "3des"]
