@@ -73,7 +73,7 @@ def printUsage(s=None):
 
   server  
     [-k KEY] [-c CERT] [-t TACK] [-v VERIFIERDB] [-d DIR] [-l LABEL] [-L LENGTH]
-    [--reqcert] HOST:PORT
+    [--reqcert] [--param DHFILE] HOST:PORT
 
   client
     [-k KEY] [-c CERT] [-u USER] [-p PASS] [-l LABEL] [-L LENGTH] [-a ALPN]
@@ -83,6 +83,8 @@ def printUsage(s=None):
   LENGTH - amount of info to export using TLS exporter
   ALPN - name of protocol for ALPN negotiation, can be present multiple times
          in client to specify multiple protocols supported
+  DHFILE - file that includes Diffie-Hellman parameters to be used with DHE
+           key exchange
 """)
     sys.exit(-1)
 
@@ -112,7 +114,8 @@ def handleArgs(argv, argString, flagsList=[]):
     expLabel = None
     expLength = 20
     alpn = []
-    
+    dhparam = None
+
     for opt, arg in opts:
         if opt == "-k":
             s = open(arg, "rb").read()
@@ -147,6 +150,11 @@ def handleArgs(argv, argString, flagsList=[]):
             expLength = int(arg)
         elif opt == "-a":
             alpn.append(bytearray(arg, 'utf-8'))
+        elif opt == "--param":
+            s = open(arg, "rb").read()
+            if sys.version_info[0] >= 3:
+                s = str(s, 'utf-8')
+            dhparam = parseDH(s)
         else:
             assert(False)
 
@@ -188,6 +196,8 @@ def handleArgs(argv, argString, flagsList=[]):
         retList.append(expLength)
     if "a" in argString:
         retList.append(alpn)
+    if "param=" in flagsList:
+        retList.append(dhparam)
     return retList
 
 
@@ -306,7 +316,8 @@ def clientCmd(argv):
 
 def serverCmd(argv):
     (address, privateKey, certChain, tacks, verifierDB, directory, reqCert,
-            expLabel, expLength) = handleArgs(argv, "kctbvdlL", ["reqcert"])
+            expLabel, expLength, dhparam) = handleArgs(argv, "kctbvdlL",
+                                                       ["reqcert", "param="])
 
 
     if (certChain and not privateKey) or (not certChain and privateKey):
@@ -347,6 +358,7 @@ def serverCmd(argv):
                 start = time.clock()
                 settings = HandshakeSettings()
                 settings.useExperimentalTackExtension=True
+                settings.dhParams = dhparam
                 connection.handshakeServer(certChain=certChain,
                                               privateKey=privateKey,
                                               verifierDB=verifierDB,

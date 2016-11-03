@@ -29,3 +29,4 @@ from .utils.cryptomath import m2cryptoLoaded, gmpyLoaded, \
 from .utils.keyfactory import generateRSAKey, parsePEMKey, \
                              parseAsPublicKey, parsePrivateKey
 from .utils.tackwrapper import tackpyLoaded
+from .dh import parse as parseDH
