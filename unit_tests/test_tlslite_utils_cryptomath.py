@@ -35,17 +35,32 @@ class TestIsPrime(unittest.TestCase):
         with self.assertRaises(AssertionError):
             for i in range(100):
                 # OEIS A014233
-                self.assertFalse(isPrime(2047))
-                self.assertFalse(isPrime(1373653))
-                self.assertFalse(isPrime(25326001))
-                self.assertFalse(isPrime(3215031751))
-                self.assertFalse(isPrime(2152302898747))
-                self.assertFalse(isPrime(3474749660383))
-                self.assertFalse(isPrime(341550071728321))
-                self.assertFalse(isPrime(341550071728321))
-                self.assertFalse(isPrime(3825123056546413051))
-                self.assertFalse(isPrime(3825123056546413051))
-                self.assertFalse(isPrime(3825123056546413051))
+                self.assertFalse(isPrime(2047))  # base 1
+                self.assertFalse(isPrime(1373653))  # base 2
+                self.assertFalse(isPrime(25326001))  # base 3
+                self.assertFalse(isPrime(3215031751))  # base 4
+                self.assertFalse(isPrime(2152302898747))  # base 5
+                self.assertFalse(isPrime(3474749660383))  # base 6
+                self.assertFalse(isPrime(341550071728321))  # base 7
+                self.assertFalse(isPrime(341550071728321))  # base 8
+                self.assertFalse(isPrime(3825123056546413051))  # base 9
+                self.assertFalse(isPrime(3825123056546413051))  # base 10
+                self.assertFalse(isPrime(3825123056546413051))  # base 11
+                # Zhang (2007)
+                self.assertFalse(isPrime(318665857834031151167461))  # base 12
+                self.assertFalse(isPrime(3317044064679887385961981))  # base 13
+                # base 14
+                self.assertFalse(isPrime(6003094289670105800312596501))
+                # base 15
+                self.assertFalse(isPrime(59276361075595573263446330101))
+                # base 16
+                self.assertFalse(isPrime(564132928021909221014087501701))
+                # base 17
+                self.assertFalse(isPrime(564132928021909221014087501701))
+                # base 18
+                self.assertFalse(isPrime(1543267864443420616877677640751301))
+                # base 19
+                self.assertFalse(isPrime(1543267864443420616877677640751301))
 
     def test_with_big_primes(self):
         # NextPrime[2^256]
