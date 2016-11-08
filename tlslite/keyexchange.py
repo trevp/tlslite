@@ -4,7 +4,8 @@
 # See the LICENSE file for legal information regarding use of this file.
 """Handling of cryptographic operations for key exchange"""
 
-from .mathtls import goodGroupParameters, makeK, makeU, makeX, calcMasterSecret
+from .mathtls import goodGroupParameters, makeK, makeU, makeX, \
+        calcMasterSecret, paramStrength
 from .errors import TLSInsufficientSecurity, TLSUnknownPSKIdentity, \
         TLSIllegalParameterException, TLSDecryptionFailed, TLSInternalError
 from .messages import ServerKeyExchange, ClientKeyExchange, CertificateVerify
@@ -14,7 +15,7 @@ from .utils.ecc import decodeX962Point, encodeX962Point, getCurveByName, \
         getPointByteSize
 from .utils.rsakey import RSAKey
 from .utils.cryptomath import bytesToNumber, getRandomBytes, powMod, \
-        numBits, numberToByteArray
+        numBits, numberToByteArray, divceil
 from .utils.lists import getFirstMatching
 import ecdsa
 
@@ -252,27 +253,27 @@ class ADHKeyExchange(KeyExchange):
     FFDHE without signing serverKeyExchange useful for anonymous DH
     """
 
-    def __init__(self, cipherSuite, clientHello, serverHello):
+    def __init__(self, cipherSuite, clientHello, serverHello,
+                 dhParams=None):
         super(ADHKeyExchange, self).__init__(cipherSuite, clientHello,
                                              serverHello)
 #pylint: enable = invalid-name
         self.dh_Xs = None
         self.dh_Yc = None
-
-    # 2048-bit MODP Group (RFC 3526, Section 3)
-    # TODO make configurable
-    dh_g, dh_p = goodGroupParameters[2]
-
-    # RFC 3526, Section 8.
-    strength = 160
+        if dhParams:
+            self.dh_g, self.dh_p = dhParams
+        else:
+            # 2048-bit MODP Group (RFC 5054, group 3)
+            self.dh_g, self.dh_p = goodGroupParameters[2]
 
     def makeServerKeyExchange(self):
         """
         Prepare server side of anonymous key exchange with selected parameters
         """
         # Per RFC 3526, Section 1, the exponent should have double the entropy
-        # of the strength of the curve.
-        self.dh_Xs = bytesToNumber(getRandomBytes(self.strength * 2 // 8))
+        # of the strength of the group.
+        randBytesNeeded = divceil(paramStrength(self.dh_p) * 2, 8)
+        self.dh_Xs = bytesToNumber(getRandomBytes(randBytesNeeded))
         dh_Ys = powMod(self.dh_g, self.dh_Xs, self.dh_p)
 
         version = self.serverHello.server_version
@@ -334,14 +335,22 @@ class ADHKeyExchange(KeyExchange):
 #pylint: disable = invalid-name
 class DHE_RSAKeyExchange(AuthenticatedKeyExchange, ADHKeyExchange):
     """
-    Handling of ephemeral Diffe-Hellman Key exchange
-
-    NOT stable API, do NOT use
+    Handling of authenticated ephemeral Diffe-Hellman Key exchange.
     """
 
-    def __init__(self, cipherSuite, clientHello, serverHello, privateKey):
+    def __init__(self, cipherSuite, clientHello, serverHello, privateKey,
+                 dhParams=None):
+        """
+        Create helper object for Diffie-Hellamn key exchange.
+
+        @param dhParams: Diffie-Hellman parameters that will be used by
+            server. First element of the tuple is the generator, the second
+            is the prime. If not specified it will use a secure set (currently
+            a 2048-bit safe prime).
+        @type dhParams: 2-element tuple of int
+        """
         super(DHE_RSAKeyExchange, self).__init__(cipherSuite, clientHello,
-                                                 serverHello)
+                                                 serverHello, dhParams)
 #pylint: enable = invalid-name
         self.privateKey = privateKey
 

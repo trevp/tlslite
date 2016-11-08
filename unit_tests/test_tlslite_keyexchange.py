@@ -28,7 +28,7 @@ from tlslite.x509certchain import X509CertChain
 from tlslite.utils.keyfactory import parsePEMKey
 from tlslite.utils.codec import Parser
 from tlslite.utils.cryptomath import bytesToNumber, getRandomBytes, powMod, \
-        numberToByteArray, isPrime
+        numberToByteArray, isPrime, numBits
 from tlslite.mathtls import makeX, makeU, makeK, goodGroupParameters
 from tlslite.handshakehashes import HandshakeHashes
 from tlslite import VerifierDB
@@ -589,6 +589,35 @@ class TestDHE_RSAKeyExchange(unittest.TestCase):
         clientKeyExchange = client_keyExchange.makeClientKeyExchange()
 
         server_premaster = self.keyExchange.processClientKeyExchange(\
+                clientKeyExchange)
+
+        self.assertEqual(client_premaster, server_premaster)
+
+    def test_DHE_RSA_key_exchange_with_custom_parameters(self):
+        self.keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                              self.client_hello,
+                                              self.server_hello,
+                                              self.srv_private_key,
+                                              # 6144 bit group
+                                              goodGroupParameters[5])
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                                self.client_hello,
+                                                self.server_hello,
+                                                None,)
+        client_premaster = client_keyExchange.processServerKeyExchange(
+                None,
+                srv_key_ex)
+        # because the agreed upon secret can be any value between 1 and p-1,
+        # we can't check the exact length. At the same time, short shared
+        # secrets are exceedingly rare, a share shorter by 4 bytes will
+        # happen only once in 256^4 negotiations or 1 in about 4 milliards
+        self.assertLessEqual(len(client_premaster), 6144 // 8)
+        self.assertGreaterEqual(len(client_premaster), 6144 // 8 - 4)
+        clientKeyExchange = client_keyExchange.makeClientKeyExchange()
+
+        server_premaster = self.keyExchange.processClientKeyExchange(
                 clientKeyExchange)
 
         self.assertEqual(client_premaster, server_premaster)
