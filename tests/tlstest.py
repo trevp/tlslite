@@ -89,13 +89,13 @@ def clientTestCmd(argv):
 
     #open synchronisation FIFO
     synchro = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    synchro.settimeout(5)
+    synchro.settimeout(15)
     synchro.connect((address[0], address[1]-1))
 
     def connect():
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         if hasattr(sock, 'settimeout'): #It's a python 2.3 feature
-            sock.settimeout(5)
+            sock.settimeout(15)
         sock.connect(address)
         c = TLSConnection(sock)
         return c
@@ -702,7 +702,7 @@ def clientTestCmd(argv):
         test_no += 1
 
         print("Test {0}: POP3 good".format(test_no))
-    except socket.error as e:
+    except (socket.error, socket.timeout) as e:
         print("Non-critical error: socket error trying to reach internet server: ", e)   
 
     synchro.close()
