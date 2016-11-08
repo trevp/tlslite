@@ -1681,10 +1681,20 @@ class TLSConnection(TLSRecordLayer):
             if cipherSuite in clientHello.cipher_suites:
                 break
         else:
-            for result in self._sendError(\
-                    AlertDescription.handshake_failure,
-                    "No mutual ciphersuite"):
-                yield result
+            if client_groups and \
+                    any(i in range(256, 512) for i in client_groups) and \
+                    any(i in CipherSuite.dhAllSuites
+                        for i in clientHello.cipher_suites):
+                for result in self._sendError(
+                        AlertDescription.insufficient_security,
+                        "FFDHE groups not acceptable and no other common "
+                        "ciphers"):
+                    yield result
+            else:
+                for result in self._sendError(\
+                        AlertDescription.handshake_failure,
+                        "No mutual ciphersuite"):
+                    yield result
         if cipherSuite in CipherSuite.srpAllSuites and \
                             not clientHello.srp_username:
             for result in self._sendError(\
