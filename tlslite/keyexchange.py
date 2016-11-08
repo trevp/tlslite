@@ -15,6 +15,7 @@ from .utils.ecc import decodeX962Point, encodeX962Point, getCurveByName, \
 from .utils.rsakey import RSAKey
 from .utils.cryptomath import bytesToNumber, getRandomBytes, powMod, \
         numBits, numberToByteArray
+from .utils.lists import getFirstMatching
 import ecdsa
 
 class KeyExchange(object):
@@ -159,8 +160,7 @@ class KeyExchange(object):
         # in TLS 1.2 we must decide which algorithm to use for signing
         if version == (3, 3):
             serverSigAlgs = certificateRequest.supported_signature_algs
-            signatureAlgorithm = next((sigAlg for sigAlg in validSigAlgs \
-                                      if sigAlg in serverSigAlgs), None)
+            signatureAlgorithm = getFirstMatching(validSigAlgs, serverSigAlgs)
             # if none acceptable, do a last resort:
             if signatureAlgorithm is None:
                 signatureAlgorithm = validSigAlgs[0]
@@ -362,8 +362,7 @@ class AECDHKeyExchange(KeyExchange):
         client_curves = client_curves.groups
 
         #Pick first client preferred group we support
-        self.group_id = next((x for x in client_curves \
-                              if x in self.acceptedCurves), None)
+        self.group_id = getFirstMatching(client_curves, self.acceptedCurves)
         if self.group_id is None:
             raise TLSInsufficientSecurity("No mutual groups")
         generator = getCurveByName(GroupName.toRepr(self.group_id)).generator
