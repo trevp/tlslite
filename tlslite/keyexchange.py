@@ -272,25 +272,40 @@ class ADHKeyExchange(KeyExchange):
 
         # First half of RFC 2631, Section 2.1.5. Validate the client's public
         # key.
-        if not 2 <= dh_Yc <= self.dh_p - 1:
+        # use of safe primes also means that the p-1 is invalid
+        if not 2 <= dh_Yc < self.dh_p - 1:
             raise TLSIllegalParameterException("Invalid dh_Yc value")
 
         S = powMod(dh_Yc, self.dh_Xs, self.dh_p)
+        if S in (1, self.dh_p - 1):
+            raise TLSIllegalParameterException("Small subgroup capture")
         return numberToByteArray(S)
 
     def processServerKeyExchange(self, srvPublicKey, serverKeyExchange):
-        """Process the server key exchange, return premaster secret"""
+        """Process the server key exchange, return premaster secret."""
         del srvPublicKey
         dh_p = serverKeyExchange.dh_p
         # TODO make the minimum changeable
         if dh_p < 2**1023:
             raise TLSInsufficientSecurity("DH prime too small")
+
         dh_g = serverKeyExchange.dh_g
+        if not 2 <= dh_g < dh_p - 1:
+            raise TLSIllegalParameterException("Invalid DH generator")
+
         dh_Xc = bytesToNumber(getRandomBytes(32))
         dh_Ys = serverKeyExchange.dh_Ys
+        if not 2 <= dh_Ys < dh_p - 1:
+            raise TLSIllegalParameterException("Invalid server key share")
+
         self.dh_Yc = powMod(dh_g, dh_Xc, dh_p)
+        if self.dh_Yc in (1, dh_p - 1):
+            raise TLSIllegalParameterException("Small subgroup capture")
 
         S = powMod(dh_Ys, dh_Xc, dh_p)
+        if S in (1, dh_p - 1):
+            raise TLSIllegalParameterException("Small subgroup capture")
+
         return numberToByteArray(S)
 
     def makeClientKeyExchange(self):

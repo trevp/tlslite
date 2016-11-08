@@ -28,14 +28,19 @@ from tlslite.x509certchain import X509CertChain
 from tlslite.utils.keyfactory import parsePEMKey
 from tlslite.utils.codec import Parser
 from tlslite.utils.cryptomath import bytesToNumber, getRandomBytes, powMod, \
-        numberToByteArray
-from tlslite.mathtls import makeX, makeU, makeK
+        numberToByteArray, isPrime
+from tlslite.mathtls import makeX, makeU, makeK, goodGroupParameters
 from tlslite.handshakehashes import HandshakeHashes
 from tlslite import VerifierDB
 from tlslite.extensions import SupportedGroupsExtension, SNIExtension
 from tlslite.utils.ecc import getCurveByName, decodeX962Point, encodeX962Point,\
         getPointByteSize
 import ecdsa
+from operator import mul
+try:
+    from functools import reduce
+except ImportError:
+    pass
 
 from tlslite.keyexchange import KeyExchange, RSAKeyExchange, \
         DHE_RSAKeyExchange, SRPKeyExchange, ECDHE_RSAKeyExchange
@@ -574,6 +579,16 @@ class TestDHE_RSAKeyExchange(unittest.TestCase):
         with self.assertRaises(TLSIllegalParameterException):
             self.keyExchange.processClientKeyExchange(clientKeyExchange)
 
+    def test_DHE_RSA_key_exchange_with_small_subgroup_client_key_share(self):
+        clientKeyExchange = ClientKeyExchange(self.cipher_suite,
+                                              (3, 3))
+        clientKeyExchange.createDH(2**512)
+        self.keyExchange.dh_Xs = 0
+
+        with self.assertRaises(TLSIllegalParameterException):
+            self.keyExchange.processClientKeyExchange(clientKeyExchange)
+
+
 
     def test_DHE_RSA_key_exchange_with_small_prime(self):
         client_keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
@@ -587,6 +602,100 @@ class TestDHE_RSAKeyExchange(unittest.TestCase):
 
         with self.assertRaises(TLSInsufficientSecurity):
             client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+    def test_DHE_RSA_key_exchange_with_invalid_generator(self):
+        client_keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                                self.client_hello,
+                                                self.server_hello,
+                                                None)
+        srv_key_ex = ServerKeyExchange(self.cipher_suite,
+                                       self.server_hello.server_version)
+        g, p = goodGroupParameters[1]
+        srv_key_ex.createDH(p, p - 1, powMod(2**256, g, p))
+
+        with self.assertRaises(TLSIllegalParameterException):
+            client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+    def test_DHE_RSA_key_exchange_with_invalid_server_key_share(self):
+        client_keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                                self.client_hello,
+                                                self.server_hello,
+                                                None)
+        srv_key_ex = ServerKeyExchange(self.cipher_suite,
+                                       self.server_hello.server_version)
+        g, p = goodGroupParameters[1]
+        srv_key_ex.createDH(p, g, p - 1)
+
+        with self.assertRaises(TLSIllegalParameterException):
+            client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+
+    def test_DHE_RSA_key_exchange_with_unfortunate_random_value(self):
+        client_keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                                self.client_hello,
+                                                self.server_hello,
+                                                None)
+        srv_key_ex = ServerKeyExchange(self.cipher_suite,
+                                       self.server_hello.server_version)
+        g, p = goodGroupParameters[1]
+        srv_key_ex.createDH(p, g, p - 2)
+
+        def m(_):
+            return numberToByteArray((p - 1) // 2)
+        with mock.patch('tlslite.keyexchange.getRandomBytes', m):
+            with self.assertRaises(TLSIllegalParameterException):
+                client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+
+    def test_DHE_RSA_key_exchange_with_small_subgroup_shared_secret(self):
+        client_keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                                self.client_hello,
+                                                self.server_hello,
+                                                None)
+        srv_key_ex = ServerKeyExchange(self.cipher_suite,
+                                       self.server_hello.server_version)
+        # RFC 5114 Group 22
+        order = [2, 2, 2, 7, int("df", 16),
+                 int("183a872bdc5f7a7e88170937189", 16),
+                 int("228c5a311384c02e1f287c6b7b2d", 16),
+                 int("5a857d66c65a60728c353e32ece8be1", 16),
+                 int("f518aa8781a8df278aba4e7d64b7cb9d49462353", 16),
+                 int("1a3adf8d6a69682661ca6e590b447e66ebd1bbdeab5e6f3744f06f4"
+                     "6cf2a8300622ed50011479f18143d471a53d30113995663a447dcb8"
+                     "e81bc24d988edc41f21", 16)]
+        # commented out for performance
+        #for i in order:
+        #    self.assertTrue(isPrime(i))
+        p = reduce(mul, order, 1) * 2 + 1
+        self.assertTrue(isPrime(p))
+        g = 2
+
+        # check the order of generator
+        # (below lines commented out for performance)
+        #for l in range(len(order)):
+        #    for subset in itertools.combinations(order, l):
+        #        n = reduce(mul, subset, 1)
+        #        self.assertNotEqual(powMod(g, n, p), 1)
+        self.assertEqual(powMod(g, reduce(mul, order, 1), p), 1)
+
+        Ys = powMod(g, 100, p)
+        # check order of the key share
+        # (commented out for performance)
+        #for l in range(len(order)):
+        #    for subset in itertools.combinations(order, l):
+        #        n = reduce(mul, subset, 1)
+        #        #print(subset)
+        #        self.assertNotEqual(powMod(Ys, n, p), 1)
+        self.assertEqual(powMod(Ys, reduce(mul, order[2:], 1), p), 1)
+
+        srv_key_ex.createDH(p, g, Ys)
+
+        def m(_):
+            return numberToByteArray(reduce(mul, order[2:], 1))
+        with mock.patch('tlslite.keyexchange.getRandomBytes', m):
+            with self.assertRaises(TLSIllegalParameterException):
+                client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
 
     def test_DHE_RSA_key_exchange_empty_signature(self):
         self.keyExchange.privateKey.sign = mock.Mock(return_value=bytearray(0))
