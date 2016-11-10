@@ -1452,6 +1452,30 @@ class TLSConnection(TLSRecordLayer):
                   "Too old version: %s" % str(clientHello.client_version)):
                 yield result
 
+        # there MUST be at least one value in both of those
+        if not clientHello.cipher_suites or \
+                not clientHello.compression_methods:
+            for result in self._sendError(
+                    AlertDescription.decode_error,
+                    "Malformed Client Hello message"):
+                yield result
+
+        # client hello MUST advertise uncompressed method
+        if 0 not in clientHello.compression_methods:
+            for result in self._sendError(
+                    AlertDescription.illegal_parameter,
+                    "Client Hello missing uncompressed method"):
+                yield result
+
+        # the list of signatures methods is defined as <2..2^16-2>, which
+        # means it can't be empty, but it's only applicable to TLSv1.2 protocol
+        ext = clientHello.getExtension(ExtensionType.signature_algorithms)
+        if clientHello.client_version >= (3, 3) and ext and not ext.sigalgs:
+            for result in self._sendError(
+                    AlertDescription.decode_error,
+                    "Malformed signature_algorithms extension"):
+                yield result
+
         # Sanity check the ALPN extension
         alpnExt = clientHello.getExtension(ExtensionType.alpn)
         if alpnExt:
@@ -1682,7 +1706,13 @@ class TLSConnection(TLSRecordLayer):
                                      privateKey,
                                      verifierDB)
 
-        sigHash = self._pickServerKeyExchangeSig(settings, clientHello)
+        try:
+            sigHash = self._pickServerKeyExchangeSig(settings, clientHello)
+        except TLSHandshakeFailure as alert:
+            for result in self._sendError(
+                    AlertDescription.handshake_failure,
+                    str(alert)):
+                yield result
 
         #Create ServerKeyExchange, signing it if necessary
         try:
@@ -1733,7 +1763,13 @@ class TLSConnection(TLSRecordLayer):
 
         msgs.append(serverHello)
         msgs.append(Certificate(CertificateType.x509).create(serverCertChain))
-        sigHashAlg = self._pickServerKeyExchangeSig(settings, clientHello)
+        try:
+            sigHashAlg = self._pickServerKeyExchangeSig(settings, clientHello)
+        except TLSHandshakeFailure as alert:
+            for result in self._sendError(
+                    AlertDescription.handshake_failure,
+                    str(alert)):
+                yield result
         serverKeyExchange = keyExchange.makeServerKeyExchange(sigHashAlg)
         if serverKeyExchange is not None:
             msgs.append(serverKeyExchange)
@@ -2042,8 +2078,8 @@ class TLSConnection(TLSRecordLayer):
             if hashID in rsaHashes:
                 return hashName
 
-        # if none match, default to sha1
-        return "sha1"
+        # if no match, we must abort per RFC 5246
+        raise TLSHandshakeFailure("No common signature algorithms")
 
     @staticmethod
     def _sigHashesToList(settings):
