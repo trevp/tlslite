@@ -29,7 +29,7 @@ class Writer(object):
             self.bytes += pack('>H', val)
 
         def addThree(self, val):
-            """Add a thee-byte wide element to buffer, see add()."""
+            """Add a three-byte wide element to buffer, see add()."""
             if not 0 <= val <= 0xffffff:
                 raise ValueError("Can't represent value in specified length")
             self.bytes += pack('>BH', val >> 16, val & 0xffff)
@@ -48,7 +48,7 @@ class Writer(object):
                 raise ValueError("Can't represent value in specified length")
 
         def addThree(self, val):
-            """Add a thee-byte wide element to buffer, see add()."""
+            """Add a three-byte wide element to buffer, see add()."""
             try:
                 self.bytes += pack('>BH', val >> 16, val & 0xffff)
             except struct.error:
