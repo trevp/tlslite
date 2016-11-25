@@ -29,6 +29,7 @@ Functionality implemented include:
  - Keying material exporter (RFC 5705)
  - Next Protocol Negotiation
  - Application-Layer Protocol Negotiation Extension (RFC 7301)
+ - FFDHE prime/group negotiation (RFC 7919)
 
 
 tlslite-ng aims to be a drop-in replacement for tlslite while providing more

@@ -589,8 +589,11 @@ encrypt-then-MAC mode for CBC ciphers.
 * basic support for RSA-PSS (Tomas Foukal)
 * better documentation for Parser and ASN1Parser
 * stricter checks on network messages
-* faster Codec
+* faster Codec (faster encoding of messages to binary format)
 * faster AES implementation initialization
+* ability to set custom Diffie-Hellman parameters for connection
+* support for negotiation of bigger Diffie-Hellman groups using RFC 7919
+  mechanism
 
 0.6.0 - 2016-09-07
 
