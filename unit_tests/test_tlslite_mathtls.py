@@ -10,7 +10,7 @@ except ImportError:
         import unittest
 
 from tlslite.mathtls import PRF_1_2, calcMasterSecret, calcFinished, \
-        calcExtendedMasterSecret
+        calcExtendedMasterSecret, paramStrength
 from tlslite.handshakehashes import HandshakeHashes
 from tlslite.constants import CipherSuite
 
@@ -206,3 +206,44 @@ class TestCalcFinishedInTLS1_2WithSHA384(TestCalcFinished):
                                CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
                                self.hhashes, False)
         self.assertNotEqual(self.finished, ret_srv)
+
+
+class TestParamStrength(unittest.TestCase):
+    def test_480(self):
+        self.assertEqual(48, paramStrength(2**480))
+
+    def test_512(self):
+        self.assertEqual(56, paramStrength(2**512))
+
+    def test_768(self):
+        self.assertEqual(64, paramStrength(2**768))
+
+    def test_900(self):
+        self.assertEqual(72, paramStrength(2**900))
+
+    def test_1024(self):
+        self.assertEqual(80, paramStrength(2**1024))
+
+    def test_1536(self):
+        self.assertEqual(88, paramStrength(2**1536))
+
+    def test_2048(self):
+        self.assertEqual(112, paramStrength(2**2048))
+
+    def test_3072(self):
+        self.assertEqual(128, paramStrength(2**3072))
+
+    def test_4096(self):
+        self.assertEqual(152, paramStrength(2**4096))
+
+    def test_6144(self):
+        self.assertEqual(168, paramStrength(2**6144))
+
+    def test_7680(self):
+        self.assertEqual(192, paramStrength(2**7680))
+
+    def test_8192(self):
+        self.assertEqual(192, paramStrength(2**8192))
+
+    def test_15360(self):
+        self.assertEqual(256, paramStrength(2**15360))

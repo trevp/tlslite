@@ -15,8 +15,6 @@ import base64
 import binascii
 import sys
 
-from .poly1305 import Poly1305
-
 from .compat import compat26Str, compatHMAC, compatLong
 
 
@@ -110,7 +108,7 @@ def HMAC_SHA384(k, b):
     return secureHMAC(k, b, 'sha384')
 
 def HKDF_expand(PRK, info, L, algorithm):
-    N = Poly1305.divceil(L, getattr(hashlib, algorithm)().digest_size)
+    N = divceil(L, getattr(hashlib, algorithm)().digest_size)
     T = bytearray()
     Titer = bytearray()
     for x in range(1, N+2):
@@ -247,6 +245,13 @@ else:
             return result
         else:
             return pow(base, power, modulus)
+
+
+def divceil(divident, divisor):
+    """Integer division with rounding up"""
+    quot, r = divmod(divident, divisor)
+    return quot + int(bool(r))
+
 
 #Pre-calculate a sieve of the ~100 primes < 1000:
 def makeSieve(n):

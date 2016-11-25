@@ -625,13 +625,20 @@ class TLSConnection(TLSRecordLayer):
             extensions.append(TLSExtension().create(ExtensionType.
                                                     extended_master_secret,
                                                     bytearray(0)))
+        groups = []
         #Send the ECC extensions only if we advertise ECC ciphers
         if next((cipher for cipher in cipherSuites \
                 if cipher in CipherSuite.ecdhAllSuites), None) is not None:
-            extensions.append(SupportedGroupsExtension().\
-                              create(self._curveNamesToList(settings)))
+            groups.extend(self._curveNamesToList(settings))
             extensions.append(ECPointFormatsExtension().\
                               create([ECPointFormat.uncompressed]))
+        # Advertise FFDHE groups if we have DHE ciphers
+        if next((cipher for cipher in cipherSuites
+                 if cipher in CipherSuite.dhAllSuites), None) is not None:
+            groups.extend(self._groupNamesToList(settings))
+        # Send the extension only if it will be non empty
+        if groups:
+            extensions.append(SupportedGroupsExtension().create(groups))
         # In TLS1.2 advertise support for additional signature types
         if settings.maxVersion >= (3, 3):
             sigList = self._sigHashesToList(settings)
@@ -980,7 +987,8 @@ class TLSConnection(TLSRecordLayer):
         #CertificateVerify
         if certificateRequest and privateKey:
             validSigAlgs = self._sigHashesToList(settings)
-            certificateVerify = KeyExchange.makeCertificateVerify(\
+            try:
+                certificateVerify = KeyExchange.makeCertificateVerify(
                     self.version,
                     self._handshake_hash,
                     validSigAlgs,
@@ -989,6 +997,10 @@ class TLSConnection(TLSRecordLayer):
                     premasterSecret,
                     clientRandom,
                     serverRandom)
+            except TLSInternalError as exception:
+                for result in self._sendError(
+                        AlertDescription.internal_error, exception):
+                    yield result
             for result in self._sendMsg(certificateVerify):
                 yield result
 
@@ -1353,10 +1365,13 @@ class TLSConnection(TLSRecordLayer):
                                              serverHello,
                                              privateKey)
             elif cipherSuite in CipherSuite.dheCertSuites:
+                dhGroups = self._groupNamesToList(settings)
                 keyExchange = DHE_RSAKeyExchange(cipherSuite,
                                                  clientHello,
                                                  serverHello,
-                                                 privateKey)
+                                                 privateKey,
+                                                 settings.dhParams,
+                                                 dhGroups)
             elif cipherSuite in CipherSuite.ecdheCertSuites:
                 acceptedCurves = self._curveNamesToList(settings)
                 keyExchange = ECDHE_RSAKeyExchange(cipherSuite,
@@ -1378,8 +1393,10 @@ class TLSConnection(TLSRecordLayer):
         elif (cipherSuite in CipherSuite.anonSuites or
               cipherSuite in CipherSuite.ecdhAnonSuites):
             if cipherSuite in CipherSuite.anonSuites:
+                dhGroups = self._groupNamesToList(settings)
                 keyExchange = ADHKeyExchange(cipherSuite, clientHello,
-                                             serverHello)
+                                             serverHello, settings.dhParams,
+                                             dhGroups)
             else:
                 acceptedCurves = self._curveNamesToList(settings)
                 keyExchange = AECDHKeyExchange(cipherSuite, clientHello,
@@ -1505,12 +1522,26 @@ class TLSConnection(TLSRecordLayer):
         #server
         client_groups = clientHello.getExtension(ExtensionType.supported_groups)
         group_intersect = []
+        # if there is no extension, then allow DHE
+        ffgroup_intersect = [GroupName.ffdhe2048]
         if client_groups is not None:
             client_groups = client_groups.groups
             if client_groups is None:
                 client_groups = []
             server_groups = self._curveNamesToList(settings)
             group_intersect = [x for x in client_groups if x in server_groups]
+            # RFC 7919 groups
+            server_groups = self._groupNamesToList(settings)
+            ffgroup_intersect = [i for i in client_groups
+                                 if i in server_groups]
+            # if there is no overlap, but there are no FFDHE groups listed,
+            # allow DHE, prohibit otherwise
+            if not ffgroup_intersect:
+                if any(i for i in client_groups if i in range(256, 512)):
+                    ffgroup_intersect = []
+                else:
+                    ffgroup_intersect = [GroupName.ffdhe2048]
+
 
         #Now that the version is known, limit to only the ciphers available to
         #that version and client capabilities.
@@ -1524,7 +1555,9 @@ class TLSConnection(TLSRecordLayer):
             if group_intersect:
                 cipherSuites += CipherSuite.getEcdheCertSuites(settings,
                                                                self.version)
-            cipherSuites += CipherSuite.getDheCertSuites(settings, self.version)
+            if ffgroup_intersect:
+                cipherSuites += CipherSuite.getDheCertSuites(settings,
+                                                             self.version)
             cipherSuites += CipherSuite.getCertSuites(settings, self.version)
         elif anon:
             cipherSuites += CipherSuite.getAnonSuites(settings, self.version)
@@ -1672,10 +1705,20 @@ class TLSConnection(TLSRecordLayer):
             if cipherSuite in clientHello.cipher_suites:
                 break
         else:
-            for result in self._sendError(\
-                    AlertDescription.handshake_failure,
-                    "No mutual ciphersuite"):
-                yield result
+            if client_groups and \
+                    any(i in range(256, 512) for i in client_groups) and \
+                    any(i in CipherSuite.dhAllSuites
+                        for i in clientHello.cipher_suites):
+                for result in self._sendError(
+                        AlertDescription.insufficient_security,
+                        "FFDHE groups not acceptable and no other common "
+                        "ciphers"):
+                    yield result
+            else:
+                for result in self._sendError(\
+                        AlertDescription.handshake_failure,
+                        "No mutual ciphersuite"):
+                    yield result
         if cipherSuite in CipherSuite.srpAllSuites and \
                             not clientHello.srp_username:
             for result in self._sendError(\
@@ -2094,3 +2137,8 @@ class TLSConnection(TLSRecordLayer):
     def _curveNamesToList(settings):
         """Convert list of acceptable curves to array identifiers"""
         return [getattr(GroupName, val) for val in settings.eccCurves]
+
+    @staticmethod
+    def _groupNamesToList(settings):
+        """Convert list of acceptable ff groups to TLS identifiers."""
+        return [getattr(GroupName, val) for val in settings.dhGroups]

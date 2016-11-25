@@ -4,7 +4,8 @@
 # See the LICENSE file for legal information regarding use of this file.
 """Handling of cryptographic operations for key exchange"""
 
-from .mathtls import goodGroupParameters, makeK, makeU, makeX, calcMasterSecret
+from .mathtls import goodGroupParameters, makeK, makeU, makeX, \
+        calcMasterSecret, paramStrength, RFC7919_GROUPS
 from .errors import TLSInsufficientSecurity, TLSUnknownPSKIdentity, \
         TLSIllegalParameterException, TLSDecryptionFailed, TLSInternalError
 from .messages import ServerKeyExchange, ClientKeyExchange, CertificateVerify
@@ -14,7 +15,8 @@ from .utils.ecc import decodeX962Point, encodeX962Point, getCurveByName, \
         getPointByteSize
 from .utils.rsakey import RSAKey
 from .utils.cryptomath import bytesToNumber, getRandomBytes, powMod, \
-        numBits, numberToByteArray
+        numBits, numberToByteArray, divceil
+from .utils.lists import getFirstMatching
 import ecdsa
 
 class KeyExchange(object):
@@ -159,8 +161,7 @@ class KeyExchange(object):
         # in TLS 1.2 we must decide which algorithm to use for signing
         if version == (3, 3):
             serverSigAlgs = certificateRequest.supported_signature_algs
-            signatureAlgorithm = next((sigAlg for sigAlg in validSigAlgs \
-                                      if sigAlg in serverSigAlgs), None)
+            signatureAlgorithm = getFirstMatching(validSigAlgs, serverSigAlgs)
             # if none acceptable, do a last resort:
             if signatureAlgorithm is None:
                 signatureAlgorithm = validSigAlgs[0]
@@ -170,10 +171,25 @@ class KeyExchange(object):
                                                   clientRandom,
                                                   serverRandom)
         signedBytes = privateKey.sign(verifyBytes)
+        if not privateKey.verify(signedBytes, verifyBytes):
+            raise TLSInternalError("Certificate Verify signature invalid")
         certificateVerify = CertificateVerify(version)
         certificateVerify.create(signedBytes, signatureAlgorithm)
 
         return certificateVerify
+
+class AuthenticatedKeyExchange(KeyExchange):
+    """
+    Common methods for key exchanges that authenticate Server Key Exchange
+
+    Methods for signing Server Key Exchange message
+    """
+
+    def makeServerKeyExchange(self, sigHash=None):
+        """Prepare server side of key exchange with selected parameters"""
+        ske = super(AuthenticatedKeyExchange, self).makeServerKeyExchange()
+        self.signServerKeyExchange(ske, sigHash)
+        return ske
 
 
 class RSAKeyExchange(KeyExchange):
@@ -237,27 +253,38 @@ class ADHKeyExchange(KeyExchange):
     FFDHE without signing serverKeyExchange useful for anonymous DH
     """
 
-    def __init__(self, cipherSuite, clientHello, serverHello):
+    def __init__(self, cipherSuite, clientHello, serverHello,
+                 dhParams=None, dhGroups=None):
         super(ADHKeyExchange, self).__init__(cipherSuite, clientHello,
                                              serverHello)
 #pylint: enable = invalid-name
         self.dh_Xs = None
         self.dh_Yc = None
-
-    # 2048-bit MODP Group (RFC 3526, Section 3)
-    # TODO make configurable
-    dh_g, dh_p = goodGroupParameters[2]
-
-    # RFC 3526, Section 8.
-    strength = 160
+        if dhParams:
+            self.dh_g, self.dh_p = dhParams
+        else:
+            # 2048-bit MODP Group (RFC 5054, group 3)
+            self.dh_g, self.dh_p = goodGroupParameters[2]
+        self.dhGroups = dhGroups
 
     def makeServerKeyExchange(self):
         """
         Prepare server side of anonymous key exchange with selected parameters
         """
+        # Check for RFC 7919 support
+        ext = self.clientHello.getExtension(ExtensionType.supported_groups)
+        if ext and self.dhGroups:
+            commonGroup = getFirstMatching(ext.groups, self.dhGroups)
+            if commonGroup:
+                self.dh_g, self.dh_p = RFC7919_GROUPS[commonGroup - 256]
+            elif getFirstMatching(ext.groups, range(256, 512)):
+                raise TLSInternalError("DHE key exchange attempted despite no "
+                                       "overlap between supported groups")
+
         # Per RFC 3526, Section 1, the exponent should have double the entropy
-        # of the strength of the curve.
-        self.dh_Xs = bytesToNumber(getRandomBytes(self.strength * 2 // 8))
+        # of the strength of the group.
+        randBytesNeeded = divceil(paramStrength(self.dh_p) * 2, 8)
+        self.dh_Xs = bytesToNumber(getRandomBytes(randBytesNeeded))
         dh_Ys = powMod(self.dh_g, self.dh_Xs, self.dh_p)
 
         version = self.serverHello.server_version
@@ -317,24 +344,27 @@ class ADHKeyExchange(KeyExchange):
 
 # the DHE_RSA part comes from IETF ciphersuite names, we want to keep it
 #pylint: disable = invalid-name
-class DHE_RSAKeyExchange(ADHKeyExchange):
+class DHE_RSAKeyExchange(AuthenticatedKeyExchange, ADHKeyExchange):
     """
-    Handling of ephemeral Diffe-Hellman Key exchange
-
-    NOT stable API, do NOT use
+    Handling of authenticated ephemeral Diffe-Hellman Key exchange.
     """
 
-    def __init__(self, cipherSuite, clientHello, serverHello, privateKey):
+    def __init__(self, cipherSuite, clientHello, serverHello, privateKey,
+                 dhParams=None, dhGroups=None):
+        """
+        Create helper object for Diffie-Hellamn key exchange.
+
+        @param dhParams: Diffie-Hellman parameters that will be used by
+            server. First element of the tuple is the generator, the second
+            is the prime. If not specified it will use a secure set (currently
+            a 2048-bit safe prime).
+        @type dhParams: 2-element tuple of int
+        """
         super(DHE_RSAKeyExchange, self).__init__(cipherSuite, clientHello,
-                                                 serverHello)
+                                                 serverHello, dhParams,
+                                                 dhGroups)
 #pylint: enable = invalid-name
         self.privateKey = privateKey
-
-    def makeServerKeyExchange(self, sigHash=None):
-        """Prepare server side of key exchange with selected parameters"""
-        ske = super(DHE_RSAKeyExchange, self).makeServerKeyExchange()
-        self.signServerKeyExchange(ske, sigHash)
-        return ske
 
 
 class AECDHKeyExchange(KeyExchange):
@@ -362,8 +392,7 @@ class AECDHKeyExchange(KeyExchange):
         client_curves = client_curves.groups
 
         #Pick first client preferred group we support
-        self.group_id = next((x for x in client_curves \
-                              if x in self.acceptedCurves), None)
+        self.group_id = getFirstMatching(client_curves, self.acceptedCurves)
         if self.group_id is None:
             raise TLSInsufficientSecurity("No mutual groups")
         generator = getCurveByName(GroupName.toRepr(self.group_id)).generator
@@ -422,7 +451,7 @@ class AECDHKeyExchange(KeyExchange):
 # The ECDHE_RSA part comes from the IETF names of ciphersuites, so we want to
 # keep it
 #pylint: disable = invalid-name
-class ECDHE_RSAKeyExchange(AECDHKeyExchange):
+class ECDHE_RSAKeyExchange(AuthenticatedKeyExchange, AECDHKeyExchange):
     """Helper class for conducting ECDHE key exchange"""
 
     def __init__(self, cipherSuite, clientHello, serverHello, privateKey,
@@ -432,12 +461,6 @@ class ECDHE_RSAKeyExchange(AECDHKeyExchange):
                                                    acceptedCurves)
 #pylint: enable = invalid-name
         self.privateKey = privateKey
-
-    def makeServerKeyExchange(self, sigHash=None):
-        """Create ECDHE version of Server Key Exchange"""
-        ske = super(ECDHE_RSAKeyExchange, self).makeServerKeyExchange()
-        self.signServerKeyExchange(ske, sigHash)
-        return ske
 
 
 class SRPKeyExchange(KeyExchange):

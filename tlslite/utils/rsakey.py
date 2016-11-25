@@ -4,7 +4,6 @@
 """Abstract class for RSA."""
 
 from .cryptomath import *
-from .poly1305 import Poly1305
 from . import tlshashlib as hashlib
 from ..errors import MaskTooLongError, MessageTooLongError, EncodingError, \
     InvalidSignature, UnknownRSAType
@@ -152,7 +151,7 @@ class RSAKey(object):
         if maskLen > (2 ** 32) * hashLen:
             raise MaskTooLongError("Incorrect parameter maskLen")
         T = bytearray()
-        end = (Poly1305.divceil(maskLen, hashLen))
+        end = divceil(maskLen, hashLen)
         for x in range(0, end):
             C = numberToByteArray(x, 4)
             T += secureHash(mgfSeed + C, hAlg)
@@ -176,7 +175,7 @@ class RSAKey(object):
         @param sLen: length of salt"""
         hashLen = getattr(hashlib, hAlg)().digest_size
         mHash = secureHash(M, hAlg)
-        emLen = Poly1305.divceil(emBits, 8)
+        emLen = divceil(emBits, 8)
         if emLen < hashLen + sLen + 2:
             raise EncodingError("The ending limit too short for " +
                                 "selected hash and salt length")
@@ -236,7 +235,7 @@ class RSAKey(object):
         """
         hashLen = getattr(hashlib, hAlg)().digest_size
         mHash = secureHash(M, hAlg)
-        emLen = Poly1305.divceil(emBits, 8)
+        emLen = divceil(emBits, 8)
         if emLen < hashLen + sLen + 2:
             raise InvalidSignature("Invalid signature")
         if EM[-1] != 0xbc:
@@ -289,7 +288,7 @@ class RSAKey(object):
             raise InvalidSignature
         s = bytesToNumber(S)
         m = self._rawPublicKeyOp(s)
-        EM = numberToByteArray(m, Poly1305.divceil(numBits(self.n) - 1, 8))
+        EM = numberToByteArray(m, divceil(numBits(self.n) - 1, 8))
         result = self.EMSA_PSS_verify(M, EM, numBits(self.n) - 1, hAlg, sLen)
         if result:
             return True

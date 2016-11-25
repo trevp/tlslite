@@ -28,7 +28,7 @@ from tlslite.x509certchain import X509CertChain
 from tlslite.utils.keyfactory import parsePEMKey
 from tlslite.utils.codec import Parser
 from tlslite.utils.cryptomath import bytesToNumber, getRandomBytes, powMod, \
-        numberToByteArray, isPrime
+        numberToByteArray, isPrime, numBits
 from tlslite.mathtls import makeX, makeU, makeK, goodGroupParameters
 from tlslite.handshakehashes import HandshakeHashes
 from tlslite import VerifierDB
@@ -378,6 +378,28 @@ class TestMakeCertificateVerify(unittest.TestCase):
             b'\x19~&\xd9\xaa\xc2\t,s\xde\xb1'
             ))
 
+    def test_with_failed_signature(self):
+        certificate_request = CertificateRequest((3, 3))
+        certificate_request.create([CertificateType.x509],
+                                   [],
+                                   [(HashAlgorithm.sha256,
+                                     SignatureAlgorithm.rsa),
+                                    (HashAlgorithm.sha1,
+                                     SignatureAlgorithm.rsa)])
+        self.clnt_private_key.sign = mock.Mock(return_value=bytearray(20))
+
+        with self.assertRaises(TLSInternalError):
+            certVerify = KeyExchange.makeCertificateVerify(
+                (3, 3),
+                self.handshake_hashes,
+                [(HashAlgorithm.sha1,
+                  SignatureAlgorithm.rsa),
+                 (HashAlgorithm.sha512,
+                  SignatureAlgorithm.rsa)],
+                self.clnt_private_key,
+                certificate_request,
+                None, None, None)
+
 class TestRSAKeyExchange(unittest.TestCase):
     def setUp(self):
         self.srv_private_key = parsePEMKey(srv_raw_key, private=True)
@@ -570,6 +592,118 @@ class TestDHE_RSAKeyExchange(unittest.TestCase):
                 clientKeyExchange)
 
         self.assertEqual(client_premaster, server_premaster)
+
+    def test_DHE_RSA_key_exchange_with_custom_parameters(self):
+        self.keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                              self.client_hello,
+                                              self.server_hello,
+                                              self.srv_private_key,
+                                              # 6144 bit group
+                                              goodGroupParameters[5])
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                                self.client_hello,
+                                                self.server_hello,
+                                                None,)
+        client_premaster = client_keyExchange.processServerKeyExchange(
+                None,
+                srv_key_ex)
+        # because the agreed upon secret can be any value between 1 and p-1,
+        # we can't check the exact length. At the same time, short shared
+        # secrets are exceedingly rare, a share shorter by 4 bytes will
+        # happen only once in 256^4 negotiations or 1 in about 4 milliards
+        self.assertLessEqual(len(client_premaster), 6144 // 8)
+        self.assertGreaterEqual(len(client_premaster), 6144 // 8 - 4)
+        clientKeyExchange = client_keyExchange.makeClientKeyExchange()
+
+        server_premaster = self.keyExchange.processClientKeyExchange(
+                clientKeyExchange)
+
+        self.assertEqual(client_premaster, server_premaster)
+
+
+    def test_DHE_RSA_key_exchange_with_rfc7919_groups(self):
+        suppGroupsExt = SupportedGroupsExtension().create([GroupName.ffdhe3072,
+                                                           GroupName.ffdhe4096]
+                                                         )
+        self.client_hello.extensions = [suppGroupsExt]
+        self.keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                              self.client_hello,
+                                              self.server_hello,
+                                              self.srv_private_key,
+                                              dhGroups=GroupName.allFF)
+
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                                self.client_hello,
+                                                self.server_hello,
+                                                None,)
+        client_premaster = client_keyExchange.processServerKeyExchange(
+                None,
+                srv_key_ex)
+        # because the agreed upon secret can be any value between 1 and p-1,
+        # we can't check the exact length. At the same time, short shared
+        # secrets are exceedingly rare, a share shorter by 4 bytes will
+        # happen only once in 256^4 negotiations or 1 in about 4 milliards
+        self.assertLessEqual(len(client_premaster), 3072 // 8)
+        self.assertGreaterEqual(len(client_premaster), 3072 // 8 - 4)
+        clientKeyExchange = client_keyExchange.makeClientKeyExchange()
+
+        server_premaster = self.keyExchange.processClientKeyExchange(
+                clientKeyExchange)
+
+        self.assertEqual(client_premaster, server_premaster)
+
+
+    def test_DHE_RSA_key_exchange_with_ECC_groups(self):
+        suppGroupsExt = SupportedGroupsExtension().create([GroupName.secp256r1,
+                                                           GroupName.secp521r1,
+                                                           650]
+                                                         )
+        self.client_hello.extensions = [suppGroupsExt]
+        self.keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                              self.client_hello,
+                                              self.server_hello,
+                                              self.srv_private_key,
+                                              dhGroups=GroupName.allFF)
+
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                                self.client_hello,
+                                                self.server_hello,
+                                                None,)
+        client_premaster = client_keyExchange.processServerKeyExchange(
+                None,
+                srv_key_ex)
+        # because the agreed upon secret can be any value between 1 and p-1,
+        # we can't check the exact length. At the same time, short shared
+        # secrets are exceedingly rare, a share shorter by 4 bytes will
+        # happen only once in 256^4 negotiations or 1 in about 4 milliards
+        self.assertLessEqual(len(client_premaster), 2048 // 8)
+        self.assertGreaterEqual(len(client_premaster), 2048 // 8 - 4)
+        clientKeyExchange = client_keyExchange.makeClientKeyExchange()
+
+        server_premaster = self.keyExchange.processClientKeyExchange(
+                clientKeyExchange)
+
+        self.assertEqual(client_premaster, server_premaster)
+
+
+    def test_DHE_RSA_key_exchange_with_unknown_ffdhe_group(self):
+        suppGroupsExt = SupportedGroupsExtension().create([511])
+        self.client_hello.extensions = [suppGroupsExt]
+        self.keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                              self.client_hello,
+                                              self.server_hello,
+                                              self.srv_private_key,
+                                              dhGroups=GroupName.allFF)
+
+        with self.assertRaises(TLSInternalError):
+            self.keyExchange.makeServerKeyExchange('sha1')
+
 
     def test_DHE_RSA_key_exchange_with_invalid_client_key_share(self):
         clientKeyExchange = ClientKeyExchange(self.cipher_suite,
