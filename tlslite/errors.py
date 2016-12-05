@@ -175,3 +175,21 @@ class TLSUnsupportedError(TLSError):
 class TLSInternalError(TLSError):
     """The internal state of object is unexpected or invalid"""
     pass
+
+class TLSRecordOverflow(TLSInternalError):
+    """Read record is too big to handle"""
+    pass
+
+class TLSDecryptionFailed(TLSInternalError):
+    """Decryptioin was impossible"""
+    pass
+
+class TLSBadRecordMAC(TLSInternalError):
+    """MAC or padding of record was invalid"""
+    pass
+
+class TLSSocketClosed(TLSInternalError):
+    """Socket was closed unexpectedly while writing messages"""
+    def __init__(self, reason):
+        super(TLSSocketClosed, self).__init__()
+        self.reason = reason

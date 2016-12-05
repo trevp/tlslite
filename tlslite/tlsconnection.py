@@ -651,10 +651,10 @@ class TLSConnection(TLSRecordLayer):
                     yield result
 
             #Calculate pending connection states
-            self._calcPendingStates(session.cipherSuite, 
-                                    session.masterSecret, 
-                                    clientRandom, serverHello.random, 
-                                    cipherImplementations)                                   
+            self.calcPendingStates(session.cipherSuite,
+                                   session.masterSecret,
+                                   clientRandom, serverHello.random,
+                                   cipherImplementations)
 
             #Exchange ChangeCipherSpec and Finished messages
             for result in self._getFinished(session.masterSecret):
@@ -935,9 +935,9 @@ class TLSConnection(TLSRecordLayer):
 
         masterSecret = calcMasterSecret(self.version, premasterSecret,
                             clientRandom, serverRandom)
-        self._calcPendingStates(cipherSuite, masterSecret, 
-                                clientRandom, serverRandom, 
-                                cipherImplementations)
+        self.calcPendingStates(cipherSuite, masterSecret,
+                               clientRandom, serverRandom,
+                               cipherImplementations)
 
         #Exchange ChangeCipherSpec and Finished messages
         for result in self._sendFinished(masterSecret, nextProto):
@@ -1345,11 +1345,11 @@ class TLSConnection(TLSRecordLayer):
                 self._versionCheck = True
 
                 #Calculate pending connection states
-                self._calcPendingStates(session.cipherSuite, 
-                                        session.masterSecret,
-                                        clientHello.random, 
-                                        serverHello.random,
-                                        settings.cipherImplementations)
+                self.calcPendingStates(session.cipherSuite,
+                                       session.masterSecret,
+                                       clientHello.random,
+                                       serverHello.random,
+                                       settings.cipherImplementations)
 
                 #Exchange ChangeCipherSpec and Finished messages
                 for result in self._sendFinished(session.masterSecret):
@@ -1649,9 +1649,9 @@ class TLSConnection(TLSRecordLayer):
                                       clientRandom, serverRandom)
         
         #Calculate pending connection states
-        self._calcPendingStates(cipherSuite, masterSecret, 
-                                clientRandom, serverRandom,
-                                cipherImplementations)
+        self.calcPendingStates(cipherSuite, masterSecret,
+                               clientRandom, serverRandom,
+                               cipherImplementations)
 
         #Exchange ChangeCipherSpec and Finished messages
         for result in self._getFinished(masterSecret, 
@@ -1675,7 +1675,7 @@ class TLSConnection(TLSRecordLayer):
             yield result
 
         #Switch to pending write state
-        self._changeWriteState()
+        self.changeWriteState()
 
         if nextProto is not None:
             nextProtoMsg = NextProtocol().create(nextProto)
@@ -1705,7 +1705,7 @@ class TLSConnection(TLSRecordLayer):
                 yield result
 
         #Switch to pending read state
-        self._changeReadState()
+        self.changeReadState()
 
         #Server Finish - Are we waiting for a next protocol echo? 
         if expect_next_protocol:
