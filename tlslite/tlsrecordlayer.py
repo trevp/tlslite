@@ -19,6 +19,7 @@ from .messages import *
 from .mathtls import *
 from .constants import *
 from .utils.cryptomath import getRandomBytes
+from .recordlayer import RecordSocket
 
 import socket
 import errno
@@ -102,6 +103,7 @@ class TLSRecordLayer(object):
 
     def __init__(self, sock):
         self.sock = sock
+        self._recordSocket = RecordSocket(sock)
 
         #My session object (Session instance; read-only)
         self.session = None
@@ -120,7 +122,7 @@ class TLSRecordLayer(object):
         self._handshake_sha256 = hashlib.sha256()
 
         #TLS Protocol Version
-        self.version = (0,0) #read-only
+        self._version = (0, 0) #read-only
         self._versionCheck = False #Once we choose a version, this is True
 
         #Current and Pending connection states
@@ -148,6 +150,17 @@ class TLSRecordLayer(object):
 
         #Fault we will induce, for testing purposes
         self.fault = None
+
+    @property
+    def version(self):
+        """Get the SSL protocol version of connection"""
+        return self._version
+
+    @version.setter
+    def version(self, value):
+        """Set the SSL protocol version of connection"""
+        self._version = value
+        self._recordSocket.version = value
 
     def clearReadBuffer(self):
         self._readBuffer = b''
@@ -612,53 +625,43 @@ class TLSRecordLayer(object):
                 b += macBytes
                 b = self._writeState.encContext.encrypt(b)
 
-        #Add record header and send
-        r = RecordHeader3().create(self.version, contentType, len(b))
-        s = r.write() + b
-        while 1:
-            try:
-                bytesSent = self.sock.send(s) #Might raise socket.error
-            except socket.error as why:
-                if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
-                    yield 1
-                    continue
-                else:
-                    # The socket was unexpectedly closed.  The tricky part
-                    # is that there may be an alert sent by the other party
-                    # sitting in the read buffer.  So, if we get here after
-                    # handshaking, we will just raise the error and let the
-                    # caller read more data if it would like, thus stumbling
-                    # upon the error.
-                    #
-                    # However, if we get here DURING handshaking, we take
-                    # it upon ourselves to see if the next message is an 
-                    # Alert.
-                    if contentType == ContentType.handshake:
-                        
-                        # See if there's an alert record
-                        # Could raise socket.error or TLSAbruptCloseError
-                        for result in self._getNextRecord():
-                            if result in (0,1):
-                                yield result
-                                
-                        # Closes the socket
-                        self._shutdown(False)
-                        
-                        # If we got an alert, raise it        
-                        recordHeader, p = result                        
-                        if recordHeader.type == ContentType.alert:
-                            alert = Alert().parse(p)
-                            raise TLSRemoteAlert(alert)
-                    else:
-                        # If we got some other message who know what
-                        # the remote side is doing, just go ahead and
-                        # raise the socket.error
-                        raise
-            if bytesSent == len(s):
-                return
-            s = s[bytesSent:]
-            yield 1
+        msg = Message(contentType, b)
+        try:
+            for result in self._recordSocket.send(msg):
+                if result in (0, 1):
+                    yield result
+        except socket.error:
+            # The socket was unexpectedly closed.  The tricky part
+            # is that there may be an alert sent by the other party
+            # sitting in the read buffer.  So, if we get here after
+            # handshaking, we will just raise the error and let the
+            # caller read more data if it would like, thus stumbling
+            # upon the error.
+            #
+            # However, if we get here DURING handshaking, we take
+            # it upon ourselves to see if the next message is an
+            # Alert.
+            if contentType == ContentType.handshake:
 
+                # See if there's an alert record
+                # Could raise socket.error or TLSAbruptCloseError
+                for result in self._getNextRecord():
+                    if result in (0, 1):
+                        yield result
+
+                # Closes the socket
+                self._shutdown(False)
+
+                # If we got an alert, raise it
+                recordHeader, p = result
+                if recordHeader.type == ContentType.alert:
+                    alert = Alert().parse(p)
+                    raise TLSRemoteAlert(alert)
+            else:
+                # If we got some other message who know what
+                # the remote side is doing, just go ahead and
+                # raise the socket.error
+                raise
 
     def _getMsg(self, expectedType, secondaryType=None, constructorType=None):
         try:
@@ -829,68 +832,18 @@ class TLSRecordLayer(object):
             yield (recordHeader, Parser(b))
             return
 
-        #Otherwise...
-        #Read the next record header
-        b = bytearray(0)
-        recordHeaderLength = 1
-        ssl2 = False
-        while 1:
-            try:
-                s = self.sock.recv(recordHeaderLength-len(b))
-            except socket.error as why:
-                if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
-                    yield 0
-                    continue
-                else:
-                    raise
-
-            #If the connection was abruptly closed, raise an error
-            if len(s)==0:
-                raise TLSAbruptCloseError()
-
-            b += bytearray(s)
-            if len(b)==1:
-                if b[0] in ContentType.all:
-                    ssl2 = False
-                    recordHeaderLength = 5
-                elif b[0] == 128:
-                    ssl2 = True
-                    recordHeaderLength = 2
-                else:
-                    raise SyntaxError()
-            if len(b) == recordHeaderLength:
-                break
-
-        #Parse the record header
-        if ssl2:
-            r = RecordHeader2().parse(Parser(b))
-        else:
-            r = RecordHeader3().parse(Parser(b))
-
-        #Check the record header fields
-        if r.length > 18432:
+        try:
+            for result in self._recordSocket.recv():
+                if result in (0, 1):
+                    yield result
+                else: break
+            (r, b) = result
+        except TLSRecordOverflow:
             for result in self._sendError(AlertDescription.record_overflow):
                 yield result
-
-        #Read the record contents
-        b = bytearray(0)
-        while 1:
-            try:
-                s = self.sock.recv(r.length - len(b))
-            except socket.error as why:
-                if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
-                    yield 0
-                    continue
-                else:
-                    raise
-
-            #If the connection is closed, raise a socket error
-            if len(s)==0:
-                    raise TLSAbruptCloseError()
-
-            b += bytearray(s)
-            if len(b) == r.length:
-                break
+        except TLSIllegalParameterException:
+            for result in self._sendError(AlertDescription.illegal_parameter):
+                yield result
 
         #Check the record header fields (2)
         #We do this after reading the contents from the socket, so that
