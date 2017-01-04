@@ -1965,6 +1965,33 @@ class TestServerKeyExchange(unittest.TestCase):
         self.assertEqual(ske.srp_s, bytearray(3))
         self.assertEqual(ske.srp_B, 4)
 
+    def test_parse_and_write_with_zero_padded_SRP(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_SRP_SHA_WITH_AES_128_CBC_SHA,
+                                (3, 3))
+
+        msg = bytearray(
+            b'\x00\x00\x10' +       # overall length
+            b'\x00\x02' +           # N parameter length
+            b'\x00\x01' +               # N value
+            b'\x00\x02' +           # g parameter length
+            b'\x00\x02' +               # g value
+            b'\x03' +               # s parameter length
+            b'\x00'*3 +             # s value
+            b'\x00\x02' +           # B parameter length
+            b'\x00\x04'                 # B value
+            )
+
+        parser = Parser(msg)
+
+        ske.parse(parser)
+
+        self.assertEqual(ske.srp_N, 1)
+        self.assertEqual(ske.srp_g, 2)
+        self.assertEqual(ske.srp_s, bytearray(3))
+        self.assertEqual(ske.srp_B, 4)
+
+        self.assertEqual(ske.write()[1:], msg)
+
     def test_parser_with_SRP_RSA(self):
         ske = ServerKeyExchange(
                 CipherSuite.TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA,
@@ -2041,6 +2068,29 @@ class TestServerKeyExchange(unittest.TestCase):
         self.assertEqual(ske.dh_p, 31)
         self.assertEqual(ske.dh_g, 2)
         self.assertEqual(ske.dh_Ys, 16)
+
+    def test_parser_read_write_with_zero_padded_DH(self):
+        ske = ServerKeyExchange(CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA,
+                                (3, 3))
+        msg = bytearray(
+            b'\x00\x00\x0c' +       # overall length
+            b'\x00\x02' +           # p parameter length
+            b'\x00\x1f' +               # p value
+            b'\x00\x02' +           # g parameter length
+            b'\x00\x02' +               # g value
+            b'\x00\x02' +           # Ys parameter length
+            b'\x00\x10'                 # Ys value
+            )
+
+        parser = Parser(msg)
+
+        ske.parse(parser)
+
+        self.assertEqual(ske.dh_p, 31)
+        self.assertEqual(ske.dh_g, 2)
+        self.assertEqual(ske.dh_Ys, 16)
+
+        self.assertEqual(ske.write()[1:], msg)
 
     def test_parser_with_ECDH(self):
         ske = ServerKeyExchange(CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,

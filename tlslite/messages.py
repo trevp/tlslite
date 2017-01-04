@@ -1082,18 +1082,30 @@ class ServerKeyExchange(HandshakeMsg):
     @cvar cipherSuite: id of ciphersuite selected in Server Hello message
     @type srp_N: int
     @cvar srp_N: SRP protocol prime
+    @type srp_N_len: int
+    @cvar srp_N_len: length of srp_N in bytes
     @type srp_g: int
     @cvar srp_g: SRP protocol generator
+    @type srp_g_len: int
+    @cvar srp_g_len: length of srp_g in bytes
     @type srp_s: bytearray
     @cvar srp_s: SRP protocol salt value
     @type srp_B: int
     @cvar srp_B: SRP protocol server public value
+    @type srp_B_len: int
+    @cvar srp_B_len: length of srp_B in bytes
     @type dh_p: int
     @cvar dh_p: FFDHE protocol prime
+    @type dh_p_len: int
+    @cvar dh_p_len: length of dh_p in bytes
     @type dh_g: int
     @cvar dh_g: FFDHE protocol generator
+    @type dh_g_len: int
+    @type dh_g_len: length of dh_g in bytes
     @type dh_Ys: int
     @cvar dh_Ys: FFDH protocol server key share
+    @type dh_Ys_len: int
+    @cvar dh_Ys_len: length of dh_Ys in bytes
     @type curve_type: int
     @cvar curve_type: Type of curve used (explicit, named, etc.)
     @type named_curve: int
@@ -1119,13 +1131,19 @@ class ServerKeyExchange(HandshakeMsg):
         self.cipherSuite = cipherSuite
         self.version = version
         self.srp_N = 0
+        self.srp_N_len = None
         self.srp_g = 0
+        self.srp_g_len = None
         self.srp_s = bytearray(0)
         self.srp_B = 0
+        self.srp_B_len = None
         # Anon DH params:
         self.dh_p = 0
+        self.dh_p_len = None
         self.dh_g = 0
+        self.dh_g_len = None
         self.dh_Ys = 0
+        self.dh_Ys_len = None
         # EC settings
         self.curve_type = None
         self.named_curve = None
@@ -1158,16 +1176,22 @@ class ServerKeyExchange(HandshakeMsg):
     def createSRP(self, srp_N, srp_g, srp_s, srp_B):
         """Set SRP protocol parameters."""
         self.srp_N = srp_N
+        self.srp_N_len = None
         self.srp_g = srp_g
+        self.srp_g_len = None
         self.srp_s = srp_s
         self.srp_B = srp_B
+        self.srp_B_len = None
         return self
 
     def createDH(self, dh_p, dh_g, dh_Ys):
         """Set FFDH protocol parameters."""
         self.dh_p = dh_p
+        self.dh_p_len = None
         self.dh_g = dh_g
+        self.dh_g_len = None
         self.dh_Ys = dh_Ys
+        self.dh_Ys_len = None
         return self
 
     def createECDH(self, curve_type, named_curve=None, point=None):
@@ -1185,14 +1209,20 @@ class ServerKeyExchange(HandshakeMsg):
         """
         parser.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
-            self.srp_N = bytesToNumber(parser.getVarBytes(2))
-            self.srp_g = bytesToNumber(parser.getVarBytes(2))
+            self.srp_N_len = parser.get(2)
+            self.srp_N = bytesToNumber(parser.getFixBytes(self.srp_N_len))
+            self.srp_g_len = parser.get(2)
+            self.srp_g = bytesToNumber(parser.getFixBytes(self.srp_g_len))
             self.srp_s = parser.getVarBytes(1)
-            self.srp_B = bytesToNumber(parser.getVarBytes(2))
+            self.srp_B_len = parser.get(2)
+            self.srp_B = bytesToNumber(parser.getFixBytes(self.srp_B_len))
         elif self.cipherSuite in CipherSuite.dhAllSuites:
-            self.dh_p = bytesToNumber(parser.getVarBytes(2))
-            self.dh_g = bytesToNumber(parser.getVarBytes(2))
-            self.dh_Ys = bytesToNumber(parser.getVarBytes(2))
+            self.dh_p_len = parser.get(2)
+            self.dh_p = bytesToNumber(parser.getFixBytes(self.dh_p_len))
+            self.dh_g_len = parser.get(2)
+            self.dh_g = bytesToNumber(parser.getFixBytes(self.dh_g_len))
+            self.dh_Ys_len = parser.get(2)
+            self.dh_Ys = bytesToNumber(parser.getFixBytes(self.dh_Ys_len))
         elif self.cipherSuite in CipherSuite.ecdhAllSuites:
             self.curve_type = parser.get(1)
             # only named curves supported
@@ -1219,14 +1249,20 @@ class ServerKeyExchange(HandshakeMsg):
         """
         writer = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
-            writer.addVarSeq(numberToByteArray(self.srp_N), 1, 2)
-            writer.addVarSeq(numberToByteArray(self.srp_g), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.srp_N, self.srp_N_len),
+                             1, 2)
+            writer.addVarSeq(numberToByteArray(self.srp_g, self.srp_g_len),
+                             1, 2)
             writer.addVarSeq(self.srp_s, 1, 1)
-            writer.addVarSeq(numberToByteArray(self.srp_B), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.srp_B, self.srp_B_len),
+                             1, 2)
         elif self.cipherSuite in CipherSuite.dhAllSuites:
-            writer.addVarSeq(numberToByteArray(self.dh_p), 1, 2)
-            writer.addVarSeq(numberToByteArray(self.dh_g), 1, 2)
-            writer.addVarSeq(numberToByteArray(self.dh_Ys), 1, 2)
+            writer.addVarSeq(numberToByteArray(self.dh_p, self.dh_p_len),
+                             1, 2)
+            writer.addVarSeq(numberToByteArray(self.dh_g, self.dh_g_len),
+                             1, 2)
+            writer.addVarSeq(numberToByteArray(self.dh_Ys, self.dh_Ys_len),
+                             1, 2)
         elif self.cipherSuite in CipherSuite.ecdhAllSuites:
             writer.add(self.curve_type, 1)
             assert self.curve_type == 3
