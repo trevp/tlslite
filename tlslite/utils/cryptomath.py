@@ -15,7 +15,7 @@ import base64
 import binascii
 import sys
 
-from .compat import compat26Str, compatHMAC, compatLong
+from .compat import compat26Str, compatHMAC, compatLong, b2a_hex
 
 
 # **************************************************************************
@@ -122,9 +122,9 @@ def HKDF_expand(PRK, info, L, algorithm):
 
 def bytesToNumber(b, endian="big"):
     if endian == "big":
-        return sum(i << j for i, j in zip(b, range((len(b)-1)*8, -1, -8)))
+        return int(b2a_hex(b), 16)
     elif endian == "little":
-        return sum(i << j for i, j in zip(b, range(0, len(b)*8, 8)))
+        return int(b2a_hex(b[::-1]), 16)
     else:
         raise ValueError("Only 'big' and 'little' endian supported")
 
