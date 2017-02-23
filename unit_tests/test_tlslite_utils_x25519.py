@@ -16,8 +16,9 @@ except ImportError:
     from unittest.mock import call
 
 from tlslite.utils.x25519 import decodeUCoordinate, decodeScalar22519, \
-        decodeScalar448, x25519, x448
+        decodeScalar448, x25519, x448, X25519_G, X448_G
 from tlslite.utils.compat import a2b_hex
+from tlslite.utils.cryptomath import numberToByteArray
 
 class TestDecodeUCoordinate(unittest.TestCase):
     def test_x25519_decode(self):
@@ -235,3 +236,92 @@ class TestDecodeUCoordinate(unittest.TestCase):
                                  "0002472519b3e67661a7e89"
                                  "cab94695c8f4bcd66e61b9b9c946da8d5"
                                  "24de3d69bd9d9d66b997e37"))
+
+
+    # RFC 7748, section 6.1
+    def test_x25519_ecdh_a_share(self):
+        a_random = a2b_hex("77076d0a7318a57d3c16c17251b26645df4"
+                           "c2f87ebc0992ab177fba51db92c2a")
+        a_public = x25519(a_random, bytearray(X25519_G))
+
+        self.assertEqual(a_public,
+                         a2b_hex("8520f0098930a754748b7ddcb43ef75a0"
+                                 "dbf3a0d26381af4eba4a98eaa9b4e6a"))
+
+    def test_x25519_ecdh_b_share(self):
+        b_random = a2b_hex("5dab087e624a8a4b79e17f8b83800ee6"
+                           "6f3bb1292618b6fd1c2f8b27ff88e0eb")
+        b_public = x25519(b_random, bytearray(X25519_G))
+
+        self.assertEqual(b_public,
+                         a2b_hex("de9edb7d7b7dc1b4d35b61c2ece43537"
+                                 "3f8343c85b78674dadfc7e146f882b4f"))
+
+    def test_x25519_ecdh_shared(self):
+        a_random = a2b_hex("77076d0a7318a57d3c16c17251b26645df4"
+                           "c2f87ebc0992ab177fba51db92c2a")
+        a_public = x25519(a_random, bytearray(X25519_G))
+
+        b_random = a2b_hex("5dab087e624a8a4b79e17f8b83800ee6"
+                           "6f3bb1292618b6fd1c2f8b27ff88e0eb")
+        b_public = x25519(b_random, bytearray(X25519_G))
+
+        a_shared = x25519(a_random, b_public)
+
+        b_shared = x25519(b_random, a_public)
+
+        self.assertEqual(a_shared, b_shared)
+        self.assertEqual(a_shared,
+                         a2b_hex("4a5d9d5ba4ce2de1728e3bf480350f25"
+                                 "e07e21c947d19e3376f09b3c1e161742"))
+
+
+    # RFC 7748, section 6.2
+    def test_x448_ecdh_a_share(self):
+        a_random = a2b_hex("9a8f4925d1519f5775cf46b04b58"
+                           "00d4ee9ee8bae8bc5565d498c28d"
+                           "d9c9baf574a94197448973910063"
+                           "82a6f127ab1d9ac2d8c0a598726b")
+        a_public = x448(a_random, bytearray(X448_G))
+
+        self.assertEqual(a_public,
+                         a2b_hex("9b08f7cc31b7e3e67d22d5aea121"
+                                 "074a273bd2b83de09c63faa73d2c"
+                                 "22c5d9bbc836647241d953d40c5b"
+                                 "12da88120d53177f80e532c41fa0"))
+
+    def test_x448_ecdh_b_share(self):
+        b_random = a2b_hex("1c306a7ac2a0e2e0990b294470cb"
+                           "a339e6453772b075811d8fad0d1d"
+                           "6927c120bb5ee8972b0d3e21374c"
+                           "9c921b09d1b0366f10b65173992d")
+        b_public = x448(b_random, bytearray(X448_G))
+
+        self.assertEqual(b_public,
+                         a2b_hex("3eb7a829b0cd20f5bcfc0b599b6f"
+                                 "eccf6da4627107bdb0d4f345b430"
+                                 "27d8b972fc3e34fb4232a13ca706"
+                                 "dcb57aec3dae07bdc1c67bf33609"))
+
+    def test_x448_ecdh_shared(self):
+        a_random = a2b_hex("9a8f4925d1519f5775cf46b04b58"
+                           "00d4ee9ee8bae8bc5565d498c28d"
+                           "d9c9baf574a94197448973910063"
+                           "82a6f127ab1d9ac2d8c0a598726b")
+        a_public = x448(a_random, bytearray(X448_G))
+
+        b_random = a2b_hex("1c306a7ac2a0e2e0990b294470cb"
+                           "a339e6453772b075811d8fad0d1d"
+                           "6927c120bb5ee8972b0d3e21374c"
+                           "9c921b09d1b0366f10b65173992d")
+        b_public = x448(b_random, bytearray(X448_G))
+
+        a_shared = x448(a_random, b_public)
+        b_shared = x448(b_random, a_public)
+
+        self.assertEqual(a_shared, b_shared)
+        self.assertEqual(a_shared,
+                         a2b_hex("07fff4181ac6cc95ec1c16a94a0f"
+                                 "74d12da232ce40a77552281d282b"
+                                 "b60c0b56fd2464c335543936521c"
+                                 "24403085d59a449a5037514a879d"))

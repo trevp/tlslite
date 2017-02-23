@@ -43,6 +43,12 @@ def cswap(swap, x_2, x_3):
         return x_2, x_3
 
 
+X25519_G = numberToByteArray(9, 32, endian="little")
+
+
+X25519_ORDER = 256
+
+
 def x25519(k, u):
     """
     Perform point multiplication on X25519 curve.
@@ -63,6 +69,12 @@ def x25519(k, u):
     p = 2**255 - 19
 
     return _x25519_generic(k, u, bits, a24, p)
+
+
+X448_G = numberToByteArray(5, 56, endian="little")
+
+
+X448_ORDER = 448
 
 
 def x448(k, u):
