@@ -17,7 +17,7 @@ except ImportError:
 
 from tlslite.utils.x25519 import decodeUCoordinate, decodeScalar22519, \
         decodeScalar448, x25519, x448, X25519_G, X448_G
-from tlslite.utils.compat import a2b_hex
+from tlslite.utils.compat import a2b_hex, b2a_hex
 from tlslite.utils.cryptomath import numberToByteArray
 
 class TestDecodeUCoordinate(unittest.TestCase):
@@ -54,6 +54,7 @@ class TestDecodeUCoordinate(unittest.TestCase):
                                      "1515452463053830"))
 
 
+class TestDecodeScalar22519(unittest.TestCase):
     def test_x25519_decode_scalar(self):
         value = a2b_hex('a546e36bf0527c9d3b16154b82465edd6'
                         '2144c0ac1fc5a18506a2244ba449ac4')
@@ -64,6 +65,7 @@ class TestDecodeUCoordinate(unittest.TestCase):
                                      "72772604678260265531221036453811406496"))
 
 
+class TestDecodeScalar448(unittest.TestCase):
     def test_x448_decode_scalar(self):
         value = a2b_hex('3d262fddf9ec8e88495266fea19a34d2'
                         '8882acef045104d0d1aae121'
@@ -75,9 +77,62 @@ class TestDecodeUCoordinate(unittest.TestCase):
         self.assertEqual(int("599189175373896402783756016145213256157230856"
                              "085026129926891459468622403380588640249457727"
                              "683869421921443004045221642549886377526240828"),
-                         scalar)
+                             scalar)
 
 
+class TestUncommonInputsX25519(unittest.TestCase):
+    def test_all_zero_k(self):
+        k = bytearray(32)
+        u = a2b_hex("e6db6867583030db3594c1a424b15f7"
+                    "c726624ec26b3353b10a903a6d0ab1c4c")
+
+        ret = x25519(k, u)
+
+        self.assertEqual(ret,
+                         a2b_hex("030d7ba1a76719f96d5c39122f690e78"
+                                 "56895ee9d24416279eb9182010287113"))
+
+    def test_all_zero_u(self):
+        k = a2b_hex("a546e36bf0527c9d3b16154b82465ed"
+                    "d62144c0ac1fc5a18506a2244ba449ac4")
+        u = bytearray(32)
+
+        ret = x25519(k, u)
+
+        self.assertEqual(ret,
+                         bytearray(32))
+
+
+class TestUncommonInputsX448(unittest.TestCase):
+    def test_all_zero_k(self):
+        k = bytearray(56)
+        u = a2b_hex("06fce640fa3487bfda5f6cf2d5263f8"
+                    "aad88334cbd07437f020f08f9"
+                    "814dc031ddbdc38c19c6da2583fa542"
+                    "9db94ada18aa7a7fb4ef8a086")
+
+        ret = x448(k, u)
+
+        self.assertEqual(ret,
+                         a2b_hex("f8d21fea4fe227fa556d27ec5317d839"
+                                 "4db22217e27a96c8f7b47d36a4e15ba1"
+                                 "bef872684ba18ee5ce72577b0aed87e9"
+                                 "8a3714ab32d9d169"))
+
+    def test_all_zero_u(self):
+        k = a2b_hex("3d262fddf9ec8e88495266fea19a34d"
+                    "28882acef045104d0d1aae121"
+                    "700a779c984c24f8cdd78fbff44943e"
+                    "ba368f54b29259a4f1c600ad3")
+        u = bytearray(56)
+
+        ret = x448(k, u)
+
+        self.assertEqual(ret,
+                         bytearray(56))
+
+
+class TestKnownAnswerTests(unittest.TestCase):
     # RFC 7748 Section 5.2, vector #1
     def test_x25519_1(self):
         k = a2b_hex("a546e36bf0527c9d3b16154b82465ed"
