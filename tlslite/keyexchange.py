@@ -207,9 +207,16 @@ class KeyExchange(object):
         elif version in ((3, 1), (3, 2)):
             verifyBytes = handshakeHashes.digest()
         elif version == (3, 3):
-            hashName = HashAlgorithm.toRepr(signatureAlg[0])
+            scheme = SignatureScheme.toRepr(signatureAlg)
+            if scheme is None:
+                hashName = HashAlgorithm.toRepr(signatureAlg[0])
+                padding = 'pkcs1'
+            else:
+                hashName = SignatureScheme.getHash(scheme)
+                padding = SignatureScheme.getPadding(scheme)
             verifyBytes = handshakeHashes.digest(hashName)
-            verifyBytes = RSAKey.addPKCS1Prefix(verifyBytes, hashName)
+            if padding == 'pkcs1':
+                verifyBytes = RSAKey.addPKCS1Prefix(verifyBytes, hashName)
         return verifyBytes
 
     @staticmethod
@@ -241,8 +248,25 @@ class KeyExchange(object):
                                                   premasterSecret,
                                                   clientRandom,
                                                   serverRandom)
-        signedBytes = privateKey.sign(verifyBytes)
-        if not privateKey.verify(signedBytes, verifyBytes):
+        scheme = SignatureScheme.toRepr(signatureAlgorithm)
+        # for pkcs1 signatures hash is used to add PKCS#1 prefix, but
+        # that was already done by calcVerifyBytes
+        hashName = None
+        saltLen = 0
+        if scheme is None:
+            padding = 'pkcs1'
+        else:
+            padding = SignatureScheme.getPadding(scheme)
+            if padding == 'pss':
+                hashName = SignatureScheme.getHash(scheme)
+                saltLen = getattr(hashlib, hashName)().digest_size
+
+        signedBytes = privateKey.sign(verifyBytes,
+                                      padding,
+                                      hashName,
+                                      saltLen)
+        if not privateKey.verify(signedBytes, verifyBytes, padding, hashName,
+                                 saltLen):
             raise TLSInternalError("Certificate Verify signature invalid")
         certificateVerify = CertificateVerify(version)
         certificateVerify.create(signedBytes, signatureAlgorithm)

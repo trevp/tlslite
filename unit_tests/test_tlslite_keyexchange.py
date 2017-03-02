@@ -19,7 +19,7 @@ from tlslite.handshakesettings import HandshakeSettings
 from tlslite.messages import ServerHello, ClientHello, ServerKeyExchange,\
         CertificateRequest, ClientKeyExchange
 from tlslite.constants import CipherSuite, CertificateType, AlertDescription, \
-        HashAlgorithm, SignatureAlgorithm, GroupName
+        HashAlgorithm, SignatureAlgorithm, GroupName, SignatureScheme
 from tlslite.errors import TLSLocalAlert, TLSIllegalParameterException, \
         TLSDecryptionFailed, TLSInsufficientSecurity, TLSUnknownPSKIdentity, \
         TLSInternalError
@@ -389,6 +389,38 @@ class TestMakeCertificateVerify(unittest.TestCase):
             b'[\x9b7\xb1p\xd7\xa3\xc8\xf37K \x91\x0e\x16\xd6\x94t\xec\xe6\xb1Z'
             b'K\xeeg\xb6)>\x91?\xc2\xe2S\xdf\xa9'))
 
+    def test_with_TLS1_2_rsa_pss_sha256(self):
+        def m(length):
+            return bytearray(length)
+
+        with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
+            certificate_request = CertificateRequest((3, 3))
+            certificate_request.create([CertificateType.x509],
+                                       [],
+                                       [SignatureScheme.rsa_pss_sha256,
+                                        (HashAlgorithm.sha1,
+                                         SignatureAlgorithm.rsa)])
+
+            certVerify = KeyExchange.makeCertificateVerify((3, 3),
+                                                           self.handshake_hashes,
+                                                           [SignatureScheme.\
+                                                                   rsa_pss_sha256],
+                                                           self.clnt_private_key,
+                                                           certificate_request,
+                                                           None, None, None)
+
+            self.assertIsNotNone(certVerify)
+            self.assertEqual(certVerify.version, (3, 3))
+            self.assertEqual(certVerify.signatureAlgorithm,
+                             SignatureScheme.rsa_pss_sha256)
+            self.assertEqual(certVerify.signature, bytearray(
+                b'mj{\xb8\xe1\xfdV\x8f>\xc4\x7fy\xe3h}\xb0\xda\xff\xab1\xab='
+                b'\xa7x\xf4x\xcduL\xbbN"\xd9\xad\x7f@N\xae\xb1\xc5\x1c\'\x81'
+                b'\x7f\xc4\xe3\xc9:Y6\xf77\xb0\xd8\xc3\xbeo\xd0&\xf6\x05x\xc6'
+                b'\x9c\xce\xb4\x1eQx \x13\x93qCy\x8d>tCONS\x83\x15\xf7\xf1'
+                b'\x96\x15\x1eXv<\xb6\x80\x7fI\x85\xa3\xe1\x18\xd4\xd6\xbe)68'
+                b'\xad\xae\x08\xad\x91\xe9rg\x8b\xc8M\xfe{\x0c\xf5\x0fj\'E"9'
+                b'\r'))
 
     def test_with_TLS1_2_and_no_overlap(self):
         certificate_request = CertificateRequest((3, 3))

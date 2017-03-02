@@ -1982,7 +1982,24 @@ class TLSConnection(TLSRecordLayer):
                         "Client's public key too large: %d" % len(publicKey)):
                     yield result
 
-            if not publicKey.verify(certificateVerify.signature, verifyBytes):
+            scheme = SignatureScheme.toRepr(signatureAlgorithm)
+            # for pkcs1 signatures hash is used to add PKCS#1 prefix, but
+            # that was already done by calcVerifyBytes
+            hashName = None
+            saltLen = 0
+            if scheme is None:
+                padding = 'pkcs1'
+            else:
+                padding = SignatureScheme.getPadding(scheme)
+                if padding == 'pss':
+                    hashName = SignatureScheme.getHash(scheme)
+                    saltLen = getattr(hashlib, hashName)().digest_size
+
+            if not publicKey.verify(certificateVerify.signature,
+                                    verifyBytes,
+                                    padding,
+                                    hashName,
+                                    saltLen):
                 for result in self._sendError(\
                         AlertDescription.decrypt_error,
                         "Signature failed to verify"):
