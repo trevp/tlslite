@@ -360,6 +360,36 @@ class TestMakeCertificateVerify(unittest.TestCase):
             b'\xb4:\x9b\xc1U\x1c\xba\xa3\x05\xceOn\x0fY\xcaK*\x0b\x04\xa5'
             ))
 
+    def test_with_TLS1_2_md5(self):
+        certificate_request = CertificateRequest((3, 3))
+        certificate_request.create([CertificateType.x509],
+                                   [],
+                                   [(HashAlgorithm.md5,
+                                     SignatureAlgorithm.rsa),
+                                    (HashAlgorithm.sha1,
+                                     SignatureAlgorithm.rsa)])
+
+        certVerify = KeyExchange.makeCertificateVerify((3, 3),
+                                                       self.handshake_hashes,
+                                                       [(HashAlgorithm.md5,
+                                                         SignatureAlgorithm.rsa)],
+                                                       self.clnt_private_key,
+                                                       certificate_request,
+                                                       None, None, None)
+
+        self.assertIsNotNone(certVerify)
+        self.assertEqual(certVerify.version, (3, 3))
+        self.assertEqual(certVerify.signatureAlgorithm, (HashAlgorithm.md5,
+                                                         SignatureAlgorithm.rsa))
+        self.assertEqual(certVerify.signature, bytearray(
+            b'H5\x03U]\x0c\xb6\xc0Y\x98^\x0f \xf4\x15}\x8d\xf7k\x97\\&8j\x94'
+            b'\xc6\x04*e\xa6\x95\xc5\xf3\xb1\xd0\xe6\x85[<9\x91K\xc51\xc3\xe9'
+            b'\xc6\x15&\x1c\xfb\xb2?\r|\r\xfa"\x8c\xdaHo]\x89\xc8mOE\x9c]\xa0'
+            b'\xab#\xf8\xea(\xefE\xb3\x83)f+hS\xa8\x00\xe1\x11\xbd\xfb\xd5\xf5'
+            b'[\x9b7\xb1p\xd7\xa3\xc8\xf37K \x91\x0e\x16\xd6\x94t\xec\xe6\xb1Z'
+            b'K\xeeg\xb6)>\x91?\xc2\xe2S\xdf\xa9'))
+
+
     def test_with_TLS1_2_and_no_overlap(self):
         certificate_request = CertificateRequest((3, 3))
         certificate_request.create([CertificateType.x509],
