@@ -87,23 +87,23 @@ class KeyExchange(object):
 
         assert keyType == 'rsa'
 
-        hashBytes = self.clientHello.random + self.serverHello.random + \
-                    serverKeyExchange.writeParams()
+        hashBytes = serverKeyExchange.hash(self.clientHello.random,
+                                           self.serverHello.random)
 
         serverKeyExchange.signature = \
-            self.privateKey.hashAndSign(hashBytes,
-                                        rsaScheme=padType,
-                                        hAlg=hashName,
-                                        sLen=saltLen)
+            self.privateKey.sign(hashBytes,
+                                 padding=padType,
+                                 hashAlg=hashName,
+                                 saltLen=saltLen)
 
         if not serverKeyExchange.signature:
             raise TLSInternalError("Empty signature")
 
-        if not self.privateKey.hashAndVerify(serverKeyExchange.signature,
-                                             hashBytes,
-                                             rsaScheme=padType,
-                                             hAlg=hashName,
-                                             sLen=saltLen):
+        if not self.privateKey.verify(serverKeyExchange.signature,
+                                      hashBytes,
+                                      padding=padType,
+                                      hashAlg=hashName,
+                                      saltLen=saltLen):
             raise TLSInternalError("Server Key Exchange signature invalid")
 
     def signServerKeyExchange(self, serverKeyExchange, sigHash=None):
@@ -158,17 +158,16 @@ class KeyExchange(object):
                 raise TLSIllegalParameterException(msg)
         assert keyType == 'rsa'
 
-        hashBytes = clientRandom + serverRandom + \
-                    ServerKeyExchange.writeParams(serverKeyExchange)
+        hashBytes = serverKeyExchange.hash(clientRandom, serverRandom)
 
         sigBytes = serverKeyExchange.signature
         if not sigBytes:
             raise TLSIllegalParameterException("Empty signature")
 
-        if not publicKey.hashAndVerify(sigBytes, hashBytes,
-                                       rsaScheme=padType,
-                                       hAlg=hashName,
-                                       sLen=saltLen):
+        if not publicKey.verify(sigBytes, hashBytes,
+                                padding=padType,
+                                hashAlg=hashName,
+                                saltLen=saltLen):
             raise TLSDecryptionFailed("Server Key Exchange signature "
                                       "invalid")
 
