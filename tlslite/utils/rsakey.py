@@ -50,7 +50,7 @@ class RSAKey(object):
         """
         raise NotImplementedError()
 
-    def hashAndSign(self, bytes, rsaScheme='PKCS1', hAlg='sha1', sLen=0):
+    def hashAndSign(self, bytes, rsaScheme='PKCS1', hAlg='SHA1', sLen=0):
         """Hash and sign the passed-in bytes.
 
         This requires the key to have a private component.  It performs
@@ -75,11 +75,13 @@ class RSAKey(object):
         @rtype: L{bytearray} of unsigned bytes.
         @return: A PKCS1 or PSS signature on the passed-in data.
         """
-        if rsaScheme == "PKCS1":
+        rsaScheme = rsaScheme.lower()
+        hAlg = hAlg.lower()
+        if rsaScheme == "pkcs1":
             hashBytes = secureHash(bytearray(bytes), hAlg)
             prefixedHashBytes = self.addPKCS1Prefix(hashBytes, hAlg)
             sigBytes = self.sign(prefixedHashBytes)
-        elif rsaScheme == "PSS":
+        elif rsaScheme == "pss":
             sigBytes = self.RSASSA_PSS_sign(bytearray(bytes), hAlg, sLen)
         else:
             raise UnknownRSAType("Unknown RSA algorithm type")
@@ -113,21 +115,23 @@ class RSAKey(object):
         @rtype: bool
         @return: Whether the signature matches the passed-in data.
         """
-        
+        rsaScheme = rsaScheme.lower()
+        hAlg = hAlg.lower()
+
         # Try it with/without the embedded NULL
-        if rsaScheme == "PKCS1" and hAlg == 'sha1':
+        if rsaScheme == "pkcs1" and hAlg == 'sha1':
             hashBytes = secureHash(bytearray(bytes), hAlg)
             prefixedHashBytes1 = self.addPKCS1SHA1Prefix(hashBytes, False)
             prefixedHashBytes2 = self.addPKCS1SHA1Prefix(hashBytes, True)
             result1 = self.verify(sigBytes, prefixedHashBytes1)
             result2 = self.verify(sigBytes, prefixedHashBytes2)
             return (result1 or result2)
-        elif rsaScheme == 'PKCS1':
+        elif rsaScheme == 'pkcs1':
             hashBytes = secureHash(bytearray(bytes), hAlg)
             prefixedHashBytes = self.addPKCS1Prefix(hashBytes, hAlg)
             r = self.verify(sigBytes, prefixedHashBytes)
             return r
-        elif rsaScheme == "PSS":
+        elif rsaScheme == "pss":
             r = self.RSASSA_PSS_verify(bytearray(bytes), sigBytes, hAlg, sLen)
             return r
         else:

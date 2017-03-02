@@ -41,7 +41,8 @@ class TestRSAPSS_components(unittest.TestCase):
                              b'\x07\x14\xf1?\xa8i\xb7\xc6\x94\x1c9\x1fX>@' +
                              b'\xe3')
         with self.assertRaises(UnknownRSAType):
-            self.rsa.hashAndVerify(message, signed, 'sha29', 10)
+            self.rsa.hashAndVerify(message, signed, rsaScheme='sha29',
+                                   hAlg='foo')
 
     def test_encodingError(self):
         with self.assertRaises(EncodingError):
