@@ -156,6 +156,24 @@ class SignatureAlgorithm(TLSEnum):
     dsa = 2
     ecdsa = 3
 
+
+class SignatureScheme(TLSEnum):
+    """
+    Signature scheme used for signalling supported signature algorithms.
+
+    This is the replacement for the HashAlgorithm and SignatureAlgorithm
+    lists. Introduced with TLSv1.3.
+    """
+
+    rsa_pkcs1_sha1 = (2, 1)
+    rsa_pkcs1_sha256 = (4, 1)
+    rsa_pkcs1_sha384 = (5, 1)
+    rsa_pkcs1_sha512 = (6, 1)
+    rsa_pss_sha256 = (8, 4)
+    rsa_pss_sha384 = (8, 5)
+    rsa_pss_sha512 = (8, 6)
+
+
 class GroupName(TLSEnum):
     """Name of groups supported for (EC)DH key exchange"""
 
