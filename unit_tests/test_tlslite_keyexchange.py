@@ -167,6 +167,27 @@ class TestKeyExchange(unittest.TestCase):
 
         self.assertEqual(server_key_exchange.write(), self.expected_tls1_1_SKE)
 
+
+    def test_signServerKeyExchange_in_TLS1_1_signature_invalid(self):
+        srv_private_key = parsePEMKey(srv_raw_key, private=True)
+        client_hello = ClientHello()
+        cipher_suite = CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA
+        server_hello = ServerHello().create((3, 2),
+                                            bytearray(32),
+                                            bytearray(0),
+                                            cipher_suite)
+        keyExchange = KeyExchange(cipher_suite,
+                                  client_hello,
+                                  server_hello,
+                                  srv_private_key)
+        server_key_exchange = ServerKeyExchange(cipher_suite, (3, 2)) \
+            .createDH(5, 2, 3)
+
+        with self.assertRaises(TLSInternalError):
+            keyExchange.privateKey.sign = mock.Mock(
+                return_value=bytearray(b'wrong'))
+            keyExchange.signServerKeyExchange(server_key_exchange)
+
 class TestKeyExchangeVerifyServerKeyExchange(TestKeyExchange):
     def setUp(self):
         self.srv_cert_chain = X509CertChain([X509().parse(srv_raw_certificate)])
@@ -234,6 +255,15 @@ class TestKeyExchangeVerifyServerKeyExchange(TestKeyExchange):
                                             self.client_hello.random,
                                             bytearray(32),
                                             None)
+
+    def test_verifyServerKeyExchange_with_damaged_signature_in_TLS1_1(self):
+        self.ske_tls1_1.signature[-1] ^= 0x01
+        with self.assertRaises(TLSDecryptionFailed):
+            KeyExchange.verifyServerKeyExchange(self.ske_tls1_1,
+                                                self.srv_pub_key,
+                                                self.client_hello.random,
+                                                bytearray(32),
+                                                None)
 
 class TestCalcVerifyBytes(unittest.TestCase):
     def setUp(self):
@@ -836,10 +866,22 @@ class TestDHE_RSAKeyExchange(unittest.TestCase):
         with self.assertRaises(TLSInternalError):
             self.keyExchange.makeServerKeyExchange('sha1')
 
+    def test_DHE_RSA_key_exchange_empty_signature_in_TLS_1_1(self):
+        self.keyExchange.serverHello.server_version = (3, 2)
+        self.keyExchange.privateKey.sign = mock.Mock(return_value=bytearray(0))
+        with self.assertRaises(TLSInternalError):
+            self.keyExchange.makeServerKeyExchange('sha1')
+
     def test_DHE_RSA_key_exchange_wrong_signature(self):
         self.keyExchange.privateKey.sign = mock.Mock(return_value=bytearray(20))
         with self.assertRaises(TLSInternalError):
             self.keyExchange.makeServerKeyExchange('sha1')
+
+    def test_DHE_RSA_key_exchange_wrong_signature_in_TLS_1_1(self):
+        self.keyExchange.serverHello.server_version = (3, 2)
+        self.keyExchange.privateKey.sign = mock.Mock(return_value=bytearray(20))
+        with self.assertRaises(TLSInternalError):
+            self.keyExchange.makeServerKeyExchange()
 
 class TestSRPKeyExchange(unittest.TestCase):
     def setUp(self):
