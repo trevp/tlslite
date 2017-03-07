@@ -1647,12 +1647,19 @@ class TLSConnection(TLSRecordLayer):
                         for result in self._sendError(\
                                 AlertDescription.handshake_failure):
                             yield result
+                    # if old session used EMS, new connection MUST use EMS
                     if session.extendedMasterSecret and \
                             not clientHello.getExtension(
                                     ExtensionType.extended_master_secret):
                         for result in self._sendError(\
                                 AlertDescription.handshake_failure):
                             yield result
+                    # if old session didn't use EMS but new connection
+                    # advertises EMS, create a new session
+                    elif not session.extendedMasterSecret and \
+                            clientHello.getExtension(
+                                    ExtensionType.extended_master_secret):
+                        session = None
                 except KeyError:
                     pass
 
