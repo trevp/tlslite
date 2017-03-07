@@ -1444,6 +1444,7 @@ class TLSConnection(TLSRecordLayer):
                             tackExt, (serverHello.tackExt is not None),
                             serverName,
                             encryptThenMAC=self._recordLayer.encryptThenMAC,
+                            extendedMasterSecret=self.extendedMasterSecret,
                             appProto=selectedALPN)
             
         #Add the session object to the session cache
