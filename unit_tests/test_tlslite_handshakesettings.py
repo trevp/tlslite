@@ -272,5 +272,11 @@ class TestHandshakeSettings(unittest.TestCase):
         with self.assertRaises(ValueError):
             hs.validate()
 
+    def test_invalid_rsaScheme(self):
+        hs = HandshakeSettings()
+        hs.rsaSchemes += ["rsassa-pkcs1-1_5"]
+        with self.assertRaises(ValueError):
+            hs.validate()
+
 if __name__ == '__main__':
     unittest.main()

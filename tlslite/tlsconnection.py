@@ -996,7 +996,7 @@ class TLSConnection(TLSRecordLayer):
         #if client auth was requested and we have a private key, send a
         #CertificateVerify
         if certificateRequest and privateKey:
-            validSigAlgs = self._sigHashesToList(settings)
+            validSigAlgs = self._sigHashesToList(settings, privateKey)
             try:
                 certificateVerify = KeyExchange.makeCertificateVerify(
                     self.version,
@@ -2208,12 +2208,25 @@ class TLSConnection(TLSRecordLayer):
         raise TLSHandshakeFailure("No common signature algorithms")
 
     @staticmethod
-    def _sigHashesToList(settings):
+    def _sigHashesToList(settings, privateKey=None):
         """Convert list of valid signature hashes to array of tuples"""
         sigAlgs = []
-        for hashName in settings.rsaSigHashes:
-            sigAlgs.append((getattr(HashAlgorithm, hashName),
-                            SignatureAlgorithm.rsa))
+        for schemeName in settings.rsaSchemes:
+            for hashName in settings.rsaSigHashes:
+                try:
+                    # 1024 bit keys are too small to create valid
+                    # rsa-pss-SHA512 signatures
+                    if schemeName == 'pss' and hashName == 'sha512'\
+                            and privateKey and privateKey.n < 2**2047:
+                        continue
+                    sigAlgs.append(getattr(SignatureScheme,
+                                           "rsa_{0}_{1}".format(schemeName,
+                                                                hashName)))
+                except AttributeError:
+                    if schemeName == 'pkcs1':
+                        sigAlgs.append((getattr(HashAlgorithm, hashName),
+                                        SignatureAlgorithm.rsa))
+                    continue
         return sigAlgs
 
     @staticmethod

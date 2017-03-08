@@ -26,6 +26,7 @@ CIPHER_IMPLEMENTATIONS = ["openssl", "pycrypto", "python"]
 CERTIFICATE_TYPES = ["x509"]
 RSA_SIGNATURE_HASHES = ["sha512", "sha384", "sha256", "sha224", "sha1"]
 ALL_RSA_SIGNATURE_HASHES = RSA_SIGNATURE_HASHES + ["md5"]
+RSA_SCHEMES = ["pss", "pkcs1"]
 # while secp521r1 is the most secure, it's also much slower than the others
 # so place it as the last one
 CURVE_NAMES = ["secp384r1", "secp256r1", "secp521r1"]
@@ -155,6 +156,7 @@ class HandshakeSettings(object):
         self.sendFallbackSCSV = False
         self.useEncryptThenMAC = True
         self.rsaSigHashes = list(RSA_SIGNATURE_HASHES)
+        self.rsaSchemes = list(RSA_SCHEMES)
         self.eccCurves = list(CURVE_NAMES)
         self.usePaddingExtension = True
         self.useExtendedMasterSecret = True
@@ -216,6 +218,12 @@ class HandshakeSettings(object):
             raise ValueError("Unknown RSA signature hash: '{0}'".\
                              format(unknownSigHash))
 
+        unknownRSAPad = [val for val in other.rsaSchemes
+                         if val not in RSA_SCHEMES]
+        if unknownRSAPad:
+            raise ValueError("Unknown RSA padding mode: '{0}'".\
+                             format(unknownRSAPad))
+
         unknownDHGroup = [val for val in other.dhGroups
                           if val not in ALL_DH_GROUP_NAMES]
         if unknownDHGroup:
@@ -274,6 +282,7 @@ class HandshakeSettings(object):
         other.useEncryptThenMAC = self.useEncryptThenMAC
         other.usePaddingExtension = self.usePaddingExtension
         other.rsaSigHashes = self.rsaSigHashes
+        other.rsaSchemes = self.rsaSchemes
         other.eccCurves = self.eccCurves
         other.useExtendedMasterSecret = self.useExtendedMasterSecret
         other.requireExtendedMasterSecret = self.requireExtendedMasterSecret

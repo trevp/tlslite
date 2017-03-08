@@ -31,7 +31,7 @@ if __name__ != "__main__":
 
 from tlslite.api import *
 from tlslite.constants import CipherSuite, HashAlgorithm, SignatureAlgorithm, \
-        GroupName
+        GroupName, SignatureScheme
 from tlslite import __version__
 from tlslite.utils.compat import b2a_hex
 from tlslite.utils.dns_utils import is_valid_hostname
@@ -220,9 +220,12 @@ def printGoodConnection(connection, seconds):
         print("  Server X.509 SHA1 fingerprint: %s" % 
             connection.session.serverCertChain.getFingerprint())
     if connection.version >= (3, 3) and connection.serverSigAlg is not None:
-        print("  Key exchange signature: {1}+{0}".format(\
+        scheme = SignatureScheme.toRepr(connection.serverSigAlg)
+        if scheme is None:
+            scheme = "{1}+{0}".format(
                 HashAlgorithm.toStr(connection.serverSigAlg[0]),
-                SignatureAlgorithm.toStr(connection.serverSigAlg[1])))
+                SignatureAlgorithm.toStr(connection.serverSigAlg[1]))
+        print("  Key exchange signature: {0}".format(scheme))
     if connection.ecdhCurve is not None:
         print("  Group used for key exchange: {0}".format(\
                 GroupName.toStr(connection.ecdhCurve)))
