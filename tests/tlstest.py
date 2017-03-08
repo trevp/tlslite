@@ -126,6 +126,19 @@ def clientTestCmd(argv):
 
     test_no += 1
 
+    print("Test {0} - good X.509/w RSA-PSS cert".format(test_no))
+    synchro.recv(1)
+    connection = connect()
+    connection.handshakeClientCert(serverName=address[0])
+    testConnClient(connection)
+    assert(isinstance(connection.session.serverCertChain, X509CertChain))
+    assert(connection.session.serverName == address[0])
+    assert(connection.session.cipherSuite in constants.CipherSuite.aeadSuites)
+    assert(connection.encryptThenMAC == False)
+    connection.close()
+
+    test_no += 1
+
     print("Test {0} - good X.509/w RSA-PSS sig".format(test_no))
     synchro.recv(1)
     connection = connect()
@@ -776,6 +789,14 @@ def serverTestCmd(argv):
     with open(os.path.join(dir, "serverRSAPSSSigKey.pem")) as f:
         x509KeyRSAPSSSig = parsePEMKey(f.read(), private=True)
 
+    with open(os.path.join(dir, "serverRSAPSSCert.pem")) as f:
+        x509CertRSAPSS = X509().parse(f.read())
+    x509ChainRSAPSS = X509CertChain([x509CertRSAPSS])
+    assert x509CertRSAPSS.certAlg == "rsa-pss"
+    with open(os.path.join(dir, "serverRSAPSSKey.pem")) as f:
+        x509KeyRSAPSS = parsePEMKey(f.read(), private=True,
+                                    implementations=["python"])
+
     test_no = 0
 
     print("Test {0} - Anonymous server handshake".format(test_no))
@@ -803,6 +824,18 @@ def serverTestCmd(argv):
     connection = connect()
     connection.handshakeServer(certChain=x509ChainRSAPSSSig,
                                privateKey=x509KeyRSAPSSSig)
+    assert(connection.session.serverName == address[0])
+    assert(connection.extendedMasterSecret)
+    testConnServer(connection)
+    connection.close()
+
+    test_no += 1
+
+    print("Test {0} - good X.509/w RSA-PSS cert".format(test_no))
+    synchro.send(b'R')
+    connection = connect()
+    connection.handshakeServer(certChain=x509ChainRSAPSS,
+                               privateKey=x509KeyRSAPSS)
     assert(connection.session.serverName == address[0])
     assert(connection.extendedMasterSecret)
     testConnServer(connection)
