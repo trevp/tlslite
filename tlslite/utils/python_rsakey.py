@@ -104,7 +104,10 @@ class Python_RSAKey(RSAKey):
             raise SyntaxError("Unrecognized PKCS8 version")
 
         rsaOID = p.getChild(1).value
-        if list(rsaOID) != [6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 1, 5, 0]:
+        if list(rsaOID) == [6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 1, 5, 0]\
+                or list(rsaOID) == [6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 10]:
+            pass
+        else:
             raise SyntaxError("Unrecognized AlgorithmIdentifier")
 
         #Get the privateKey

@@ -23,12 +23,17 @@ class X509(object):
 
     @type subject: L{bytearray} of unsigned bytes
     @ivar subject: The DER-encoded ASN.1 subject distinguished name.
+
+    @type certAlg: str
+    @ivar certAlg: algorithm of the public key, "rsa" for RSASSA-PKCS#1 v1.5
+    and "rsa-pss" for RSASSA-PSS
     """
 
     def __init__(self):
         self.bytes = bytearray(0)
         self.publicKey = None
         self.subject = None
+        self.certAlg = None
 
     def parse(self, s):
         """Parse a PEM-encoded X.509 certificate.
@@ -74,7 +79,11 @@ class X509(object):
         #Get the algorithm
         algorithmP = subjectPublicKeyInfoP.getChild(0)
         rsaOID = algorithmP.value
-        if list(rsaOID) != [6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 1, 5, 0]:
+        if list(rsaOID) == [6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 1, 5, 0]:
+            self.certAlg = "rsa"
+        elif list(rsaOID) == [6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 10]:
+            self.certAlg = "rsa-pss"
+        else:
             raise SyntaxError("Unrecognized AlgorithmIdentifier")
 
         #Get the subjectPublicKey
