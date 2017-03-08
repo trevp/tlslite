@@ -41,12 +41,11 @@ class TestRSAPSS_components(unittest.TestCase):
                              b'\x07\x14\xf1?\xa8i\xb7\xc6\x94\x1c9\x1fX>@' +
                              b'\xe3')
         with self.assertRaises(UnknownRSAType):
-            self.rsa.hashAndVerify(message, signed, rsaScheme='sha29',
-                                   hAlg='foo')
+            self.rsa.hashAndVerify(message, signed, rsaScheme='foo',
+                                   hAlg='sha1')
 
     def test_encodingError(self):
-        with self.assertRaises(EncodingError):
-            self.assertEqual(self.rsa.EMSA_PSS_encode(
+        mHash = secureHash(
                 bytearray(b'\xc7\xf5\'\x0f\xcar_\x9b\xd1\x9fQ\x9a\x8d|\xca<' +
                           b'\xc5\xc0y\x02@)\xf3\xba\xe5\x10\xf9\xb0!@\xfe#' +
                           b'\x89\x08\xe4\xf6\xc1\x8f\x07\xa8\x9ch|\x86\x84f' +
@@ -55,7 +54,10 @@ class TestRSAPSS_components(unittest.TestCase):
                           b'\xddnR\x8d\x16\xfe,\x9f=\xb4\xcf\xaflM\xce\x8c' +
                           b'\x849\xaf8\xce\xaa\xaa\x9c\xe2\xec\xae{\xc8\xf4' +
                           b'\xa5\xa5^;\xf9m\xf9\xcdW\\O\x9c\xb3\'\x95\x1b' +
-                          b'\x8c\xdf\xe4\x08qh'), 10, 'sha1', 10),
+                          b'\x8c\xdf\xe4\x08qh'),
+                'sha1')
+        with self.assertRaises(EncodingError):
+            self.assertEqual(self.rsa.EMSA_PSS_encode(mHash, 10, 'sha1', 10),
                 bytearray(b'eA=!Fq4\xce\xef5?\xf4\xec\xd8\xa6FPX\xdc~(\xe3' +
                           b'\x92\x17z\xa5-\xcfV\xd4)\x99\x8fJ\xb2\x08\xa2<Q' +
                           b'\x02e\xb4\xe0\xecq\xa3:\xe0I\x1f\x83\x9f\xe2\xf4' +
@@ -280,7 +282,7 @@ class TestRSAPSS_components(unittest.TestCase):
         def m(leght):
             return bytearray(b'\x11"3DUT2\x16x\x90')
         with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
-            self.assertEqual(self.rsa.EMSA_PSS_encode(
+            mHash = SHA1(
                 bytearray(b'\xc7\xf5\'\x0f\xcar_\x9b\xd1\x9fQ\x9a\x8d|\xca<' +
                           b'\xc5\xc0y\x02@)\xf3\xba\xe5\x10\xf9\xb0!@\xfe#' +
                           b'\x89\x08\xe4\xf6\xc1\x8f\x07\xa8\x9ch|\x86\x84f' +
@@ -289,7 +291,8 @@ class TestRSAPSS_components(unittest.TestCase):
                           b'\xddnR\x8d\x16\xfe,\x9f=\xb4\xcf\xaflM\xce\x8c' +
                           b'\x849\xaf8\xce\xaa\xaa\x9c\xe2\xec\xae{\xc8\xf4' +
                           b'\xa5\xa5^;\xf9m\xf9\xcdW\\O\x9c\xb3\'\x95\x1b' +
-                          b'\x8c\xdf\xe4\x08qh'), 1023, 'sha1', 10),
+                          b'\x8c\xdf\xe4\x08qh'))
+            self.assertEqual(self.rsa.EMSA_PSS_encode(mHash, 1023, 'sha1', 10),
                 bytearray(b'eA=!Fq4\xce\xef5?\xf4\xec\xd8\xa6FPX\xdc~(\xe3' +
                           b'\x92\x17z\xa5-\xcfV\xd4)\x99\x8fJ\xb2\x08\xa2<Q' +
                           b'\x02e\xb4\xe0\xecq\xa3:\xe0I\x1f\x83\x9f\xe2\xf4' +
@@ -303,7 +306,7 @@ class TestRSAPSS_components(unittest.TestCase):
         def m(leght):
             return bytearray(b'\x11"3DUT2\x16x\x90')
         with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
-            self.assertTrue(self.rsa.EMSA_PSS_verify(
+            mHash = SHA1(
                 bytearray(b'\xc7\xf5\'\x0f\xcar_\x9b\xd1\x9fQ\x9a\x8d|\xca<' +
                           b'\xc5\xc0y\x02@)\xf3\xba\xe5\x10\xf9\xb0!@\xfe#' +
                           b'\x89\x08\xe4\xf6\xc1\x8f\x07\xa8\x9ch|\x86\x84f' +
@@ -312,7 +315,8 @@ class TestRSAPSS_components(unittest.TestCase):
                           b'\xddnR\x8d\x16\xfe,\x9f=\xb4\xcf\xaflM\xce\x8c' +
                           b'\x849\xaf8\xce\xaa\xaa\x9c\xe2\xec\xae{\xc8\xf4' +
                           b'\xa5\xa5^;\xf9m\xf9\xcdW\\O\x9c\xb3\'\x95\x1b' +
-                          b'\x8c\xdf\xe4\x08qh'),
+                          b'\x8c\xdf\xe4\x08qh'))
+            self.assertTrue(self.rsa.EMSA_PSS_verify(mHash,
                 bytearray(b'eA=!Fq4\xce\xef5?\xf4\xec\xd8\xa6FPX\xdc~(\xe3' +
                           b'\x92\x17z\xa5-\xcfV\xd4)\x99\x8fJ\xb2\x08\xa2<Q' +
                           b'\x02e\xb4\xe0\xecq\xa3:\xe0I\x1f\x83\x9f\xe2' +
@@ -391,8 +395,9 @@ class TestRSAPSS_mod1026(unittest.TestCase):
                            b'\xb0\xf1Z\x0c>\xcc\xbeX&$\xfd\x96\xd3\x1e\x92' +
                            b'\xf5\x9b\xbd\x1a\xaa\t\x85>\x13\xb5\xf1s\xa7YN' +
                            b'\x1f\xdb\xa1*\xcc\x93\xa2\xbf\xfd\xe0\xda>0')
+        mHash = secureHash(self.message, 'sha1')
         self.assertTrue(self.rsa.RSASSA_PSS_verify(
-            self.message, signed, 'sha1', 0))
+            mHash, signed, 'sha1', 0))
 
 class TestRSAPSS_mod1024(unittest.TestCase):
     # Test cases from http://csrc.nist.gov/groups/STM/cavp/
@@ -457,7 +462,8 @@ class TestRSAPSS_mod1024(unittest.TestCase):
         def m(leght):
             return self.salt
         with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
-            signed = self.rsa.RSASSA_PSS_sign(self.message, 'sha1', 10)
+            mHash = secureHash(self.message, 'sha1')
+            signed = self.rsa.RSASSA_PSS_sign(mHash, 'sha1', 10)
             self.assertEqual(signed, intendedS)
 
     def test_RSAPSS_sha224(self):
@@ -476,7 +482,8 @@ class TestRSAPSS_mod1024(unittest.TestCase):
         def m(leght):
             return self.salt
         with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
-            signed = self.rsa.RSASSA_PSS_sign(self.message, 'sha224', 10)
+            mHash = secureHash(self.message, 'sha224')
+            signed = self.rsa.RSASSA_PSS_sign(mHash, 'sha224', 10)
             self.assertEqual(signed, intendedS)
 
 
@@ -496,7 +503,8 @@ class TestRSAPSS_mod1024(unittest.TestCase):
         def m(leght):
             return self.salt
         with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
-            signed = self.rsa.RSASSA_PSS_sign(self.message, 'sha256', 10)
+            mHash = secureHash(self.message, 'sha256')
+            signed = self.rsa.RSASSA_PSS_sign(mHash, 'sha256', 10)
             self.assertEqual(signed, intendedS)
 
 
@@ -516,7 +524,8 @@ class TestRSAPSS_mod1024(unittest.TestCase):
         def m(leght):
             return self.salt
         with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
-            signed = self.rsa.RSASSA_PSS_sign(self.message, 'sha384', 10)
+            mHash = secureHash(self.message, 'sha384')
+            signed = self.rsa.RSASSA_PSS_sign(mHash, 'sha384', 10)
             self.assertEqual(signed, intendedS)
 
 
@@ -536,7 +545,8 @@ class TestRSAPSS_mod1024(unittest.TestCase):
         def m(leght):
             return self.salt
         with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
-            signed = self.rsa.RSASSA_PSS_sign(self.message, 'sha512', 10)
+            mHash = secureHash(self.message, 'sha512')
+            signed = self.rsa.RSASSA_PSS_sign(mHash, 'sha512', 10)
             self.assertEqual(signed, intendedS)
 
     def test_RSASSA_PSS_verify_sha1(self):
@@ -553,7 +563,8 @@ class TestRSAPSS_mod1024(unittest.TestCase):
                               b'\x47\xcc\x2e\x02\x89\xcd\xbf\x25\xc9\x77' +
                               b'\xcf\x1b\xea\xdc\x04\x74\x21\x50\xbe\xea' +
                               b'\xd6\x96\x2d\xdd\xa9\xe9\x1e\x17')
-        self.assertTrue(self.rsa.RSASSA_PSS_verify(self.message, signed,
+        mHash = secureHash(self.message, 'sha1')
+        self.assertTrue(self.rsa.RSASSA_PSS_verify(mHash, signed,
                                                    'sha1', 10))
 
     def test_RSASSA_PSS_verify_shortSign(self):
@@ -579,7 +590,8 @@ class TestRSAPSS_mod1024(unittest.TestCase):
                               b'\x95\x20\x6c\xf7\xa8\x0b\xe9\xca\x5f\x4e\x58' +
                               b'\x49\xae\x67\xf0\x73\xdb\x7b\x69\x2f\xd9\x39' +
                               b'\xcb\x31\xed\x6b\xf5\xe0\x66')
-        self.assertTrue(self.rsa.RSASSA_PSS_verify(self.message, signed,
+        mHash = secureHash(self.message, 'sha224')
+        self.assertTrue(self.rsa.RSASSA_PSS_verify(mHash, signed,
                                                    'sha224', 10))
 
     def test_RSASSA_PSS_verify_sha256(self):
@@ -595,7 +607,8 @@ class TestRSAPSS_mod1024(unittest.TestCase):
                               b'\xe1\xa4\xdc\x79\x7c\xa5\x42\xc8\x20\x3c\xec' +
                               b'\x2e\x60\x1e\xb0\xc5\x1f\x56\x7f\x2e\xda\x02' +
                               b'\x2b\x0b\x9e\xbd\xde\xee\xfa')
-        self.assertTrue(self.rsa.RSASSA_PSS_verify(self.message, signed,
+        mHash = secureHash(self.message, 'sha256')
+        self.assertTrue(self.rsa.RSASSA_PSS_verify(mHash, signed,
                                                    'sha256', 10))
 
     def test_RSASSA_PSS_verify_sha384(self):
@@ -611,7 +624,8 @@ class TestRSAPSS_mod1024(unittest.TestCase):
                               b'\xbf\x10\xcb\x0c\x90\x33\x4f\xac\x57\x3f\x44' +
                               b'\x91\x38\x61\x6e\x1a\x19\x4c\x67\xf4\x4e\xfa' +
                               b'\xc3\x4c\xc0\x7a\x52\x62\x67')
-        self.assertTrue(self.rsa.RSASSA_PSS_verify(self.message, signed,
+        mHash = secureHash(self.message, 'sha384')
+        self.assertTrue(self.rsa.RSASSA_PSS_verify(mHash, signed,
                                                    'sha384', 10))
 
     def test_RSASSA_PSS_verify_sha512(self):
@@ -627,7 +641,8 @@ class TestRSAPSS_mod1024(unittest.TestCase):
                               b'\x35\xc5\x9f\xaa\xa4\xd6\xff\x46\x2f\x68\xa6' +
                               b'\xc4\xec\x0b\x42\x8a\xa4\x73\x36\xf2\x17\x8a' +
                               b'\xeb\x27\x61\x36\x56\x3b\x7d')
-        self.assertTrue(self.rsa.RSASSA_PSS_verify(self.message, signed,
+        mHash = secureHash(self.message, 'sha512')
+        self.assertTrue(self.rsa.RSASSA_PSS_verify(mHash, signed,
                                                    'sha512', 10))
 
     def test_RSASSA_PSS_verify_noSalt(self):
@@ -640,7 +655,8 @@ class TestRSAPSS_mod1024(unittest.TestCase):
                            b'\xcd6|7d\xca,\x8dIF\x02\xf8\xcd\x81\xdd\x88' +
                            b'\xb0\xae\xe9\x1f\x93\xf3\xfa\x90\x0f\xcd' +
                            b'\xe2|\xbc<R\xf7\xa3\x8a')
-        self.assertTrue(self.rsa.RSASSA_PSS_verify(self.message, signed,
+        mHash = secureHash(self.message, 'sha512')
+        self.assertTrue(self.rsa.RSASSA_PSS_verify(mHash, signed,
                                                    'sha512', 0))
 
     def test_RSASSA_PSS_verify_wrongSign(self):
@@ -984,7 +1000,8 @@ class TestRSAPSS_mod2048(unittest.TestCase):
                               b'\x3f\xc1\x6d\x6e\x86\xf3\xb5\x5a\xac\x95\x08' +
                               b'\x8f\x0d\x74\xbc\xe6\xfc\x4b\x83\xdd\x4c\xae' +
                               b'\xa5\xdd\xea')
-        signed = self.rsa.RSASSA_PSS_sign(message, 'sha1')
+        mHash = secureHash(message, 'sha1')
+        signed = self.rsa.RSASSA_PSS_sign(mHash, 'sha1')
         self.assertEqual(signed, intendedS)
 
     def test_RSAPSS_sha1(self):
@@ -1027,7 +1044,8 @@ class TestRSAPSS_mod2048(unittest.TestCase):
         def m(leght):
             return self.salt
         with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
-            signed = self.rsa.RSASSA_PSS_sign(message, 'sha1', 10)
+            mHash = secureHash(message, 'sha1')
+            signed = self.rsa.RSASSA_PSS_sign(mHash, 'sha1', 10)
             self.assertEqual(signed, intendedS)
 
     def test_RSAPSS_sha224(self):
@@ -1070,7 +1088,8 @@ class TestRSAPSS_mod2048(unittest.TestCase):
         def m(leght):
             return self.salt
         with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
-            signed = self.rsa.RSASSA_PSS_sign(message, 'sha224', 10)
+            mHash = secureHash(message, 'sha224')
+            signed = self.rsa.RSASSA_PSS_sign(mHash, 'sha224', 10)
             self.assertEqual(signed, intendedS)
 
 
@@ -1114,7 +1133,8 @@ class TestRSAPSS_mod2048(unittest.TestCase):
         def m(leght):
             return self.salt
         with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
-            signed = self.rsa.RSASSA_PSS_sign(message, 'sha256', 10)
+            mHash = secureHash(message, 'sha256')
+            signed = self.rsa.RSASSA_PSS_sign(mHash, 'sha256', 10)
             self.assertEqual(signed, intendedS)
 
 
@@ -1158,7 +1178,8 @@ class TestRSAPSS_mod2048(unittest.TestCase):
         def m(leght):
             return self.salt
         with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
-            signed = self.rsa.RSASSA_PSS_sign(message, 'sha384', 10)
+            mHash = secureHash(message, 'sha384')
+            signed = self.rsa.RSASSA_PSS_sign(mHash, 'sha384', 10)
             self.assertEqual(signed, intendedS)
 
 
@@ -1202,7 +1223,8 @@ class TestRSAPSS_mod2048(unittest.TestCase):
         def m(leght):
             return self.salt
         with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
-            signed = self.rsa.RSASSA_PSS_sign(message, 'sha512', 10)
+            mHash = secureHash(message, 'sha512')
+            signed = self.rsa.RSASSA_PSS_sign(mHash, 'sha512', 10)
             self.assertEqual(signed, intendedS)
 
 

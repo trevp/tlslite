@@ -50,7 +50,7 @@ class RSAKey(object):
         """
         raise NotImplementedError()
 
-    def hashAndSign(self, bytes, rsaScheme='PKCS1', hAlg='SHA1', sLen=0):
+    def hashAndSign(self, bytes, rsaScheme='PKCS1', hAlg='sha1', sLen=0):
         """Hash and sign the passed-in bytes.
 
         This requires the key to have a private component.  It performs
@@ -77,15 +77,9 @@ class RSAKey(object):
         """
         rsaScheme = rsaScheme.lower()
         hAlg = hAlg.lower()
-        if rsaScheme == "pkcs1":
-            hashBytes = secureHash(bytearray(bytes), hAlg)
-            prefixedHashBytes = self.addPKCS1Prefix(hashBytes, hAlg)
-            sigBytes = self.sign(prefixedHashBytes)
-        elif rsaScheme == "pss":
-            sigBytes = self.RSASSA_PSS_sign(bytearray(bytes), hAlg, sLen)
-        else:
-            raise UnknownRSAType("Unknown RSA algorithm type")
-        return sigBytes
+        hashBytes = secureHash(bytearray(bytes), hAlg)
+        return self.sign(hashBytes, padding=rsaScheme, hashAlg=hAlg,
+                         saltLen=sLen)
 
     def hashAndVerify(self, sigBytes, bytes, rsaScheme='PKCS1', hAlg='sha1',
                       sLen=0):
@@ -118,24 +112,8 @@ class RSAKey(object):
         rsaScheme = rsaScheme.lower()
         hAlg = hAlg.lower()
 
-        # Try it with/without the embedded NULL
-        if rsaScheme == "pkcs1" and hAlg == 'sha1':
-            hashBytes = secureHash(bytearray(bytes), hAlg)
-            prefixedHashBytes1 = self.addPKCS1SHA1Prefix(hashBytes, False)
-            prefixedHashBytes2 = self.addPKCS1SHA1Prefix(hashBytes, True)
-            result1 = self.verify(sigBytes, prefixedHashBytes1)
-            result2 = self.verify(sigBytes, prefixedHashBytes2)
-            return (result1 or result2)
-        elif rsaScheme == 'pkcs1':
-            hashBytes = secureHash(bytearray(bytes), hAlg)
-            prefixedHashBytes = self.addPKCS1Prefix(hashBytes, hAlg)
-            r = self.verify(sigBytes, prefixedHashBytes)
-            return r
-        elif rsaScheme == "pss":
-            r = self.RSASSA_PSS_verify(bytearray(bytes), sigBytes, hAlg, sLen)
-            return r
-        else:
-            raise UnknownRSAType("Unknown RSA algorithm type")
+        hashBytes = secureHash(bytearray(bytes), hAlg)
+        return self.verify(sigBytes, hashBytes, rsaScheme, hAlg, sLen)
 
     def MGF1(self, mgfSeed, maskLen, hAlg):
         """Generate mask from passed-in seed.
@@ -161,13 +139,13 @@ class RSAKey(object):
             T += secureHash(mgfSeed + C, hAlg)
         return T[:maskLen]
 
-    def EMSA_PSS_encode(self, M, emBits, hAlg, sLen=0):
+    def EMSA_PSS_encode(self, mHash, emBits, hAlg, sLen=0):
         """Encode the passed in message
 
         This encodes the message using selected hash algorithm
 
-        @type M: bytearray
-        @param M: Message to be encoded
+        @type mHash: bytearray
+        @param mHash: Hash of message to be encoded
 
         @type emBits: int
         @param emBits: maximal length of returned EM
@@ -178,7 +156,6 @@ class RSAKey(object):
         @type sLen: int
         @param sLen: length of salt"""
         hashLen = getattr(hashlib, hAlg)().digest_size
-        mHash = secureHash(M, hAlg)
         emLen = divceil(emBits, 8)
         if emLen < hashLen + sLen + 2:
             raise EncodingError("The ending limit too short for " +
@@ -196,20 +173,20 @@ class RSAKey(object):
         EM = maskedDB + H + bytearray(b'\xbc')
         return EM
 
-    def RSASSA_PSS_sign(self, M, hAlg, sLen=0):
+    def RSASSA_PSS_sign(self, mHash, hAlg, sLen=0):
         """"Sign the passed in message
 
         This signs the message using selected hash algorithm
 
-        @type M: bytearray
-        @param M: Message to be signed
+        @type mHash: bytearray
+        @param mHash: Hash of message to be signed
 
         @type hAlg: str
         @param hAlg: hash algorithm to be used
 
         @type sLen: int
         @param sLen: length of salt"""
-        EM = self.EMSA_PSS_encode(M, numBits(self.n) - 1, hAlg, sLen)
+        EM = self.EMSA_PSS_encode(mHash, numBits(self.n) - 1, hAlg, sLen)
         m = bytesToNumber(EM)
         if m >= self.n:
             raise MessageTooLongError("Encode output too long")
@@ -217,13 +194,13 @@ class RSAKey(object):
         S = numberToByteArray(s, numBytes(self.n))
         return S
 
-    def EMSA_PSS_verify(self, M, EM, emBits, hAlg, sLen=0):
+    def EMSA_PSS_verify(self, mHash, EM, emBits, hAlg, sLen=0):
         """Verify signature in passed in encoded message
 
         This verifies the signature in encoded message
 
-        @type M: bytearray
-        @param M: Original not signed message
+        @type mHash: bytearray
+        @param mHash: Hash of the original not signed message
 
         @type EM: bytearray
         @param EM: Encoded message
@@ -238,7 +215,6 @@ class RSAKey(object):
         @param sLen: Length of salt
         """
         hashLen = getattr(hashlib, hAlg)().digest_size
-        mHash = secureHash(M, hAlg)
         emLen = divceil(emBits, 8)
         if emLen < hashLen + sLen + 2:
             raise InvalidSignature("Invalid signature")
@@ -271,13 +247,13 @@ class RSAKey(object):
         else:
             raise InvalidSignature("Invalid signature")
 
-    def RSASSA_PSS_verify(self, M, S, hAlg, sLen=0):
+    def RSASSA_PSS_verify(self, mHash, S, hAlg, sLen=0):
         """Verify the signature in passed in message
 
         This verifies the signature in the signed message
 
-        @type M: bytearray
-        @param M: Original message
+        @type mHash: bytearray
+        @param mHash: Hash of original message
 
         @type S: bytearray
         @param S: Signed message
@@ -293,24 +269,15 @@ class RSAKey(object):
         s = bytesToNumber(S)
         m = self._rawPublicKeyOp(s)
         EM = numberToByteArray(m, divceil(numBits(self.n) - 1, 8))
-        result = self.EMSA_PSS_verify(M, EM, numBits(self.n) - 1, hAlg, sLen)
+        result = self.EMSA_PSS_verify(mHash, EM, numBits(self.n) - 1,
+                                      hAlg, sLen)
         if result:
             return True
         else:
             raise InvalidSignature("Invalid signature")
 
-    def sign(self, bytes):
-        """Sign the passed-in bytes.
-
-        This requires the key to have a private component.  It performs
-        a PKCS1 signature on the passed-in data.
-
-        @type bytes: L{bytearray} of unsigned bytes
-        @param bytes: The value which will be signed.
-
-        @rtype: L{bytearray} of unsigned bytes.
-        @return: A PKCS1 signature on the passed-in data.
-        """
+    def _raw_pkcs1_sign(self, bytes):
+        """Perform signature on raw data, add PKCS#1 padding."""
         if not self.hasPrivateKey():
             raise AssertionError()
         paddedBytes = self._addPKCS1Padding(bytes, 1)
@@ -321,7 +288,56 @@ class RSAKey(object):
         sigBytes = numberToByteArray(c, numBytes(self.n))
         return sigBytes
 
-    def verify(self, sigBytes, bytes):
+    def sign(self, bytes, padding='pkcs1', hashAlg=None, saltLen=None):
+        """Sign the passed-in bytes.
+
+        This requires the key to have a private component.  It performs
+        a PKCS1 signature on the passed-in data.
+
+        @type bytes: L{bytearray} of unsigned bytes
+        @param bytes: The value which will be signed.
+
+        @type padding: str
+        @param padding: name of the rsa padding mode to use, supported:
+        "pkcs1" for RSASSA-PKCS1_1_5 and "pss" for RSASSA-PSS.
+
+        @type hashAlg: str
+        @param hashAlg: name of hash to be encoded using the PKCS#1 prefix
+        for "pkcs1" padding or the hash used for MGF1 in "pss". Parameter
+        is mandatory for "pss" padding.
+
+        @type saltLen: int
+        @param saltLen: length of salt used for the PSS padding. Default
+        is the length of the hash output used.
+
+        @rtype: L{bytearray} of unsigned bytes.
+        @return: A PKCS1 signature on the passed-in data.
+        """
+        padding = padding.lower()
+        if padding == 'pkcs1':
+            if hashAlg is not None:
+                bytes = self.addPKCS1Prefix(bytes, hashAlg)
+            sigBytes = self._raw_pkcs1_sign(bytes)
+        elif padding == "pss":
+            sigBytes = self.RSASSA_PSS_sign(bytes, hashAlg, saltLen)
+        else:
+            raise UnknownRSAType("Unknown RSA algorithm type")
+        return sigBytes
+
+    def _raw_pkcs1_verify(self, sigBytes, bytes):
+        """Perform verification operation on raw PKCS#1 padded signature"""
+        if len(sigBytes) != numBytes(self.n):
+            return False
+        paddedBytes = self._addPKCS1Padding(bytes, 1)
+        c = bytesToNumber(sigBytes)
+        if c >= self.n:
+            return False
+        m = self._rawPublicKeyOp(c)
+        checkBytes = numberToByteArray(m, numBytes(self.n))
+        return checkBytes == paddedBytes
+
+    def verify(self, sigBytes, bytes, padding='pkcs1', hashAlg=None,
+               saltLen=None):
         """Verify the passed-in bytes with the signature.
 
         This verifies a PKCS1 signature on the passed-in data.
@@ -335,15 +351,23 @@ class RSAKey(object):
         @rtype: bool
         @return: Whether the signature matches the passed-in data.
         """
-        if len(sigBytes) != numBytes(self.n):
-            return False
-        paddedBytes = self._addPKCS1Padding(bytes, 1)
-        c = bytesToNumber(sigBytes)
-        if c >= self.n:
-            return False
-        m = self._rawPublicKeyOp(c)
-        checkBytes = numberToByteArray(m, numBytes(self.n))
-        return checkBytes == paddedBytes
+        if padding == "pkcs1" and hashAlg == 'sha1':
+            # Try it with/without the embedded NULL
+            prefixedHashBytes1 = self.addPKCS1SHA1Prefix(bytes, False)
+            prefixedHashBytes2 = self.addPKCS1SHA1Prefix(bytes, True)
+            result1 = self._raw_pkcs1_verify(sigBytes, prefixedHashBytes1)
+            result2 = self._raw_pkcs1_verify(sigBytes, prefixedHashBytes2)
+            return (result1 or result2)
+        elif padding == 'pkcs1':
+            if hashAlg is not None:
+                bytes = self.addPKCS1Prefix(bytes, hashAlg)
+            r = self._raw_pkcs1_verify(sigBytes, bytes)
+            return r
+        elif padding == "pss":
+            r = self.RSASSA_PSS_verify(bytes, sigBytes, hashAlg, saltLen)
+            return r
+        else:
+            raise UnknownRSAType("Unknown RSA algorithm type")
 
     def encrypt(self, bytes):
         """Encrypt the passed-in bytes.
