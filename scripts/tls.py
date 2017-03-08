@@ -122,7 +122,9 @@ def handleArgs(argv, argString, flagsList=[]):
             s = open(arg, "rb").read()
             if sys.version_info[0] >= 3:
                 s = str(s, 'utf-8')
-            privateKey = parsePEMKey(s, private=True)            
+            # OpenSSL/m2crypto does not support RSASSA-PSS certificates
+            privateKey = parsePEMKey(s, private=True,
+                                     implementations=["python"])
         elif opt == "-c":
             s = open(arg, "rb").read()
             if sys.version_info[0] >= 3:
