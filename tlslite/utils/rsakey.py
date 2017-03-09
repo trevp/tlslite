@@ -232,7 +232,7 @@ class RSAKey(object):
         mLen = emLen*8 - emBits
         mask = (1 << 8 - mLen) - 1
         DB[0] &= mask
-        if any(x != 0 for x in DB[0:emLen - hashLen - sLen - 2 - 1]):
+        if any(x != 0 for x in DB[0:emLen - hashLen - sLen - 2]):
             raise InvalidSignature("Invalid signature")
         if DB[emLen - hashLen - sLen - 2] != 0x01:
             raise InvalidSignature("Invalid signature")
