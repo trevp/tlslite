@@ -76,15 +76,29 @@ class X509(object):
         subjectPublicKeyInfoP = tbsCertificateP.getChild(\
                                     subjectPublicKeyInfoIndex)
 
-        #Get the algorithm
-        algorithmP = subjectPublicKeyInfoP.getChild(0)
-        rsaOID = algorithmP.value
-        if list(rsaOID) == [6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 1, 5, 0]:
+        # Get the AlgorithmIdentifier
+        algIdentifier = subjectPublicKeyInfoP.getChild(0)
+        algIdentifierLen = algIdentifier.getChildCount()
+        # first item of AlgorithmIdentifier is the algorithm
+        alg = algIdentifier.getChild(0)
+        rsaOID = alg.value
+        if list(rsaOID) == [42, 134, 72, 134, 247, 13, 1, 1, 1]:
             self.certAlg = "rsa"
-        elif list(rsaOID) == [6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 10]:
+        elif list(rsaOID) == [42, 134, 72, 134, 247, 13, 1, 1, 10]:
             self.certAlg = "rsa-pss"
         else:
             raise SyntaxError("Unrecognized AlgorithmIdentifier")
+
+        # for RSA the parameters of AlgorithmIdentifier should be a NULL
+        if self.certAlg == "rsa":
+            if algIdentifierLen != 2:
+                raise SyntaxError("Missing parameters in AlgorithmIdentifier")
+            params = algIdentifier.getChild(1)
+            if params.value != bytearray(0):
+                raise SyntaxError("Unexpected non-NULL parameters in "
+                                  "AlgorithmIdentifier")
+        else:  # rsa-pss
+            pass  # ignore parameters, if any - don't apply key restrictions
 
         #Get the subjectPublicKey
         subjectPublicKeyP = subjectPublicKeyInfoP.getChild(1)

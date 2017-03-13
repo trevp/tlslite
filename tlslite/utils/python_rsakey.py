@@ -99,16 +99,37 @@ class Python_RSAKey(RSAKey):
     def _parsePKCS8(bytes):
         p = ASN1Parser(bytes)
 
-        version = p.getChild(0).value[0]
-        if version != 0:
+        # first element in PrivateKeyInfo is an INTEGER
+        version = p.getChild(0).value
+        if bytesToNumber(version) != 0:
             raise SyntaxError("Unrecognized PKCS8 version")
 
-        rsaOID = p.getChild(1).value
-        if list(rsaOID) == [6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 1, 5, 0]\
-                or list(rsaOID) == [6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 10]:
-            pass
+        # second element in PrivateKeyInfo is a SEQUENCE of type
+        # AlgorithmIdentifier
+        algIdent = p.getChild(1)
+        seqLen = algIdent.getChildCount()
+        # first item of AlgorithmIdentifier is an OBJECT (OID)
+        oid = algIdent.getChild(0)
+        if list(oid.value) == [42, 134, 72, 134, 247, 13, 1, 1, 1]:
+            keyType = "rsa"
+        elif list(oid.value) == [42, 134, 72, 134, 247, 13, 1, 1, 10]:
+            keyType = "rsa-pss"
         else:
-            raise SyntaxError("Unrecognized AlgorithmIdentifier")
+            raise SyntaxError("Unrecognized AlgorithmIdentifier: {0}"
+                              .format(list(oid.value)))
+        # second item of AlgorithmIdentifier are parameters (defined by
+        # above algorithm)
+        if keyType == "rsa":
+            if seqLen != 2:
+                raise SyntaxError("Missing parameters for RSA algorith ID")
+            parameters = algIdent.getChild(1)
+            if parameters.value != bytearray(0):
+                raise SyntaxError("RSA parameters are not NULL")
+        else:  # rsa-pss
+            pass  # ignore parameters - don't apply restrictions
+
+        if seqLen > 2:
+            raise SyntaxError("Invalid encoding of AlgorithmIdentifier")
 
         #Get the privateKey
         privateKeyP = p.getChild(2)
