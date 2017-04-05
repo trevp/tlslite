@@ -988,6 +988,11 @@ class TLSConnection(TLSRecordLayer):
         for result in self._sendMsg(clientKeyExchange):
             yield result
 
+        # the Extended Master Secret calculation uses the same handshake
+        # hashes as the Certificate Verify calculation so we need to
+        # make a copy of it
+        self._certificate_verify_handshake_hash = self._handshake_hash.copy()
+
         #if client auth was requested and we have a private key, send a
         #CertificateVerify
         if certificateRequest and privateKey:
@@ -995,7 +1000,7 @@ class TLSConnection(TLSRecordLayer):
             try:
                 certificateVerify = KeyExchange.makeCertificateVerify(
                     self.version,
-                    self._handshake_hash,
+                    self._certificate_verify_handshake_hash,
                     validSigAlgs,
                     privateKey,
                     certificateRequest,
@@ -1014,10 +1019,15 @@ class TLSConnection(TLSRecordLayer):
     def _clientFinished(self, premasterSecret, clientRandom, serverRandom,
                         cipherSuite, cipherImplementations, nextProto):
         if self.extendedMasterSecret:
+            cvhh = self._certificate_verify_handshake_hash
+            # in case of session resumption, or when the handshake doesn't
+            # use the certificate authentication, the hashes are the same
+            if not cvhh:
+                cvhh = self._handshake_hash
             masterSecret = calcExtendedMasterSecret(self.version,
                                                     cipherSuite,
                                                     premasterSecret,
-                                                    self._handshake_hash)
+                                                    cvhh)
         else:
             masterSecret = calcMasterSecret(self.version,
                                             cipherSuite,
@@ -1934,8 +1944,8 @@ class TLSConnection(TLSRecordLayer):
                 yield result
 
         #Get and check CertificateVerify, if relevant
+        self._certificate_verify_handshake_hash = self._handshake_hash.copy()
         if clientCertChain:
-            handshakeHash = self._handshake_hash.copy()
             for result in self._getMsg(ContentType.handshake,
                                        HandshakeType.certificate_verify):
                 if result in (0, 1):
@@ -1952,8 +1962,9 @@ class TLSConnection(TLSRecordLayer):
                         yield result
                 signatureAlgorithm = certificateVerify.signatureAlgorithm
 
+            cvhh = self._certificate_verify_handshake_hash
             verifyBytes = KeyExchange.calcVerifyBytes(self.version,
-                                                      handshakeHash,
+                                                      cvhh,
                                                       signatureAlgorithm,
                                                       premasterSecret,
                                                       clientHello.random,
@@ -2010,10 +2021,16 @@ class TLSConnection(TLSRecordLayer):
     def _serverFinished(self,  premasterSecret, clientRandom, serverRandom,
                         cipherSuite, cipherImplementations, nextProtos):
         if self.extendedMasterSecret:
+            cvhh = self._certificate_verify_handshake_hash
+            # in case of resumption or lack of certificate authentication,
+            # the CVHH won't be initialised, but then it would also be equal
+            # to regular handshake hash
+            if not cvhh:
+                cvhh = self._handshake_hash
             masterSecret = calcExtendedMasterSecret(self.version,
                                                     cipherSuite,
                                                     premasterSecret,
-                                                    self._handshake_hash)
+                                                    cvhh)
         else:
             masterSecret = calcMasterSecret(self.version,
                                             cipherSuite,
