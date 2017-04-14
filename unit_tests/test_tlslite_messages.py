@@ -27,6 +27,7 @@ class TestClientHello(unittest.TestCase):
         self.assertEqual(bytearray(0), client_hello.session_id)
         self.assertEqual([], client_hello.cipher_suites)
         self.assertEqual([], client_hello.compression_methods)
+        self.assertEqual(None, client_hello.extensions)
 
     def test_create(self):
         client_hello = ClientHello()
