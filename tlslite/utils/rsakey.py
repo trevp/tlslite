@@ -123,7 +123,7 @@ class RSAKey(object):
         @rtype: bool
         @return: Whether the signature matches the passed-in data.
         """
-        if len(sigBytes) != numBytes(self.n):
+        if len(sigBytes) > numBytes(self.n):
             return False
         paddedBytes = self._addPKCS1Padding(bytes, 1)
         c = bytesToNumber(sigBytes)
@@ -167,7 +167,7 @@ class RSAKey(object):
         """
         if not self.hasPrivateKey():
             raise AssertionError()
-        if len(encBytes) != numBytes(self.n):
+        if len(encBytes) > numBytes(self.n):
             return None
         c = bytesToNumber(encBytes)
         if c >= self.n:
