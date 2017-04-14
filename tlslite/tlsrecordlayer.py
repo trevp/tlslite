@@ -110,7 +110,7 @@ class TLSRecordLayer(object):
         self._client = None
 
         #Buffers for processing messages
-        self._handshakeBuffer = []
+        self._handshakeBuffer = bytearray(0)
         self.clearReadBuffer()
         self.clearWriteBuffer()
 
@@ -148,6 +148,9 @@ class TLSRecordLayer(object):
 
         #Fault we will induce, for testing purposes
         self.fault = None
+
+        #Limit the size of outgoing records to following size
+        self.blockSize = 16384 # 2**14
 
     def clearReadBuffer(self):
         self._readBuffer = b''
@@ -270,11 +273,10 @@ class TLSRecordLayer(object):
                 raise TLSClosedConnectionError("attempt to write to closed connection")
 
             index = 0
-            blockSize = 16384
             randomizeFirstBlock = True
             while 1:
-                startIndex = index * blockSize
-                endIndex = startIndex + blockSize
+                startIndex = index * self.blockSize
+                endIndex = startIndex + self.blockSize
                 if startIndex >= len(s):
                     break
                 if endIndex > len(s):
@@ -558,6 +560,25 @@ class TLSRecordLayer(object):
             
         contentType = msg.contentType
 
+        #Fragment big handshake messages
+        if contentType == ContentType.handshake:
+            while len(b) > self.blockSize:
+                newB = b[:self.blockSize]
+                b = b[self.blockSize:]
+
+                class FakeMsg(object):
+                    def __init__(self, msg_type, data):
+                        self.contentType = msg_type
+                        self.data = data
+
+                    def write(self):
+                        return self.data
+
+                msgFragment = FakeMsg(msg.contentType, newB)
+                for result in self._sendMsg(msgFragment,
+                        randomizeFirstBlock=False):
+                    yield result
+
         #Update handshake hashes
         if contentType == ContentType.handshake:
             self._handshake_md5.update(compat26Str(b))
@@ -674,6 +695,8 @@ class TLSRecordLayer(object):
                 for result in self._getNextRecord():
                     if result in (0,1):
                         yield result
+                    else:
+                        break
                 recordHeader, p = result
 
                 #If this is an empty application-data fragment, try again
@@ -822,138 +845,152 @@ class TLSRecordLayer(object):
     #Returns next record or next handshake message
     def _getNextRecord(self):
 
-        #If there's a handshake message waiting, return it
-        if self._handshakeBuffer:
-            recordHeader, b = self._handshakeBuffer[0]
-            self._handshakeBuffer = self._handshakeBuffer[1:]
-            yield (recordHeader, Parser(b))
-            return
+        # XXX a bit hackish, but needed to support fragmentation
+        # (RFC 5246 Section 6.2.1)
+        # because the Record Layer in specification is completely separate
+        # from the messages that traverse it (it should handle applicaiton
+        # data and handshake data the same), we need to buffer the handshake
+        # messages until they are completely read before returning them to
+        # callers. In other words, the handshake messages don't have to be
+        # aligned to record layer fragments
+        while True:
 
-        #Otherwise...
-        #Read the next record header
-        b = bytearray(0)
-        recordHeaderLength = 1
-        ssl2 = False
-        while 1:
-            try:
-                s = self.sock.recv(recordHeaderLength-len(b))
-            except socket.error as why:
-                if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
-                    yield 0
-                    continue
-                else:
-                    raise
+            #check if we don't have a new message ready in buffer
+            if len(self._handshakeBuffer) >= 4:
+                p = Parser(self._handshakeBuffer)
+                # skip type
+                p.get(1)
+                msgLength = p.get(3)
+                if p.getRemainingLength() >= msgLength:
+                    handshakePair = (self._handshakeRecord,
+                            Parser(self._handshakeBuffer[:msgLength+4]))
+                    self._handshakeBuffer = \
+                            self._handshakeBuffer[msgLength+4:]
+                    yield handshakePair
 
-            #If the connection was abruptly closed, raise an error
-            if len(s)==0:
-                raise TLSAbruptCloseError()
+            #Read the next record header
+            b = bytearray(0)
+            recordHeaderLength = 1
+            ssl2 = False
+            while 1:
+                try:
+                    s = self.sock.recv(recordHeaderLength-len(b))
+                except socket.error as why:
+                    if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
+                        yield 0
+                        continue
+                    else:
+                        raise
 
-            b += bytearray(s)
-            if len(b)==1:
-                if b[0] in ContentType.all:
-                    ssl2 = False
-                    recordHeaderLength = 5
-                elif b[0] == 128:
-                    ssl2 = True
-                    recordHeaderLength = 2
-                else:
-                    raise SyntaxError()
-            if len(b) == recordHeaderLength:
-                break
-
-        #Parse the record header
-        if ssl2:
-            r = RecordHeader2().parse(Parser(b))
-        else:
-            r = RecordHeader3().parse(Parser(b))
-
-        #Check the record header fields
-        if r.length > 18432:
-            for result in self._sendError(AlertDescription.record_overflow):
-                yield result
-
-        #Read the record contents
-        b = bytearray(0)
-        while 1:
-            try:
-                s = self.sock.recv(r.length - len(b))
-            except socket.error as why:
-                if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
-                    yield 0
-                    continue
-                else:
-                    raise
-
-            #If the connection is closed, raise a socket error
-            if len(s)==0:
+                #If the connection was abruptly closed, raise an error
+                if len(s)==0:
                     raise TLSAbruptCloseError()
 
-            b += bytearray(s)
-            if len(b) == r.length:
-                break
-
-        #Check the record header fields (2)
-        #We do this after reading the contents from the socket, so that
-        #if there's an error, we at least don't leave extra bytes in the
-        #socket..
-        #
-        # THIS CHECK HAS NO SECURITY RELEVANCE (?), BUT COULD HURT INTEROP.
-        # SO WE LEAVE IT OUT FOR NOW.
-        #
-        #if self._versionCheck and r.version != self.version:
-        #    for result in self._sendError(AlertDescription.protocol_version,
-        #            "Version in header field: %s, should be %s" % (str(r.version),
-        #                                                       str(self.version))):
-        #        yield result
-
-        #Decrypt the record
-        for result in self._decryptRecord(r.type, b):
-            if result in (0,1): yield result
-            else: break
-        b = result
-        p = Parser(b)
-
-        #If it doesn't contain handshake messages, we can just return it
-        if r.type != ContentType.handshake:
-            yield (r, p)
-        #If it's an SSLv2 ClientHello, we can return it as well
-        elif r.ssl2:
-            yield (r, p)
-        else:
-            #Otherwise, we loop through and add the handshake messages to the
-            #handshake buffer
-            while 1:
-                if p.index == len(b): #If we're at the end
-                    if not self._handshakeBuffer:
-                        for result in self._sendError(\
-                                AlertDescription.decode_error, \
-                                "Received empty handshake record"):
-                            yield result
+                b += bytearray(s)
+                if len(b)==1:
+                    if b[0] in ContentType.all:
+                        ssl2 = False
+                        recordHeaderLength = 5
+                    elif b[0] == 128:
+                        ssl2 = True
+                        recordHeaderLength = 2
+                    else:
+                        raise SyntaxError()
+                if len(b) == recordHeaderLength:
                     break
-                #There needs to be at least 4 bytes to get a header
-                if p.index+4 > len(b):
+
+            #Parse the record header
+            if ssl2:
+                r = RecordHeader2().parse(Parser(b))
+            else:
+                r = RecordHeader3().parse(Parser(b))
+
+            #Check the record header fields
+            if r.length > 18432:
+                for result in self._sendError(AlertDescription.record_overflow):
+                    yield result
+
+            #Read the record contents (fragment)
+            b = bytearray(0)
+            while 1:
+                try:
+                    s = self.sock.recv(r.length - len(b))
+                except socket.error as why:
+                    if why.args[0] in (errno.EWOULDBLOCK, errno.EAGAIN):
+                        yield 0
+                        continue
+                    else:
+                        raise
+
+                #If the connection is closed, raise a socket error
+                if len(s)==0:
+                        raise TLSAbruptCloseError()
+
+                b += bytearray(s)
+                if len(b) == r.length:
+                    break
+
+            #Check the record header fields (2)
+            #We do this after reading the contents from the socket, so that
+            #if there's an error, we at least don't leave extra bytes in the
+            #socket..
+            #
+            # THIS CHECK HAS NO SECURITY RELEVANCE (?), BUT COULD HURT INTEROP.
+            # SO WE LEAVE IT OUT FOR NOW.
+            #
+            #if self._versionCheck and r.version != self.version:
+            #    for result in self._sendError(AlertDescription.protocol_version,
+            #            "Version in header field: %s, should be %s" % (str(r.version),
+            #                                                       str(self.version))):
+            #        yield result
+
+            #Decrypt the record
+            for result in self._decryptRecord(r.type, b):
+                if result in (0,1): yield result
+                else: break
+            b = result
+            p = Parser(b)
+
+            #If it doesn't contain handshake messages, we can just return it
+            if r.type != ContentType.handshake:
+                yield (r, p)
+            #If it's an SSLv2 ClientHello, we can return it as well
+            elif r.ssl2:
+                yield (r, p)
+            else:
+                assert(r.type == ContentType.handshake)
+                # RFC5246 section 5.2.1: Implementations MUST NOT send
+                # zero-length fragments of Handshake [...] content types.
+                if len(b) == 0:
                     for result in self._sendError(\
-                            AlertDescription.decode_error,
-                            "A record has a partial handshake message (1)"):
+                            AlertDescription.decode_error, \
+                            "Received empty handshake record"):
                         yield result
-                p.get(1) # skip handshake type
-                msgLength = p.get(3)
-                if p.index+msgLength > len(b):
-                    for result in self._sendError(\
-                            AlertDescription.decode_error,
-                            "A record has a partial handshake message (2)"):
-                        yield result
+                    return
 
-                handshakePair = (r, b[p.index-4 : p.index+msgLength])
-                self._handshakeBuffer.append(handshakePair)
-                p.index += msgLength
+                self._handshakeBuffer += b
+                self._handshakeRecord = r
 
-            #We've moved at least one handshake message into the
-            #handshakeBuffer, return the first one
-            recordHeader, b = self._handshakeBuffer[0]
-            self._handshakeBuffer = self._handshakeBuffer[1:]
-            yield (recordHeader, Parser(b))
-
+                # A handshake message must have at least 4 bytes
+                # (1 byte for type and 3 bytes for length)
+                if len(self._handshakeBuffer) < 4:
+                    # TODO do we want to yield 0 here?
+                    continue
+                else:
+                    # handshake message must be full length to be parseable
+                    p = Parser(self._handshakeBuffer)
+                    # skip type
+                    p.get(1)
+                    msgLength = p.get(3)
+                    if p.getRemainingLength() < msgLength:
+                        # TODO do we want to yield 0 here?
+                        continue
+                    else:
+                        handshakePair = (r,
+                                Parser(self._handshakeBuffer[:msgLength+4]))
+                        self._handshakeBuffer = \
+                            self._handshakeBuffer[msgLength+4:]
+                        yield handshakePair
 
     def _decryptRecord(self, recordType, b):
         if self._readState.encContext:
@@ -1050,7 +1087,7 @@ class TLSRecordLayer(object):
         self._handshake_md5 = hashlib.md5()
         self._handshake_sha = hashlib.sha1()
         self._handshake_sha256 = hashlib.sha256()
-        self._handshakeBuffer = []
+        self._handshakeBuffer = bytearray(0)
         self.allegedSrpUsername = None
         self._refCount = 1
 
