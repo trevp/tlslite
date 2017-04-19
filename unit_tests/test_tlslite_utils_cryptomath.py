@@ -61,6 +61,17 @@ class TestIsPrime(unittest.TestCase):
                 self.assertFalse(isPrime(1543267864443420616877677640751301))
                 # base 19
                 self.assertFalse(isPrime(1543267864443420616877677640751301))
+                # F. Arnault "Constructing Carmichael Numbers Which Are Strong
+                # Pseudoprimes to Several Bases". Journal of Symbolic
+                # Computation. 20 (2): 151-161. doi:10.1006/jsco.1995.1042.
+                # Section 4.4 Large Example (a pseudoprime to all bases up to
+                # 300)
+                p = int("29 674 495 668 685 510 550 154 174 642 905 332 730 "
+                        "771 991 799 853 043 350 995 075 531 276 838 753 171 "
+                        "770 199 594 238 596 428 121 188 033 664 754 218 345 "
+                        "562 493 168 782 883".replace(" ", ""))
+                self.assertTrue(isPrime(p))
+                self.assertFalse(p * (313 * (p - 1) + 1) * (353 * (p - 1) + 1))
 
     def test_with_big_primes(self):
         # NextPrime[2^256]
