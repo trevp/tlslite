@@ -876,7 +876,12 @@ def serverTestCmd(argv):
         testConnServer(connection)
         connection.close()
     finally:
-        os.remove(db_name)
+        try:
+            os.remove(db_name)
+        except FileNotFoundError:
+            # dbm module may create files with different names depending on
+            # platform
+            os.remove(db_name + ".dat")
 
     test_no += 1
 
