@@ -195,7 +195,7 @@ def clientTestCmd(argv):
 
     test_no += 1
 
-    print("Test {0} - good SRP".format(test_no))
+    print("Test {0} - good SRP (db)".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientSRP("test", "password")
@@ -204,7 +204,7 @@ def clientTestCmd(argv):
 
     test_no += 1
 
-    print("Test {0} - good SRP (db)".format(test_no))
+    print("Test {0} - good SRP".format(test_no))
     synchro.recv(1)
     connection = connect()
     connection.handshakeClientSRP("test", "password")
@@ -845,20 +845,6 @@ def serverTestCmd(argv):
 
     test_no += 1
 
-    print("Test {0} - good SRP".format(test_no))
-    verifierDB = VerifierDB()
-    verifierDB.create()
-    entry = VerifierDB.makeVerifier("test", "password", 1536)
-    verifierDB[b"test"] = entry
-
-    synchro.send(b'R')
-    connection = connect()
-    connection.handshakeServer(verifierDB=verifierDB)
-    testConnServer(connection)
-    connection.close()
-
-    test_no += 1
-
     print("Test {0} - good SRP (db)".format(test_no))
     try:
         (db_file, db_name) = mkstemp()
@@ -882,6 +868,20 @@ def serverTestCmd(argv):
             # dbm module may create files with different names depending on
             # platform
             os.remove(db_name + ".dat")
+
+    test_no += 1
+
+    print("Test {0} - good SRP".format(test_no))
+    verifierDB = VerifierDB()
+    verifierDB.create()
+    entry = VerifierDB.makeVerifier("test", "password", 1536)
+    verifierDB[b"test"] = entry
+
+    synchro.send(b'R')
+    connection = connect()
+    connection.handshakeServer(verifierDB=verifierDB)
+    testConnServer(connection)
+    connection.close()
 
     test_no += 1
 
