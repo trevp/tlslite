@@ -22,6 +22,7 @@ from .tlsrecordlayer import TLSRecordLayer
 from .session import Session
 from .constants import *
 from .utils.cryptomath import getRandomBytes
+from .utils.dns_utils import is_valid_hostname
 from .errors import *
 from .messages import *
 from .mathtls import *
@@ -1502,6 +1503,28 @@ class TLSConnection(TLSRecordLayer):
                             AlertDescription.illegal_parameter,
                             "Client sent empty name in ALPN extension"):
                         yield result
+
+        # Sanity check the SNI extension
+        sniExt = clientHello.getExtension(ExtensionType.server_name)
+        if sniExt and sniExt.hostNames:
+            # RFC 6066 limitation
+            if len(sniExt.hostNames) > 1:
+                for result in self._sendError(
+                        AlertDescription.illegal_parameter,
+                        "Client sent multiple host names in SNI extension"):
+                    yield result
+            try:
+                name = sniExt.hostNames[0].decode('ascii', 'strict')
+            except UnicodeDecodeError:
+                for result in self._sendError(
+                        AlertDescription.illegal_parameter,
+                        "Host name in SNI is not valid ASCII"):
+                    yield result
+            if not is_valid_hostname(name):
+                for result in self._sendError(
+                        AlertDescription.illegal_parameter,
+                        "Host name in SNI is not valid DNS name"):
+                    yield result
 
         #If client's version is too high, propose my highest version
         elif clientHello.client_version > settings.maxVersion:
