@@ -70,6 +70,16 @@ class ClientHelper(object):
         @param settings: Various settings which can be used to control
         the ciphersuites, certificate types, and SSL/TLS versions
         offered by the client.
+
+        @type anon: bool
+        @param anon: set to True if the negotiation should advertise only
+        anonymous TLS ciphersuites. Mutually exclusive with client certificate
+        authentication or SRP authentication
+
+        @type host: str or None
+        @param host: the hostname that the connection is made to. Can be an
+        IP address (in which case the SNI extension won't be sent). Can
+        include the port (in which case the port will be stripped and ignored).
         """
 
         self.username = None
