@@ -34,6 +34,7 @@ from tlslite.constants import CipherSuite, HashAlgorithm, SignatureAlgorithm, \
         GroupName
 from tlslite import __version__
 from tlslite.utils.compat import b2a_hex
+from tlslite.utils.dns_utils import is_valid_hostname
 
 try:
     from tack.structures.Tack import Tack
@@ -343,6 +344,9 @@ def serverCmd(argv):
     #############
     sessionCache = SessionCache()
     username = None
+    sni = None
+    if is_valid_hostname(address[0]):
+        sni = address[0]
 
     class MyHTTPServer(ThreadingMixIn, TLSSocketServerMixIn, HTTPServer):
         def handshake(self, connection):
@@ -368,7 +372,8 @@ def serverCmd(argv):
                                               settings=settings,
                                               nextProtos=[b"http/1.1"],
                                               alpn=[bytearray(b'http/1.1')],
-                                              reqCert=reqCert)
+                                              reqCert=reqCert,
+                                              sni=sni)
                                               # As an example (does not work here):
                                               #nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
                 stop = time.clock()
