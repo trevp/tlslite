@@ -594,6 +594,12 @@ encrypt-then-MAC mode for CBC ciphers.
 * ability to set custom Diffie-Hellman parameters for connection
 * support for negotiation of bigger Diffie-Hellman groups using RFC 7919
   mechanism
+* fix sent alerts in case the ALPN extension is malformed
+* add support for checking SNI on server side, making sure we send valid
+  hostnames in extension
+* fix testsuite when run on Windows
+* fix interoperability issue in DHE key exchange (failure happening in about
+  1 in 256 negotiations) caused by handling of Server Key Exchange messages
 
 0.6.0 - 2016-09-07
 
