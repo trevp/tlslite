@@ -1504,10 +1504,15 @@ class TLSConnection(TLSRecordLayer):
         # Sanity check the ALPN extension
         alpnExt = clientHello.getExtension(ExtensionType.alpn)
         if alpnExt:
+            if not alpnExt.protocol_names:
+                for result in self._sendError(
+                        AlertDescription.decode_error,
+                        "Client sent empty list of ALPN names"):
+                    yield result
             for protocolName in alpnExt.protocol_names:
                 if not protocolName:
                     for result in self._sendError(
-                            AlertDescription.illegal_parameter,
+                            AlertDescription.decode_error,
                             "Client sent empty name in ALPN extension"):
                         yield result
 
