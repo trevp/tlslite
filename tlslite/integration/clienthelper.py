@@ -10,6 +10,7 @@ A helper class for using TLS Lite with stdlib clients
 """
 
 from tlslite.checker import Checker
+from tlslite.utils.dns_utils import is_valid_hostname
 
 class ClientHelper(object):
     """This is a helper class used to integrate TLS Lite with various
@@ -69,6 +70,16 @@ class ClientHelper(object):
         @param settings: Various settings which can be used to control
         the ciphersuites, certificate types, and SSL/TLS versions
         offered by the client.
+
+        @type anon: bool
+        @param anon: set to True if the negotiation should advertise only
+        anonymous TLS ciphersuites. Mutually exclusive with client certificate
+        authentication or SRP authentication
+
+        @type host: str or None
+        @param host: the hostname that the connection is made to. Can be an
+        IP address (in which case the SNI extension won't be sent). Can
+        include the port (in which case the port will be stripped and ignored).
         """
 
         self.username = None
@@ -103,8 +114,14 @@ class ClientHelper(object):
 
         self.tlsSession = None
 
-        if not self._isIP(host):
+        if host is not None and not self._isIP(host):
+            # name for SNI so port can't be sent
+            colon = host.find(':')
+            if colon > 0:
+                host = host[:colon]
             self.serverName = host
+            if host and not is_valid_hostname(host):
+                raise ValueError("Invalid hostname: {0}".format(host))
         else:
             self.serverName = None
 

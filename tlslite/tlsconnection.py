@@ -22,6 +22,7 @@ from .tlsrecordlayer import TLSRecordLayer
 from .session import Session
 from .constants import *
 from .utils.cryptomath import getRandomBytes
+from .utils.dns_utils import is_valid_hostname
 from .errors import *
 from .messages import *
 from .mathtls import *
@@ -424,6 +425,9 @@ class TLSConnection(TLSRecordLayer):
                 raise ValueError("Caller passed no nextProtos")
         if alpn is not None and not alpn:
             raise ValueError("Caller passed empty alpn list")
+        if serverName and not is_valid_hostname(serverName):
+            raise ValueError("Caller provided invalid server host name: {0}"
+                             .format(serverName))
 
         # Validates the settings and filters out any unsupported ciphers
         # or crypto libraries that were requested        
@@ -1082,7 +1086,7 @@ class TLSConnection(TLSRecordLayer):
                         sessionCache=None, settings=None, checker=None,
                         reqCAs = None, 
                         tacks=None, activationFlags=0,
-                        nextProtos=None, anon=False, alpn=None):
+                        nextProtos=None, anon=False, alpn=None, sni=None):
         """Perform a handshake in the role of server.
 
         This function performs an SSL or TLS handshake.  Depending on
@@ -1156,6 +1160,9 @@ class TLSConnection(TLSRecordLayer):
         Note that it will be used instead of NPN if both were advertised by
         client.
 
+        @type sni: bytearray
+        @param sni: expected virtual name hostname.
+
         @raise socket.error: If a socket error occurs.
         @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
         without a preceding alert.
@@ -1167,7 +1174,7 @@ class TLSConnection(TLSRecordLayer):
                 certChain, privateKey, reqCert, sessionCache, settings,
                 checker, reqCAs, 
                 tacks=tacks, activationFlags=activationFlags, 
-                nextProtos=nextProtos, anon=anon, alpn=alpn):
+                nextProtos=nextProtos, anon=anon, alpn=alpn, sni=sni):
             pass
 
 
@@ -1176,7 +1183,7 @@ class TLSConnection(TLSRecordLayer):
                              sessionCache=None, settings=None, checker=None,
                              reqCAs=None, 
                              tacks=None, activationFlags=0,
-                             nextProtos=None, anon=False, alpn=None
+                             nextProtos=None, anon=False, alpn=None, sni=None
                              ):
         """Start a server handshake operation on the TLS connection.
 
@@ -1195,7 +1202,7 @@ class TLSConnection(TLSRecordLayer):
             sessionCache=sessionCache, settings=settings, 
             reqCAs=reqCAs, 
             tacks=tacks, activationFlags=activationFlags, 
-            nextProtos=nextProtos, anon=anon, alpn=alpn)
+            nextProtos=nextProtos, anon=anon, alpn=alpn, sni=sni)
         for result in self._handshakeWrapperAsync(handshaker, checker):
             yield result
 
@@ -1204,7 +1211,7 @@ class TLSConnection(TLSRecordLayer):
                              certChain, privateKey, reqCert, sessionCache,
                              settings, reqCAs, 
                              tacks, activationFlags, 
-                             nextProtos, anon, alpn):
+                             nextProtos, anon, alpn, sni):
 
         self._handshakeStart(client=False)
 
@@ -1238,7 +1245,7 @@ class TLSConnection(TLSRecordLayer):
         # Handle ClientHello and resumption
         for result in self._serverGetClientHello(settings, certChain,
                                                  verifierDB, sessionCache,
-                                                 anon, alpn):
+                                                 anon, alpn, sni):
             if result in (0,1): yield result
             elif result == None:
                 self._handshakeDone(resumed=True)                
@@ -1448,7 +1455,7 @@ class TLSConnection(TLSRecordLayer):
 
 
     def _serverGetClientHello(self, settings, certChain, verifierDB,
-                              sessionCache, anon, alpn):
+                              sessionCache, anon, alpn, sni):
         #Tentatively set version to most-desirable version, so if an error
         #occurs parsing the ClientHello, this is what we'll use for the
         #error alert
@@ -1502,6 +1509,34 @@ class TLSConnection(TLSRecordLayer):
                             AlertDescription.illegal_parameter,
                             "Client sent empty name in ALPN extension"):
                         yield result
+
+        # Sanity check the SNI extension
+        sniExt = clientHello.getExtension(ExtensionType.server_name)
+        if sniExt and sniExt.hostNames:
+            # RFC 6066 limitation
+            if len(sniExt.hostNames) > 1:
+                for result in self._sendError(
+                        AlertDescription.illegal_parameter,
+                        "Client sent multiple host names in SNI extension"):
+                    yield result
+            try:
+                name = sniExt.hostNames[0].decode('ascii', 'strict')
+            except UnicodeDecodeError:
+                for result in self._sendError(
+                        AlertDescription.illegal_parameter,
+                        "Host name in SNI is not valid ASCII"):
+                    yield result
+            if not is_valid_hostname(name):
+                for result in self._sendError(
+                        AlertDescription.illegal_parameter,
+                        "Host name in SNI is not valid DNS name"):
+                    yield result
+            # warn the client if the name didn't match the expected value
+            if sni and sni != name:
+                alert = Alert().create(AlertDescription.unrecognized_name,
+                                       AlertLevel.warning)
+                for result in self._sendMsg(alert):
+                    yield result
 
         #If client's version is too high, propose my highest version
         elif clientHello.client_version > settings.maxVersion:

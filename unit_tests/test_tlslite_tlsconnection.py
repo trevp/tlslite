@@ -214,15 +214,15 @@ class TestTLSConnection(unittest.TestCase):
         conn = TLSConnection(sock)
         # create hostname extension
         with self.assertRaises(TLSRemoteAlert):
-            # use serverName with 254 bytes
+            # use serverName with 252 bytes
             conn.handshakeClientCert(
-                serverName='aaaaaaaaaabbbbbbbbbbccccccccccdddddddddd' +
-                           'eeeeeeeeeeffffffffffgggggggggghhhhhhhhhh' +
-                           'iiiiiiiiiijjjjjjjjjjkkkkkkkkkkllllllllll' +
-                           'mmmmmmmmmmnnnnnnnnnnoooooooooopppppppppp' +
-                           'qqqqqqqqqqrrrrrrrrrrsssssssssstttttttttt' +
-                           'uuuuuuuuuuvvvvvvvvvvwwwwwwwwwwxxxxxxxxxx' +
-                           'yyyyyyyyyy.com')
+                serverName='aaaaaaaaaabbbbbbbbbbccccccccccdddddddddd.' +
+                           'eeeeeeeeeeffffffffffgggggggggghhhhhhhhhh.' +
+                           'iiiiiiiiiijjjjjjjjjjkkkkkkkkkkllllllllll.' +
+                           'mmmmmmmmmmnnnnnnnnnnoooooooooopppppppppp.' +
+                           'qqqqqqqqqqrrrrrrrrrrsssssssssstttttttttt.' +
+                           'uuuuuuuuuuvvvvvvvvvvwwwwwwwwwwxxxxxxxxxx.' +
+                           'y.com')
 
         self.assertEqual(len(sock.sent), 1)
         # check for version and content type (handshake)
