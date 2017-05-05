@@ -425,6 +425,7 @@ class TLSConnection(TLSRecordLayer):
                 raise ValueError("Caller passed no nextProtos")
         if alpn is not None and not alpn:
             raise ValueError("Caller passed empty alpn list")
+        # reject invalid hostnames but accept empty/None ones
         if serverName and not is_valid_hostname(serverName):
             raise ValueError("Caller provided invalid server host name: {0}"
                              .format(serverName))
