@@ -19,6 +19,7 @@ python:
   - 3.3
   - 3.4
   - 3.5
+  - 3.6
 
 env:
   - TACKPY=true
@@ -41,17 +42,23 @@ matrix:
       env: PYCRYPTO=true
     - python: 3.5
       env: PYCRYPTO=true
+    - python: 3.6
+      env: PYCRYPTO=true
     - python: 2.7
       env: GMPY=true
     - python: 3.4
       env: GMPY=true
     - python: 3.5
+      env: GMPY=true
+    - python: 3.6
       env: GMPY=true
     - python: 2.7
       env: M2CRYPTO=true PYCRYPTO=true GMPY=true
     - python: 3.4
       env: PYCRYPTO=true GMPY=true
     - python: 3.5
+      env: PYCRYPTO=true GMPY=true
+    - python: 3.6
       env: PYCRYPTO=true GMPY=true
 
 before_install:
