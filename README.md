@@ -600,6 +600,8 @@ encrypt-then-MAC mode for CBC ciphers.
 * fix testsuite when run on Windows
 * fix interoperability issue in DHE key exchange (failure happening in about
   1 in 256 negotiations) caused by handling of Server Key Exchange messages
+* Fix incorrect handling of Extended Master Secret with client certificates,
+  follow RFC recommendations with regards to session resumption.
 
 0.6.0 - 2016-09-07
 
