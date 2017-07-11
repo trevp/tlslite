@@ -2197,12 +2197,16 @@ class TLSConnection(TLSRecordLayer):
             # sha1 should be picked
             return "sha1"
 
-        rsaHashes = [alg[0] for alg in hashAndAlgsExt.sigalgs
-                     if alg[1] == SignatureAlgorithm.rsa]
-        for hashName in settings.rsaSigHashes:
-            hashID = getattr(HashAlgorithm, hashName)
-            if hashID in rsaHashes:
-                return hashName
+        supported = TLSConnection._sigHashesToList(settings)
+
+        for schemeID in supported:
+            if schemeID in hashAndAlgsExt.sigalgs:
+                name = SignatureScheme.toRepr(schemeID)
+                if not name and schemeID[1] == SignatureAlgorithm.rsa:
+                    name = HashAlgorithm.toRepr(schemeID[0])
+
+                if name:
+                    return name
 
         # if no match, we must abort per RFC 5246
         raise TLSHandshakeFailure("No common signature algorithms")
