@@ -10,13 +10,14 @@ from .errors import TLSInsufficientSecurity, TLSUnknownPSKIdentity, \
         TLSIllegalParameterException, TLSDecryptionFailed, TLSInternalError
 from .messages import ServerKeyExchange, ClientKeyExchange, CertificateVerify
 from .constants import SignatureAlgorithm, HashAlgorithm, CipherSuite, \
-        ExtensionType, GroupName, ECCurveType
+        ExtensionType, GroupName, ECCurveType, SignatureScheme
 from .utils.ecc import decodeX962Point, encodeX962Point, getCurveByName, \
         getPointByteSize
 from .utils.rsakey import RSAKey
 from .utils.cryptomath import bytesToNumber, getRandomBytes, powMod, \
         numBits, numberToByteArray, divceil
 from .utils.lists import getFirstMatching
+from .utils import tlshashlib as hashlib
 import ecdsa
 
 class KeyExchange(object):
@@ -67,6 +68,44 @@ class KeyExchange(object):
         """Process the server KEX and return premaster secret"""
         raise NotImplementedError()
 
+    def _tls12_signSKE(self, serverKeyExchange, sigHash=None):
+        """Sign a TLSv1.2 SKE message."""
+        try:
+            serverKeyExchange.hashAlg, serverKeyExchange.signAlg = \
+                    getattr(SignatureScheme, sigHash)
+            keyType = SignatureScheme.getKeyType(sigHash)
+            padType = SignatureScheme.getPadding(sigHash)
+            hashName = SignatureScheme.getHash(sigHash)
+            saltLen = getattr(hashlib, hashName)().digest_size
+        except AttributeError:
+            serverKeyExchange.signAlg = SignatureAlgorithm.rsa
+            serverKeyExchange.hashAlg = getattr(HashAlgorithm, sigHash)
+            keyType = 'rsa'
+            padType = 'pkcs1'
+            hashName = sigHash
+            saltLen = 0
+
+        assert keyType == 'rsa'
+
+        hashBytes = self.clientHello.random + self.serverHello.random + \
+                    serverKeyExchange.writeParams()
+
+        serverKeyExchange.signature = \
+            self.privateKey.hashAndSign(hashBytes,
+                                        rsaScheme=padType,
+                                        hAlg=hashName,
+                                        sLen=saltLen)
+
+        if not serverKeyExchange.signature:
+            raise TLSInternalError("Empty signature")
+
+        if not self.privateKey.hashAndVerify(serverKeyExchange.signature,
+                                             hashBytes,
+                                             rsaScheme=padType,
+                                             hAlg=hashName,
+                                             sLen=saltLen):
+            raise TLSInternalError("Server Key Exchange signature invalid")
+
     def signServerKeyExchange(self, serverKeyExchange, sigHash=None):
         """
         Sign a server key exchange using default or specified algorithm
@@ -87,20 +126,51 @@ class KeyExchange(object):
                                           hashBytes):
                 raise TLSInternalError("Server Key Exchange signature invalid")
         else:
-            serverKeyExchange.signAlg = SignatureAlgorithm.rsa
-            serverKeyExchange.hashAlg = getattr(HashAlgorithm, sigHash)
-            hashBytes = self.clientHello.random + self.serverHello.random + \
-                        serverKeyExchange.writeParams()
+            self._tls12_signSKE(serverKeyExchange, sigHash)
 
-            serverKeyExchange.signature = \
-                self.privateKey.hashAndSign(hashBytes, hAlg=sigHash)
+    @staticmethod
+    def _tls12_verify_SKE(serverKeyExchange, publicKey, clientRandom,
+                          serverRandom, validSigAlgs):
+        """Verify TLSv1.2 version of SKE."""
+        if (serverKeyExchange.hashAlg, serverKeyExchange.signAlg) not in \
+                validSigAlgs:
+            raise TLSIllegalParameterException("Server selected "
+                                               "invalid signature "
+                                               "algorithm")
+        schemeID = (serverKeyExchange.hashAlg,
+                    serverKeyExchange.signAlg)
+        scheme = SignatureScheme.toRepr(schemeID)
+        if scheme is not None:
+            keyType = SignatureScheme.getKeyType(scheme)
+            padType = SignatureScheme.getPadding(scheme)
+            hashName = SignatureScheme.getHash(scheme)
+            saltLen = getattr(hashlib, hashName)().digest_size
+        else:
+            if serverKeyExchange.signAlg != SignatureAlgorithm.rsa:
+                raise TLSInternalError("non-RSA sigs are not supported")
+            keyType = 'rsa'
+            padType = 'pkcs1'
+            saltLen = 0
+            hashName = HashAlgorithm.toRepr(serverKeyExchange.hashAlg)
+            if hashName is None:
+                msg = "Unknown hash ID: {0}"\
+                        .format(serverKeyExchange.hashAlg)
+                raise TLSIllegalParameterException(msg)
+        assert keyType == 'rsa'
 
-            if not serverKeyExchange.signature:
-                raise TLSInternalError("Empty signature")
+        hashBytes = clientRandom + serverRandom + \
+                    ServerKeyExchange.writeParams(serverKeyExchange)
 
-            if not self.privateKey.hashAndVerify(serverKeyExchange.signature,
-                                                 hashBytes, hAlg=sigHash):
-                raise TLSInternalError("Server Key Exchange signature invalid")
+        sigBytes = serverKeyExchange.signature
+        if not sigBytes:
+            raise TLSIllegalParameterException("Empty signature")
+
+        if not publicKey.hashAndVerify(sigBytes, hashBytes,
+                                       rsaScheme=padType,
+                                       hAlg=hashName,
+                                       sLen=saltLen):
+            raise TLSDecryptionFailed("Server Key Exchange signature "
+                                      "invalid")
 
     @staticmethod
     def verifyServerKeyExchange(serverKeyExchange, publicKey, clientRandom,
@@ -120,26 +190,9 @@ class KeyExchange(object):
                 raise TLSDecryptionFailed("Server Key Exchange signature "
                                           "invalid")
         else:
-            if (serverKeyExchange.hashAlg, serverKeyExchange.signAlg) not in \
-                validSigAlgs:
-                raise TLSIllegalParameterException("Server selected "
-                                                   "invalid signature "
-                                                   "algorithm")
-
-            hashName = HashAlgorithm.toRepr(serverKeyExchange.hashAlg)
-            if hashName is None:
-                raise TLSIllegalParameterException("Unknown signature "
-                                                   "algorithm")
-            hashBytes = clientRandom + serverRandom + \
-                        ServerKeyExchange.writeParams(serverKeyExchange)
-
-            sigBytes = serverKeyExchange.signature
-            if not sigBytes:
-                raise TLSIllegalParameterException("Empty signature")
-
-            if not publicKey.hashAndVerify(sigBytes, hashBytes, hAlg=hashName):
-                raise TLSDecryptionFailed("Server Key Exchange signature "
-                                          "invalid")
+            KeyExchange._tls12_verify_SKE(serverKeyExchange, publicKey,
+                                          clientRandom, serverRandom,
+                                          validSigAlgs)
 
     @staticmethod
     def calcVerifyBytes(version, handshakeHashes, signatureAlg,

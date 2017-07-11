@@ -227,6 +227,16 @@ class TestKeyExchangeVerifyServerKeyExchange(TestKeyExchange):
                                                 [(244,
                                                   SignatureAlgorithm.rsa)])
 
+    def test_verifyServerKeyExchange_with_unknown_sig(self):
+        self.server_key_exchange.signAlg = 244
+        with self.assertRaises(TLSInternalError):
+            KeyExchange.verifyServerKeyExchange(self.server_key_exchange,
+                                                self.srv_pub_key,
+                                                self.client_hello.random,
+                                                bytearray(32),
+                                                [(HashAlgorithm.sha1,
+                                                  244)])
+
     def test_verifyServerKeyExchange_with_empty_signature(self):
         self.server_key_exchange.signature = bytearray(0)
 
@@ -1213,3 +1223,70 @@ class TestECDHE_RSAKeyExchange(unittest.TestCase):
                                                   [GroupName.secp256r1])
         with self.assertRaises(TLSIllegalParameterException):
             client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+class TestRSAKeyExchange_with_PSS_scheme(unittest.TestCase):
+    def setUp(self):
+        self.srv_private_key = parsePEMKey(srv_raw_key, private=True)
+        srv_chain = X509CertChain([X509().parse(srv_raw_certificate)])
+        self.srv_pub_key = srv_chain.getEndEntityPublicKey()
+        self.cipher_suite = CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA
+        self.client_hello = ClientHello().create((3, 3),
+                                                 bytearray(32),
+                                                 bytearray(0),
+                                                 [])
+        self.server_hello = ServerHello().create((3, 3),
+                                                 bytearray(32),
+                                                 bytearray(0),
+                                                 self.cipher_suite)
+
+        self.keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                              self.client_hello,
+                                              self.server_hello,
+                                              self.srv_private_key)
+
+
+    def test_signServerKeyExchange_with_sha256_in_TLS1_2(self):
+        def m(length):
+            return bytearray(length)
+
+        with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
+            ske = ServerKeyExchange(self.cipher_suite, (3, 3))
+            ske = ske.createDH(5, 2, 3)
+
+            self.keyExchange.signServerKeyExchange(ske, 'rsa_pss_sha256')
+
+            self.assertEqual(ske.signature,
+                             bytearray(b'E\xae\x8e\xbe~RU\n\xab4\x8e\x10y\x94'
+                                       b'\x01\xdfVr\x8b\x03\xa4\xb7\x9dI\xf1'
+                                       b'\xb7\x16\xfa\xa0-\x9a\x16^pZ\x979\xc2'
+                                       b'&\xa5\xfcU\x9a"\xc7~u\x1e_y\xc1w\x91'
+                                       b'\x98L\x10\xb4\xed\x103\xdf\xac\xba'
+                                       b'\x19Q\x0e\x8an\x13\x99\x8d1\x17XK\x9a'
+                                       b'\x00\xcdno\xc7\xae\x92:pU\xf8\xfbl'
+                                       b'\xeeg\xe0s\x03\xc8\xcb\xe5\xc4\xb9z'
+                                       b'\xcf\nv\xca\x80`\xbe\xc9\x85\xcfM\x89'
+                                       b'\xaeE\xf0\xa1\xd8`\x99\x93\xa0Bp\x1cw'
+                                       b'W\xce\x8e'))
+
+    def test_signServerKeyExchange_with_sha384_in_TLS1_2(self):
+        def m(length):
+            return bytearray(length)
+
+        with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
+            ske = ServerKeyExchange(self.cipher_suite, (3, 3))
+            ske = ske.createDH(5, 2, 3)
+
+            self.keyExchange.signServerKeyExchange(ske, 'rsa_pss_sha384')
+
+            self.assertEqual(ske.signature,
+                             bytearray(b"QH\x02Xl2\xa37\xeeV\x9d\x84\x96E;_iJ"
+                                       b"\xcd\xed\x85#\x96\x0c\xc2\x94\xbd\xfa"
+                                       b"\xbbt&\xffo\xe2o\xa2\xbb\x08\xf1v\xdb"
+                                       b"\xdc\xcdj\x96R\x88\xf8{\x182\xfd\x99t"
+                                       b"\x9d\xb8\xba\x87\xd3\x8f\x8b\x88\xe8"
+                                       b"\x1c\x02\xa2\xfd5\x0b\x9b\xe1\x8c\xc0"
+                                       b"O\x13\x8d\xc5SU\xd5pN\xe2\xa9\xe1F|"
+                                       b"\xe9\xb5\xa9\x80s_\x91\xeb:\xcd\xee("
+                                       b"\x03\xe5[\xf5\xc7z\x02\'/\x0f\xdc\x1f"
+                                       b"\xd2\x93\x8b\x12\x01%\x1d\x04\xf1["
+                                       b"\xe4\x9a\x83\xf8\xd3#+"))

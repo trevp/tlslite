@@ -148,6 +148,7 @@ class HashAlgorithm(TLSEnum):
     sha384 = 5
     sha512 = 6
 
+
 class SignatureAlgorithm(TLSEnum):
     """Signing algorithms used in TLSv1.2"""
 
@@ -172,6 +173,50 @@ class SignatureScheme(TLSEnum):
     rsa_pss_sha256 = (8, 4)
     rsa_pss_sha384 = (8, 5)
     rsa_pss_sha512 = (8, 6)
+
+    @classmethod
+    def toRepr(cls, value, blacklist=None):
+        """Convert numeric type to name representation"""
+        if blacklist is None:
+            blacklist = []
+        blacklist += ['getKeyType', 'getPadding', 'getHash']
+        return super(SignatureScheme, cls).toRepr(value, blacklist)
+
+    @staticmethod
+    def getKeyType(scheme):
+        """
+        Return the name of the signature algorithm used in scheme.
+
+        E.g. for "rsa_pkcs1_sha1" it returns "rsa"
+        """
+        try:
+            getattr(SignatureScheme, scheme)
+        except AttributeError:
+            raise ValueError("\"{0}\" scheme is unknown".format(scheme))
+        kType, _, _ = scheme.split('_')
+        return kType
+
+    @staticmethod
+    def getPadding(scheme):
+        """Return the name of padding scheme used in signature scheme."""
+        try:
+            getattr(SignatureScheme, scheme)
+        except AttributeError:
+            raise ValueError("\"{0}\" scheme is unknown".format(scheme))
+        kType, padding, _ = scheme.split('_')
+        assert kType == 'rsa'
+        return padding
+
+    @staticmethod
+    def getHash(scheme):
+        """Return the name of hash used in signature scheme."""
+        try:
+            getattr(SignatureScheme, scheme)
+        except AttributeError:
+            raise ValueError("\"{0}\" scheme is unknown".format(scheme))
+        kType, _, hName = scheme.split('_')
+        assert kType == 'rsa'
+        return hName
 
 
 class GroupName(TLSEnum):
