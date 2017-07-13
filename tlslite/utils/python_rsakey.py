@@ -121,7 +121,7 @@ class Python_RSAKey(RSAKey):
         # above algorithm)
         if keyType == "rsa":
             if seqLen != 2:
-                raise SyntaxError("Missing parameters for RSA algorith ID")
+                raise SyntaxError("Missing parameters for RSA algorithm ID")
             parameters = algIdent.getChild(1)
             if parameters.value != bytearray(0):
                 raise SyntaxError("RSA parameters are not NULL")
