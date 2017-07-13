@@ -11,7 +11,7 @@ except ImportError:
 
 from tlslite.constants import CipherSuite, HashAlgorithm, SignatureAlgorithm, \
         ContentType, AlertDescription, AlertLevel, HandshakeType, GroupName, \
-        TLSEnum
+        TLSEnum, SignatureScheme
 
 class TestTLSEnumSubClassing(unittest.TestCase):
 
@@ -126,3 +126,42 @@ class TestCipherSuite(unittest.TestCase):
                          [CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
                           CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
                           CipherSuite.TLS_RSA_WITH_RC4_128_MD5])
+
+
+class TestSignatureScheme(unittest.TestCase):
+    def test_toRepr_with_valid_value(self):
+        ret = SignatureScheme.toRepr((6, 1))
+
+        self.assertEqual(ret, "rsa_pkcs1_sha512")
+
+    def test_toRepr_with_obsolete_value(self):
+        ret = SignatureScheme.toRepr((1, 1))
+
+        self.assertIsNone(ret)
+
+    def test_getKeyType_with_valid_name(self):
+        ret = SignatureScheme.getKeyType('rsa_pkcs1_sha256')
+
+        self.assertEqual(ret, 'rsa')
+
+    def test_getKeyType_with_invalid_name(self):
+        with self.assertRaises(ValueError):
+            SignatureScheme.getKeyType('eddsa_sha512')
+
+    def test_getPadding_with_valid_name(self):
+        ret = SignatureScheme.getPadding('rsa_pss_sha512')
+
+        self.assertEqual(ret, 'pss')
+
+    def test_getPadding_with_invalid_name(self):
+        with self.assertRaises(ValueError):
+            SignatureScheme.getPadding('rsa_oead_sha256')
+
+    def test_getHash_with_valid_name(self):
+        ret = SignatureScheme.getHash('rsa_pss_sha256')
+
+        self.assertEqual(ret, 'sha256')
+
+    def test_getHash_with_invalid_name(self):
+        with self.assertRaises(ValueError):
+            SignatureScheme.getHash('rsa_oead_sha256')

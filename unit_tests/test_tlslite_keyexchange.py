@@ -19,7 +19,8 @@ from tlslite.handshakesettings import HandshakeSettings
 from tlslite.messages import ServerHello, ClientHello, ServerKeyExchange,\
         CertificateRequest, ClientKeyExchange
 from tlslite.constants import CipherSuite, CertificateType, AlertDescription, \
-        HashAlgorithm, SignatureAlgorithm, GroupName, ECCurveType
+        HashAlgorithm, SignatureAlgorithm, GroupName, ECCurveType, \
+        SignatureScheme
 from tlslite.errors import TLSLocalAlert, TLSIllegalParameterException, \
         TLSDecryptionFailed, TLSInsufficientSecurity, TLSUnknownPSKIdentity, \
         TLSInternalError
@@ -167,6 +168,27 @@ class TestKeyExchange(unittest.TestCase):
 
         self.assertEqual(server_key_exchange.write(), self.expected_tls1_1_SKE)
 
+
+    def test_signServerKeyExchange_in_TLS1_1_signature_invalid(self):
+        srv_private_key = parsePEMKey(srv_raw_key, private=True)
+        client_hello = ClientHello()
+        cipher_suite = CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA
+        server_hello = ServerHello().create((3, 2),
+                                            bytearray(32),
+                                            bytearray(0),
+                                            cipher_suite)
+        keyExchange = KeyExchange(cipher_suite,
+                                  client_hello,
+                                  server_hello,
+                                  srv_private_key)
+        server_key_exchange = ServerKeyExchange(cipher_suite, (3, 2)) \
+            .createDH(5, 2, 3)
+
+        with self.assertRaises(TLSInternalError):
+            keyExchange.privateKey.sign = mock.Mock(
+                return_value=bytearray(b'wrong'))
+            keyExchange.signServerKeyExchange(server_key_exchange)
+
 class TestKeyExchangeVerifyServerKeyExchange(TestKeyExchange):
     def setUp(self):
         self.srv_cert_chain = X509CertChain([X509().parse(srv_raw_certificate)])
@@ -206,6 +228,16 @@ class TestKeyExchangeVerifyServerKeyExchange(TestKeyExchange):
                                                 [(244,
                                                   SignatureAlgorithm.rsa)])
 
+    def test_verifyServerKeyExchange_with_unknown_sig(self):
+        self.server_key_exchange.signAlg = 244
+        with self.assertRaises(TLSInternalError):
+            KeyExchange.verifyServerKeyExchange(self.server_key_exchange,
+                                                self.srv_pub_key,
+                                                self.client_hello.random,
+                                                bytearray(32),
+                                                [(HashAlgorithm.sha1,
+                                                  244)])
+
     def test_verifyServerKeyExchange_with_empty_signature(self):
         self.server_key_exchange.signature = bytearray(0)
 
@@ -234,6 +266,15 @@ class TestKeyExchangeVerifyServerKeyExchange(TestKeyExchange):
                                             self.client_hello.random,
                                             bytearray(32),
                                             None)
+
+    def test_verifyServerKeyExchange_with_damaged_signature_in_TLS1_1(self):
+        self.ske_tls1_1.signature[-1] ^= 0x01
+        with self.assertRaises(TLSDecryptionFailed):
+            KeyExchange.verifyServerKeyExchange(self.ske_tls1_1,
+                                                self.srv_pub_key,
+                                                self.client_hello.random,
+                                                bytearray(32),
+                                                None)
 
 class TestCalcVerifyBytes(unittest.TestCase):
     def setUp(self):
@@ -319,6 +360,68 @@ class TestMakeCertificateVerify(unittest.TestCase):
             b'\xfa\x9e\xbfB+05\xc6\xda\xdf\x05\xf2m[\x18\x11\xaf\x184\x12\x9d'
             b'\xb4:\x9b\xc1U\x1c\xba\xa3\x05\xceOn\x0fY\xcaK*\x0b\x04\xa5'
             ))
+
+    def test_with_TLS1_2_md5(self):
+        certificate_request = CertificateRequest((3, 3))
+        certificate_request.create([CertificateType.x509],
+                                   [],
+                                   [(HashAlgorithm.md5,
+                                     SignatureAlgorithm.rsa),
+                                    (HashAlgorithm.sha1,
+                                     SignatureAlgorithm.rsa)])
+
+        certVerify = KeyExchange.makeCertificateVerify((3, 3),
+                                                       self.handshake_hashes,
+                                                       [(HashAlgorithm.md5,
+                                                         SignatureAlgorithm.rsa)],
+                                                       self.clnt_private_key,
+                                                       certificate_request,
+                                                       None, None, None)
+
+        self.assertIsNotNone(certVerify)
+        self.assertEqual(certVerify.version, (3, 3))
+        self.assertEqual(certVerify.signatureAlgorithm, (HashAlgorithm.md5,
+                                                         SignatureAlgorithm.rsa))
+        self.assertEqual(certVerify.signature, bytearray(
+            b'H5\x03U]\x0c\xb6\xc0Y\x98^\x0f \xf4\x15}\x8d\xf7k\x97\\&8j\x94'
+            b'\xc6\x04*e\xa6\x95\xc5\xf3\xb1\xd0\xe6\x85[<9\x91K\xc51\xc3\xe9'
+            b'\xc6\x15&\x1c\xfb\xb2?\r|\r\xfa"\x8c\xdaHo]\x89\xc8mOE\x9c]\xa0'
+            b'\xab#\xf8\xea(\xefE\xb3\x83)f+hS\xa8\x00\xe1\x11\xbd\xfb\xd5\xf5'
+            b'[\x9b7\xb1p\xd7\xa3\xc8\xf37K \x91\x0e\x16\xd6\x94t\xec\xe6\xb1Z'
+            b'K\xeeg\xb6)>\x91?\xc2\xe2S\xdf\xa9'))
+
+    def test_with_TLS1_2_rsa_pss_sha256(self):
+        def m(length):
+            return bytearray(length)
+
+        with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
+            certificate_request = CertificateRequest((3, 3))
+            certificate_request.create([CertificateType.x509],
+                                       [],
+                                       [SignatureScheme.rsa_pss_sha256,
+                                        (HashAlgorithm.sha1,
+                                         SignatureAlgorithm.rsa)])
+
+            certVerify = KeyExchange.makeCertificateVerify((3, 3),
+                                                           self.handshake_hashes,
+                                                           [SignatureScheme.\
+                                                                   rsa_pss_sha256],
+                                                           self.clnt_private_key,
+                                                           certificate_request,
+                                                           None, None, None)
+
+            self.assertIsNotNone(certVerify)
+            self.assertEqual(certVerify.version, (3, 3))
+            self.assertEqual(certVerify.signatureAlgorithm,
+                             SignatureScheme.rsa_pss_sha256)
+            self.assertEqual(certVerify.signature, bytearray(
+                b'mj{\xb8\xe1\xfdV\x8f>\xc4\x7fy\xe3h}\xb0\xda\xff\xab1\xab='
+                b'\xa7x\xf4x\xcduL\xbbN"\xd9\xad\x7f@N\xae\xb1\xc5\x1c\'\x81'
+                b'\x7f\xc4\xe3\xc9:Y6\xf77\xb0\xd8\xc3\xbeo\xd0&\xf6\x05x\xc6'
+                b'\x9c\xce\xb4\x1eQx \x13\x93qCy\x8d>tCONS\x83\x15\xf7\xf1'
+                b'\x96\x15\x1eXv<\xb6\x80\x7fI\x85\xa3\xe1\x18\xd4\xd6\xbe)68'
+                b'\xad\xae\x08\xad\x91\xe9rg\x8b\xc8M\xfe{\x0c\xf5\x0fj\'E"9'
+                b'\r'))
 
     def test_with_TLS1_2_and_no_overlap(self):
         certificate_request = CertificateRequest((3, 3))
@@ -836,10 +939,22 @@ class TestDHE_RSAKeyExchange(unittest.TestCase):
         with self.assertRaises(TLSInternalError):
             self.keyExchange.makeServerKeyExchange('sha1')
 
+    def test_DHE_RSA_key_exchange_empty_signature_in_TLS_1_1(self):
+        self.keyExchange.serverHello.server_version = (3, 2)
+        self.keyExchange.privateKey.sign = mock.Mock(return_value=bytearray(0))
+        with self.assertRaises(TLSInternalError):
+            self.keyExchange.makeServerKeyExchange('sha1')
+
     def test_DHE_RSA_key_exchange_wrong_signature(self):
         self.keyExchange.privateKey.sign = mock.Mock(return_value=bytearray(20))
         with self.assertRaises(TLSInternalError):
             self.keyExchange.makeServerKeyExchange('sha1')
+
+    def test_DHE_RSA_key_exchange_wrong_signature_in_TLS_1_1(self):
+        self.keyExchange.serverHello.server_version = (3, 2)
+        self.keyExchange.privateKey.sign = mock.Mock(return_value=bytearray(20))
+        with self.assertRaises(TLSInternalError):
+            self.keyExchange.makeServerKeyExchange()
 
 class TestSRPKeyExchange(unittest.TestCase):
     def setUp(self):
@@ -1174,3 +1289,70 @@ class TestECDHE_RSAKeyExchange(unittest.TestCase):
                                                   [GroupName.secp256r1])
         with self.assertRaises(TLSIllegalParameterException):
             client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+class TestRSAKeyExchange_with_PSS_scheme(unittest.TestCase):
+    def setUp(self):
+        self.srv_private_key = parsePEMKey(srv_raw_key, private=True)
+        srv_chain = X509CertChain([X509().parse(srv_raw_certificate)])
+        self.srv_pub_key = srv_chain.getEndEntityPublicKey()
+        self.cipher_suite = CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA
+        self.client_hello = ClientHello().create((3, 3),
+                                                 bytearray(32),
+                                                 bytearray(0),
+                                                 [])
+        self.server_hello = ServerHello().create((3, 3),
+                                                 bytearray(32),
+                                                 bytearray(0),
+                                                 self.cipher_suite)
+
+        self.keyExchange = DHE_RSAKeyExchange(self.cipher_suite,
+                                              self.client_hello,
+                                              self.server_hello,
+                                              self.srv_private_key)
+
+
+    def test_signServerKeyExchange_with_sha256_in_TLS1_2(self):
+        def m(length):
+            return bytearray(length)
+
+        with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
+            ske = ServerKeyExchange(self.cipher_suite, (3, 3))
+            ske = ske.createDH(5, 2, 3)
+
+            self.keyExchange.signServerKeyExchange(ske, 'rsa_pss_sha256')
+
+            self.assertEqual(ske.signature,
+                             bytearray(b'E\xae\x8e\xbe~RU\n\xab4\x8e\x10y\x94'
+                                       b'\x01\xdfVr\x8b\x03\xa4\xb7\x9dI\xf1'
+                                       b'\xb7\x16\xfa\xa0-\x9a\x16^pZ\x979\xc2'
+                                       b'&\xa5\xfcU\x9a"\xc7~u\x1e_y\xc1w\x91'
+                                       b'\x98L\x10\xb4\xed\x103\xdf\xac\xba'
+                                       b'\x19Q\x0e\x8an\x13\x99\x8d1\x17XK\x9a'
+                                       b'\x00\xcdno\xc7\xae\x92:pU\xf8\xfbl'
+                                       b'\xeeg\xe0s\x03\xc8\xcb\xe5\xc4\xb9z'
+                                       b'\xcf\nv\xca\x80`\xbe\xc9\x85\xcfM\x89'
+                                       b'\xaeE\xf0\xa1\xd8`\x99\x93\xa0Bp\x1cw'
+                                       b'W\xce\x8e'))
+
+    def test_signServerKeyExchange_with_sha384_in_TLS1_2(self):
+        def m(length):
+            return bytearray(length)
+
+        with mock.patch('tlslite.utils.rsakey.getRandomBytes', m):
+            ske = ServerKeyExchange(self.cipher_suite, (3, 3))
+            ske = ske.createDH(5, 2, 3)
+
+            self.keyExchange.signServerKeyExchange(ske, 'rsa_pss_sha384')
+
+            self.assertEqual(ske.signature,
+                             bytearray(b"QH\x02Xl2\xa37\xeeV\x9d\x84\x96E;_iJ"
+                                       b"\xcd\xed\x85#\x96\x0c\xc2\x94\xbd\xfa"
+                                       b"\xbbt&\xffo\xe2o\xa2\xbb\x08\xf1v\xdb"
+                                       b"\xdc\xcdj\x96R\x88\xf8{\x182\xfd\x99t"
+                                       b"\x9d\xb8\xba\x87\xd3\x8f\x8b\x88\xe8"
+                                       b"\x1c\x02\xa2\xfd5\x0b\x9b\xe1\x8c\xc0"
+                                       b"O\x13\x8d\xc5SU\xd5pN\xe2\xa9\xe1F|"
+                                       b"\xe9\xb5\xa9\x80s_\x91\xeb:\xcd\xee("
+                                       b"\x03\xe5[\xf5\xc7z\x02\'/\x0f\xdc\x1f"
+                                       b"\xd2\x93\x8b\x12\x01%\x1d\x04\xf1["
+                                       b"\xe4\x9a\x83\xf8\xd3#+"))

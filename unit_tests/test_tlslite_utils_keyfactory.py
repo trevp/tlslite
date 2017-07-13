@@ -119,6 +119,43 @@ class TestParsePEMKey(unittest.TestCase):
         "rBjtgPGNR6tCjWMh0+2AUF5lTbXAPqECeV6MIvJXGpg=\n"\
         "-----END RSA PRIVATE KEY-----\n"\
         )
+    # generated with:
+    # openssl req -x509 -newkey rsa-pss -keyout localhost.key
+    # -out localhost.crt -subj /CN=localhost -nodes -batch
+    # -config /etc/pki/tls/openssl.cnf -pkeyopt rsa_keygen_bits:1024 -sha256
+    privRSAPSSKey_str = str(
+        "-----BEGIN PRIVATE KEY-----"
+        "MIICdQIBADALBgkqhkiG9w0BAQoEggJhMIICXQIBAAKBgQCn8gxBHPCDZIWDXOuJ"
+        "jDv2/sLFrtnrwrHVaHRKvJQ4La5X6juRb6SoStMmhgfBiQHqLN7CphcjqhU5G5u1"
+        "3GRWd8PsauSQWfAVeT7AO99PwlTsR3oigN4HfaBkEXpDcUdxw0CapjQFEeVD14Ds"
+        "ylqGxuX63FZAoY7fSNW9xInqOQIDAQABAoGAEk1YdIgY1djQi/5GVNkJd+NPioeB"
+        "jCXNh3o4oiRm6rBfvYjzMOg/w29UD3Cvy7GImeKF7CR5hRN1+KE/mNQJww1cPe2X"
+        "DZ7VlWqg4zuXFxOjL4qA+crk4Th7KQhOWmjbB4dtRAa/YJSpQR0a0NMvKPXhvwxy"
+        "Mj+lLgCycy14lzkCQQDRQlseMlc3VudfNo2ei2PkuOG+za4PoBEumsC7dg2+Sxvv"
+        "JkXEGdJ9DZGxqZTI4Q4OtFZ7PTwAvHgmvyyI03E3AkEAzXVVlsl6hOl2Wy+hpKDk"
+        "GOL4er9eubHzP70bSkgSvlUkxvSSP4ixnLv14XPqCRLzoMxQEQxymq1aO87iGc/4"
+        "DwJBAIM2fngSzMlwfqgfRvHxKXQT0cmYoto9XkjA1LU3MyrtYdi1QO3T2z56sa6b"
+        "TSYgqHXj8o5YOTWk+BojqcMqAkUCQBSg1zsQd5CosA1vttcEoGIvR6trU2Npjnaz"
+        "0e2fVuJtQggHvjdKzipiZMmCDdljYbqfSNqtWURWa1zd5K2ax9kCQQC7Eg+ktzi3"
+        "1wAXDgXMdW+TsDPBHrRqRGzFXKe83e05/nVc8EwiS0mYdkpblm+uzUqiSsa20Guo"
+        "Xf3/znMC6LAS"
+        "-----END PRIVATE KEY-----")
+    certRSAPSS_str = str(
+        "-----BEGIN CERTIFICATE-----"
+        "MIICVDCCAY2gAwIBAgIJANyAcqPhR4KqMD0GCSqGSIb3DQEBCjAwoA0wCwYJYIZI"
+        "AWUDBAIBoRowGAYJKoZIhvcNAQEIMAsGCWCGSAFlAwQCAaIDAgFeMBQxEjAQBgNV"
+        "BAMMCWxvY2FsaG9zdDAeFw0xNzAzMDgxNjExMTRaFw0xNzA0MDcxNjExMTRaMBQx"
+        "EjAQBgNVBAMMCWxvY2FsaG9zdDCBnTALBgkqhkiG9w0BAQoDgY0AMIGJAoGBAKfy"
+        "DEEc8INkhYNc64mMO/b+wsWu2evCsdVodEq8lDgtrlfqO5FvpKhK0yaGB8GJAeos"
+        "3sKmFyOqFTkbm7XcZFZ3w+xq5JBZ8BV5PsA730/CVOxHeiKA3gd9oGQRekNxR3HD"
+        "QJqmNAUR5UPXgOzKWobG5frcVkChjt9I1b3Eieo5AgMBAAGjUDBOMB0GA1UdDgQW"
+        "BBRWzEKe6ouCtJLTw2rlmBUL5GzQwTAfBgNVHSMEGDAWgBRWzEKe6ouCtJLTw2rl"
+        "mBUL5GzQwTAMBgNVHRMEBTADAQH/MD0GCSqGSIb3DQEBCjAwoA0wCwYJYIZIAWUD"
+        "BAIBoRowGAYJKoZIhvcNAQEIMAsGCWCGSAFlAwQCAaIDAgFeA4GBABxQF45TtTZk"
+        "Fg449AsS+ISz/wJ7QlvYQRhKCRTqf5AOiW4vS1u8ojyIxS7+e5XMfibH4tYRhc7t"
+        "c+Grb0yGpyTfKeKn1XpYPs0LGHrSzFjE66fI3IwLs081yOPiboEwtfk89YP2eJ3K"
+        "8QRoPc5B+fSXFVJbBZdxR4audnIv5FM7"
+        "-----END CERTIFICATE-----")
 
     @unittest.skipIf(cryptomath.m2cryptoLoaded, "requires no M2Crypto")
     def test_with_missing_m2crypto(self):
@@ -206,6 +243,29 @@ class TestParsePEMKey(unittest.TestCase):
         key = parsePEMKey(self.privRSAKey_str_newLines,
                 private=True,
                 implementations=["python"])
+
+        self.assertIsInstance(key, RSAKey)
+        self.assertEqual(1024, len(key))
+        self.assertTrue(key.hasPrivateKey())
+
+    @unittest.skipUnless(cryptomath.m2cryptoLoaded, "requires M2Crypto")
+    @unittest.expectedFailure
+    def test_rsa_pss_key_parse_using_openssl(self):
+        try:
+            key = parsePEMKey(self.privRSAPSSKey_str,
+                              private=True,
+                              implementations=["openssl"])
+        except SyntaxError:
+            self.fail("Unexpected exception raised")
+
+        self.assertIsInstance(key, RSAKey)
+        self.assertEqual(1024, len(key))
+        self.assertTrue(key.hasPrivateKey())
+
+    def test_rsa_pss_key_parse_using_python(self):
+        key = parsePEMKey(self.privRSAPSSKey_str,
+                          private=True,
+                          implementations=["python"])
 
         self.assertIsInstance(key, RSAKey)
         self.assertEqual(1024, len(key))

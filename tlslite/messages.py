@@ -1296,10 +1296,14 @@ class ServerKeyExchange(HandshakeMsg):
         """
         bytesToHash = clientRandom + serverRandom + self.writeParams()
         if self.version >= (3, 3):
-            hashAlg = HashAlgorithm.toRepr(self.hashAlg)
-            if hashAlg is None:
-                raise AssertionError("Unknown hash algorithm: {0}".
-                                     format(self.hashAlg))
+            sigScheme = SignatureScheme.toRepr((self.hashAlg, self.signAlg))
+            if sigScheme is None:
+                hashAlg = HashAlgorithm.toRepr(self.hashAlg)
+                if hashAlg is None:
+                    raise AssertionError("Unknown hash algorithm: {0}".
+                                         format(self.hashAlg))
+            else:
+                hashAlg = SignatureScheme.getHash(sigScheme)
             return secureHash(bytesToHash, hashAlg)
         return MD5(bytesToHash) + SHA1(bytesToHash)
 

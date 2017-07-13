@@ -148,6 +148,7 @@ class HashAlgorithm(TLSEnum):
     sha384 = 5
     sha512 = 6
 
+
 class SignatureAlgorithm(TLSEnum):
     """Signing algorithms used in TLSv1.2"""
 
@@ -155,6 +156,68 @@ class SignatureAlgorithm(TLSEnum):
     rsa = 1
     dsa = 2
     ecdsa = 3
+
+
+class SignatureScheme(TLSEnum):
+    """
+    Signature scheme used for signalling supported signature algorithms.
+
+    This is the replacement for the HashAlgorithm and SignatureAlgorithm
+    lists. Introduced with TLSv1.3.
+    """
+
+    rsa_pkcs1_sha1 = (2, 1)
+    rsa_pkcs1_sha256 = (4, 1)
+    rsa_pkcs1_sha384 = (5, 1)
+    rsa_pkcs1_sha512 = (6, 1)
+    rsa_pss_sha256 = (8, 4)
+    rsa_pss_sha384 = (8, 5)
+    rsa_pss_sha512 = (8, 6)
+
+    @classmethod
+    def toRepr(cls, value, blacklist=None):
+        """Convert numeric type to name representation"""
+        if blacklist is None:
+            blacklist = []
+        blacklist += ['getKeyType', 'getPadding', 'getHash']
+        return super(SignatureScheme, cls).toRepr(value, blacklist)
+
+    @staticmethod
+    def getKeyType(scheme):
+        """
+        Return the name of the signature algorithm used in scheme.
+
+        E.g. for "rsa_pkcs1_sha1" it returns "rsa"
+        """
+        try:
+            getattr(SignatureScheme, scheme)
+        except AttributeError:
+            raise ValueError("\"{0}\" scheme is unknown".format(scheme))
+        kType, _, _ = scheme.split('_')
+        return kType
+
+    @staticmethod
+    def getPadding(scheme):
+        """Return the name of padding scheme used in signature scheme."""
+        try:
+            getattr(SignatureScheme, scheme)
+        except AttributeError:
+            raise ValueError("\"{0}\" scheme is unknown".format(scheme))
+        kType, padding, _ = scheme.split('_')
+        assert kType == 'rsa'
+        return padding
+
+    @staticmethod
+    def getHash(scheme):
+        """Return the name of hash used in signature scheme."""
+        try:
+            getattr(SignatureScheme, scheme)
+        except AttributeError:
+            raise ValueError("\"{0}\" scheme is unknown".format(scheme))
+        kType, _, hName = scheme.split('_')
+        assert kType == 'rsa'
+        return hName
+
 
 class GroupName(TLSEnum):
     """Name of groups supported for (EC)DH key exchange"""

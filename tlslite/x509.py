@@ -23,12 +23,17 @@ class X509(object):
 
     @type subject: L{bytearray} of unsigned bytes
     @ivar subject: The DER-encoded ASN.1 subject distinguished name.
+
+    @type certAlg: str
+    @ivar certAlg: algorithm of the public key, "rsa" for RSASSA-PKCS#1 v1.5
+    and "rsa-pss" for RSASSA-PSS
     """
 
     def __init__(self):
         self.bytes = bytearray(0)
         self.publicKey = None
         self.subject = None
+        self.certAlg = None
 
     def parse(self, s):
         """Parse a PEM-encoded X.509 certificate.
@@ -71,11 +76,29 @@ class X509(object):
         subjectPublicKeyInfoP = tbsCertificateP.getChild(\
                                     subjectPublicKeyInfoIndex)
 
-        #Get the algorithm
-        algorithmP = subjectPublicKeyInfoP.getChild(0)
-        rsaOID = algorithmP.value
-        if list(rsaOID) != [6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 1, 5, 0]:
+        # Get the AlgorithmIdentifier
+        algIdentifier = subjectPublicKeyInfoP.getChild(0)
+        algIdentifierLen = algIdentifier.getChildCount()
+        # first item of AlgorithmIdentifier is the algorithm
+        alg = algIdentifier.getChild(0)
+        rsaOID = alg.value
+        if list(rsaOID) == [42, 134, 72, 134, 247, 13, 1, 1, 1]:
+            self.certAlg = "rsa"
+        elif list(rsaOID) == [42, 134, 72, 134, 247, 13, 1, 1, 10]:
+            self.certAlg = "rsa-pss"
+        else:
             raise SyntaxError("Unrecognized AlgorithmIdentifier")
+
+        # for RSA the parameters of AlgorithmIdentifier should be a NULL
+        if self.certAlg == "rsa":
+            if algIdentifierLen != 2:
+                raise SyntaxError("Missing parameters in AlgorithmIdentifier")
+            params = algIdentifier.getChild(1)
+            if params.value != bytearray(0):
+                raise SyntaxError("Unexpected non-NULL parameters in "
+                                  "AlgorithmIdentifier")
+        else:  # rsa-pss
+            pass  # ignore parameters, if any - don't apply key restrictions
 
         #Get the subjectPublicKey
         subjectPublicKeyP = subjectPublicKeyInfoP.getChild(1)

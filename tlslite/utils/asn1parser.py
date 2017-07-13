@@ -45,6 +45,24 @@ class ASN1Parser(object):
         """
         return ASN1Parser(self.getChildBytes(which))
 
+    def getChildCount(self):
+        """
+        Return number of children, assuming that the object is a SEQUENCE.
+
+        @rtype: int
+        @return number of children in the object
+        """
+        p = Parser(self.value)
+        count = 0
+        while True:
+            if p.getRemainingLength() == 0:
+                break
+            p.get(1)  # skip Type
+            length = self._getASN1Length(p)
+            p.getFixBytes(length)  # skip value
+            count += 1
+        return count
+
     def getChildBytes(self, which):
         """
         Return raw encoding of n-th child, assume self is a SEQUENCE
