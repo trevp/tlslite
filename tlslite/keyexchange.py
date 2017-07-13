@@ -386,10 +386,14 @@ class AECDHKeyExchange(KeyExchange):
         #Get client supported groups
         client_curves = self.clientHello.getExtension(\
                 ExtensionType.supported_groups)
-        if client_curves is None or client_curves.groups is None or \
-                len(client_curves.groups) == 0:
+        if client_curves is None:
+            # in case there is no extension, we can pick any curve, assume
+            # the most common
+            client_curves = [GroupName.secp256r1]
+        elif not client_curves.groups:
             raise TLSInternalError("Can't do ECDHE with no client curves")
-        client_curves = client_curves.groups
+        else:
+            client_curves = client_curves.groups
 
         #Pick first client preferred group we support
         self.group_id = getFirstMatching(client_curves, self.acceptedCurves)

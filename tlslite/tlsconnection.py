@@ -1555,6 +1555,15 @@ class TLSConnection(TLSRecordLayer):
                 for result in self._sendMsg(alert):
                     yield result
 
+        # sanity check the EMS extension
+        emsExt = clientHello.getExtension(ExtensionType.extended_master_secret)
+        if emsExt and emsExt.extData:
+            for result in self._sendError(
+                    AlertDescription.decode_error,
+                    "Non empty payload of the Extended "
+                    "Master Secret extension"):
+                yield result
+
         #If client's version is too high, propose my highest version
         elif clientHello.client_version > settings.maxVersion:
             self.version = settings.maxVersion
@@ -1573,7 +1582,9 @@ class TLSConnection(TLSRecordLayer):
         #Check if there's intersection between supported curves by client and
         #server
         client_groups = clientHello.getExtension(ExtensionType.supported_groups)
-        group_intersect = []
+        # in case the client didn't advertise any curves, we can pick any,
+        # but limit the choice to the most common
+        group_intersect = [GroupName.secp256r1]
         # if there is no extension, then allow DHE
         ffgroup_intersect = [GroupName.ffdhe2048]
         if client_groups is not None:
