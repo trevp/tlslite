@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.7.0-alpha5                                    2017-06-30
+tlslite-ng version 0.7.0-alpha6                                    2017-07-13
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -57,6 +57,7 @@ Implemented features of TLS include:
 * Extended master secret
 * padding extension
 * keying material exporter
+* RSA-PSS signatures in TLSv1.2, RSA-PSS in certificates (TLSv1.3 extension)
 * (experimental) TACK extension
 
 2 Licenses/Acknowledgements
@@ -587,6 +588,7 @@ encrypt-then-MAC mode for CBC ciphers.
 0.7.0 - in-dev
 
 * basic support for RSA-PSS (Tomas Foukal)
+* support for RSA-PSS in TLSv1.2
 * better documentation for Parser and ASN1Parser
 * stricter checks on network messages
 * faster Codec (faster encoding of messages to binary format)
@@ -601,7 +603,10 @@ encrypt-then-MAC mode for CBC ciphers.
 * fix interoperability issue in DHE key exchange (failure happening in about
   1 in 256 negotiations) caused by handling of Server Key Exchange messages
 * Fix incorrect handling of Extended Master Secret with client certificates,
-  follow RFC recommendations with regards to session resumption.
+  follow RFC recommendations with regards to session resumption, reject
+  non-empty
+* Allow negotiation of ECDHE ciphersuites even if client doesn't advertise
+  any curves, assume P-256 curve support.
 
 0.6.0 - 2016-09-07
 

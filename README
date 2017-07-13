@@ -12,8 +12,9 @@ Functionality implemented include:
  - MD5, SHA1, SHA256 and SHA384 HMACs as well as AEAD mode of operation with
    GCM or Poly1305 authenticator
  - RSA, DHE_RSA and ECDHE_RSA key exchange
- - full set of signature hashes (md5, sha1, sha224, sha256, sha384 and sha512)
-   for ServerKeyExchange and CertfificateVerify in TLS v1.2
+ - full set of signature hashes (md5, sha1, sha224, sha256, sha384, sha512,
+   rsa_pss_sha256, rsa_pss_sha384 and rsa_pss_sha512) for ServerKeyExchange
+   and CertfificateVerify in TLS v1.2
  - secp256r1, secp384r1, secp521r1, secp256k1, secp224r1 and secp192r1 curves
    for ECDHE_RSA key exchange (support for last two depends on the version
    of ecdsa library used)
