@@ -1555,6 +1555,15 @@ class TLSConnection(TLSRecordLayer):
                 for result in self._sendMsg(alert):
                     yield result
 
+        # sanity check the EMS extension
+        emsExt = clientHello.getExtension(ExtensionType.extended_master_secret)
+        if emsExt and emsExt.extData:
+            for result in self._sendError(
+                    AlertDescription.decode_error,
+                    "Non empty payload of the Extended "
+                    "Master Secret extension"):
+                yield result
+
         #If client's version is too high, propose my highest version
         elif clientHello.client_version > settings.maxVersion:
             self.version = settings.maxVersion
