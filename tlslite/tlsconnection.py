@@ -1582,7 +1582,9 @@ class TLSConnection(TLSRecordLayer):
         #Check if there's intersection between supported curves by client and
         #server
         client_groups = clientHello.getExtension(ExtensionType.supported_groups)
-        group_intersect = []
+        # in case the client didn't advertise any curves, we can pick any,
+        # but limit the choice to the most common
+        group_intersect = [GroupName.secp256r1]
         # if there is no extension, then allow DHE
         ffgroup_intersect = [GroupName.ffdhe2048]
         if client_groups is not None:

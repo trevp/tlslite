@@ -19,7 +19,7 @@ from tlslite.handshakesettings import HandshakeSettings
 from tlslite.messages import ServerHello, ClientHello, ServerKeyExchange,\
         CertificateRequest, ClientKeyExchange
 from tlslite.constants import CipherSuite, CertificateType, AlertDescription, \
-        HashAlgorithm, SignatureAlgorithm, GroupName
+        HashAlgorithm, SignatureAlgorithm, GroupName, ECCurveType
 from tlslite.errors import TLSLocalAlert, TLSIllegalParameterException, \
         TLSDecryptionFailed, TLSInsufficientSecurity, TLSUnknownPSKIdentity, \
         TLSInternalError
@@ -1133,8 +1133,11 @@ class TestECDHE_RSAKeyExchange(unittest.TestCase):
 
     def test_ECDHE_key_exchange_with_missing_curves(self):
         self.client_hello.extensions = [SNIExtension().create(bytearray(b"a"))]
-        with self.assertRaises(TLSInternalError):
-            self.keyExchange.makeServerKeyExchange('sha1')
+
+        ske = self.keyExchange.makeServerKeyExchange('sha1')
+
+        self.assertEqual(ske.curve_type, ECCurveType.named_curve)
+        self.assertEqual(ske.named_curve, GroupName.secp256r1)
 
     def test_ECDHE_key_exchange_with_no_mutual_curves(self):
         ext = SupportedGroupsExtension().create([GroupName.secp160r1])
