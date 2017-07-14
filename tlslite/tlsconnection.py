@@ -23,6 +23,7 @@ from .session import Session
 from .constants import *
 from .utils.cryptomath import getRandomBytes
 from .utils.dns_utils import is_valid_hostname
+from .utils.lists import getFirstMatching
 from .errors import *
 from .messages import *
 from .mathtls import *
@@ -1583,29 +1584,27 @@ class TLSConnection(TLSRecordLayer):
 
         #Check if there's intersection between supported curves by client and
         #server
-        client_groups = clientHello.getExtension(ExtensionType.supported_groups)
-        # in case the client didn't advertise any curves, we can pick any,
-        # but limit the choice to the most common
-        group_intersect = [GroupName.secp256r1]
-        # if there is no extension, then allow DHE
-        ffgroup_intersect = [GroupName.ffdhe2048]
-        if client_groups is not None:
-            client_groups = client_groups.groups
-            if client_groups is None:
-                client_groups = []
-            server_groups = self._curveNamesToList(settings)
-            group_intersect = [x for x in client_groups if x in server_groups]
+        clientGroups = clientHello.getExtension(ExtensionType.supported_groups)
+        # in case the client didn't advertise any curves, we can pick any so
+        # enable ECDHE
+        ecGroupIntersect = True
+        # if there is no extension, then enable DHE
+        ffGroupIntersect = True
+        if clientGroups is not None:
+            clientGroups = clientGroups.groups
+            serverGroups = self._curveNamesToList(settings)
+            ecGroupIntersect = getFirstMatching(clientGroups, serverGroups)
             # RFC 7919 groups
-            server_groups = self._groupNamesToList(settings)
-            ffgroup_intersect = [i for i in client_groups
-                                 if i in server_groups]
+            serverGroups = self._groupNamesToList(settings)
+            ffGroupIntersect = getFirstMatching(clientGroups, serverGroups)
             # if there is no overlap, but there are no FFDHE groups listed,
             # allow DHE, prohibit otherwise
-            if not ffgroup_intersect:
-                if any(i for i in client_groups if i in range(256, 512)):
-                    ffgroup_intersect = []
+            if not ffGroupIntersect:
+                if clientGroups and \
+                        any(i for i in clientGroups if i in range(256, 512)):
+                    ffGroupIntersect = False
                 else:
-                    ffgroup_intersect = [GroupName.ffdhe2048]
+                    ffGroupIntersect = True
 
 
         #Now that the version is known, limit to only the ciphers available to
@@ -1617,10 +1616,10 @@ class TLSConnection(TLSRecordLayer):
                     CipherSuite.getSrpCertSuites(settings, self.version)
             cipherSuites += CipherSuite.getSrpSuites(settings, self.version)
         elif certChain:
-            if group_intersect:
+            if ecGroupIntersect:
                 cipherSuites += CipherSuite.getEcdheCertSuites(settings,
                                                                self.version)
-            if ffgroup_intersect:
+            if ffGroupIntersect:
                 cipherSuites += CipherSuite.getDheCertSuites(settings,
                                                              self.version)
             cipherSuites += CipherSuite.getCertSuites(settings, self.version)
@@ -1777,8 +1776,8 @@ class TLSConnection(TLSRecordLayer):
             if cipherSuite in clientHello.cipher_suites:
                 break
         else:
-            if client_groups and \
-                    any(i in range(256, 512) for i in client_groups) and \
+            if clientGroups and \
+                    any(i in range(256, 512) for i in clientGroups) and \
                     any(i in CipherSuite.dhAllSuites
                         for i in clientHello.cipher_suites):
                 for result in self._sendError(
