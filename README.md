@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.7.0-alpha6                                    2017-07-13
+tlslite-ng version 0.7.0-alpha7                                    2017-07-14
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```

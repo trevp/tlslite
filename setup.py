@@ -4,15 +4,19 @@
 # See the LICENSE file for legal information regarding use of this file.
 
 from distutils.core import setup
+import os
 
-
+here = os.path.abspath(os.path.dirname(__file__))
+with open(os.path.join(here, "README")) as f:
+    README = f.read()
 
 setup(name="tlslite-ng",
-      version="0.7.0-alpha6",
+      version="0.7.0-alpha7",
       author="Hubert Kario",
       author_email="hkario@redhat.com",
       url="https://github.com/tomato42/tlslite-ng",
       description="Pure python implementation of SSL and TLS.",
+      long_description=README,
       license="LGPLv2",
       scripts=["scripts/tls.py", "scripts/tlsdb.py"],
       packages=["tlslite", "tlslite.utils", "tlslite.integration"],
