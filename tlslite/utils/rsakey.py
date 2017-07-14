@@ -265,7 +265,7 @@ class RSAKey(object):
         @param sLen: Length of salt
         """
         if len(bytearray(S)) != len(numberToByteArray(self.n)):
-            raise InvalidSignature
+            raise InvalidSignature("Invalid signature")
         s = bytesToNumber(S)
         m = self._rawPublicKeyOp(s)
         EM = numberToByteArray(m, divceil(numBits(self.n) - 1, 8))
@@ -361,11 +361,14 @@ class RSAKey(object):
         elif padding == 'pkcs1':
             if hashAlg is not None:
                 bytes = self.addPKCS1Prefix(bytes, hashAlg)
-            r = self._raw_pkcs1_verify(sigBytes, bytes)
-            return r
+            res = self._raw_pkcs1_verify(sigBytes, bytes)
+            return res
         elif padding == "pss":
-            r = self.RSASSA_PSS_verify(bytes, sigBytes, hashAlg, saltLen)
-            return r
+            try:
+                res = self.RSASSA_PSS_verify(bytes, sigBytes, hashAlg, saltLen)
+            except InvalidSignature:
+                res = False
+            return res
         else:
             raise UnknownRSAType("Unknown RSA algorithm type")
 

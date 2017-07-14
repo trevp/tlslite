@@ -1447,6 +1447,38 @@ class TestRSAPKCS1(unittest.TestCase):
         self.assertTrue(self.rsa.hashAndVerify(sigBytes,
                                                self.message, "PKCS1",
                                                'sha512'))
+    def test_verify_PKCS1_sha512(self):
+        sigBytes = bytearray(
+            b'\x8b\x57\xa6\xf9\x16\x06\xba\x48\x13\xb8\x35\x36\x58\x1e' +
+            b'\xb1\x5d\x72\x87\x5d\xcb\xb0\xa5\x14\xb4\xc0\x3b\x6d\xf8' +
+            b'\xf2\x02\xfa\x85\x56\xe4\x00\x21\x22\xbe\xda\xf2\x6e\xaa' +
+            b'\x10\x7e\xce\x48\x60\x75\x23\x79\xec\x8b\xaa\x64\xf4\x00' +
+            b'\x98\xbe\x92\xa4\x21\x4b\x69\xe9\x8b\x24\xae\x1c\xc4\xd2' +
+            b'\xf4\x57\xcf\xf4\xf4\x05\xa8\x2e\xf9\x4c\x5f\x8d\xfa\xad' +
+            b'\xd3\x07\x8d\x7a\x92\x24\x88\x7d\xb8\x6c\x32\x18\xbf\x53' +
+            b'\xc9\x77\x9e\xd0\x98\x95\xb2\xcf\xb8\x4f\x1f\xad\x2e\x5b' +
+            b'\x1f\x8e\x4b\x20\x9c\x57\x85\xb9\xce\x33\x2c\xd4\x13\x56' +
+            b'\xc1\x71')
+        self.assertTrue(self.rsa.verify(sigBytes,
+                                        secureHash(self.message, "sha512"),
+                                        hashAlg="sha512"))
+
+    def test_verify_invalid_PKCS1_sha512(self):
+        sigBytes = bytearray(
+            b'\x0b\x57\xa6\xf9\x16\x06\xba\x48\x13\xb8\x35\x36\x58\x1e' +
+            b'\xb1\x5d\x72\x87\x5d\xcb\xb0\xa5\x14\xb4\xc0\x3b\x6d\xf8' +
+            b'\xf2\x02\xfa\x85\x56\xe4\x00\x21\x22\xbe\xda\xf2\x6e\xaa' +
+            b'\x10\x7e\xce\x48\x60\x75\x23\x79\xec\x8b\xaa\x64\xf4\x00' +
+            b'\x98\xbe\x92\xa4\x21\x4b\x69\xe9\x8b\x24\xae\x1c\xc4\xd2' +
+            b'\xf4\x57\xcf\xf4\xf4\x05\xa8\x2e\xf9\x4c\x5f\x8d\xfa\xad' +
+            b'\xd3\x07\x8d\x7a\x92\x24\x88\x7d\xb8\x6c\x32\x18\xbf\x53' +
+            b'\xc9\x77\x9e\xd0\x98\x95\xb2\xcf\xb8\x4f\x1f\xad\x2e\x5b' +
+            b'\x1f\x8e\x4b\x20\x9c\x57\x85\xb9\xce\x33\x2c\xd4\x13\x56' +
+            b'\xc1\x71')
+        self.assertFalse(self.rsa.verify(sigBytes,
+                                         secureHash(self.message, "sha512"),
+                                         hashAlg="sha512"))
+
 
 # because RSAKey is an abstract class...
 class TestRSAKey(unittest.TestCase):
@@ -1528,6 +1560,34 @@ class TestRSAKey(unittest.TestCase):
 
         self.assertTrue(rsa.hashAndVerify(sigBytes, bytearray(b'text to sign'),
                                           "PSS", 'sha1'))
+
+    def test_verify_PSS(self):
+        rsa = Python_RSAKey(self.N, self.e)
+
+        sigBytes = bytearray(
+            b'op\xfa\x1d\xfa\xe8i\xf2zV\x9a\xf4\x8d\xf1\xaf:\x1a\xb6\xce' +
+            b'\xae3\xd1\xc2E[EG\x8ba\xfe.\x8e\x9dJ\xc9<Q\x05\xeaO\x8c\x8b' +
+            b'\x01\xaer\x0f\xd8R\xb1\x1f\xb0\x06\x95\\\x8c\xae\xc9\xec' +
+            b'\xa5{\x13\xa2ms')
+
+        self.assertTrue(rsa.verify(sigBytes,
+                                   secureHash(bytearray(b'text to sign'),
+                                              'sha1'),
+                                   "pss", 'sha1', 0))
+
+    def test_verify_invalid_PSS(self):
+        rsa = Python_RSAKey(self.N, self.e)
+
+        sigBytes = bytearray(
+            b'Xp\xfa\x1d\xfa\xe8i\xf2zV\x9a\xf4\x8d\xf1\xaf:\x1a\xb6\xce' +
+            b'\xae3\xd1\xc2E[EG\x8ba\xfe.\x8e\x9dJ\xc9<Q\x05\xeaO\x8c\x8b' +
+            b'\x01\xaer\x0f\xd8R\xb1\x1f\xb0\x06\x95\\\x8c\xae\xc9\xec' +
+            b'\xa5{\x13\xa2ms')
+
+        self.assertFalse(rsa.verify(sigBytes,
+                                    secureHash(bytearray(b'text to sign'),
+                                               'sha1'),
+                                    "pss", 'sha1', 0))
 
     def test_hashAndVerify_without_NULL_encoding_of_SHA1(self):
         rsa = Python_RSAKey(self.N, self.e)
