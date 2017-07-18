@@ -1426,6 +1426,101 @@ class TestECDHE_RSAKeyExchange_with_x25519(unittest.TestCase):
 
         self.assertEqual(client_premaster, server_premaster)
 
+    def test_client_ECDHE_key_exchange_with_invalid_size(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.x25519])
+        client_premaster = client_keyExchange.processServerKeyExchange(\
+                None,
+                srv_key_ex)
+        clientKeyExchange = client_keyExchange.makeClientKeyExchange()
+        clientKeyExchange.ecdh_Yc += bytearray(b'\x00')
+
+        with self.assertRaises(TLSIllegalParameterException):
+            self.keyExchange.processClientKeyExchange(clientKeyExchange)
+
+    def test_client_ECDHE_key_exchange_with_all_zero_share(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.x25519])
+        client_premaster = client_keyExchange.processServerKeyExchange(\
+                None,
+                srv_key_ex)
+        clientKeyExchange = client_keyExchange.makeClientKeyExchange()
+        clientKeyExchange.ecdh_Yc = bytearray(32)
+
+        with self.assertRaises(TLSIllegalParameterException):
+            self.keyExchange.processClientKeyExchange(clientKeyExchange)
+
+    def test_client_ECDHE_key_exchange_with_high_bit_set(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.x25519])
+        client_premaster = client_keyExchange.processServerKeyExchange(\
+                None,
+                srv_key_ex)
+        clientKeyExchange = client_keyExchange.makeClientKeyExchange()
+        clientKeyExchange.ecdh_Yc[-1] |= 0x80
+
+        S = self.keyExchange.processClientKeyExchange(clientKeyExchange)
+
+        # we have modified public value, so can't actually compute shared
+        # value as a result, just sanity check
+        self.assertEqual(32, len(S))
+        self.assertNotEqual(bytearray(32), S)
+
+    def test_client_with_invalid_size_ECDHE_key_exchange(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.x25519])
+        srv_key_ex.ecdh_Ys += bytearray(b'\x00')
+        with self.assertRaises(TLSIllegalParameterException):
+            client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+    def test_client_with_all_zero_ECDHE_key_exchange(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.x25519])
+        srv_key_ex.ecdh_Ys = bytearray(32)
+        with self.assertRaises(TLSIllegalParameterException):
+            client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+    def test_client_with_high_bit_set_ECDHE_key_exchange(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.x25519])
+        srv_key_ex.ecdh_Ys[-1] |= 0x80
+        S = client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+        # we have modified public value, so can't calculate the resulting
+        # shared secret as a result, perform just a sanity check
+        self.assertEqual(32, len(S))
+        self.assertNotEqual(bytearray(32), S)
+
 
 class TestECDHE_RSAKeyExchange_with_x448(unittest.TestCase):
     def setUp(self):
@@ -1492,3 +1587,44 @@ class TestECDHE_RSAKeyExchange_with_x448(unittest.TestCase):
                 clientKeyExchange)
 
         self.assertEqual(client_premaster, server_premaster)
+
+    def test_client_ECDHE_key_exchange_with_invalid_size(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.x448])
+        client_premaster = client_keyExchange.processServerKeyExchange(\
+                None,
+                srv_key_ex)
+        clientKeyExchange = client_keyExchange.makeClientKeyExchange()
+        clientKeyExchange.ecdh_Yc += bytearray(b'\x00')
+
+        with self.assertRaises(TLSIllegalParameterException):
+            self.keyExchange.processClientKeyExchange(clientKeyExchange)
+
+    def test_client_with_invalid_size_ECDHE_key_share(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.x448])
+        srv_key_ex.ecdh_Ys += bytearray(b'\x00')
+        with self.assertRaises(TLSIllegalParameterException):
+            client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+    def test_client_with_all_zero_ECDHE_key_share(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.x448])
+        srv_key_ex.ecdh_Ys = bytearray(56)
+        with self.assertRaises(TLSIllegalParameterException):
+            client_keyExchange.processServerKeyExchange(None, srv_key_ex)

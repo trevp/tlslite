@@ -470,6 +470,20 @@ class AECDHKeyExchange(KeyExchange):
 
     ECDHE without signing serverKeyExchange useful for anonymous ECDH
     """
+
+    @staticmethod
+    def _non_zero_check(value):
+        """
+        Verify using constant time operation that the bytearray is not zero
+
+        @raises TLSIllegalParameterException: if the value is all zero
+        """
+        summa = 0
+        for i in value:
+            summa |= i
+        if summa == 0:
+            raise TLSIllegalParameterException("Invalid key share")
+
     def __init__(self, cipherSuite, clientHello, serverHello, acceptedCurves,
                  defaultCurve=GroupName.secp256r1):
         super(AECDHKeyExchange, self).__init__(cipherSuite, clientHello,
@@ -530,9 +544,14 @@ class AECDHKeyExchange(KeyExchange):
             ecdhYc = clientKeyExchange.ecdh_Yc
 
             if self.group_id == GroupName.x25519:
+                if len(ecdhYc) != 32:
+                    raise TLSIllegalParameterException("Invalid key share")
                 sharedSecret = x25519(self.ecdhXs, ecdhYc)
             else:
+                if len(ecdhYc) != 56:
+                    raise TLSIllegalParameterException("Invalid key share")
                 sharedSecret = x448(self.ecdhXs, ecdhYc)
+            self._non_zero_check(sharedSecret)
             return sharedSecret
         else:
             curveName = GroupName.toRepr(self.group_id)
@@ -563,12 +582,20 @@ class AECDHKeyExchange(KeyExchange):
                 generator = bytearray(X25519_G)
                 fun = x25519
                 ecdhXc = getRandomBytes(divceil(X25519_ORDER, 8))
+                if len(serverKeyExchange.ecdh_Ys) != 32:
+                    raise TLSIllegalParameterException("Invalid server key "
+                                                       "share")
             else:
                 generator = bytearray(X448_G)
                 fun = x448
                 ecdhXc = getRandomBytes(divceil(X448_ORDER, 8))
+                if len(serverKeyExchange.ecdh_Ys) != 56:
+                    raise TLSIllegalParameterException("Invalid server key "
+                                                       "share")
             self.ecdhYc = fun(ecdhXc, generator)
             S = fun(ecdhXc, serverKeyExchange.ecdh_Ys)
+            # check if the secret is not all-zero
+            self._non_zero_check(S)
             return S
         else:
             curveName = GroupName.toStr(serverKeyExchange.named_curve)
