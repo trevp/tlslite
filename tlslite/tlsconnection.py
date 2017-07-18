@@ -1532,12 +1532,23 @@ class TLSConnection(TLSRecordLayer):
 
         # Sanity check the SNI extension
         sniExt = clientHello.getExtension(ExtensionType.server_name)
+        # check if extension is well formed
+        if sniExt and (not sniExt.extData or not sniExt.serverNames):
+            for result in self._sendError(
+                    AlertDescription.decode_error,
+                    "Recevived SNI extension is malformed"):
+                yield result
         if sniExt and sniExt.hostNames:
             # RFC 6066 limitation
             if len(sniExt.hostNames) > 1:
                 for result in self._sendError(
                         AlertDescription.illegal_parameter,
                         "Client sent multiple host names in SNI extension"):
+                    yield result
+            if not sniExt.hostNames[0]:
+                for result in self._sendError(
+                        AlertDescription.decode_error,
+                        "Received SNI extension is malformed"):
                     yield result
             try:
                 name = sniExt.hostNames[0].decode('ascii', 'strict')
