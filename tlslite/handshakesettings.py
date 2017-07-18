@@ -29,7 +29,8 @@ ALL_RSA_SIGNATURE_HASHES = RSA_SIGNATURE_HASHES + ["md5"]
 RSA_SCHEMES = ["pss", "pkcs1"]
 # while secp521r1 is the most secure, it's also much slower than the others
 # so place it as the last one
-CURVE_NAMES = ["secp384r1", "secp256r1", "secp521r1"]
+CURVE_NAMES = ["x25519", "x448", "secp384r1", "secp256r1",
+               "secp521r1"]
 ALL_CURVE_NAMES = CURVE_NAMES + ["secp256k1"]
 if ecdsaAllCurves:
     ALL_CURVE_NAMES += ["secp224r1", "secp192r1"]
