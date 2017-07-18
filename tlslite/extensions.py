@@ -524,6 +524,9 @@ class SNIExtension(TLSExtension):
             self.serverNames += [SNIExtension.ServerName(sn_type, sn_name)]
         p.stopLengthCheck()
 
+        if p.getRemainingLength():
+            raise SyntaxError()
+
         return self
 
 class ClientCertTypeExtension(VarListExtension):
