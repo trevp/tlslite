@@ -1592,6 +1592,11 @@ class TLSConnection(TLSRecordLayer):
         ffGroupIntersect = True
         if clientGroups is not None:
             clientGroups = clientGroups.groups
+            if not clientGroups:
+                for result in self._sendError(
+                        AlertDescription.decode_error,
+                        "Received malformed supported_groups extension"):
+                    yield result
             serverGroups = self._curveNamesToList(settings)
             ecGroupIntersect = getFirstMatching(clientGroups, serverGroups)
             # RFC 7919 groups
