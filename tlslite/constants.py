@@ -476,6 +476,68 @@ class CipherSuite:
     # SSL2 ciphersuites which use 192 bit key
     ssl2_192Key = [SSL_CK_DES_192_EDE3_CBC_WITH_MD5]
 
+    #
+    # SSLv3 and TLS cipher suite definitions
+    #
+
+    # RFC 5246 - TLS v1.2 Protocol
+    TLS_RSA_WITH_NULL_MD5 = 0x0001
+    ietfNames[0x0001] = 'TLS_RSA_WITH_NULL_MD5'
+    TLS_RSA_WITH_NULL_SHA = 0x0002
+    ietfNames[0x0002] = 'TLS_RSA_WITH_NULL_SHA'
+    TLS_RSA_WITH_RC4_128_MD5 = 0x0004
+    ietfNames[0x0004] = 'TLS_RSA_WITH_RC4_128_MD5'
+    TLS_RSA_WITH_RC4_128_SHA = 0x0005
+    ietfNames[0x0005] = 'TLS_RSA_WITH_RC4_128_SHA'
+    TLS_RSA_WITH_3DES_EDE_CBC_SHA = 0x000A
+    ietfNames[0x000A] = 'TLS_RSA_WITH_3DES_EDE_CBC_SHA'
+    TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA = 0x0016
+    ietfNames[0x0016] = 'TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA'
+    TLS_DH_ANON_WITH_RC4_128_MD5 = 0x0018
+    ietfNames[0x0018] = 'TLS_DH_ANON_WITH_RC4_128_MD5'
+    TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA = 0x001B
+    ietfNames[0x001B] = 'TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA'
+    TLS_RSA_WITH_AES_128_CBC_SHA = 0x002F
+    ietfNames[0x002F] = 'TLS_RSA_WITH_AES_128_CBC_SHA'
+    TLS_DHE_RSA_WITH_AES_128_CBC_SHA = 0x0033
+    ietfNames[0x0033] = 'TLS_DHE_RSA_WITH_AES_128_CBC_SHA'
+    TLS_DH_ANON_WITH_AES_128_CBC_SHA = 0x0034
+    ietfNames[0x0034] = 'TLS_DH_ANON_WITH_AES_128_CBC_SHA'
+    TLS_RSA_WITH_AES_256_CBC_SHA = 0x0035
+    ietfNames[0x0035] = 'TLS_RSA_WITH_AES_256_CBC_SHA'
+    TLS_DHE_RSA_WITH_AES_256_CBC_SHA = 0x0039
+    ietfNames[0x0039] = 'TLS_DHE_RSA_WITH_AES_256_CBC_SHA'
+    TLS_DH_ANON_WITH_AES_256_CBC_SHA = 0x003A
+    ietfNames[0x003A] = 'TLS_DH_ANON_WITH_AES_256_CBC_SHA'
+    TLS_RSA_WITH_NULL_SHA256 = 0x003B
+    ietfNames[0x003B] = 'TLS_RSA_WITH_NULL_SHA256'
+    TLS_RSA_WITH_AES_128_CBC_SHA256 = 0x003C
+    ietfNames[0x003C] = 'TLS_RSA_WITH_AES_128_CBC_SHA256'
+    TLS_RSA_WITH_AES_256_CBC_SHA256 = 0x003D
+    ietfNames[0x003D] = 'TLS_RSA_WITH_AES_256_CBC_SHA256'
+    TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 = 0x0067
+    ietfNames[0x0067] = 'TLS_DHE_RSA_WITH_AES_128_CBC_SHA256'
+    TLS_DHE_RSA_WITH_AES_256_CBC_SHA256 = 0x006B
+    ietfNames[0x006B] = 'TLS_DHE_RSA_WITH_AES_256_CBC_SHA256'
+    TLS_DH_ANON_WITH_AES_128_CBC_SHA256 = 0x006C
+    ietfNames[0x006C] = 'TLS_DH_ANON_WITH_AES_128_CBC_SHA256'
+    TLS_DH_ANON_WITH_AES_256_CBC_SHA256 = 0x006D
+    ietfNames[0x006D] = 'TLS_DH_ANON_WITH_AES_256_CBC_SHA256'
+
+    # RFC 5288 - AES-GCM ciphers for TLSv1.2
+    TLS_RSA_WITH_AES_128_GCM_SHA256 = 0x009C
+    ietfNames[0x009C] = 'TLS_RSA_WITH_AES_128_GCM_SHA256'
+    TLS_RSA_WITH_AES_256_GCM_SHA384 = 0x009D
+    ietfNames[0x009D] = 'TLS_RSA_WITH_AES_256_GCM_SHA384'
+    TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 = 0x009E
+    ietfNames[0x009E] = 'TLS_DHE_RSA_WITH_AES_128_GCM_SHA256'
+    TLS_DHE_RSA_WITH_AES_256_GCM_SHA384 = 0x009F
+    ietfNames[0x009F] = 'TLS_DHE_RSA_WITH_AES_256_GCM_SHA384'
+    TLS_DH_ANON_WITH_AES_128_GCM_SHA256 = 0x00A6
+    ietfNames[0x00A6] = 'TLS_DH_ANON_WITH_AES_128_GCM_SHA256'
+    TLS_DH_ANON_WITH_AES_256_GCM_SHA384 = 0x00A7
+    ietfNames[0x00A7] = 'TLS_DH_ANON_WITH_AES_256_GCM_SHA384'
+
     # Weird pseudo-ciphersuite from RFC 5746
     # Signals that "secure renegotiation" is supported
     # We actually don't do any renegotiation, but this
@@ -488,95 +550,46 @@ class CipherSuite:
     TLS_FALLBACK_SCSV = 0x5600
     ietfNames[0x5600] = 'TLS_FALLBACK_SCSV'
 
-    # RFC 5054 - Secure Remote Password (SRP) Protocol for TLS Authentication
-    TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA  = 0xC01A
-    ietfNames[0xC01A] = 'TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA'
-    TLS_SRP_SHA_WITH_AES_128_CBC_SHA = 0xC01D
-    ietfNames[0xC01D] = 'TLS_SRP_SHA_WITH_AES_128_CBC_SHA'
-    TLS_SRP_SHA_WITH_AES_256_CBC_SHA = 0xC020
-    ietfNames[0xC020] = 'TLS_SRP_SHA_WITH_AES_256_CBC_SHA'
-
-    # RFC 5054 - Secure Remote Password (SRP) Protocol for TLS Authentication
-    TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA = 0xC01B
-    ietfNames[0xC01B] = 'TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA'
-    TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA = 0xC01E
-    ietfNames[0xC01E] = 'TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA'
-    TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA = 0xC021
-    ietfNames[0xC021] = 'TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA'
-
-    # RFC 5246 - TLS v1.2 Protocol
-    TLS_RSA_WITH_NULL_MD5 = 0x0001
-    ietfNames[0x0001] = 'TLS_RSA_WITH_NULL_MD5'
-    TLS_RSA_WITH_NULL_SHA = 0x0002
-    ietfNames[0x0002] = 'TLS_RSA_WITH_NULL_SHA'
-    TLS_RSA_WITH_NULL_SHA256 = 0x003B
-    ietfNames[0x003B] = 'TLS_RSA_WITH_NULL_SHA256'
-
-    # RFC 5246 - TLS v1.2 Protocol
-    TLS_RSA_WITH_3DES_EDE_CBC_SHA = 0x000A
-    ietfNames[0x000A] = 'TLS_RSA_WITH_3DES_EDE_CBC_SHA'
-    TLS_RSA_WITH_AES_128_CBC_SHA = 0x002F
-    ietfNames[0x002F] = 'TLS_RSA_WITH_AES_128_CBC_SHA'
-    TLS_RSA_WITH_AES_256_CBC_SHA = 0x0035
-    ietfNames[0x0035] = 'TLS_RSA_WITH_AES_256_CBC_SHA'
-    TLS_RSA_WITH_RC4_128_SHA = 0x0005
-    ietfNames[0x0005] = 'TLS_RSA_WITH_RC4_128_SHA'
-
-    # RFC 5246 - TLS v1.2 Protocol
-    TLS_RSA_WITH_RC4_128_MD5 = 0x0004
-    ietfNames[0x0004] = 'TLS_RSA_WITH_RC4_128_MD5'
-
-    # RFC 5246 - TLS v1.2 Protocol
-    TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA = 0x0016
-    ietfNames[0x0016] = 'TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA'
-    TLS_DHE_RSA_WITH_AES_128_CBC_SHA = 0x0033
-    ietfNames[0x0033] = 'TLS_DHE_RSA_WITH_AES_128_CBC_SHA'
-    TLS_DHE_RSA_WITH_AES_256_CBC_SHA = 0x0039
-    ietfNames[0x0039] = 'TLS_DHE_RSA_WITH_AES_256_CBC_SHA'
-
-    # RFC 5246 - TLS v1.2 Protocol
-    TLS_DH_ANON_WITH_RC4_128_MD5 = 0x0018
-    ietfNames[0x0018] = 'TLS_DH_ANON_WITH_RC4_128_MD5'
-    TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA = 0x001B
-    ietfNames[0x001B] = 'TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA'
-    TLS_DH_ANON_WITH_AES_128_CBC_SHA = 0x0034
-    ietfNames[0x0034] = 'TLS_DH_ANON_WITH_AES_128_CBC_SHA'
-    TLS_DH_ANON_WITH_AES_256_CBC_SHA = 0x003A
-    ietfNames[0x003A] = 'TLS_DH_ANON_WITH_AES_256_CBC_SHA'
-    TLS_DH_ANON_WITH_AES_128_CBC_SHA256 = 0x006C
-    ietfNames[0x006C] = 'TLS_DH_ANON_WITH_AES_128_CBC_SHA256'
-    TLS_DH_ANON_WITH_AES_256_CBC_SHA256 = 0x006D
-    ietfNames[0x006D] = 'TLS_DH_ANON_WITH_AES_256_CBC_SHA256'
-    TLS_DH_ANON_WITH_AES_128_GCM_SHA256 = 0x00A6
-    ietfNames[0x00A6] = 'TLS_DH_ANON_WITH_AES_128_GCM_SHA256'
-    TLS_DH_ANON_WITH_AES_256_GCM_SHA384 = 0x00A7
-    ietfNames[0x00A7] = 'TLS_DH_ANON_WITH_AES_256_GCM_SHA384'
-
-    # RFC 5246 - TLS v1.2 Protocol
-    TLS_RSA_WITH_AES_128_CBC_SHA256 = 0x003C
-    ietfNames[0x003C] = 'TLS_RSA_WITH_AES_128_CBC_SHA256'
-    TLS_RSA_WITH_AES_256_CBC_SHA256 = 0x003D
-    ietfNames[0x003D] = 'TLS_RSA_WITH_AES_256_CBC_SHA256'
-
-    # RFC 5246 - TLS v1.2
-    TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 = 0x0067
-    ietfNames[0x0067] = 'TLS_DHE_RSA_WITH_AES_128_CBC_SHA256'
-    TLS_DHE_RSA_WITH_AES_256_CBC_SHA256 = 0x006B
-    ietfNames[0x006B] = 'TLS_DHE_RSA_WITH_AES_256_CBC_SHA256'
-
-    # RFC 5288 - AES-GCM ciphers for TLSv1.2
-    TLS_RSA_WITH_AES_128_GCM_SHA256 = 0x009C
-    ietfNames[0x009C] = 'TLS_RSA_WITH_AES_128_GCM_SHA256'
-    TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 = 0x009E
-    ietfNames[0x009E] = 'TLS_DHE_RSA_WITH_AES_128_GCM_SHA256'
-    TLS_RSA_WITH_AES_256_GCM_SHA384 = 0x009D
-    ietfNames[0x009D] = 'TLS_RSA_WITH_AES_256_GCM_SHA384'
-    TLS_DHE_RSA_WITH_AES_256_GCM_SHA384 = 0x009F
-    ietfNames[0x009F] = 'TLS_DHE_RSA_WITH_AES_256_GCM_SHA384'
+    # RFC 4492 - ECC Cipher Suites for TLS
+    # unsupported - no support for ECDSA certificates
+    TLS_ECDH_ECDSA_WITH_NULL_SHA = 0xC001
+    ietfNames[0xC001] = 'TLS_ECDH_ECDSA_WITH_NULL_SHA'
+    TLS_ECDH_ECDSA_WITH_RC4_128_SHA = 0xC002
+    ietfNames[0xC002] = 'TLS_ECDH_ECDSA_WITH_RC4_128_SHA'
+    TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA = 0xC003
+    ietfNames[0xC003] = 'TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA'
+    TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA = 0xC004
+    ietfNames[0xC004] = 'TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA'
+    TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA = 0xC005
+    ietfNames[0xC005] = 'TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA'
+    TLS_ECDHE_ECDSA_WITH_NULL_SHA = 0xC006
+    ietfNames[0xC006] = 'TLS_ECDHE_ECDSA_WITH_NULL_SHA'
+    TLS_ECDHE_ECDSA_WITH_RC4_128_SHA = 0xC007
+    ietfNames[0xC007] = 'TLS_ECDHE_ECDSA_WITH_RC4_128_SHA'
+    TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA = 0xC008
+    ietfNames[0xC008] = 'TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA'
+    TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA = 0xC009
+    ietfNames[0xC009] = 'TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA'
+    TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA = 0xC00A
+    ietfNames[0xC00A] = 'TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA'
+    TLS_ECDH_RSA_WITH_NULL_SHA = 0xC00B
+    ietfNames[0xC00B] = 'TLS_ECDH_RSA_WITH_NULL_SHA'
+    TLS_ECDH_RSA_WITH_RC4_128_SHA = 0xC00C
+    ietfNames[0xC00C] = 'TLS_ECDH_RSA_WITH_RC4_128_SHA'
+    TLS_ECDH_RSA_WITH_3DES_EDE_CBC_SHA = 0xC00D
+    ietfNames[0xC00D] = 'TLS_ECDH_RSA_WITH_3DES_EDE_CBC_SHA'
+    TLS_ECDH_RSA_WITH_AES_128_CBC_SHA = 0xC00E
+    ietfNames[0xC00E] = 'TLS_ECDH_RSA_WITH_AES_128_CBC_SHA'
+    TLS_ECDH_RSA_WITH_AES_256_CBC_SHA = 0xC00F
+    ietfNames[0xC00F] = 'TLS_ECDH_RSA_WITH_AES_256_CBC_SHA'
 
     # RFC 4492 - ECC Cipher Suites for TLS
     TLS_ECDHE_RSA_WITH_NULL_SHA = 0xC010
     ietfNames[0xC010] = 'TLS_ECDHE_RSA_WITH_NULL_SHA'
+    TLS_ECDHE_RSA_WITH_RC4_128_SHA = 0xC011
+    ietfNames[0xC011] = 'TLS_ECDHE_RSA_WITH_RC4_128_SHA'
+    TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA = 0xC012
+    ietfNames[0xC012] = 'TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA'
     TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA = 0xC013
     ietfNames[0xC013] = 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA'
     TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA = 0xC014
@@ -592,28 +605,77 @@ class CipherSuite:
     TLS_ECDH_ANON_WITH_AES_256_CBC_SHA = 0xC019
     ietfNames[0xC019] = 'TLS_ECDH_ANON_WITH_AES_256_CBC_SHA'
 
-    # draft-ietf-tls-chacha20-poly1305-00
-    # ChaCha20/Poly1305 based Cipher Suites for TLS1.2
-    TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_draft_00 = 0xcca1
-    ietfNames[0xcca1] = 'TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_draft_00'
-    TLS_DHE_RSA_WITH_CHACHA20_POLY1305_draft_00 = 0xcca3
-    ietfNames[0xcca3] = 'TLS_DHE_RSA_WITH_CHACHA20_POLY1305_draft_00'
+    # RFC 5054 - Secure Remote Password (SRP) Protocol for TLS Authentication
+    TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA  = 0xC01A
+    ietfNames[0xC01A] = 'TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA'
+    TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA = 0xC01B
+    ietfNames[0xC01B] = 'TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA'
+    TLS_SRP_SHA_WITH_AES_128_CBC_SHA = 0xC01D
+    ietfNames[0xC01D] = 'TLS_SRP_SHA_WITH_AES_128_CBC_SHA'
+    TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA = 0xC01E
+    ietfNames[0xC01E] = 'TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA'
+    TLS_SRP_SHA_WITH_AES_256_CBC_SHA = 0xC020
+    ietfNames[0xC020] = 'TLS_SRP_SHA_WITH_AES_256_CBC_SHA'
+    TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA = 0xC021
+    ietfNames[0xC021] = 'TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA'
 
-    # RFC 7905 - ChaCha20-Poly1305 Cipher Suites for TLS
-    TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 = 0xcca8
-    ietfNames[0xcca8] = 'TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256'
-    TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256 = 0xccaa
-    ietfNames[0xccaa] = 'TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256'
+    # RFC 5289 - ECC Ciphers with SHA-256/SHA-384 HMAC and AES-GCM
+    # unsupported! - no support for ECDSA certificates
+    TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256 = 0xC023
+    ietfNames[0xC023] = 'TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256'
+    TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384 = 0xC024
+    ietfNames[0xC024] = 'TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384'
+    TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256 = 0xC025
+    ietfNames[0xC025] = 'TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256'
+    TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384 = 0xC026
+    ietfNames[0xC026] = 'TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384'
 
-    # RFC 5289 - ECC Ciphers with SHA-256/SHA284 HMAC and AES-GCM
+    # RFC 5289 - ECC Ciphers with SHA-256/SHA-384 HMAC and AES-GCM
     TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 = 0xC027
     ietfNames[0xC027] = 'TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256'
     TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384 = 0xC028
     ietfNames[0xC028] = 'TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384'
+
+    # RFC 5289 - ECC Ciphers with SHA-256/SHA-384 HMAC and AES-GCM
+    # unsupported
+    TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256 = 0xC029
+    ietfNames[0xC029] = 'TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256'
+    TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384 = 0xC02A
+    ietfNames[0xC02A] = 'TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384'
+    TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 = 0xC02B
+    ietfNames[0xC02B] = 'TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256'
+    TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 = 0xC02C
+    ietfNames[0xC02C] = 'TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384'
+    TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256 = 0xC02D
+    ietfNames[0xC02D] = 'TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256'
+    TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384 = 0xC02E
+    ietfNames[0xC02E] = 'TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384'
+
+    # RFC 5289 - ECC Ciphers with SHA-256/SHA-384 HMAC and AES-GCM
     TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 = 0xC02F
     ietfNames[0xC02F] = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
     TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 = 0xC030
     ietfNames[0xC030] = 'TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384'
+
+    # RFC 5289 - ECC Ciphers with SHA-256/SHA-384 HMAC and AES-GCM
+    # unsupported
+    TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256 = 0xC031
+    ietfNames[0xC031] = 'TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256'
+    TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384 = 0xC032
+    ietfNames[0xC032] = 'TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384'
+
+    # draft-ietf-tls-chacha20-poly1305-00
+    # ChaCha20/Poly1305 based Cipher Suites for TLS1.2
+    TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_draft_00 = 0xCCA1
+    ietfNames[0xCCA1] = 'TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_draft_00'
+    TLS_DHE_RSA_WITH_CHACHA20_POLY1305_draft_00 = 0xCCA3
+    ietfNames[0xCCA3] = 'TLS_DHE_RSA_WITH_CHACHA20_POLY1305_draft_00'
+
+    # RFC 7905 - ChaCha20-Poly1305 Cipher Suites for TLS
+    TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 = 0xCCA8
+    ietfNames[0xCCA8] = 'TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256'
+    TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256 = 0xCCAA
+    ietfNames[0xCCAA] = 'TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256'
 
 #pylint: enable = invalid-name
     #
@@ -622,6 +684,10 @@ class CipherSuite:
 
     # 3DES CBC ciphers
     tripleDESSuites = []
+    tripleDESSuites.append(TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA)  # unsupp
+    tripleDESSuites.append(TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA)  # unsupported
+    tripleDESSuites.append(TLS_ECDH_RSA_WITH_3DES_EDE_CBC_SHA)  # unsupported
+    tripleDESSuites.append(TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_SRP_SHA_RSA_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_RSA_WITH_3DES_EDE_CBC_SHA)
@@ -639,6 +705,12 @@ class CipherSuite:
     aes128Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
     aes128Suites.append(TLS_DHE_RSA_WITH_AES_128_CBC_SHA256)
     aes128Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA256)
+    aes128Suites.append(TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256)  # unsupp
+    aes128Suites.append(TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA)  # unsupported
+    aes128Suites.append(TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256)  # unsupported
+    aes128Suites.append(TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA)  # unsupported
+    aes128Suites.append(TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256)  # unsupported
+    aes128Suites.append(TLS_ECDH_RSA_WITH_AES_128_CBC_SHA)  # unsupported
     aes128Suites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256)
     aes128Suites.append(TLS_ECDH_ANON_WITH_AES_128_CBC_SHA)
@@ -653,6 +725,12 @@ class CipherSuite:
     aes256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
     aes256Suites.append(TLS_DHE_RSA_WITH_AES_256_CBC_SHA256)
     aes256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA256)
+    aes256Suites.append(TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384)  # unsupported
+    aes256Suites.append(TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA)  # unsupported
+    aes256Suites.append(TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384)  # unsupported
+    aes256Suites.append(TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA)  # unsupported
+    aes256Suites.append(TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384)  # unsupported
+    aes256Suites.append(TLS_ECDH_RSA_WITH_AES_256_CBC_SHA)  # unsupported
     aes256Suites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384)
     aes256Suites.append(TLS_ECDH_ANON_WITH_AES_256_CBC_SHA)
@@ -662,6 +740,9 @@ class CipherSuite:
     aes128GcmSuites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
     aes128GcmSuites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
     aes128GcmSuites.append(TLS_DH_ANON_WITH_AES_128_GCM_SHA256)
+    aes128GcmSuites.append(TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)  # unsupp
+    aes128GcmSuites.append(TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256)  # unsupp
+    aes128GcmSuites.append(TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256)  # unsupp
     aes128GcmSuites.append(TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
 
     # AES-256-GCM ciphers (implicit SHA384, see sha384PrfSuites)
@@ -669,6 +750,9 @@ class CipherSuite:
     aes256GcmSuites.append(TLS_RSA_WITH_AES_256_GCM_SHA384)
     aes256GcmSuites.append(TLS_DHE_RSA_WITH_AES_256_GCM_SHA384)
     aes256GcmSuites.append(TLS_DH_ANON_WITH_AES_256_GCM_SHA384)
+    aes256GcmSuites.append(TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384)  # unsupp
+    aes256GcmSuites.append(TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384)  # unsupp
+    aes256GcmSuites.append(TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384)  # unsupported
     aes256GcmSuites.append(TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384)
 
     # CHACHA20 cipher, 00'th IETF draft (implicit POLY1305 authenticator)
@@ -683,6 +767,10 @@ class CipherSuite:
 
     # RC4 128 stream cipher
     rc4Suites = []
+    rc4Suites.append(TLS_ECDHE_RSA_WITH_RC4_128_SHA)
+    rc4Suites.append(TLS_ECDHE_ECDSA_WITH_RC4_128_SHA)  # unsupported
+    rc4Suites.append(TLS_ECDH_ECDSA_WITH_RC4_128_SHA)  # unsupported
+    rc4Suites.append(TLS_ECDH_RSA_WITH_RC4_128_SHA)  # unsupported
     rc4Suites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_SHA)
     rc4Suites.append(TLS_RSA_WITH_RC4_128_MD5)
@@ -693,6 +781,9 @@ class CipherSuite:
     nullSuites.append(TLS_RSA_WITH_NULL_MD5)
     nullSuites.append(TLS_RSA_WITH_NULL_SHA)
     nullSuites.append(TLS_RSA_WITH_NULL_SHA256)
+    nullSuites.append(TLS_ECDHE_ECDSA_WITH_NULL_SHA)  # unsupported
+    nullSuites.append(TLS_ECDH_ECDSA_WITH_NULL_SHA)  # unsupported
+    nullSuites.append(TLS_ECDH_RSA_WITH_NULL_SHA)  # unsupported
     nullSuites.append(TLS_ECDHE_RSA_WITH_NULL_SHA)
     nullSuites.append(TLS_ECDH_ANON_WITH_NULL_SHA)
 
@@ -715,8 +806,25 @@ class CipherSuite:
     shaSuites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA)
     shaSuites.append(TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA)
     shaSuites.append(TLS_RSA_WITH_NULL_SHA)
+    shaSuites.append(TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA)  # unsupported
+    shaSuites.append(TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA)  # unsupported
+    shaSuites.append(TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA)  # unsupported
+    shaSuites.append(TLS_ECDHE_ECDSA_WITH_RC4_128_SHA)  # unsupported
+    shaSuites.append(TLS_ECDHE_ECDSA_WITH_NULL_SHA)  # unsupported
+    shaSuites.append(TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA)  # unsupported
+    shaSuites.append(TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA)  # unsupported
+    shaSuites.append(TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA)  # unsupported
+    shaSuites.append(TLS_ECDH_ECDSA_WITH_RC4_128_SHA)  # unsupported
+    shaSuites.append(TLS_ECDH_ECDSA_WITH_NULL_SHA)  # unsupported
+    shaSuites.append(TLS_ECDH_RSA_WITH_AES_256_CBC_SHA)  # unsupported
+    shaSuites.append(TLS_ECDH_RSA_WITH_AES_128_CBC_SHA)  # unsupported
+    shaSuites.append(TLS_ECDH_RSA_WITH_3DES_EDE_CBC_SHA)  # unsupported
+    shaSuites.append(TLS_ECDH_RSA_WITH_RC4_128_SHA)  # unsupported
+    shaSuites.append(TLS_ECDH_RSA_WITH_NULL_SHA)  # unsupported
     shaSuites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
     shaSuites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA)
+    shaSuites.append(TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA)
+    shaSuites.append(TLS_ECDHE_RSA_WITH_RC4_128_SHA)
     shaSuites.append(TLS_ECDHE_RSA_WITH_NULL_SHA)
     shaSuites.append(TLS_ECDH_ANON_WITH_AES_256_CBC_SHA)
     shaSuites.append(TLS_ECDH_ANON_WITH_AES_128_CBC_SHA)
@@ -733,10 +841,16 @@ class CipherSuite:
     sha256Suites.append(TLS_RSA_WITH_NULL_SHA256)
     sha256Suites.append(TLS_DH_ANON_WITH_AES_128_CBC_SHA256)
     sha256Suites.append(TLS_DH_ANON_WITH_AES_256_CBC_SHA256)
+    sha256Suites.append(TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256)  # unsupported
+    sha256Suites.append(TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256)  # unsupported
+    sha256Suites.append(TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256)  # unsupported
     sha256Suites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256)
 
     # SHA-384 HMAC, SHA-384 PRF
     sha384Suites = []
+    sha384Suites.append(TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384)  # unsupported
+    sha384Suites.append(TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384)  # unsupported
+    sha384Suites.append(TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384)  # unsupported
     sha384Suites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384)
 
     # stream cipher construction
@@ -917,6 +1031,8 @@ class CipherSuite:
     ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256)
     ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA)
     ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA)
+    ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA)
+    ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_RC4_128_SHA)
     ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_NULL_SHA)
 
     @classmethod
@@ -926,6 +1042,18 @@ class CipherSuite:
 
     # RSA authentication
     certAllSuites = srpCertSuites + certSuites + dheCertSuites + ecdheCertSuites
+
+    # ECDHE key exchange, ECDSA authentication
+    ecdheEcdsaSuites = []
+    ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384)
+    ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
+    ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384)
+    ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256)
+    ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA)
+    ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA)
+    ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA)
+    ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_RC4_128_SHA)
+    ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_NULL_SHA)
 
     # anon FFDHE key exchange
     anonSuites = []
@@ -958,7 +1086,8 @@ class CipherSuite:
         """Provide anonymous ECDH ciphersuites matching settings"""
         return cls._filterSuites(CipherSuite.ecdhAnonSuites, settings, version)
 
-    ecdhAllSuites = ecdheCertSuites + ecdhAnonSuites
+    # all ciphersuites which use ephemeral ECDH key exchange
+    ecdhAllSuites = ecdheEcdsaSuites + ecdheCertSuites + ecdhAnonSuites
 
     @staticmethod
     def canonicalCipherName(ciphersuite):
