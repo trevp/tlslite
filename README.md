@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.7.0-alpha7                                    2017-07-14
+tlslite-ng version 0.7.0-alpha8                                    2017-07-19
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -587,6 +587,10 @@ encrypt-then-MAC mode for CBC ciphers.
 
 0.7.0 - in-dev
 
+* enable and add missing definitions of TLS_ECDHE_RSA_WITH_RC4_128_SHA and
+  TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+* add definitions of some ECDHE_ECDSA, ECDH_ECDSA and ECDH_RSA ciphersuites,
+  they remain unsupported, but IDs are useful for other projects
 * basic support for RSA-PSS (Tomas Foukal)
 * support for RSA-PSS in TLSv1.2
 * better documentation for Parser and ASN1Parser
@@ -606,7 +610,7 @@ encrypt-then-MAC mode for CBC ciphers.
   follow RFC recommendations with regards to session resumption, reject
   non-empty
 * Allow negotiation of ECDHE ciphersuites even if client doesn't advertise
-  any curves, assume P-256 curve support.
+  any curves, default to P-256 curve support, support configuring it.
 
 0.6.0 - 2016-09-07
 
