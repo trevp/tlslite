@@ -701,6 +701,20 @@ class TestSNIExtension(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             server_name = server_name.parse(p)
 
+    def test_parse_with_trailing_data(self):
+        server_name = SNIExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x04' +   # length of array - 4 bytes
+            b'\x00' +       # type of entry - host_name (0)
+            b'\x00\x01' +   # length of name - 1 byte
+            b'e' +          # entry
+            b'x'            # trailing data
+            ))
+
+        with self.assertRaises(SyntaxError):
+            server_name = server_name.parse(p)
+
     def test___repr__(self):
         server_name = SNIExtension()
         server_name = server_name.create(
