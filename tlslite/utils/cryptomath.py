@@ -140,7 +140,7 @@ def numberToByteArray(n, howManyBytes=None, endian="big"):
         howManyBytes = numBytes(n)
     if endian == "big":
         return bytearray((n >> i) & 0xff
-                         for i in range((howManyBytes-1)*8, -1, -8))
+                         for i in reversed(range(0, howManyBytes*8, 8)))
     elif endian == "little":
         return bytearray((n >> i) & 0xff
                          for i in range(0, howManyBytes*8, 8))
