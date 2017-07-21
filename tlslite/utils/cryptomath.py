@@ -15,7 +15,7 @@ import base64
 import binascii
 import sys
 
-from .compat import compat26Str, compatHMAC, compatLong
+from .compat import compat26Str, compatHMAC, compatLong, b2a_hex
 
 
 # **************************************************************************
@@ -120,29 +120,32 @@ def HKDF_expand(PRK, info, L, algorithm):
 # Converter Functions
 # **************************************************************************
 
-def bytesToNumber(b):
-    total = 0
-    multiplier = 1
-    for count in range(len(b)-1, -1, -1):
-        byte = b[count]
-        total += multiplier * byte
-        multiplier *= 256
-    return total
+def bytesToNumber(b, endian="big"):
+    if endian == "big":
+        return int(b2a_hex(b), 16)
+    elif endian == "little":
+        return int(b2a_hex(b[::-1]), 16)
+    else:
+        raise ValueError("Only 'big' and 'little' endian supported")
 
-def numberToByteArray(n, howManyBytes=None):
-    """Convert an integer into a bytearray, zero-pad to howManyBytes.
+def numberToByteArray(n, howManyBytes=None, endian="big"):
+    """
+    Convert an integer into a bytearray, zero-pad to howManyBytes.
 
     The returned bytearray may be smaller than howManyBytes, but will
-    not be larger.  The returned bytearray will contain a big-endian
-    encoding of the input integer (n).
-    """    
+    not be larger.  The returned bytearray will contain a big- or little-endian
+    encoding of the input integer (n). Big endian encoding is used by default.
+    """
     if howManyBytes == None:
         howManyBytes = numBytes(n)
-    b = bytearray(howManyBytes)
-    for count in range(howManyBytes-1, -1, -1):
-        b[count] = int(n % 256)
-        n >>= 8
-    return b
+    if endian == "big":
+        return bytearray((n >> i) & 0xff
+                         for i in reversed(range(0, howManyBytes*8, 8)))
+    elif endian == "little":
+        return bytearray((n >> i) & 0xff
+                         for i in range(0, howManyBytes*8, 8))
+    else:
+        raise ValueError("Only 'big' and 'little' endian supported")
 
 def mpiToNumber(mpi): #mpi is an openssl-format bignum string
     if (ord(mpi[4]) & 0x80) !=0: #Make sure this is a positive number

@@ -11,10 +11,11 @@ except ImportError:
 from hypothesis import given, example
 from hypothesis.strategies import integers
 import math
+import struct
 
 from tlslite.utils.cryptomath import isPrime, numBits, numBytes, \
         numberToByteArray, MD5, SHA1, secureHash, HMAC_MD5, HMAC_SHA1, \
-        HMAC_SHA256, HMAC_SHA384, HKDF_expand
+        HMAC_SHA256, HMAC_SHA384, HKDF_expand, bytesToNumber
 
 class TestIsPrime(unittest.TestCase):
     def test_with_small_primes(self):
@@ -107,6 +108,52 @@ class TestNumberToBytesFunctions(unittest.TestCase):
     def test_numberToByteArray_with_not_enough_length(self):
         self.assertEqual(numberToByteArray(0x0a0b0c, 2),
                          bytearray(b'\x0b\x0c'))
+
+    @given(integers(min_value=0, max_value=0xff))
+    @example(0)
+    @example(0xff)
+    def test_small_number(self, number):
+        self.assertEqual(numberToByteArray(number, 1),
+                         bytearray(struct.pack(">B", number)))
+
+    @given(integers(min_value=0, max_value=0xffffffff))
+    @example(0xffffffff)
+    def test_big_number(self, number):
+        self.assertEqual(numberToByteArray(number, 4),
+                         bytearray(struct.pack(">L", number)))
+
+    def test_very_large_number(self):
+        self.assertEqual(numberToByteArray((1<<128)-1),
+                         bytearray(b'\xff'*16))
+
+    @given(integers(min_value=0, max_value=0xff))
+    @example(0)
+    @example(0xff)
+    def test_small_number_little_endian(self, number):
+        self.assertEqual(numberToByteArray(number, 1, endian="little"),
+                         bytearray(struct.pack("<B", number)))
+
+    @given(integers(min_value=0, max_value=0xffffffff))
+    @example(0xffffffff)
+    def test_big_number(self, number):
+        self.assertEqual(numberToByteArray(number, 4, endian="little"),
+                         bytearray(struct.pack("<L", number)))
+
+    def test_very_large_number(self):
+        self.assertEqual(numberToByteArray((1<<128)-1, endian="little"),
+                         bytearray(b'\xff'*16))
+
+    def test_numberToByteArray_with_not_enough_length_little_endian(self):
+        self.assertEqual(numberToByteArray(0x0a0b0c, 2, endian="little"),
+                         bytearray(b'\x0c\x0b'))
+
+    def test_with_large_number_of_bytes_in_little_endian(self):
+        self.assertEqual(numberToByteArray(1, 16, endian="little"),
+                         bytearray(b'\x01' + b'\x00'*15))
+
+    def test_with_bad_endian_type(self):
+        with self.assertRaises(ValueError):
+            numberToByteArray(1, endian="middle")
 
 class TestNumBits(unittest.TestCase):
 
@@ -344,3 +391,55 @@ class TestHashMethods(unittest.TestCase):
                                    b'\x64\x3C\xE8\x0E'
                                    b'\x2A\x9A\xC9\x4F'
                                    b'\xA5\x4C\xA4\x9F'))
+
+class TestBytesToNumber(unittest.TestCase):
+    @given(integers(min_value=0, max_value=0xff))
+    @example(0)
+    @example(0xff)
+    def test_small_numbers(self, number):
+        self.assertEqual(bytesToNumber(bytearray(struct.pack(">B", number))),
+                         number)
+
+    @given(integers(min_value=0, max_value=0xffffffff))
+    @example(0xffffffff)
+    def test_multi_byte_numbers(self, number):
+        self.assertEqual(bytesToNumber(bytearray(struct.pack(">I", number))),
+                         number)
+
+    def test_very_long_numbers(self):
+        self.assertEqual(bytesToNumber(bytearray(b'\x00' * 16 + b'\x80')),
+                         0x80)
+        self.assertEqual(bytesToNumber(bytearray(b'\x80' + b'\x00' * 16)),
+                         1<<(8 * 16 + 7))
+        self.assertEqual(bytesToNumber(bytearray(b'\xff'*16)),
+                         (1<<(8*16))-1)
+
+    @given(integers(min_value=0, max_value=0xff))
+    @example(0)
+    @example(0xff)
+    def test_small_numbers_little_endian(self, number):
+        self.assertEqual(bytesToNumber(bytearray(struct.pack("<B", number)),
+                                       "little"),
+                         number)
+
+    @given(integers(min_value=0, max_value=0xffffffff))
+    @example(0xffffffff)
+    def test_multi_byte_numbers_little_endian(self, number):
+        self.assertEqual(bytesToNumber(bytearray(struct.pack("<I", number)),
+                                       "little"),
+                         number)
+
+    def test_very_long_numbers_little_endian(self):
+        self.assertEqual(bytesToNumber(bytearray(b'\x80' + b'\x00' * 16),
+                                       "little"),
+                         0x80)
+        self.assertEqual(bytesToNumber(bytearray(b'\x00'*16 + b'\x80'),
+                                       "little"),
+                         1<<(8 * 16 + 7))
+        self.assertEqual(bytesToNumber(bytearray(b'\xff'*16),
+                                       "little"),
+                         (1<<(8*16))-1)
+
+    def test_with_unknown_type(self):
+        with self.assertRaises(ValueError):
+            bytesToNumber(bytearray(b'\xf0'), "middle")

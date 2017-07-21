@@ -256,6 +256,11 @@ class GroupName(TLSEnum):
     brainpoolP512r1 = 28
     allEC.extend(list(range(26, 29)))
 
+    # draft-ietf-tls-rfc4492bis
+    x25519 = 29
+    x448 = 30
+    allEC.extend(list(range(29, 31)))
+
     # RFC7919
     ffdhe2048 = 256
     ffdhe3072 = 257
