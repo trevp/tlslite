@@ -53,17 +53,17 @@ class TLSConnection(TLSRecordLayer):
     not use the asynchronous functions directly, but should use some
     framework like asyncore or Twisted which TLS Lite integrates with
     (see
-    L{tlslite.integration.tlsasyncdispatchermixin.TLSAsyncDispatcherMixIn}).
+    :py:class:`~.integration.tlsasyncdispatchermixin.TLSAsyncDispatcherMixIn`).
     """
 
     def __init__(self, sock):
         """Create a new TLSConnection instance.
 
-        @param sock: The socket data will be transmitted on.  The
-        socket should already be connected.  It may be in blocking or
-        non-blocking mode.
+        :param sock: The socket data will be transmitted on.  The
+            socket should already be connected.  It may be in blocking or
+            non-blocking mode.
 
-        @type sock: L{socket.socket}
+        :type sock: socket.socket
         """
         TLSRecordLayer.__init__(self, sock)
         self.serverSigAlg = None
@@ -76,11 +76,11 @@ class TLSConnection(TLSRecordLayer):
     def keyingMaterialExporter(self, label, length=20):
         """Return keying material as described in RFC 5705
 
-        @type label: bytearray
-        @param label: label to be provided for the exporter
+        :type label: bytearray
+        :param label: label to be provided for the exporter
 
-        @type length: int
-        @param length: number of bytes of the keying material to export
+        :type length: int
+        :param length: number of bytes of the keying material to export
         """
         if label in (b'server finished', b'client finished',
                      b'master secret', b'key expansion'):
@@ -114,7 +114,7 @@ class TLSConnection(TLSRecordLayer):
 
         This function performs an SSL or TLS handshake using an
         anonymous Diffie Hellman ciphersuite.
-        
+
         Like any handshake function, this can be called on a closed
         TLS connection, or on a TLS connection that is already open.
         If called on an open connection it performs a re-handshake.
@@ -125,42 +125,42 @@ class TLSConnection(TLSRecordLayer):
         If an exception is raised, the connection will have been
         automatically closed (if it was ever open).
 
-        @type session: L{tlslite.Session.Session}
-        @param session: A TLS session to attempt to resume.  If the
-        resumption does not succeed, a full handshake will be
-        performed.
+        :type session: ~tlslite.session.Session
+        :param session: A TLS session to attempt to resume.  If the
+            resumption does not succeed, a full handshake will be
+            performed.
 
-        @type settings: L{tlslite.HandshakeSettings.HandshakeSettings}
-        @param settings: Various settings which can be used to control
-        the ciphersuites, certificate types, and SSL/TLS versions
-        offered by the client.
+        :type settings: ~tlslite.handshakesettings.HandshakeSettings
+        :param settings: Various settings which can be used to control
+            the ciphersuites, certificate types, and SSL/TLS versions
+            offered by the client.
 
-        @type checker: L{tlslite.Checker.Checker}
-        @param checker: A Checker instance.  This instance will be
-        invoked to examine the other party's authentication
-        credentials, if the handshake completes succesfully.
-        
-        @type serverName: string
-        @param serverName: The ServerNameIndication TLS Extension.
+        :type checker: ~tlslite.checker.Checker
+        :param checker: A Checker instance.  This instance will be
+            invoked to examine the other party's authentication
+            credentials, if the handshake completes succesfully.
 
-        @type async: bool
-        @param async: If False, this function will block until the
-        handshake is completed.  If True, this function will return a
-        generator.  Successive invocations of the generator will
-        return 0 if it is waiting to read from the socket, 1 if it is
-        waiting to write to the socket, or will raise StopIteration if
-        the handshake operation is completed.
+        :type serverName: string
+        :param serverName: The ServerNameIndication TLS Extension.
 
-        @rtype: None or an iterable
-        @return: If 'async' is True, a generator object will be
-        returned.
+        :type async: bool
+        :param async: If False, this function will block until the
+            handshake is completed.  If True, this function will return a
+            generator.  Successive invocations of the generator will
+            return 0 if it is waiting to read from the socket, 1 if it is
+            waiting to write to the socket, or will raise StopIteration if
+            the handshake operation is completed.
 
-        @raise socket.error: If a socket error occurs.
-        @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
-        without a preceding alert.
-        @raise tlslite.errors.TLSAlert: If a TLS alert is signalled.
-        @raise tlslite.errors.TLSAuthenticationError: If the checker
-        doesn't like the other party's authentication credentials.
+        :rtype: None or an iterable
+        :returns: If 'async' is True, a generator object will be
+            returned.
+
+        :raises socket.error: If a socket error occurs.
+        :raises tlslite.errors.TLSAbruptCloseError: If the socket is closed
+            without a preceding alert.
+        :raises tlslite.errors.TLSAlert: If a TLS alert is signalled.
+        :raises tlslite.errors.TLSAuthenticationError: If the checker
+            doesn't like the other party's authentication credentials.
         """
         handshaker = self._handshakeClientAsync(anonParams=(True),
                                                 session=session,
@@ -191,53 +191,53 @@ class TLSConnection(TLSRecordLayer):
         If an exception is raised, the connection will have been
         automatically closed (if it was ever open).
 
-        @type username: bytearray
-        @param username: The SRP username.
+        :type username: bytearray
+        :param username: The SRP username.
 
-        @type password: bytearray
-        @param password: The SRP password.
+        :type password: bytearray
+        :param password: The SRP password.
 
-        @type session: L{tlslite.session.Session}
-        @param session: A TLS session to attempt to resume.  This
-        session must be an SRP session performed with the same username
-        and password as were passed in.  If the resumption does not
-        succeed, a full SRP handshake will be performed.
+        :type session: ~tlslite.session.Session
+        :param session: A TLS session to attempt to resume.  This
+            session must be an SRP session performed with the same username
+            and password as were passed in.  If the resumption does not
+            succeed, a full SRP handshake will be performed.
 
-        @type settings: L{tlslite.handshakesettings.HandshakeSettings}
-        @param settings: Various settings which can be used to control
-        the ciphersuites, certificate types, and SSL/TLS versions
-        offered by the client.
+        :type settings: ~tlslite.handshakesettings.HandshakeSettings
+        :param settings: Various settings which can be used to control
+            the ciphersuites, certificate types, and SSL/TLS versions
+            offered by the client.
 
-        @type checker: L{tlslite.checker.Checker}
-        @param checker: A Checker instance.  This instance will be
-        invoked to examine the other party's authentication
-        credentials, if the handshake completes succesfully.
+        :type checker: ~tlslite.checker.Checker
+        :param checker: A Checker instance.  This instance will be
+            invoked to examine the other party's authentication
+            credentials, if the handshake completes succesfully.
 
-        @type reqTack: bool
-        @param reqTack: Whether or not to send a "tack" TLS Extension, 
-        requesting the server return a TackExtension if it has one.
+        :type reqTack: bool
+        :param reqTack: Whether or not to send a "tack" TLS Extension,
+            requesting the server return a TackExtension if it has one.
 
-        @type serverName: string
-        @param serverName: The ServerNameIndication TLS Extension.
+        :type serverName: string
+        :param serverName: The ServerNameIndication TLS Extension.
 
-        @type async: bool
-        @param async: If False, this function will block until the
-        handshake is completed.  If True, this function will return a
-        generator.  Successive invocations of the generator will
-        return 0 if it is waiting to read from the socket, 1 if it is
-        waiting to write to the socket, or will raise StopIteration if
-        the handshake operation is completed.
+        :type async: bool
+        :param async: If False, this function will block until the
+            handshake is completed.  If True, this function will return a
+            generator.  Successive invocations of the generator will
+            return 0 if it is waiting to read from the socket, 1 if it is
+            waiting to write to the socket, or will raise StopIteration if
+            the handshake operation is completed.
 
-        @rtype: None or an iterable
-        @return: If 'async' is True, a generator object will be
-        returned.
+        :rtype: None or an iterable
+        :returns: If 'async' is True, a generator object will be
+            returned.
 
-        @raise socket.error: If a socket error occurs.
-        @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
-        without a preceding alert.
-        @raise tlslite.errors.TLSAlert: If a TLS alert is signalled.
-        @raise tlslite.errors.TLSAuthenticationError: If the checker
-        doesn't like the other party's authentication credentials.
+        :raises socket.error: If a socket error occurs.
+        :raises tlslite.errors.TLSAbruptCloseError: If the socket is closed
+            without a preceding alert.
+        :raises tlslite.errors.TLSAlert: If a TLS alert is signalled.
+        :raises tlslite.errors.TLSAuthenticationError: If the checker
+            doesn't like the other party's authentication credentials.
         """
         # TODO add deprecation warning
         if isinstance(username, str):
@@ -285,63 +285,63 @@ class TLSConnection(TLSRecordLayer):
         If an exception is raised, the connection will have been
         automatically closed (if it was ever open).
 
-        @type certChain: L{tlslite.x509certchain.X509CertChain}
-        @param certChain: The certificate chain to be used if the
-        server requests client authentication.
+        :type certChain: ~tlslite.x509certchain.X509CertChain
+        :param certChain: The certificate chain to be used if the
+            server requests client authentication.
 
-        @type privateKey: L{tlslite.utils.rsakey.RSAKey}
-        @param privateKey: The private key to be used if the server
-        requests client authentication.
+        :type privateKey: ~tlslite.utils.rsakey.RSAKey
+        :param privateKey: The private key to be used if the server
+            requests client authentication.
 
-        @type session: L{tlslite.session.Session}
-        @param session: A TLS session to attempt to resume.  If the
-        resumption does not succeed, a full handshake will be
-        performed.
+        :type session: ~tlslite.session.Session
+        :param session: A TLS session to attempt to resume.  If the
+            resumption does not succeed, a full handshake will be
+            performed.
 
-        @type settings: L{tlslite.handshakesettings.HandshakeSettings}
-        @param settings: Various settings which can be used to control
-        the ciphersuites, certificate types, and SSL/TLS versions
-        offered by the client.
+        :type settings: ~tlslite.handshakesettings.HandshakeSettings
+        :param settings: Various settings which can be used to control
+            the ciphersuites, certificate types, and SSL/TLS versions
+            offered by the client.
 
-        @type checker: L{tlslite.checker.Checker}
-        @param checker: A Checker instance.  This instance will be
-        invoked to examine the other party's authentication
-        credentials, if the handshake completes succesfully.
-        
-        @type nextProtos: list of strings.
-        @param nextProtos: A list of upper layer protocols ordered by
-        preference, to use in the Next-Protocol Negotiation Extension.
-        
-        @type reqTack: bool
-        @param reqTack: Whether or not to send a "tack" TLS Extension, 
-        requesting the server return a TackExtension if it has one.        
+        :type checker: ~tlslite.checker.Checker
+        :param checker: A Checker instance.  This instance will be
+            invoked to examine the other party's authentication
+            credentials, if the handshake completes succesfully.
 
-        @type serverName: string
-        @param serverName: The ServerNameIndication TLS Extension.
+        :type nextProtos: list of str
+        :param nextProtos: A list of upper layer protocols ordered by
+            preference, to use in the Next-Protocol Negotiation Extension.
 
-        @type async: bool
-        @param async: If False, this function will block until the
-        handshake is completed.  If True, this function will return a
-        generator.  Successive invocations of the generator will
-        return 0 if it is waiting to read from the socket, 1 if it is
-        waiting to write to the socket, or will raise StopIteration if
-        the handshake operation is completed.
+        :type reqTack: bool
+        :param reqTack: Whether or not to send a "tack" TLS Extension,
+            requesting the server return a TackExtension if it has one.
 
-        @type alpn: list of bytearrays
-        @param alpn: protocol names to advertise to server as supported by
-        client in the Application Layer Protocol Negotiation extension.
-        Example items in the array include b'http/1.1' or b'h2'.
+        :type serverName: string
+        :param serverName: The ServerNameIndication TLS Extension.
 
-        @rtype: None or an iterable
-        @return: If 'async' is True, a generator object will be
-        returned.
+        :type async: bool
+        :param async: If False, this function will block until the
+            handshake is completed.  If True, this function will return a
+            generator.  Successive invocations of the generator will
+            return 0 if it is waiting to read from the socket, 1 if it is
+            waiting to write to the socket, or will raise StopIteration if
+            the handshake operation is completed.
 
-        @raise socket.error: If a socket error occurs.
-        @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
-        without a preceding alert.
-        @raise tlslite.errors.TLSAlert: If a TLS alert is signalled.
-        @raise tlslite.errors.TLSAuthenticationError: If the checker
-        doesn't like the other party's authentication credentials.
+        :type alpn: list of bytearrays
+        :param alpn: protocol names to advertise to server as supported by
+            client in the Application Layer Protocol Negotiation extension.
+            Example items in the array include b'http/1.1' or b'h2'.
+
+        :rtype: None or an iterable
+        :returns: If 'async' is True, a generator object will be
+            returned.
+
+        :raises socket.error: If a socket error occurs.
+        :raises tlslite.errors.TLSAbruptCloseError: If the socket is closed
+            without a preceding alert.
+        :raises tlslite.errors.TLSAlert: If a TLS alert is signalled.
+        :raises tlslite.errors.TLSAuthenticationError: If the checker
+            doesn't like the other party's authentication credentials.
         """
         handshaker = \
                 self._handshakeClientAsync(certParams=(certChain, privateKey),
@@ -1123,71 +1123,71 @@ class TLSConnection(TLSRecordLayer):
         If an exception is raised, the connection will have been
         automatically closed (if it was ever open).
 
-        @type verifierDB: L{tlslite.verifierdb.VerifierDB}
-        @param verifierDB: A database of SRP password verifiers
-        associated with usernames.  If the client performs an SRP
-        handshake, the session's srpUsername attribute will be set.
+        :type verifierDB: ~tlslite.verifierdb.VerifierDB
+        :param verifierDB: A database of SRP password verifiers
+            associated with usernames.  If the client performs an SRP
+            handshake, the session's srpUsername attribute will be set.
 
-        @type certChain: L{tlslite.x509certchain.X509CertChain}
-        @param certChain: The certificate chain to be used if the
-        client requests server certificate authentication.
+        :type certChain: ~tlslite.x509certchain.X509CertChain
+        :param certChain: The certificate chain to be used if the
+            client requests server certificate authentication.
 
-        @type privateKey: L{tlslite.utils.rsakey.RSAKey}
-        @param privateKey: The private key to be used if the client
-        requests server certificate authentication.
+        :type privateKey: ~tlslite.utils.rsakey.RSAKey
+        :param privateKey: The private key to be used if the client
+            requests server certificate authentication.
 
-        @type reqCert: bool
-        @param reqCert: Whether to request client certificate
-        authentication.  This only applies if the client chooses server
-        certificate authentication; if the client chooses SRP
-        authentication, this will be ignored.  If the client
-        performs a client certificate authentication, the sessions's
-        clientCertChain attribute will be set.
+        :type reqCert: bool
+        :param reqCert: Whether to request client certificate
+            authentication.  This only applies if the client chooses server
+            certificate authentication; if the client chooses SRP
+            authentication, this will be ignored.  If the client
+            performs a client certificate authentication, the sessions's
+            clientCertChain attribute will be set.
 
-        @type sessionCache: L{tlslite.sessioncache.SessionCache}
-        @param sessionCache: An in-memory cache of resumable sessions.
-        The client can resume sessions from this cache.  Alternatively,
-        if the client performs a full handshake, a new session will be
-        added to the cache.
+        :type sessionCache: ~tlslite.sessioncache.SessionCache
+        :param sessionCache: An in-memory cache of resumable sessions.
+            The client can resume sessions from this cache.  Alternatively,
+            if the client performs a full handshake, a new session will be
+            added to the cache.
 
-        @type settings: L{tlslite.handshakesettings.HandshakeSettings}
-        @param settings: Various settings which can be used to control
-        the ciphersuites and SSL/TLS version chosen by the server.
+        :type settings: ~tlslite.handshakesettings.HandshakeSettings
+        :param settings: Various settings which can be used to control
+            the ciphersuites and SSL/TLS version chosen by the server.
 
-        @type checker: L{tlslite.checker.Checker}
-        @param checker: A Checker instance.  This instance will be
-        invoked to examine the other party's authentication
-        credentials, if the handshake completes succesfully.
-        
-        @type reqCAs: list of L{bytearray} of unsigned bytes
-        @param reqCAs: A collection of DER-encoded DistinguishedNames that
-        will be sent along with a certificate request. This does not affect
-        verification.        
+        :type checker: ~tlslite.checker.Checker
+        :param checker: A Checker instance.  This instance will be
+            invoked to examine the other party's authentication
+            credentials, if the handshake completes succesfully.
 
-        @type nextProtos: list of strings.
-        @param nextProtos: A list of upper layer protocols to expose to the
-        clients through the Next-Protocol Negotiation Extension, 
-        if they support it.
+        :type reqCAs: list of bytearray
+        :param reqCAs: A collection of DER-encoded DistinguishedNames that
+            will be sent along with a certificate request. This does not affect
+            verification.
 
-        @type alpn: list of bytearrays
-        @param alpn: names of application layer protocols supported.
-        Note that it will be used instead of NPN if both were advertised by
-        client.
+        :type nextProtos: list of str
+        :param nextProtos: A list of upper layer protocols to expose to the
+            clients through the Next-Protocol Negotiation Extension,
+            if they support it.
 
-        @type sni: bytearray
-        @param sni: expected virtual name hostname.
+        :type alpn: list of bytearray
+        :param alpn: names of application layer protocols supported.
+            Note that it will be used instead of NPN if both were advertised by
+            client.
 
-        @raise socket.error: If a socket error occurs.
-        @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
-        without a preceding alert.
-        @raise tlslite.errors.TLSAlert: If a TLS alert is signalled.
-        @raise tlslite.errors.TLSAuthenticationError: If the checker
-        doesn't like the other party's authentication credentials.
+        :type sni: bytearray
+        :param sni: expected virtual name hostname.
+
+        :raises socket.error: If a socket error occurs.
+        :raises tlslite.errors.TLSAbruptCloseError: If the socket is closed
+            without a preceding alert.
+        :raises tlslite.errors.TLSAlert: If a TLS alert is signalled.
+        :raises tlslite.errors.TLSAuthenticationError: If the checker
+            doesn't like the other party's authentication credentials.
         """
         for result in self.handshakeServerAsync(verifierDB,
                 certChain, privateKey, reqCert, sessionCache, settings,
-                checker, reqCAs, 
-                tacks=tacks, activationFlags=activationFlags, 
+                checker, reqCAs,
+                tacks=tacks, activationFlags=activationFlags,
                 nextProtos=nextProtos, anon=anon, alpn=alpn, sni=sni):
             pass
 
@@ -1207,8 +1207,8 @@ class TLSConnection(TLSRecordLayer):
         waiting to write to the socket, or it will raise StopIteration
         if the handshake operation is complete.
 
-        @rtype: iterable
-        @return: A generator; see above for details.
+        :rtype: iterable
+        :returns: A generator; see above for details.
         """
         handshaker = self._handshakeServerAsyncHelper(\
             verifierDB=verifierDB, certChain=certChain,

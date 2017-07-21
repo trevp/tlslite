@@ -87,11 +87,11 @@ class RecordHeader2(RecordHeader):
     """
     SSLv2 record header.
 
-    @type padding: int
-    @ivar padding: number of bytes added at end of message to make it multiple
-    of block cipher size
-    @type securityEscape: boolean
-    @ivar securityEscape: whether the record contains a security escape message
+    :vartype padding: int
+    :ivar padding: number of bytes added at end of message to make it multiple
+        of block cipher size
+    :vartype securityEscape: boolean
+    :ivar securityEscape: whether the record contains a security escape message
     """
 
     def __init__(self):
@@ -155,10 +155,10 @@ class Message(object):
         """
         Initialize object with specified contentType and data.
 
-        @type contentType: int
-        @param contentType: TLS record layer content type of associated data
-        @type data: bytearray
-        @param data: data
+        :type contentType: int
+        :param contentType: TLS record layer content type of associated data
+        :type data: bytearray
+        :param data: data
         """
         self.contentType = contentType
         self.data = data
@@ -231,7 +231,10 @@ class HandshakeMsg(object):
 
 
 class HelloMessage(HandshakeMsg):
-    """Class for sharing code between L{ClientHello} and L{ServerHello}"""
+    """
+    Class for sharing code between :py:class:`ClientHello` and
+    :py:class:`ServerHello`.
+    """
 
     def __init__(self, *args, **kwargs):
         """Initialize object."""
@@ -242,8 +245,8 @@ class HelloMessage(HandshakeMsg):
         """
         Return extension of given type if present, None otherwise.
 
-        @rtype: L{tlslite.extensions.TLSExtension}
-        @raise TLSInternalError: when there are multiple extensions of the
+        :rtype: ~tlslite.extensions.TLSExtension
+        :raises TLSInternalError: when there are multiple extensions of the
             same type
         """
         if self.extensions is None:
@@ -262,8 +265,8 @@ class HelloMessage(HandshakeMsg):
         """
         Add extension to internal list of extensions.
 
-        @type ext: TLSExtension
-        @param ext: extension object to add to list
+        :type ext: TLSExtension
+        :param ext: extension object to add to list
         """
         if self.extensions is None:
             self.extensions = []
@@ -288,10 +291,10 @@ class HelloMessage(HandshakeMsg):
         """
         Remove or add an empty extension of given type.
 
-        @type extType: int
-        @param extType: numeric id of extension to add or remove
-        @type add: boolean
-        @param add: whether to add (True) or remove (False) the extension
+        :type extType: int
+        :param extType: numeric id of extension to add or remove
+        :type add: boolean
+        :param add: whether to add (True) or remove (False) the extension
         """
         if add:
             self._addExt(extType)
@@ -303,25 +306,25 @@ class ClientHello(HelloMessage):
     """
     Class for handling the ClientHello SSLv2/SSLv3/TLS message.
 
-    @type certificate_types: list
-    @ivar certificate_types: list of supported certificate types (deprecated)
+    :vartype certificate_types: list
+    :ivar certificate_types: list of supported certificate types
+        (deprecated)
+    :vartype srp_username: bytearray
+    :ivar srp_username: name of the user in SRP extension (deprecated)
 
-    @type srp_username: bytearray
-    @ivar srp_username: name of the user in SRP extension (deprecated)
+    :vartype supports_npn: boolean
+    :ivar supports_npn: NPN extension presence (deprecated)
 
-    @type supports_npn: boolean
-    @ivar supports_npn: NPN extension presence (deprecated)
+    :vartype tack: boolean
+    :ivar tack: TACK extension presence (deprecated)
 
-    @type tack: boolean
-    @ivar tack: TACK extension presence (deprecated)
-
-    @type server_name: bytearray
-    @ivar server_name: first host_name (type 0) present in SNI extension
+    :vartype server_name: bytearray
+    :ivar server_name: first host_name (type 0) present in SNI extension
         (deprecated)
 
-    @type extensions: list of L{TLSExtension}
-    @ivar extensions: list of TLS extensions parsed from wire or to send, see
-        L{TLSExtension} and child classes for exact examples
+    :vartype extensions: list of :py:class:`TLSExtension`
+    :ivar extensions: list of TLS extensions parsed from wire or to send, see
+        :py:class:`TLSExtension` and child classes for exact examples
     """
 
     def __init__(self, ssl2=False):
@@ -337,7 +340,7 @@ class ClientHello(HelloMessage):
         """
         Return human readable representation of Client Hello.
 
-        @rtype: str
+        :rtype: str
         """
         if self.session_id.count(bytearray(b'\x00')) == len(self.session_id)\
                 and len(self.session_id) != 0:
@@ -359,7 +362,7 @@ class ClientHello(HelloMessage):
         """
         Return machine readable representation of Client Hello.
 
-        @rtype: str
+        :rtype: str
         """
         return "ClientHello(ssl2={0}, client_version=({1[0]}.{1[1]}), "\
                "random={2!r}, session_id={3!r}, cipher_suites={4!r}, "\
@@ -373,7 +376,8 @@ class ClientHello(HelloMessage):
         """
         Return the list of certificate types supported.
 
-        @deprecated: use extensions field to get the extension for inspection
+        .. deprecated:: 0.5
+            use extensions field to get the extension for inspection
         """
         cert_type = self.getExtension(ExtensionType.cert_type)
         if cert_type is None:
@@ -388,12 +392,12 @@ class ClientHello(HelloMessage):
         """
         Set list of supported certificate types.
 
-        Sets the list of supported types to list given in L{val} if the
+        Sets the list of supported types to list given in :py:obj:`val` if the
         cert_type extension is present. Creates the extension and places it
         last in the list otherwise.
 
-        @type val: list
-        @param val: list of supported certificate types by client encoded as
+        :type val: list
+        :param val: list of supported certificate types by client encoded as
             single byte integers
         """
         cert_type = self.getExtension(ExtensionType.cert_type)
@@ -409,7 +413,8 @@ class ClientHello(HelloMessage):
         """
         Return username for the SRP.
 
-        @deprecated: use extensions field to get the extension for inspection
+        .. deprecated:: 0.5
+            use extensions field to get the extension for inspection
         """
         srp_ext = self.getExtension(ExtensionType.srp)
 
@@ -423,8 +428,8 @@ class ClientHello(HelloMessage):
         """
         Set the username for SRP.
 
-        @type name: bytearray
-        @param name: UTF-8 encoded username
+        :type name: bytearray
+        :param name: UTF-8 encoded username
         """
         srp_ext = self.getExtension(ExtensionType.srp)
 
@@ -439,8 +444,10 @@ class ClientHello(HelloMessage):
         """
         Return whether the client supports TACK.
 
-        @rtype: boolean
-        @deprecated: use extensions field to get the extension for inspection
+        .. deprecated:: 0.5
+            use extensions field to get the extension for inspection
+
+        :rtype: boolean
         """
         return self.getExtension(ExtensionType.tack) is not None
 
@@ -449,8 +456,8 @@ class ClientHello(HelloMessage):
         """
         Create or delete the TACK extension.
 
-        @type present: boolean
-        @param present: True will create extension while False will remove
+        :type present: boolean
+        :param present: True will create extension while False will remove
             extension from client hello
         """
         self._addOrRemoveExt(ExtensionType.tack, present)
@@ -460,8 +467,10 @@ class ClientHello(HelloMessage):
         """
         Return whether client supports NPN extension.
 
-        @rtype: boolean
-        @deprecated: use extensions field to get the extension for inspection
+        .. deprecated:: 0.5
+            use extensions field to get the extension for inspection
+
+        :rtype: boolean
         """
         return self.getExtension(ExtensionType.supports_npn) is not None
 
@@ -470,8 +479,8 @@ class ClientHello(HelloMessage):
         """
         Create or delete the NPN extension.
 
-        @type present: boolean
-        @param present: selects whatever to create or remove the extension
+        :type present: boolean
+        :param present: selects whatever to create or remove the extension
             from list of supported ones
         """
         self._addOrRemoveExt(ExtensionType.supports_npn, present)
@@ -481,8 +490,10 @@ class ClientHello(HelloMessage):
         """
         Return first host_name present in SNI extension.
 
-        @rtype: bytearray
-        @deprecated: use extensions field to get the extension for inspection
+        .. deprecated:: 0.5
+            use extensions field to get the extension for inspection
+
+        :rtype: bytearray
         """
         sni_ext = self.getExtension(ExtensionType.server_name)
         if sni_ext is None:
@@ -498,8 +509,8 @@ class ClientHello(HelloMessage):
         """
         Set the first host_name present in SNI extension.
 
-        @type hostname: bytearray
-        @param hostname: name of the host_name to set
+        :type hostname: bytearray
+        :param hostname: name of the host_name to set
         """
         sni_ext = self.getExtension(ExtensionType.server_name)
         if sni_ext is None:
@@ -517,43 +528,44 @@ class ClientHello(HelloMessage):
         """
         Create a ClientHello message for sending.
 
-        @type version: tuple
-        @param version: the highest supported TLS version encoded as two int
+        :type version: tuple
+        :param version: the highest supported TLS version encoded as two int
             tuple
 
-        @type random: bytearray
-        @param random: client provided random value, in old versions of TLS
+        :type random: bytearray
+        :param random: client provided random value, in old versions of TLS
             (before 1.2) the first 32 bits should include system time, also
             used as the "challenge" field in SSLv2
 
-        @type session_id: bytearray
-        @param session_id: ID of session, set when doing session resumption
+        :type session_id: bytearray
+        :param session_id: ID of session, set when doing session resumption
 
-        @type cipher_suites: list
-        @param cipher_suites: list of ciphersuites advertised as supported
+        :type cipher_suites: list
+        :param cipher_suites: list of ciphersuites advertised as supported
 
-        @type certificate_types: list
-        @param certificate_types: list of supported certificate types, uses
+        :type certificate_types: list
+        :param certificate_types: list of supported certificate types, uses
             TLS extension for signalling, as such requires TLS1.0 to work
 
-        @type srpUsername: bytearray
-        @param srpUsername: utf-8 encoded username for SRP, TLS extension
+        :type srpUsername: bytearray
+        :param srpUsername: utf-8 encoded username for SRP, TLS extension
 
-        @type tack: boolean
-        @param tack: whatever to advertise support for TACK, TLS extension
+        :type tack: boolean
+        :param tack: whatever to advertise support for TACK, TLS extension
 
-        @type supports_npn: boolean
-        @param supports_npn: whatever to advertise support for NPN, TLS
+        :type supports_npn: boolean
+        :param supports_npn: whatever to advertise support for NPN, TLS
             extension
 
-        @type serverName: bytearray
-        @param serverName: the hostname to request in server name indication
+        :type serverName: bytearray
+        :param serverName: the hostname to request in server name indication
             extension, TLS extension. Note that SNI allows to set multiple
-            hostnames and values that are not hostnames, use L{SNIExtension}
-            together with L{extensions} to use it.
+            hostnames and values that are not hostnames, use
+            :py:class:`~.extensions.SNIExtension`
+            together with :py:obj:`extensions` to use it.
 
-        @type extensions: list of L{TLSExtension}
-        @param extensions: list of extensions to advertise
+        :type extensions: list of :py:class:`~.extensions.TLSExtension`
+        :param extensions: list of extensions to advertise
         """
         self.client_version = version
         self.random = random
@@ -662,33 +674,34 @@ class ServerHello(HelloMessage):
     """
     Handling of Server Hello messages.
 
-    @type server_version: tuple
-    @ivar server_version: protocol version encoded as two int tuple
+    :vartype server_version: tuple
+    :ivar server_version: protocol version encoded as two int tuple
 
-    @type random: bytearray
-    @ivar random: server random value
+    :vartype random: bytearray
+    :ivar random: server random value
 
-    @type session_id: bytearray
-    @ivar session_id: session identifier for resumption
+    :vartype session_id: bytearray
+    :ivar session_id: session identifier for resumption
 
-    @type cipher_suite: int
-    @ivar cipher_suite: server selected cipher_suite
+    :vartype cipher_suite: int
+    :ivar cipher_suite: server selected cipher_suite
 
-    @type compression_method: int
-    @ivar compression_method: server selected compression method
+    :vartype compression_method: int
+    :ivar compression_method: server selected compression method
 
-    @type next_protos: list of bytearray
-    @ivar next_protos: list of advertised protocols in NPN extension
+    :vartype next_protos: list of bytearray
+    :ivar next_protos: list of advertised protocols in NPN extension
 
-    @type next_protos_advertised: list of bytearray
-    @ivar next_protos_advertised: list of protocols advertised in NPN extension
+    :vartype next_protos_advertised: list of bytearray
+    :ivar next_protos_advertised: list of protocols advertised in NPN extension
 
-    @type certificate_type: int
-    @ivar certificate_type: certificate type selected by server
+    :vartype certificate_type: int
+    :ivar certificate_type: certificate type selected by server
 
-    @type extensions: list
-    @ivar extensions: list of TLS extensions present in server_hello message,
-        see L{TLSExtension} and child classes for exact examples
+    :vartype extensions: list
+    :ivar extensions: list of TLS extensions present in server_hello message,
+        see :py:class:`~.extensions.TLSExtension` and child classes for exact
+        examples
     """
 
     def __init__(self):
@@ -749,7 +762,7 @@ class ServerHello(HelloMessage):
         """
         Return the certificate type selected by server.
 
-        @rtype: int
+        :rtype: int
         """
         cert_type = self.getExtension(ExtensionType.cert_type)
         if cert_type is None:
@@ -763,8 +776,8 @@ class ServerHello(HelloMessage):
         """
         Set the certificate type supported.
 
-        @type val: int
-        @param val: type of certificate
+        :type val: int
+        :param val: type of certificate
         """
         # XXX backwards compatibility, 0 means x.509 and should not be sent
         if val == 0 or val is None:
@@ -782,7 +795,7 @@ class ServerHello(HelloMessage):
         """
         Return the advertised protocols in NPN extension.
 
-        @rtype: list of bytearrays
+        :rtype: list of bytearrays
         """
         npn_ext = self.getExtension(ExtensionType.supports_npn)
 
@@ -796,8 +809,8 @@ class ServerHello(HelloMessage):
         """
         Set the advertised protocols in NPN extension.
 
-        @type val: list
-        @param val: list of protocols to advertise as UTF-8 encoded names
+        :type val: list
+        :param val: list of protocols to advertise as UTF-8 encoded names
         """
         if val is None:
             return
@@ -818,7 +831,7 @@ class ServerHello(HelloMessage):
         """
         Return the advertised protocols in NPN extension.
 
-        @rtype: list of bytearrays
+        :rtype: list of bytearrays
         """
         return self.next_protos
 
@@ -827,8 +840,8 @@ class ServerHello(HelloMessage):
         """
         Set the advertised protocols in NPN extension.
 
-        @type val: list
-        @param val: list of protocols to advertise as UTF-8 encoded names
+        :type val: list
+        :param val: list of protocols to advertise as UTF-8 encoded names
         """
         self.next_protos = val
 
@@ -895,24 +908,24 @@ class ServerHello2(HandshakeMsg):
     """
     SERVER-HELLO message from SSLv2.
 
-    @type session_id_hit: int
-    @ivar session_id_hit: non zero if the client provided session ID was
+    :vartype session_id_hit: int
+    :ivar session_id_hit: non zero if the client provided session ID was
         matched in server's session cache
 
-    @type certificate_type: int
-    @ivar certificate_type: type of certificate sent
+    :vartype certificate_type: int
+    :ivar certificate_type: type of certificate sent
 
-    @type server_version: tuple of ints
-    @ivar server_version: protocol version selected by server
+    :vartype server_version: tuple of ints
+    :ivar server_version: protocol version selected by server
 
-    @type certificate: bytearray
-    @ivar certificate: certificate sent by server
+    :vartype certificate: bytearray
+    :ivar certificate: certificate sent by server
 
-    @type ciphers: array of int
-    @ivar ciphers: list of ciphers supported by server
+    :vartype ciphers: array of int
+    :ivar ciphers: list of ciphers supported by server
 
-    @type session_id: bytearray
-    @ivar session_id: idendifier of negotiated session
+    :vartype session_id: bytearray
+    :ivar session_id: idendifier of negotiated session
     """
 
     def __init__(self):
@@ -1078,54 +1091,54 @@ class ServerKeyExchange(HandshakeMsg):
     """
     Handling TLS Handshake protocol Server Key Exchange messages.
 
-    @type cipherSuite: int
-    @cvar cipherSuite: id of ciphersuite selected in Server Hello message
-    @type srp_N: int
-    @cvar srp_N: SRP protocol prime
-    @type srp_N_len: int
-    @cvar srp_N_len: length of srp_N in bytes
-    @type srp_g: int
-    @cvar srp_g: SRP protocol generator
-    @type srp_g_len: int
-    @cvar srp_g_len: length of srp_g in bytes
-    @type srp_s: bytearray
-    @cvar srp_s: SRP protocol salt value
-    @type srp_B: int
-    @cvar srp_B: SRP protocol server public value
-    @type srp_B_len: int
-    @cvar srp_B_len: length of srp_B in bytes
-    @type dh_p: int
-    @cvar dh_p: FFDHE protocol prime
-    @type dh_p_len: int
-    @cvar dh_p_len: length of dh_p in bytes
-    @type dh_g: int
-    @cvar dh_g: FFDHE protocol generator
-    @type dh_g_len: int
-    @type dh_g_len: length of dh_g in bytes
-    @type dh_Ys: int
-    @cvar dh_Ys: FFDH protocol server key share
-    @type dh_Ys_len: int
-    @cvar dh_Ys_len: length of dh_Ys in bytes
-    @type curve_type: int
-    @cvar curve_type: Type of curve used (explicit, named, etc.)
-    @type named_curve: int
-    @cvar named_curve: TLS ID of named curve
-    @type ecdh_Ys: bytearray
-    @cvar ecdh_Ys: ECDH protocol encoded point key share
-    @type signature: bytearray
-    @cvar signature: signature performed over the parameters by server
-    @type hashAlg: int
-    @cvar hashAlg: id of hash algorithm used for signature
-    @type signAlg: int
-    @cvar signAlg: id of signature algorithm used for signature
+    :vartype cipherSuite: int
+    :cvar cipherSuite: id of ciphersuite selected in Server Hello message
+    :vartype srp_N: int
+    :cvar srp_N: SRP protocol prime
+    :vartype srp_N_len: int
+    :cvar srp_N_len: length of srp_N in bytes
+    :vartype srp_g: int
+    :cvar srp_g: SRP protocol generator
+    :vartype srp_g_len: int
+    :cvar srp_g_len: length of srp_g in bytes
+    :vartype srp_s: bytearray
+    :cvar srp_s: SRP protocol salt value
+    :vartype srp_B: int
+    :cvar srp_B: SRP protocol server public value
+    :vartype srp_B_len: int
+    :cvar srp_B_len: length of srp_B in bytes
+    :vartype dh_p: int
+    :cvar dh_p: FFDHE protocol prime
+    :vartype dh_p_len: int
+    :cvar dh_p_len: length of dh_p in bytes
+    :vartype dh_g: int
+    :cvar dh_g: FFDHE protocol generator
+    :vartype dh_g_len: int
+    :cvar dh_g_len: length of dh_g in bytes
+    :vartype dh_Ys: int
+    :cvar dh_Ys: FFDH protocol server key share
+    :vartype dh_Ys_len: int
+    :cvar dh_Ys_len: length of dh_Ys in bytes
+    :vartype curve_type: int
+    :cvar curve_type: Type of curve used (explicit, named, etc.)
+    :vartype named_curve: int
+    :cvar named_curve: TLS ID of named curve
+    :vartype ecdh_Ys: bytearray
+    :cvar ecdh_Ys: ECDH protocol encoded point key share
+    :vartype signature: bytearray
+    :cvar signature: signature performed over the parameters by server
+    :vartype hashAlg: int
+    :cvar hashAlg: id of hash algorithm used for signature
+    :vartype signAlg: int
+    :cvar signAlg: id of signature algorithm used for signature
     """
 
     def __init__(self, cipherSuite, version):
         """
         Initialise Server Key Exchange for reading or writing.
 
-        @type cipherSuite: int
-        @param cipherSuite: id of ciphersuite selected by server
+        :type cipherSuite: int
+        :param cipherSuite: id of ciphersuite selected by server
         """
         HandshakeMsg.__init__(self, HandshakeType.server_key_exchange)
         self.cipherSuite = cipherSuite
@@ -1202,10 +1215,10 @@ class ServerKeyExchange(HandshakeMsg):
 
     def parse(self, parser):
         """
-        Deserialise message from L{Parser}.
+        Deserialise message from :py:class:`Parser`.
 
-        @type parser: L{Parser}
-        @param parser: parser to read data from
+        :type parser: Parser
+        :param parser: parser to read data from
         """
         parser.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
@@ -1245,7 +1258,7 @@ class ServerKeyExchange(HandshakeMsg):
         """
         Serialise the key exchange parameters.
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         writer = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
@@ -1276,7 +1289,7 @@ class ServerKeyExchange(HandshakeMsg):
         """
         Serialise complete message.
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         writer = Writer()
         writer.bytes += self.writeParams()
@@ -1292,7 +1305,7 @@ class ServerKeyExchange(HandshakeMsg):
         """
         Calculate hash of parameters to sign.
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         bytesToHash = clientRandom + serverRandom + self.writeParams()
         if self.version >= (3, 3):
@@ -1333,29 +1346,29 @@ class ClientKeyExchange(HandshakeMsg):
     """
     Handling of TLS Handshake protocol ClientKeyExchange message.
 
-    @type cipherSuite: int
-    @ivar cipherSuite: the cipher suite id used for the connection
-    @type version: tuple(int, int)
-    @ivar version: TLS protocol version used for the connection
-    @type srp_A: int
-    @ivar srp_A: SRP protocol client answer value
-    @type dh_Yc: int
-    @ivar dh_Yc: client Finite Field Diffie-Hellman protocol key share
-    @type ecdh_Yc: bytearray
-    @ivar ecdh_Yc: encoded curve coordinates
-    @type encryptedPreMasterSecret: bytearray
-    @ivar encryptedPreMasterSecret: client selected PremMaster secret encrypted
-    with server public key (from certificate)
+    :vartype cipherSuite: int
+    :ivar cipherSuite: the cipher suite id used for the connection
+    :vartype version: tuple(int, int)
+    :ivar version: TLS protocol version used for the connection
+    :vartype srp_A: int
+    :ivar srp_A: SRP protocol client answer value
+    :vartype dh_Yc: int
+    :ivar dh_Yc: client Finite Field Diffie-Hellman protocol key share
+    :vartype ecdh_Yc: bytearray
+    :ivar ecdh_Yc: encoded curve coordinates
+    :vartype encryptedPreMasterSecret: bytearray
+    :ivar encryptedPreMasterSecret: client selected PremMaster secret encrypted
+        with server public key (from certificate)
     """
 
     def __init__(self, cipherSuite, version=None):
         """
         Initialise ClientKeyExchange for reading or writing.
 
-        @type cipherSuite: int
-        @param cipherSuite: id of the ciphersuite selected by server
-        @type version: tuple(int, int)
-        @param version: protocol version selected by server
+        :type cipherSuite: int
+        :param cipherSuite: id of the ciphersuite selected by server
+        :type version: tuple(int, int)
+        :param version: protocol version selected by server
         """
         HandshakeMsg.__init__(self, HandshakeType.client_key_exchange)
         self.cipherSuite = cipherSuite
@@ -1371,9 +1384,9 @@ class ClientKeyExchange(HandshakeMsg):
 
         returns self
 
-        @type srp_A: int
-        @param srp_A: client SRP answer
-        @rtype: L{ClientKeyExchange}
+        :type srp_A: int
+        :param srp_A: client SRP answer
+        :rtype: ClientKeyExchange
         """
         self.srp_A = srp_A
         return self
@@ -1384,8 +1397,8 @@ class ClientKeyExchange(HandshakeMsg):
 
         returns self
 
-        @type encryptedPreMasterSecret: bytearray
-        @rtype: L{ClientKeyExchange}
+        :type encryptedPreMasterSecret: bytearray
+        :rtype: ClientKeyExchange
         """
         self.encryptedPreMasterSecret = encryptedPreMasterSecret
         return self
@@ -1396,8 +1409,8 @@ class ClientKeyExchange(HandshakeMsg):
 
         returns self
 
-        @type dh_Yc: int
-        @rtype: L{ClientKeyExchange}
+        :type dh_Yc: int
+        :rtype: ClientKeyExchange
         """
         self.dh_Yc = dh_Yc
         return self
@@ -1408,20 +1421,20 @@ class ClientKeyExchange(HandshakeMsg):
 
         returns self
 
-        @type ecdh_Yc: bytearray
-        @rtype: L{ClientKeyExchange}
+        :type ecdh_Yc: bytearray
+        :rtype: ClientKeyExchange
         """
         self.ecdh_Yc = ecdh_Yc
         return self
 
     def parse(self, parser):
         """
-        Deserialise the message from L{Parser},
+        Deserialise the message from :py:class:`Parser`,
 
         returns self
 
-        @type parser: L{Parser}
-        @rtype: L{ClientKeyExchange}
+        :type parser: Parser
+        :rtype: ClientKeyExchange
         """
         parser.startLengthCheck(3)
         if self.cipherSuite in CipherSuite.srpAllSuites:
@@ -1447,7 +1460,7 @@ class ClientKeyExchange(HandshakeMsg):
         """
         Serialise the object.
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         w = Writer()
         if self.cipherSuite in CipherSuite.srpAllSuites:
@@ -1472,18 +1485,18 @@ class ClientMasterKey(HandshakeMsg):
     """
     Handling of SSLv2 CLIENT-MASTER-KEY message.
 
-    @type cipher: int
-    @ivar cipher: negotiated cipher
+    :vartype cipher: int
+    :ivar cipher: negotiated cipher
 
-    @type clear_key: bytearray
-    @ivar clear_key: the part of master secret key that is sent in clear for
-    export cipher suites
+    :vartype clear_key: bytearray
+    :ivar clear_key: the part of master secret key that is sent in clear for
+        export cipher suites
 
-    @type encrypted_key: bytearray
-    @ivar encrypted_key: (part of) master secret encrypted using server key
+    :vartype encrypted_key: bytearray
+    :ivar encrypted_key: (part of) master secret encrypted using server key
 
-    @type key_argument: bytearray
-    @ivar key_argument: additional key argument for block ciphers
+    :vartype key_argument: bytearray
+    :ivar key_argument: additional key argument for block ciphers
     """
 
     def __init__(self):
@@ -1538,7 +1551,7 @@ class CertificateVerify(HandshakeMsg):
         """
         Create message.
 
-        @param version: TLS protocol version in use
+        :param version: TLS protocol version in use
         """
         HandshakeMsg.__init__(self, HandshakeType.certificate_verify)
         self.version = version
@@ -1549,9 +1562,9 @@ class CertificateVerify(HandshakeMsg):
         """
         Provide data for serialisation of message.
 
-        @param signature: signature carried in the message
-        @param signatureAlgorithm: signature algorithm used to make the
-        signature (TLSv1.2 only)
+        :param signature: signature carried in the message
+        :param signatureAlgorithm: signature algorithm used to make the
+            signature (TLSv1.2 only)
         """
         self.signatureAlgorithm = signatureAlgorithm
         self.signature = signature
@@ -1561,7 +1574,7 @@ class CertificateVerify(HandshakeMsg):
         """
         Deserialize message from parser.
 
-        @param parser: parser with data to read
+        :param parser: parser with data to read
         """
         parser.startLengthCheck(3)
         if self.version >= (3, 3):
@@ -1574,7 +1587,7 @@ class CertificateVerify(HandshakeMsg):
         """
         Serialize the data to bytearray.
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         writer = Writer()
         if self.version >= (3, 3):
@@ -1686,8 +1699,8 @@ class ClientFinished(SSL2Finished):
     """
     Handling of SSLv2 CLIENT-FINISHED message.
 
-    @type verify_data: bytearray
-    @ivar verify_data: payload of the message, should be the CONNECTION-ID
+    :vartype verify_data: bytearray
+    :ivar verify_data: payload of the message, should be the CONNECTION-ID
     """
 
     def __init__(self):
@@ -1698,8 +1711,8 @@ class ServerFinished(SSL2Finished):
     """
     Handling of SSLv2 SERVER-FINISHED message.
 
-    @type verify_data: bytearray
-    @ivar verify_data: payload of the message, should be SESSION-ID
+    :vartype verify_data: bytearray
+    :ivar verify_data: payload of the message, should be SESSION-ID
     """
 
     def __init__(self):
@@ -1712,11 +1725,11 @@ class CertificateStatus(HandshakeMsg):
 
     Handling of the handshake protocol message that includes the OCSP staple.
 
-    @type status_type: int
-    @ivar status_type: type of response returned
+    :vartype status_type: int
+    :ivar status_type: type of response returned
 
-    @type ocsp: bytearray
-    @ivar ocsp: OCSPResponse from RFC 2560
+    :vartype ocsp: bytearray
+    :ivar ocsp: OCSPResponse from RFC 2560
     """
 
     def __init__(self):

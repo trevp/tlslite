@@ -16,8 +16,8 @@ class BufferedSocket(object):
 
     Not multithread safe.
 
-    @type buffer_writes: boolean
-    @ivar buffer_writes: whether to buffer data writes, False by default
+    :vartype buffer_writes: boolean
+    :ivar buffer_writes: whether to buffer data writes, False by default
     """
 
     def __init__(self, socket):

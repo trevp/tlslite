@@ -13,14 +13,14 @@ class RSAKey(object):
     """This is an abstract base class for RSA keys.
 
     Particular implementations of RSA keys, such as
-    L{openssl_rsakey.OpenSSL_RSAKey},
-    L{python_rsakey.Python_RSAKey}, and
-    L{pycrypto_rsakey.PyCrypto_RSAKey},
+    :py:class:`~.openssl_rsakey.OpenSSL_RSAKey`,
+    :py:class:`~.python_rsakey.Python_RSAKey`, and
+    :py:class:`~.pycrypto_rsakey.PyCrypto_RSAKey`,
     inherit from this.
 
     To create or parse an RSA key, don't use one of these classes
     directly.  Instead, use the factory functions in
-    L{tlslite.utils.keyfactory}.
+    :py:class:`~tlslite.utils.keyfactory`.
     """
 
     def __init__(self, n=0, e=0):
@@ -28,25 +28,25 @@ class RSAKey(object):
 
         If n and e are passed in, the new key will be initialized.
 
-        @type n: int
-        @param n: RSA modulus.
+        :type n: int
+        :param n: RSA modulus.
 
-        @type e: int
-        @param e: RSA public exponent.
+        :type e: int
+        :param e: RSA public exponent.
         """
         raise NotImplementedError()
 
     def __len__(self):
         """Return the length of this key in bits.
 
-        @rtype: int
+        :rtype: int
         """
         return numBits(self.n)
 
     def hasPrivateKey(self):
         """Return whether or not this key has a private component.
 
-        @rtype: bool
+        :rtype: bool
         """
         raise NotImplementedError()
 
@@ -57,23 +57,23 @@ class RSAKey(object):
         a PKCS1 or PSS signature on the passed-in data with selected hash
         algorithm.
 
-        @type bytes: str or L{bytearray} of unsigned bytes
-        @param bytes: The value which will be hashed and signed.
+        :type bytes: str or bytearray
+        :param bytes: The value which will be hashed and signed.
 
-        @type rsaScheme: str
-        @param rsaScheme: The type of RSA scheme that will be applied,
+        :type rsaScheme: str
+        :param rsaScheme: The type of RSA scheme that will be applied,
                           "PKCS1" for RSASSA-PKCS#1 v1.5 signature and "PSS"
                           for RSASSA-PSS with MGF1 signature method
 
-        @type hAlg: str
-        @param hAlg: The hash algorithm that will be used
+        :type hAlg: str
+        :param hAlg: The hash algorithm that will be used
 
-        @type sLen: int
-        @param sLen: The length of intended salt value, applicable only
+        :type sLen: int
+        :param sLen: The length of intended salt value, applicable only
                      for RSASSA-PSS signatures
 
-        @rtype: L{bytearray} of unsigned bytes.
-        @return: A PKCS1 or PSS signature on the passed-in data.
+        :rtype: bytearray
+        :returns: A PKCS1 or PSS signature on the passed-in data.
         """
         rsaScheme = rsaScheme.lower()
         hAlg = hAlg.lower()
@@ -88,26 +88,26 @@ class RSAKey(object):
         This verifies a PKCS1 or PSS signature on the passed-in data
         with selected hash algorithm.
 
-        @type sigBytes: L{bytearray} of unsigned bytes
-        @param sigBytes: A PKCS1 or PSS signature.
+        :type sigBytes: bytearray
+        :param sigBytes: A PKCS1 or PSS signature.
 
-        @type bytes: str or L{bytearray} of unsigned bytes
-        @param bytes: The value which will be hashed and verified.
+        :type bytes: str or bytearray
+        :param bytes: The value which will be hashed and verified.
 
-        @type rsaScheme: str
-        @param rsaScheme: The type of RSA scheme that will be applied,
+        :type rsaScheme: str
+        :param rsaScheme: The type of RSA scheme that will be applied,
                           "PKCS1" for RSASSA-PKCS#1 v1.5 signature and "PSS"
                           for RSASSA-PSS with MGF1 signature method
 
-        @type hAlg: str
-        @param hAlg: The hash algorithm that will be used
+        :type hAlg: str
+        :param hAlg: The hash algorithm that will be used
 
-        @type sLen: int
-        @param sLen: The length of intended salt value, applicable only
+        :type sLen: int
+        :param sLen: The length of intended salt value, applicable only
                      for RSASSA-PSS signatures
 
-        @rtype: bool
-        @return: Whether the signature matches the passed-in data.
+        :rtype: bool
+        :returns: Whether the signature matches the passed-in data.
         """
         rsaScheme = rsaScheme.lower()
         hAlg = hAlg.lower()
@@ -120,14 +120,14 @@ class RSAKey(object):
 
         This generates mask based on passed-in seed and output maskLen.
 
-        @type mgfSeed: L{bytearray}
-        @param mgfSeed: Seed from which mask will be generated.
+        :type mgfSeed: bytearray
+        :param mgfSeed: Seed from which mask will be generated.
 
-        @type maskLen: int
-        @param maskLen: Wished length of the mask, in octets
+        :type maskLen: int
+        :param maskLen: Wished length of the mask, in octets
 
-        @rtype: L{bytearray}
-        @return: Mask
+        :rtype: bytearray
+        :returns: Mask
         """
         hashLen = getattr(hashlib, hAlg)().digest_size
         if maskLen > (2 ** 32) * hashLen:
@@ -144,17 +144,17 @@ class RSAKey(object):
 
         This encodes the message using selected hash algorithm
 
-        @type mHash: bytearray
-        @param mHash: Hash of message to be encoded
+        :type mHash: bytearray
+        :param mHash: Hash of message to be encoded
 
-        @type emBits: int
-        @param emBits: maximal length of returned EM
+        :type emBits: int
+        :param emBits: maximal length of returned EM
 
-        @type hAlg: str
-        @param hAlg: hash algorithm to be used
+        :type hAlg: str
+        :param hAlg: hash algorithm to be used
 
-        @type sLen: int
-        @param sLen: length of salt"""
+        :type sLen: int
+        :param sLen: length of salt"""
         hashLen = getattr(hashlib, hAlg)().digest_size
         emLen = divceil(emBits, 8)
         if emLen < hashLen + sLen + 2:
@@ -178,14 +178,14 @@ class RSAKey(object):
 
         This signs the message using selected hash algorithm
 
-        @type mHash: bytearray
-        @param mHash: Hash of message to be signed
+        :type mHash: bytearray
+        :param mHash: Hash of message to be signed
 
-        @type hAlg: str
-        @param hAlg: hash algorithm to be used
+        :type hAlg: str
+        :param hAlg: hash algorithm to be used
 
-        @type sLen: int
-        @param sLen: length of salt"""
+        :type sLen: int
+        :param sLen: length of salt"""
         EM = self.EMSA_PSS_encode(mHash, numBits(self.n) - 1, hAlg, sLen)
         m = bytesToNumber(EM)
         if m >= self.n:
@@ -199,20 +199,20 @@ class RSAKey(object):
 
         This verifies the signature in encoded message
 
-        @type mHash: bytearray
-        @param mHash: Hash of the original not signed message
+        :type mHash: bytearray
+        :param mHash: Hash of the original not signed message
 
-        @type EM: bytearray
-        @param EM: Encoded message
+        :type EM: bytearray
+        :param EM: Encoded message
 
-        @type emBits: int
-        @param emBits: Length of the encoded message in bits
+        :type emBits: int
+        :param emBits: Length of the encoded message in bits
 
-        @type hAlg: str
-        @param hAlg: hash algorithm to be used
+        :type hAlg: str
+        :param hAlg: hash algorithm to be used
 
-        @type sLen: int
-        @param sLen: Length of salt
+        :type sLen: int
+        :param sLen: Length of salt
         """
         hashLen = getattr(hashlib, hAlg)().digest_size
         emLen = divceil(emBits, 8)
@@ -252,17 +252,17 @@ class RSAKey(object):
 
         This verifies the signature in the signed message
 
-        @type mHash: bytearray
-        @param mHash: Hash of original message
+        :type mHash: bytearray
+        :param mHash: Hash of original message
 
-        @type S: bytearray
-        @param S: Signed message
+        :type S: bytearray
+        :param S: Signed message
 
-        @type hAlg: str
-        @param hAlg: Hash algorithm to be used
+        :type hAlg: str
+        :param hAlg: Hash algorithm to be used
 
-        @type sLen: int
-        @param sLen: Length of salt
+        :type sLen: int
+        :param sLen: Length of salt
         """
         if len(bytearray(S)) != len(numberToByteArray(self.n)):
             raise InvalidSignature("Invalid signature")
@@ -294,24 +294,24 @@ class RSAKey(object):
         This requires the key to have a private component.  It performs
         a PKCS1 signature on the passed-in data.
 
-        @type bytes: L{bytearray} of unsigned bytes
-        @param bytes: The value which will be signed.
+        :type bytes: bytearray
+        :param bytes: The value which will be signed.
 
-        @type padding: str
-        @param padding: name of the rsa padding mode to use, supported:
-        "pkcs1" for RSASSA-PKCS1_1_5 and "pss" for RSASSA-PSS.
+        :type padding: str
+        :param padding: name of the rsa padding mode to use, supported:
+            "pkcs1" for RSASSA-PKCS1_1_5 and "pss" for RSASSA-PSS.
 
-        @type hashAlg: str
-        @param hashAlg: name of hash to be encoded using the PKCS#1 prefix
-        for "pkcs1" padding or the hash used for MGF1 in "pss". Parameter
-        is mandatory for "pss" padding.
+        :type hashAlg: str
+        :param hashAlg: name of hash to be encoded using the PKCS#1 prefix
+            for "pkcs1" padding or the hash used for MGF1 in "pss". Parameter
+            is mandatory for "pss" padding.
 
-        @type saltLen: int
-        @param saltLen: length of salt used for the PSS padding. Default
-        is the length of the hash output used.
+        :type saltLen: int
+        :param saltLen: length of salt used for the PSS padding. Default
+            is the length of the hash output used.
 
-        @rtype: L{bytearray} of unsigned bytes.
-        @return: A PKCS1 signature on the passed-in data.
+        :rtype: bytearray
+        :returns: A PKCS1 signature on the passed-in data.
         """
         padding = padding.lower()
         if padding == 'pkcs1':
@@ -342,14 +342,14 @@ class RSAKey(object):
 
         This verifies a PKCS1 signature on the passed-in data.
 
-        @type sigBytes: L{bytearray} of unsigned bytes
-        @param sigBytes: A PKCS1 signature.
+        :type sigBytes: bytearray
+        :param sigBytes: A PKCS1 signature.
 
-        @type bytes: L{bytearray} of unsigned bytes
-        @param bytes: The value which will be verified.
+        :type bytes: bytearray
+        :param bytes: The value which will be verified.
 
-        @rtype: bool
-        @return: Whether the signature matches the passed-in data.
+        :rtype: bool
+        :returns: Whether the signature matches the passed-in data.
         """
         if padding == "pkcs1" and hashAlg == 'sha1':
             # Try it with/without the embedded NULL
@@ -377,11 +377,11 @@ class RSAKey(object):
 
         This performs PKCS1 encryption of the passed-in data.
 
-        @type bytes: L{bytearray} of unsigned bytes
-        @param bytes: The value which will be encrypted.
+        :type bytes: bytearray
+        :param bytes: The value which will be encrypted.
 
-        @rtype: L{bytearray} of unsigned bytes.
-        @return: A PKCS1 encryption of the passed-in data.
+        :rtype: bytearray
+        :returns: A PKCS1 encryption of the passed-in data.
         """
         paddedBytes = self._addPKCS1Padding(bytes, 2)
         m = bytesToNumber(paddedBytes)
@@ -397,12 +397,12 @@ class RSAKey(object):
         This requires the key to have a private component.  It performs
         PKCS1 decryption of the passed-in data.
 
-        @type encBytes: L{bytearray} of unsigned bytes
-        @param encBytes: The value which will be decrypted.
+        :type encBytes: bytearray
+        :param encBytes: The value which will be decrypted.
 
-        @rtype: L{bytearray} of unsigned bytes or None.
-        @return: A PKCS1 decryption of the passed-in data or None if
-        the data is not properly formatted.
+        :rtype: bytearray or None
+        :returns: A PKCS1 decryption of the passed-in data or None if
+            the data is not properly formatted.
         """
         if not self.hasPrivateKey():
             raise AssertionError()
@@ -434,23 +434,23 @@ class RSAKey(object):
         """Return True if the write() method accepts a password for use
         in encrypting the private key.
 
-        @rtype: bool
+        :rtype: bool
         """
         raise NotImplementedError()
 
     def write(self, password=None):
         """Return a string containing the key.
 
-        @rtype: str
-        @return: A string describing the key, in whichever format (PEM)
-        is native to the implementation.
+        :rtype: str
+        :returns: A string describing the key, in whichever format (PEM)
+            is native to the implementation.
         """
         raise NotImplementedError()
 
     def generate(bits):
         """Generate a new key with the specified bit length.
 
-        @rtype: L{tlslite.utils.RSAKey.RSAKey}
+        :rtype: ~tlslite.utils.RSAKey.RSAKey
         """
         raise NotImplementedError()
     generate = staticmethod(generate)

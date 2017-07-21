@@ -73,11 +73,11 @@ class Writer(object):
             Encode positive integer x in big-endian format using length bytes,
             add to the internal buffer.
 
-            @type x: int
-            @param x: value to encode
+            :type x: int
+            :param x: value to encode
 
-            @type length: int
-            @param length: number of bytes to use for encoding the value
+            :type length: int
+            :param length: number of bytes to use for encoding the value
             """
             try:
                 self.bytes += x.to_bytes(length, 'big')
@@ -93,11 +93,11 @@ class Writer(object):
             Encode positive iteger x in big-endian format using length bytes,
             add to the internal buffer.
 
-            @type x: int
-            @param x: value to encode
+            :type x: int
+            :param x: value to encode
 
-            @type length: int
-            @param length: number of bytes to use for encoding the value
+            :type length: int
+            :param length: number of bytes to use for encoding the value
             """
             try:
                 self._addMethods[length](self, x)
@@ -118,11 +118,11 @@ class Writer(object):
         Uses the unbounded iterable seq to produce items, each of
         which is then encoded to length bytes
 
-        @type seq: iterable of int
-        @param seq: list of positive integers to encode
+        :type seq: iterable of int
+        :param seq: list of positive integers to encode
 
-        @type length: int
-        @param length: number of bytes to which encode every element
+        :type length: int
+        :param length: number of bytes to which encode every element
         """
         for e in seq:
             self.add(e, length)
@@ -144,14 +144,14 @@ class Writer(object):
             Create a list of specific length with all items being of the same
             size
 
-            @type seq: list of int
-            @param seq: list of positive integers to encode
+            :type seq: list of int
+            :param seq: list of positive integers to encode
 
-            @type length: int
-            @param length: amount of bytes in which to encode every item
+            :type length: int
+            :param length: amount of bytes in which to encode every item
 
-            @type lengthLength: int
-            @param lengthLength: amount of bytes in which to encode the overall
+            :type lengthLength: int
+            :param lengthLength: amount of bytes in which to encode the overall
                 length of the array
             """
             self.add(len(seq)*length, lengthLength)
@@ -170,14 +170,14 @@ class Writer(object):
             Create a list of specific length with all items being of the same
             size
 
-            @type seq: list of int
-            @param seq: list of positive integers to encode
+            :type seq: list of int
+            :param seq: list of positive integers to encode
 
-            @type length: int
-            @param length: amount of bytes in which to encode every item
+            :type length: int
+            :param length: amount of bytes in which to encode every item
 
-            @type lengthLength: int
-            @param lengthLength: amount of bytes in which to encode the overall
+            :type lengthLength: int
+            :param lengthLength: amount of bytes in which to encode the overall
                 length of the array
             """
             seqLen = len(seq)
@@ -202,14 +202,14 @@ class Writer(object):
 
         Inverse of Parser.getVarTupleList()
 
-        @type seq: enumerable
-        @param seq: list of tuples
+        :type seq: enumerable
+        :param seq: list of tuples
 
-        @type length: int
-        @param length: length of single element in tuple
+        :type length: int
+        :param length: length of single element in tuple
 
-        @type lengthLength: int
-        @param lengthLength: length in bytes of overall length field
+        :type lengthLength: int
+        :param lengthLength: length in bytes of overall length field
         """
         if not seq:
             self.add(0, lengthLength)
@@ -245,25 +245,25 @@ class Parser(object):
     TODO: don't use an exception used by language parser to indicate errors
     in application code.
 
-    @type bytes: bytearray
-    @ivar bytes: data to be interpreted (buffer)
+    :vartype bytes: bytearray
+    :ivar bytes: data to be interpreted (buffer)
 
-    @type index: int
-    @ivar index: current position in the buffer
+    :vartype index: int
+    :ivar index: current position in the buffer
 
-    @type lengthCheck: int
-    @ivar lengthCheck: size of struct being parsed
+    :vartype lengthCheck: int
+    :ivar lengthCheck: size of struct being parsed
 
-    @type indexCheck: int
-    @ivar indexCheck: position at which the structure begins in buffer
+    :vartype indexCheck: int
+    :ivar indexCheck: position at which the structure begins in buffer
     """
 
     def __init__(self, bytes):
         """
         Bind raw bytes with parser.
 
-        @type bytes: bytearray
-        @param bytes: bytes to be parsed/interpreted
+        :type bytes: bytearray
+        :param bytes: bytes to be parsed/interpreted
         """
         self.bytes = bytes
         self.index = 0
@@ -274,10 +274,10 @@ class Parser(object):
         """
         Read a single big-endian integer value encoded in 'length' bytes.
 
-        @type length: int
-        @param length: number of bytes in which the value is encoded in
+        :type length: int
+        :param length: number of bytes in which the value is encoded in
 
-        @rtype: int
+        :rtype: int
         """
         if self.index + length > len(self.bytes):
             raise SyntaxError()
@@ -292,10 +292,10 @@ class Parser(object):
         """
         Read a string of bytes encoded in 'lengthBytes' bytes.
 
-        @type lengthBytes: int
-        @param lengthBytes: number of bytes to return
+        :type lengthBytes: int
+        :param lengthBytes: number of bytes to return
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         if self.index + lengthBytes > len(self.bytes):
             raise SyntaxError()
@@ -307,11 +307,11 @@ class Parser(object):
         """
         Read a variable length string with a fixed length.
 
-        @type lengthLength: int
-        @param lengthLength: number of bytes in which the length of the string
-        is encoded in
+        :type lengthLength: int
+        :param lengthLength: number of bytes in which the length of the string
+            is encoded in
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         lengthBytes = self.get(lengthLength)
         return self.getFixBytes(lengthBytes)
@@ -320,13 +320,13 @@ class Parser(object):
         """
         Read a list of static length with same-sized ints.
 
-        @type length: int
-        @param length: size in bytes of a single element in list
+        :type length: int
+        :param length: size in bytes of a single element in list
 
-        @type lengthList: int
-        @param lengthList: number of elements in list
+        :type lengthList: int
+        :param lengthList: number of elements in list
 
-        @rtype: list of int
+        :rtype: list of int
         """
         l = [0] * lengthList
         for x in range(lengthList):
@@ -337,13 +337,13 @@ class Parser(object):
         """
         Read a variable length list of same-sized integers.
 
-        @type length: int
-        @param length: size in bytes of a single element
+        :type length: int
+        :param length: size in bytes of a single element
 
-        @type lengthLength: int
-        @param lengthLength: size of the encoded length of the list
+        :type lengthLength: int
+        :param lengthLength: size of the encoded length of the list
 
-        @rtype: list of int
+        :rtype: list of int
         """
         lengthList = self.get(lengthLength)
         if lengthList % length != 0:
@@ -358,16 +358,16 @@ class Parser(object):
         """
         Read a variable length list of same sized tuples.
 
-        @type elemLength: int
-        @param elemLength: length in bytes of single tuple element
+        :type elemLength: int
+        :param elemLength: length in bytes of single tuple element
 
-        @type elemNum: int
-        @param elemNum: number of elements in tuple
+        :type elemNum: int
+        :param elemNum: number of elements in tuple
 
-        @type lengthLength: int
-        @param lengthLength: length in bytes of the list length variable
+        :type lengthLength: int
+        :param lengthLength: length in bytes of the list length variable
 
-        @rtype: list of tuple of int
+        :rtype: list of tuple of int
         """
         lengthList = self.get(lengthLength)
         if lengthList % (elemLength * elemNum) != 0:
@@ -385,8 +385,8 @@ class Parser(object):
         """
         Read length of struct and start a length check for parsing.
 
-        @type lengthLength: int
-        @param lengthLength: number of bytes in which the length is encoded
+        :type lengthLength: int
+        :param lengthLength: number of bytes in which the length is encoded
         """
         self.lengthCheck = self.get(lengthLength)
         self.indexCheck = self.index
@@ -395,8 +395,8 @@ class Parser(object):
         """
         Set length of struct and start a length check for parsing.
 
-        @type length: int
-        @param length: expected size of parsed struct in bytes
+        :type length: int
+        :param length: expected size of parsed struct in bytes
         """
         self.lengthCheck = length
         self.indexCheck = self.index

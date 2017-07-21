@@ -11,8 +11,6 @@ from .extensions import PaddingExtension
 class HandshakeHelpers(object):
     """
     This class encapsulates helper functions to be used with a TLS handshake.
-
-    @sort: alignUsingPaddingExtension
     """
 
     @staticmethod
@@ -20,8 +18,7 @@ class HandshakeHelpers(object):
         """
         Align ClientHello using the Padding extension to 512 bytes at least.
 
-        @type clientHello: ClientHello
-        @param clientHello: ClientHello to be aligned
+        :param ClientHello clientHello: ClientHello to be aligned
         """
         # Check clientHello size if padding extension should be added
         # we want to add the extension even when using just SSLv3

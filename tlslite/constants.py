@@ -329,30 +329,33 @@ class AlertLevel(TLSEnum):
 
 class AlertDescription(TLSEnum):
     """
-    @cvar bad_record_mac: A TLS record failed to decrypt properly.
+    :cvar bad_record_mac: A TLS record failed to decrypt properly.
 
-    If this occurs during a SRP handshake it most likely
-    indicates a bad password.  It may also indicate an implementation
-    error, or some tampering with the data in transit.
+        If this occurs during a SRP handshake it most likely
+        indicates a bad password.  It may also indicate an implementation
+        error, or some tampering with the data in transit.
 
-    This alert will be signalled by the server if the SRP password is bad.  It
-    may also be signalled by the server if the SRP username is unknown to the
-    server, but it doesn't wish to reveal that fact.
+        This alert will be signalled by the server if the SRP password is bad.
+        It
+        may also be signalled by the server if the SRP username is unknown to
+        the
+        server, but it doesn't wish to reveal that fact.
 
 
-    @cvar handshake_failure: A problem occurred while handshaking.
+    :cvar handshake_failure: A problem occurred while handshaking.
 
-    This typically indicates a lack of common ciphersuites between client and
-    server, or some other disagreement (about SRP parameters or key sizes,
-    for example).
+        This typically indicates a lack of common ciphersuites between client
+        and
+        server, or some other disagreement (about SRP parameters or key sizes,
+        for example).
 
-    @cvar protocol_version: The other party's SSL/TLS version was unacceptable.
+    :cvar protocol_version: The other party's SSL/TLS version was unacceptable.
 
-    This indicates that the client and server couldn't agree on which version
-    of SSL or TLS to use.
+        This indicates that the client and server couldn't agree on which
+        version
+        of SSL or TLS to use.
 
-    @cvar user_canceled: The handshake is being cancelled for some reason.
-
+    :cvar user_canceled: The handshake is being cancelled for some reason.
     """
 
     close_notify = 0
@@ -394,32 +397,32 @@ class CipherSuite:
     """
     Numeric values of ciphersuites and ciphersuite types
 
-    @cvar tripleDESSuites: ciphersuties which use 3DES symmetric cipher in CBC
-    mode
-    @cvar aes128Suites: ciphersuites which use AES symmetric cipher in CBC mode
-    with 128 bit key
-    @cvar aes256Suites: ciphersuites which use AES symmetric cipher in CBC mode
-    with 128 bit key
-    @cvar rc4Suites: ciphersuites which use RC4 symmetric cipher with 128 bit
-    key
-    @cvar shaSuites: ciphersuites which use SHA-1 HMAC integrity mechanism
-    and protocol default Pseudo Random Function
-    @cvar sha256Suites: ciphersuites which use SHA-256 HMAC integrity mechanism
-    and SHA-256 Pseudo Random Function
-    @cvar md5Suites: ciphersuites which use MD-5 HMAC integrity mechanism and
-    protocol default Pseudo Random Function
-    @cvar srpSuites: ciphersuites which use Secure Remote Password (SRP) key
-    exchange protocol
-    @cvar srpCertSuites: ciphersuites which use Secure Remote Password (SRP)
-    key exchange protocol with RSA server authentication
-    @cvar srpAllSuites: all SRP ciphersuites, pure SRP and with RSA based
-    server authentication
-    @cvar certSuites: ciphersuites which use RSA key exchange with RSA server
-    authentication
-    @cvar certAllSuites: ciphersuites which use RSA server authentication
-    @cvar anonSuites: ciphersuites which use anonymous Finite Field
-    Diffie-Hellman key exchange
-    @cvar ietfNames: dictionary with string names of the ciphersuites
+    :cvar tripleDESSuites: ciphersuties which use 3DES symmetric cipher in CBC
+        mode
+    :cvar aes128Suites: ciphersuites which use AES symmetric cipher in CBC mode
+        with 128 bit key
+    :cvar aes256Suites: ciphersuites which use AES symmetric cipher in CBC mode
+        with 128 bit key
+    :cvar rc4Suites: ciphersuites which use RC4 symmetric cipher with 128 bit
+        key
+    :cvar shaSuites: ciphersuites which use SHA-1 HMAC integrity mechanism
+        and protocol default Pseudo Random Function
+    :cvar sha256Suites: ciphersuites which use SHA-256 HMAC integrity mechanism
+        and SHA-256 Pseudo Random Function
+    :cvar md5Suites: ciphersuites which use MD-5 HMAC integrity mechanism and
+        protocol default Pseudo Random Function
+    :cvar srpSuites: ciphersuites which use Secure Remote Password (SRP) key
+        exchange protocol
+    :cvar srpCertSuites: ciphersuites which use Secure Remote Password (SRP)
+        key exchange protocol with RSA server authentication
+    :cvar srpAllSuites: all SRP ciphersuites, pure SRP and with RSA based
+        server authentication
+    :cvar certSuites: ciphersuites which use RSA key exchange with RSA server
+        authentication
+    :cvar certAllSuites: ciphersuites which use RSA server authentication
+    :cvar anonSuites: ciphersuites which use anonymous Finite Field
+        Diffie-Hellman key exchange
+    :cvar ietfNames: dictionary with string names of the ciphersuites
     """
 
     ietfNames = {}
@@ -443,31 +446,31 @@ class CipherSuite:
     SSL_CK_DES_192_EDE3_CBC_WITH_MD5 = 0x0700C0
     ietfNames[0x0700C0] = 'SSL_CK_DES_192_EDE3_CBC_WITH_MD5'
 
-    # SSL2 ciphersuites which use RC4 symmetric cipher
+    #: SSL2 ciphersuites which use RC4 symmetric cipher
     ssl2rc4 = []
     ssl2rc4.append(SSL_CK_RC4_128_WITH_MD5)
     ssl2rc4.append(SSL_CK_RC4_128_EXPORT40_WITH_MD5)
 
-    # SSL2 ciphersuites which use RC2 symmetric cipher
+    #: SSL2 ciphersuites which use RC2 symmetric cipher
     ssl2rc2 = []
     ssl2rc2.append(SSL_CK_RC2_128_CBC_WITH_MD5)
     ssl2rc2.append(SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5)
 
-    # SSL2 ciphersuites which use IDEA symmetric cipher
+    #: SSL2 ciphersuites which use IDEA symmetric cipher
     ssl2idea = [SSL_CK_IDEA_128_CBC_WITH_MD5]
 
-    # SSL2 ciphersuites which use (single) DES symmetric cipher
+    #: SSL2 ciphersuites which use (single) DES symmetric cipher
     ssl2des = [SSL_CK_DES_64_CBC_WITH_MD5]
 
-    # SSL2 ciphersuites which use 3DES symmetric cipher
+    #: SSL2 ciphersuites which use 3DES symmetric cipher
     ssl2_3des = [SSL_CK_DES_192_EDE3_CBC_WITH_MD5]
 
-    # SSL2 ciphersuites which encrypt only part (40 bits) of the key
+    #: SSL2 ciphersuites which encrypt only part (40 bits) of the key
     ssl2export = []
     ssl2export.append(SSL_CK_RC4_128_EXPORT40_WITH_MD5)
     ssl2export.append(SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5)
 
-    # SSL2 ciphersuties which use 128 bit key
+    #: SSL2 ciphersuties which use 128 bit key
     ssl2_128Key = []
     ssl2_128Key.append(SSL_CK_RC4_128_WITH_MD5)
     ssl2_128Key.append(SSL_CK_RC4_128_EXPORT40_WITH_MD5)
@@ -475,10 +478,10 @@ class CipherSuite:
     ssl2_128Key.append(SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5)
     ssl2_128Key.append(SSL_CK_IDEA_128_CBC_WITH_MD5)
 
-    # SSL2 ciphersuites which use 64 bit key
+    #: SSL2 ciphersuites which use 64 bit key
     ssl2_64Key = [SSL_CK_DES_64_CBC_WITH_MD5]
 
-    # SSL2 ciphersuites which use 192 bit key
+    #: SSL2 ciphersuites which use 192 bit key
     ssl2_192Key = [SSL_CK_DES_192_EDE3_CBC_WITH_MD5]
 
     #
@@ -687,7 +690,7 @@ class CipherSuite:
     # Define cipher suite families below
     #
 
-    # 3DES CBC ciphers
+    #: 3DES CBC ciphers
     tripleDESSuites = []
     tripleDESSuites.append(TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA)  # unsupp
     tripleDESSuites.append(TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA)  # unsupported
@@ -700,7 +703,7 @@ class CipherSuite:
     tripleDESSuites.append(TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA)
     tripleDESSuites.append(TLS_ECDH_ANON_WITH_3DES_EDE_CBC_SHA)
 
-    # AES-128 CBC ciphers
+    #: AES-128 CBC ciphers
     aes128Suites = []
     aes128Suites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
     aes128Suites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
@@ -720,7 +723,7 @@ class CipherSuite:
     aes128Suites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256)
     aes128Suites.append(TLS_ECDH_ANON_WITH_AES_128_CBC_SHA)
 
-    # AES-256 CBC ciphers
+    #: AES-256 CBC ciphers
     aes256Suites = []
     aes256Suites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
     aes256Suites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
@@ -740,7 +743,7 @@ class CipherSuite:
     aes256Suites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384)
     aes256Suites.append(TLS_ECDH_ANON_WITH_AES_256_CBC_SHA)
 
-    # AES-128 GCM ciphers
+    #: AES-128 GCM ciphers
     aes128GcmSuites = []
     aes128GcmSuites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
     aes128GcmSuites.append(TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
@@ -750,7 +753,7 @@ class CipherSuite:
     aes128GcmSuites.append(TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256)  # unsupp
     aes128GcmSuites.append(TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
 
-    # AES-256-GCM ciphers (implicit SHA384, see sha384PrfSuites)
+    #: AES-256-GCM ciphers (implicit SHA384, see sha384PrfSuites)
     aes256GcmSuites = []
     aes256GcmSuites.append(TLS_RSA_WITH_AES_256_GCM_SHA384)
     aes256GcmSuites.append(TLS_DHE_RSA_WITH_AES_256_GCM_SHA384)
@@ -760,17 +763,17 @@ class CipherSuite:
     aes256GcmSuites.append(TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384)  # unsupported
     aes256GcmSuites.append(TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384)
 
-    # CHACHA20 cipher, 00'th IETF draft (implicit POLY1305 authenticator)
+    #: CHACHA20 cipher, 00'th IETF draft (implicit POLY1305 authenticator)
     chacha20draft00Suites = []
     chacha20draft00Suites.append(TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_draft_00)
     chacha20draft00Suites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305_draft_00)
 
-    # CHACHA20 cipher (implicit POLY1305 authenticator, SHA256 PRF)
+    #: CHACHA20 cipher (implicit POLY1305 authenticator, SHA256 PRF)
     chacha20Suites = []
     chacha20Suites.append(TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256)
     chacha20Suites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256)
 
-    # RC4 128 stream cipher
+    #: RC4 128 stream cipher
     rc4Suites = []
     rc4Suites.append(TLS_ECDHE_RSA_WITH_RC4_128_SHA)
     rc4Suites.append(TLS_ECDHE_ECDSA_WITH_RC4_128_SHA)  # unsupported
@@ -781,7 +784,7 @@ class CipherSuite:
     rc4Suites.append(TLS_RSA_WITH_RC4_128_MD5)
     rc4Suites.append(TLS_ECDH_ANON_WITH_RC4_128_SHA)
 
-    # no encryption
+    #: no encryption
     nullSuites = []
     nullSuites.append(TLS_RSA_WITH_NULL_MD5)
     nullSuites.append(TLS_RSA_WITH_NULL_SHA)
@@ -792,7 +795,7 @@ class CipherSuite:
     nullSuites.append(TLS_ECDHE_RSA_WITH_NULL_SHA)
     nullSuites.append(TLS_ECDH_ANON_WITH_NULL_SHA)
 
-    # SHA-1 HMAC, protocol default PRF
+    #: SHA-1 HMAC, protocol default PRF
     shaSuites = []
     shaSuites.append(TLS_SRP_SHA_WITH_3DES_EDE_CBC_SHA)
     shaSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
@@ -837,7 +840,7 @@ class CipherSuite:
     shaSuites.append(TLS_ECDH_ANON_WITH_RC4_128_SHA)
     shaSuites.append(TLS_ECDH_ANON_WITH_NULL_SHA)
 
-    # SHA-256 HMAC, SHA-256 PRF
+    #: SHA-256 HMAC, SHA-256 PRF
     sha256Suites = []
     sha256Suites.append(TLS_RSA_WITH_AES_128_CBC_SHA256)
     sha256Suites.append(TLS_RSA_WITH_AES_256_CBC_SHA256)
@@ -851,42 +854,42 @@ class CipherSuite:
     sha256Suites.append(TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256)  # unsupported
     sha256Suites.append(TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256)
 
-    # SHA-384 HMAC, SHA-384 PRF
+    #: SHA-384 HMAC, SHA-384 PRF
     sha384Suites = []
     sha384Suites.append(TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384)  # unsupported
     sha384Suites.append(TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384)  # unsupported
     sha384Suites.append(TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384)  # unsupported
     sha384Suites.append(TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384)
 
-    # stream cipher construction
+    #: stream cipher construction
     streamSuites = []
     streamSuites.extend(rc4Suites)
     streamSuites.extend(nullSuites)
 
-    # AEAD integrity, any PRF
+    #: AEAD integrity, any PRF
     aeadSuites = []
     aeadSuites.extend(aes128GcmSuites)
     aeadSuites.extend(aes256GcmSuites)
     aeadSuites.extend(chacha20Suites)
     aeadSuites.extend(chacha20draft00Suites)
 
-    # TLS1.2 with SHA384 PRF
+    #: TLS1.2 with SHA384 PRF
     sha384PrfSuites = []
     sha384PrfSuites.extend(sha384Suites)
     sha384PrfSuites.extend(aes256GcmSuites)
 
-    # MD-5 HMAC, protocol default PRF
+    #: MD-5 HMAC, protocol default PRF
     md5Suites = []
     md5Suites.append(TLS_DH_ANON_WITH_RC4_128_MD5)
     md5Suites.append(TLS_RSA_WITH_RC4_128_MD5)
     md5Suites.append(TLS_RSA_WITH_NULL_MD5)
 
-    # SSL3, TLS1.0, TLS1.1 and TLS1.2 compatible ciphers
+    #: SSL3, TLS1.0, TLS1.1 and TLS1.2 compatible ciphers
     ssl3Suites = []
     ssl3Suites.extend(shaSuites)
     ssl3Suites.extend(md5Suites)
 
-    # TLS1.2 specific ciphersuites
+    #: TLS1.2 specific ciphersuites
     tls12Suites = []
     tls12Suites.extend(sha256Suites)
     tls12Suites.extend(sha384Suites)
@@ -960,7 +963,7 @@ class CipherSuite:
         return [s for s in suites if s in macSuites and
                 s in cipherSuites and s in keyExchangeSuites]
 
-    # SRP key exchange
+    #: SRP key exchange, no certificate base authentication
     srpSuites = []
     srpSuites.append(TLS_SRP_SHA_WITH_AES_256_CBC_SHA)
     srpSuites.append(TLS_SRP_SHA_WITH_AES_128_CBC_SHA)
@@ -971,7 +974,7 @@ class CipherSuite:
         """Return SRP cipher suites matching settings"""
         return cls._filterSuites(CipherSuite.srpSuites, settings, version)
 
-    # SRP key exchange, RSA authentication
+    #: SRP key exchange, RSA authentication
     srpCertSuites = []
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_256_CBC_SHA)
     srpCertSuites.append(TLS_SRP_SHA_RSA_WITH_AES_128_CBC_SHA)
@@ -982,6 +985,7 @@ class CipherSuite:
         """Return SRP cipher suites that use server certificates"""
         return cls._filterSuites(CipherSuite.srpCertSuites, settings, version)
 
+    #: All that use SRP key exchange
     srpAllSuites = srpSuites + srpCertSuites
 
     @classmethod
@@ -989,7 +993,7 @@ class CipherSuite:
         """Return all SRP cipher suites matching settings"""
         return cls._filterSuites(CipherSuite.srpAllSuites, settings, version)
 
-    # RSA key exchange, RSA authentication
+    #: RSA key exchange, RSA authentication
     certSuites = []
     certSuites.append(TLS_RSA_WITH_AES_256_GCM_SHA384)
     certSuites.append(TLS_RSA_WITH_AES_128_GCM_SHA256)
@@ -1009,7 +1013,7 @@ class CipherSuite:
         """Return ciphers with RSA authentication matching settings"""
         return cls._filterSuites(CipherSuite.certSuites, settings, version)
 
-    # FFDHE key exchange, RSA authentication
+    #: FFDHE key exchange, RSA authentication
     dheCertSuites = []
     dheCertSuites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256)
     dheCertSuites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305_draft_00)
@@ -1026,7 +1030,7 @@ class CipherSuite:
         """Provide authenticated DHE ciphersuites matching settings"""
         return cls._filterSuites(CipherSuite.dheCertSuites, settings, version)
 
-    # ECDHE key exchange, RSA authentication
+    #: ECDHE key exchange, RSA authentication
     ecdheCertSuites = []
     ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256)
     ecdheCertSuites.append(TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_draft_00)
@@ -1045,10 +1049,10 @@ class CipherSuite:
         """Provide authenticated ECDHE ciphersuites matching settings"""
         return cls._filterSuites(CipherSuite.ecdheCertSuites, settings, version)
 
-    # RSA authentication
+    #: RSA authentication
     certAllSuites = srpCertSuites + certSuites + dheCertSuites + ecdheCertSuites
 
-    # ECDHE key exchange, ECDSA authentication
+    #: ECDHE key exchange, ECDSA authentication
     ecdheEcdsaSuites = []
     ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384)
     ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)
@@ -1060,7 +1064,7 @@ class CipherSuite:
     ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_RC4_128_SHA)
     ecdheEcdsaSuites.append(TLS_ECDHE_ECDSA_WITH_NULL_SHA)
 
-    # anon FFDHE key exchange
+    #: anon FFDHE key exchange
     anonSuites = []
     anonSuites.append(TLS_DH_ANON_WITH_AES_256_GCM_SHA384)
     anonSuites.append(TLS_DH_ANON_WITH_AES_128_GCM_SHA256)
@@ -1078,7 +1082,7 @@ class CipherSuite:
 
     dhAllSuites = dheCertSuites + anonSuites
 
-    # anon ECDHE key exchange
+    #: anon ECDHE key exchange
     ecdhAnonSuites = []
     ecdhAnonSuites.append(TLS_ECDH_ANON_WITH_AES_256_CBC_SHA)
     ecdhAnonSuites.append(TLS_ECDH_ANON_WITH_AES_128_CBC_SHA)
@@ -1091,7 +1095,7 @@ class CipherSuite:
         """Provide anonymous ECDH ciphersuites matching settings"""
         return cls._filterSuites(CipherSuite.ecdhAnonSuites, settings, version)
 
-    # all ciphersuites which use ephemeral ECDH key exchange
+    #: all ciphersuites which use ephemeral ECDH key exchange
     ecdhAllSuites = ecdheEcdsaSuites + ecdheCertSuites + ecdhAnonSuites
 
     @staticmethod

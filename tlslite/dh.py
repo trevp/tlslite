@@ -12,8 +12,8 @@ def parseBinary(data):
     """
     Parse DH parameters from ASN.1 DER encoded binary string.
 
-    @param data: DH parameters
-    @rtype: tuple of int
+    :param bytes data: DH parameters
+    :rtype: tuple of int
     """
     parser = ASN1Parser(data)
 
@@ -29,9 +29,9 @@ def parse(data):
 
     The string can either by PEM or DER encoded
 
-    @param data: DH parameters
-    @rtype: tuple of int
-    @return: generator and prime
+    :param bytes data: DH parameters
+    :rtype: tuple of int
+    :returns: generator and prime
     """
     try:
         return parseBinary(data)

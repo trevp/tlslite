@@ -53,13 +53,13 @@ def x25519(k, u):
     """
     Perform point multiplication on X25519 curve.
 
-    @type k: bytearray
-    @param k: random secret value (multiplier), should be 32 byte long
+    :type k: bytearray
+    :param k: random secret value (multiplier), should be 32 byte long
 
-    @type u: bytearray
-    @param u: curve generator or the other party key share
+    :type u: bytearray
+    :param u: curve generator or the other party key share
 
-    @rtype: bytearray
+    :rtype: bytearray
     """
     bits = 255
     k = decodeScalar22519(k)
@@ -81,13 +81,13 @@ def x448(k, u):
     """
     Perform point multiplication on X448 curve.
 
-    @type k: bytearray
-    @param k: random secret value (multiplier), should be 56 bytes long
+    :type k: bytearray
+    :param k: random secret value (multiplier), should be 56 bytes long
 
-    @type u: bytearray
-    @param u: curve generator or the other party key share
+    :type u: bytearray
+    :param u: curve generator or the other party key share
 
-    @rtype: bytearray
+    :rtype: bytearray
     """
     bits = 448
     k = decodeScalar448(k)

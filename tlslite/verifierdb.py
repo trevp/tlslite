@@ -20,11 +20,11 @@ class VerifierDB(BaseDB):
     def __init__(self, filename=None):
         """Create a new VerifierDB instance.
 
-        @type filename: str
-        @param filename: Filename for an on-disk database, or None for
-        an in-memory database.  If the filename already exists, follow
-        this with a call to open().  To create a new on-disk database,
-        follow this with a call to create().
+        :type filename: str
+        :param filename: Filename for an on-disk database, or None for
+            an in-memory database.  If the filename already exists, follow
+            this with a call to open().  To create a new on-disk database,
+            follow this with a call to create().
         """
         BaseDB.__init__(self, filename, b"verifier")
 
@@ -39,15 +39,15 @@ class VerifierDB(BaseDB):
     def __setitem__(self, username, verifierEntry):
         """Add a verifier entry to the database.
 
-        @type username: str
-        @param username: The username to associate the verifier with.
-        Must be less than 256 characters in length.  Must not already
-        be in the database.
+        :type username: str
+        :param username: The username to associate the verifier with.
+            Must be less than 256 characters in length.  Must not already
+            be in the database.
 
-        @type verifierEntry: tuple
-        @param verifierEntry: The verifier entry to add.  Use
-        L{tlslite.verifierdb.VerifierDB.makeVerifier} to create a
-        verifier entry.
+        :type verifierEntry: tuple
+        :param verifierEntry: The verifier entry to add.  Use
+            :py:meth:`~tlslite.verifierdb.VerifierDB.makeVerifier` to create a
+            verifier entry.
         """
         BaseDB.__setitem__(self, username, verifierEntry)
 
@@ -69,25 +69,25 @@ class VerifierDB(BaseDB):
         v = powMod(g, x, N)
         return (verifier == v)
 
-
+    @staticmethod
     def makeVerifier(username, password, bits):
         """Create a verifier entry which can be stored in a VerifierDB.
 
-        @type username: str
-        @param username: The username for this verifier.  Must be less
-        than 256 characters in length.
+        :type username: str
+        :param username: The username for this verifier.  Must be less
+            than 256 characters in length.
 
-        @type password: str
-        @param password: The password for this verifier.
+        :type password: str
+        :param password: The password for this verifier.
 
-        @type bits: int
-        @param bits: This values specifies which SRP group parameters
-        to use.  It must be one of (1024, 1536, 2048, 3072, 4096, 6144,
-        8192).  Larger values are more secure but slower.  2048 is a
-        good compromise between safety and speed.
+        :type bits: int
+        :param bits: This values specifies which SRP group parameters
+            to use.  It must be one of (1024, 1536, 2048, 3072, 4096, 6144,
+            8192).  Larger values are more secure but slower.  2048 is a
+            good compromise between safety and speed.
 
-        @rtype: tuple
-        @return: A tuple which may be stored in a VerifierDB.
+        :rtype: tuple
+        :returns: A tuple which may be stored in a VerifierDB.
         """
         if isinstance(username, str):
             usernameBytes = bytearray(username, "utf-8")
@@ -98,4 +98,3 @@ class VerifierDB(BaseDB):
         else:
             passwordBytes = bytearray(password)
         return mathtls.makeVerifier(usernameBytes, passwordBytes, bits)
-    makeVerifier = staticmethod(makeVerifier)

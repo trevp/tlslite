@@ -11,8 +11,9 @@ def is_valid_hostname(hostname):
     """
     Check if the parameter is a valid hostname.
 
-    @type hostname: str or bytearray
-    @rtype: boolean
+    :type hostname: str or bytearray
+    :param hostname: string to check
+    :rtype: boolean
     """
     try:
         if not isinstance(hostname, str):
