@@ -18,8 +18,8 @@ from .utils.cryptomath import bytesToNumber, getRandomBytes, powMod, \
         numBits, numberToByteArray, divceil
 from .utils.lists import getFirstMatching
 from .utils import tlshashlib as hashlib
-from .utils.x25519 import x25519, x448, X25519_G, X448_G, X25519_ORDER, \
-        X448_ORDER
+from .utils.x25519 import x25519, x448, X25519_G, X448_G, X25519_ORDER_SIZE, \
+        X448_ORDER_SIZE
 import ecdsa
 
 class KeyExchange(object):
@@ -517,11 +517,11 @@ class AECDHKeyExchange(KeyExchange):
             if self.group_id == GroupName.x25519:
                 generator = bytearray(X25519_G)
                 fun = x25519
-                self.ecdhXs = getRandomBytes(divceil(X25519_ORDER, 8))
+                self.ecdhXs = getRandomBytes(X25519_ORDER_SIZE)
             else:
                 generator = bytearray(X448_G)
                 fun = x448
-                self.ecdhXs = getRandomBytes(divceil(X448_ORDER, 8))
+                self.ecdhXs = getRandomBytes(X448_ORDER_SIZE)
             ecdhYs = fun(self.ecdhXs, generator)
         else:
             curve = getCurveByName(GroupName.toRepr(self.group_id))
@@ -544,11 +544,11 @@ class AECDHKeyExchange(KeyExchange):
             ecdhYc = clientKeyExchange.ecdh_Yc
 
             if self.group_id == GroupName.x25519:
-                if len(ecdhYc) != 32:
+                if len(ecdhYc) != X25519_ORDER_SIZE:
                     raise TLSIllegalParameterException("Invalid key share")
                 sharedSecret = x25519(self.ecdhXs, ecdhYc)
             else:
-                if len(ecdhYc) != 56:
+                if len(ecdhYc) != X448_ORDER_SIZE:
                     raise TLSIllegalParameterException("Invalid key share")
                 sharedSecret = x448(self.ecdhXs, ecdhYc)
             self._non_zero_check(sharedSecret)
@@ -581,15 +581,15 @@ class AECDHKeyExchange(KeyExchange):
             if serverKeyExchange.named_curve == GroupName.x25519:
                 generator = bytearray(X25519_G)
                 fun = x25519
-                ecdhXc = getRandomBytes(divceil(X25519_ORDER, 8))
-                if len(serverKeyExchange.ecdh_Ys) != 32:
+                ecdhXc = getRandomBytes(X25519_ORDER_SIZE)
+                if len(serverKeyExchange.ecdh_Ys) != X25519_ORDER_SIZE:
                     raise TLSIllegalParameterException("Invalid server key "
                                                        "share")
             else:
                 generator = bytearray(X448_G)
                 fun = x448
-                ecdhXc = getRandomBytes(divceil(X448_ORDER, 8))
-                if len(serverKeyExchange.ecdh_Ys) != 56:
+                ecdhXc = getRandomBytes(X448_ORDER_SIZE)
+                if len(serverKeyExchange.ecdh_Ys) != X448_ORDER_SIZE:
                     raise TLSIllegalParameterException("Invalid server key "
                                                        "share")
             self.ecdhYc = fun(ecdhXc, generator)

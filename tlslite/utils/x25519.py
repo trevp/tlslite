@@ -46,7 +46,7 @@ def cswap(swap, x_2, x_3):
 X25519_G = numberToByteArray(9, 32, endian="little")
 
 
-X25519_ORDER = 256
+X25519_ORDER_SIZE = 32
 
 
 def x25519(k, u):
@@ -74,7 +74,7 @@ def x25519(k, u):
 X448_G = numberToByteArray(5, 56, endian="little")
 
 
-X448_ORDER = 448
+X448_ORDER_SIZE = 56
 
 
 def x448(k, u):
