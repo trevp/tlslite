@@ -133,8 +133,8 @@ def numberToByteArray(n, howManyBytes=None, endian="big"):
     Convert an integer into a bytearray, zero-pad to howManyBytes.
 
     The returned bytearray may be smaller than howManyBytes, but will
-    not be larger.  The returned bytearray will contain a big-endian
-    encoding of the input integer (n).
+    not be larger.  The returned bytearray will contain a big- or little-endian
+    encoding of the input integer (n). Big endian encoding is used by default.
     """
     if howManyBytes == None:
         howManyBytes = numBytes(n)
