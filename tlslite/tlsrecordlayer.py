@@ -30,79 +30,79 @@ class TLSRecordLayer(object):
     """
     This class handles data transmission for a TLS connection.
 
-    Its only subclass is L{tlslite.TLSConnection.TLSConnection}.  We've
+    Its only subclass is :py:class:`~tlslite.tlsconnection.TLSConnection`.
+    We've
     separated the code in this class from TLSConnection to make things
     more readable.
 
 
-    @type sock: socket.socket
-    @ivar sock: The underlying socket object.
+    :vartype sock: socket.socket
+    :ivar sock: The underlying socket object.
 
-    @type session: L{tlslite.Session.Session}
-    @ivar session: The session corresponding to this connection.
+    :vartype session: ~tlslite.Session.Session
+    :ivar session: The session corresponding to this connection.
+        Due to TLS session resumption, multiple connections can correspond
+        to the same underlying session.
 
-    Due to TLS session resumption, multiple connections can correspond
-    to the same underlying session.
+    :vartype version: tuple
+    :ivar version: The TLS version being used for this connection.
+        (3,0) means SSL 3.0, and (3,1) means TLS 1.0.
 
-    @type version: tuple
-    @ivar version: The TLS version being used for this connection.
+    :vartype closed: bool
+    :ivar closed: If this connection is closed.
 
-    (3,0) means SSL 3.0, and (3,1) means TLS 1.0.
+    :vartype resumed: bool
+    :ivar resumed: If this connection is based on a resumed session.
 
-    @type closed: bool
-    @ivar closed: If this connection is closed.
+    :vartype allegedSrpUsername: str or None
+    :ivar allegedSrpUsername:  This is set to the SRP username
+        asserted by the client, whether the handshake succeeded or not.
+        If the handshake fails, this can be inspected to determine
+        if a guessing attack is in progress against a particular user
+        account.
 
-    @type resumed: bool
-    @ivar resumed: If this connection is based on a resumed session.
+    :vartype closeSocket: bool
+    :ivar closeSocket: If the socket should be closed when the
+        connection is closed, defaults to True (writable).
 
-    @type allegedSrpUsername: str or None
-    @ivar allegedSrpUsername:  This is set to the SRP username
-    asserted by the client, whether the handshake succeeded or not.
-    If the handshake fails, this can be inspected to determine
-    if a guessing attack is in progress against a particular user
-    account.
+        If you set this to True, TLS Lite will assume the responsibility of
+        closing the socket when the TLS Connection is shutdown (either
+        through an error or through the user calling close()).  The default
+        is False.
 
-    @type closeSocket: bool
-    @ivar closeSocket: If the socket should be closed when the
-    connection is closed, defaults to True (writable).
+    :vartype ignoreAbruptClose: bool
+    :ivar ignoreAbruptClose: If an abrupt close of the socket should
+        raise an error (writable).
 
-    If you set this to True, TLS Lite will assume the responsibility of
-    closing the socket when the TLS Connection is shutdown (either
-    through an error or through the user calling close()).  The default
-    is False.
+        If you set this to True, TLS Lite will not raise a
+        :py:class:`~tlslite.errors.TLSAbruptCloseError` exception if the
+        underlying
+        socket is unexpectedly closed.  Such an unexpected closure could be
+        caused by an attacker.  However, it also occurs with some incorrect
+        TLS implementations.
 
-    @type ignoreAbruptClose: bool
-    @ivar ignoreAbruptClose: If an abrupt close of the socket should
-    raise an error (writable).
+        You should set this to True only if you're not worried about an
+        attacker truncating the connection, and only if necessary to avoid
+        spurious errors.  The default is False.
 
-    If you set this to True, TLS Lite will not raise a
-    L{tlslite.errors.TLSAbruptCloseError} exception if the underlying
-    socket is unexpectedly closed.  Such an unexpected closure could be
-    caused by an attacker.  However, it also occurs with some incorrect
-    TLS implementations.
+    :vartype encryptThenMAC: bool
+    :ivar encryptThenMAC: Whether the connection uses the encrypt-then-MAC
+        construct for CBC cipher suites, will be False also if connection uses
+        RC4 or AEAD.
 
-    You should set this to True only if you're not worried about an
-    attacker truncating the connection, and only if necessary to avoid
-    spurious errors.  The default is False.
-
-    @type encryptThenMAC: bool
-    @ivar encryptThenMAC: Whether the connection uses the encrypt-then-MAC
-    construct for CBC cipher suites, will be False also if connection uses
-    RC4 or AEAD.
-
-    @type recordSize: int
-    @ivar recordSize: maimum size of data to be sent in a single record layer
-    message. Note that after encryption is established (generally after
-    handshake protocol has finished) the actual amount of data written to
-    network socket will be larger because of the record layer header, padding
-    or encryption overhead. It can be set to low value (so that there is no
-    fragmentation on Ethernet, IP and TCP level) at the beginning of
-    connection to reduce latency and set to protocol max (2**14) to maximise
-    throughput after sending few kiB of data. Setting to values greater than
-    2**14 will cause the connection to be dropped by RFC compliant peers.
-
-    @sort: __init__, read, readAsync, write, writeAsync, close, closeAsync,
-    getCipherImplementation, getCipherName
+    :vartype recordSize: int
+    :ivar recordSize: maimum size of data to be sent in a single record layer
+        message. Note that after encryption is established (generally after
+        handshake protocol has finished) the actual amount of data written to
+        network socket will be larger because of the record layer header,
+        padding
+        or encryption overhead. It can be set to low value (so that there is no
+        fragmentation on Ethernet, IP and TCP level) at the beginning of
+        connection to reduce latency and set to protocol max (2**14) to
+        maximise
+        throughput after sending few kiB of data. Setting to values greater
+        than
+        2**14 will cause the connection to be dropped by RFC compliant peers.
     """
 
     def __init__(self, sock):
@@ -202,21 +202,21 @@ class TLSRecordLayer(object):
         If an exception is raised, the connection will have been
         automatically closed.
 
-        @type max: int
-        @param max: The maximum number of bytes to return.
+        :type max: int
+        :param max: The maximum number of bytes to return.
 
-        @type min: int
-        @param min: The minimum number of bytes to return
+        :type min: int
+        :param min: The minimum number of bytes to return
 
-        @rtype: str
-        @return: A string of no more than 'max' bytes, and no fewer
-        than 'min' (unless the connection has been closed, in which
-        case fewer than 'min' bytes may be returned).
+        :rtype: str
+        :returns: A string of no more than 'max' bytes, and no fewer
+            than 'min' (unless the connection has been closed, in which
+            case fewer than 'min' bytes may be returned).
 
-        @raise socket.error: If a socket error occurs.
-        @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
-        without a preceding alert.
-        @raise tlslite.errors.TLSAlert: If a TLS alert is signalled.
+        :raises socket.error: If a socket error occurs.
+        :raises tlslite.errors.TLSAbruptCloseError: If the socket is closed
+            without a preceding alert.
+        :raises tlslite.errors.TLSAlert: If a TLS alert is signalled.
         """
         for result in self.readAsync(max, min):
             pass
@@ -231,8 +231,8 @@ class TLSRecordLayer(object):
         to write to the socket, or a string if the read operation has
         completed.
 
-        @rtype: iterable
-        @return: A generator; see above for details.
+        :rtype: iterable
+        :returns: A generator; see above for details.
         """
         try:
             while len(self._readBuffer)<min and not self.closed:
@@ -279,10 +279,10 @@ class TLSRecordLayer(object):
         If an exception is raised, the connection will have been
         automatically closed.
 
-        @type s: str
-        @param s: The data to transmit to the other party.
+        :type s: str
+        :param s: The data to transmit to the other party.
 
-        @raise socket.error: If a socket error occurs.
+        :raises socket.error: If a socket error occurs.
         """
         for result in self.writeAsync(s):
             pass
@@ -295,8 +295,8 @@ class TLSRecordLayer(object):
         1 if it is waiting to write to the socket, or will raise
         StopIteration if the write operation has completed.
 
-        @rtype: iterable
-        @return: A generator; see above for details.
+        :rtype: iterable
+        :returns: A generator; see above for details.
         """
         try:
             if self.closed:
@@ -330,10 +330,10 @@ class TLSRecordLayer(object):
         Even if an exception is raised, the connection will have been
         closed.
 
-        @raise socket.error: If a socket error occurs.
-        @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
-        without a preceding alert.
-        @raise tlslite.errors.TLSAlert: If a TLS alert is signalled.
+        :raises socket.error: If a socket error occurs.
+        :raises tlslite.errors.TLSAbruptCloseError: If the socket is closed
+            without a preceding alert.
+        :raises tlslite.errors.TLSAlert: If a TLS alert is signalled.
         """
         if not self.closed:
             for result in self._decrefAsync():
@@ -351,8 +351,8 @@ class TLSRecordLayer(object):
         to write to the socket, or will raise StopIteration if the
         close operation has completed.
 
-        @rtype: iterable
-        @return: A generator; see above for details.
+        :rtype: iterable
+        :returns: A generator; see above for details.
         """
         if not self.closed:
             for result in self._decrefAsync():
@@ -396,9 +396,9 @@ class TLSRecordLayer(object):
     def getVersionName(self):
         """Get the name of this TLS version.
 
-        @rtype: str
-        @return: The name of the TLS version used with this connection.
-        Either None, 'SSL 3.0', 'TLS 1.0', 'TLS 1.1', or 'TLS 1.2'.
+        :rtype: str
+        :returns: The name of the TLS version used with this connection.
+            Either None, 'SSL 3.0', 'TLS 1.0', 'TLS 1.1', or 'TLS 1.2'.
         """
         if self.version == (3,0):
             return "SSL 3.0"
@@ -410,13 +410,13 @@ class TLSRecordLayer(object):
             return "TLS 1.2"
         else:
             return None
-        
+
     def getCipherName(self):
         """Get the name of the cipher used with this connection.
 
-        @rtype: str
-        @return: The name of the cipher used with this connection.
-        Either 'aes128', 'aes256', 'rc4', or '3des'.
+        :rtype: str
+        :returns: The name of the cipher used with this connection.
+            Either 'aes128', 'aes256', 'rc4', or '3des'.
         """
         return self._recordLayer.getCipherName()
 
@@ -424,9 +424,9 @@ class TLSRecordLayer(object):
         """Get the name of the cipher implementation used with
         this connection.
 
-        @rtype: str
-        @return: The name of the cipher implementation used with
-        this connection.  Either 'python', 'openssl', or 'pycrypto'.
+        :rtype: str
+        :returns: The name of the cipher implementation used with
+            this connection.  Either 'python', 'openssl', or 'pycrypto'.
         """
         return self._recordLayer.getCipherImplementation()
 
@@ -434,7 +434,7 @@ class TLSRecordLayer(object):
     def send(self, s):
         """Send data to the TLS connection (socket emulation).
 
-        @raise socket.error: If a socket error occurs.
+        :raises socket.error: If a socket error occurs.
         """
         self.write(s)
         return len(s)
@@ -442,17 +442,17 @@ class TLSRecordLayer(object):
     def sendall(self, s):
         """Send data to the TLS connection (socket emulation).
 
-        @raise socket.error: If a socket error occurs.
+        :raises socket.error: If a socket error occurs.
         """
         self.write(s)
 
     def recv(self, bufsize):
         """Get some data from the TLS connection (socket emulation).
 
-        @raise socket.error: If a socket error occurs.
-        @raise tlslite.errors.TLSAbruptCloseError: If the socket is closed
-        without a preceding alert.
-        @raise tlslite.errors.TLSAlert: If a TLS alert is signalled.
+        :raises socket.error: If a socket error occurs.
+        :raises tlslite.errors.TLSAbruptCloseError: If the socket is closed
+            without a preceding alert.
+        :raises tlslite.errors.TLSAlert: If a TLS alert is signalled.
         """
         return self.read(bufsize)
 
@@ -471,7 +471,7 @@ class TLSRecordLayer(object):
     def makefile(self, mode='r', bufsize=-1):
         """Create a file object for the TLS connection (socket emulation).
 
-        @rtype: L{socket._fileobject}
+        :rtype: socket._fileobject
         """
         self._refCount += 1
         # So, it is pretty fragile to be using Python internal objects

@@ -29,14 +29,14 @@ class SessionCache(object):
     def __init__(self, maxEntries=10000, maxAge=14400):
         """Create a new SessionCache.
 
-        @type maxEntries: int
-        @param maxEntries: The maximum size of the cache.  When this
-        limit is reached, the oldest sessions will be deleted as
-        necessary to make room for new ones.  The default is 10000.
+        :type maxEntries: int
+        :param maxEntries: The maximum size of the cache.  When this
+            limit is reached, the oldest sessions will be deleted as
+            necessary to make room for new ones.  The default is 10000.
 
-        @type maxAge: int
-        @param maxAge:  The number of seconds before a session expires
-        from the cache.  The default is 14400 (i.e. 4 hours)."""
+        :type maxAge: int
+        :param maxAge:  The number of seconds before a session expires
+            from the cache.  The default is 14400 (i.e. 4 hours)."""
 
         self.lock = threading.Lock()
 

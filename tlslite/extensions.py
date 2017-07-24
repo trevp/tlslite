@@ -18,7 +18,7 @@ class TLSExtension(object):
 
     This class handles the generic information about TLS extensions used by
     both sides of connection in Client Hello and Server Hello messages.
-    See U{RFC 4366<https://tools.ietf.org/html/rfc4366>} for more info.
+    See https://tools.ietf.org/html/rfc4366 for more info.
 
     It is used as a base class for specific users and as a way to store
     extensions that are not implemented in library.
@@ -26,43 +26,44 @@ class TLSExtension(object):
     To implement a new extension you will need to create a new class which
     calls this class contructor (__init__), usually specifying just the
     extType parameter. The other methods which need to be implemented are:
-    L{extData}, L{create}, L{parse} and L{__repr__}. If the parser can be used
+    `extData`, `create`, `parse` and `__repr__`. If the parser can be used
     for client and optionally server extensions, the extension constructor
-    should be added to L{_universalExtensions}. Otherwise, when the client and
+    should be added to `_universalExtensions`. Otherwise, when the client and
     server extensions have completely different forms, you should add client
-    form to the L{_universalExtensions} and the server form to
-    L{_serverExtensions}. Since the server MUST NOT send extensions not
+    form to the `_universalExtensions` and the server form to
+    `_serverExtensions`. Since the server MUST NOT send extensions not
     advertised by client, there are no purely server-side extensions. But
     if the client side extension is just marked by presence and has no payload,
-    the client side (thus the L{_universalExtensions} may be skipped, then
-    the L{TLSExtension} class will be used for implementing it. See
+    the client side (thus the `_universalExtensions` may be skipped, then
+    the `TLSExtension` class will be used for implementing it. See
     end of the file for type-to-constructor bindings.
 
-    Though please note that subclassing for the purpose of parsing extensions
-    is not an officially supported part of API (just as underscores in their
-    names would indicate.
+    .. note:: Subclassing for the purpose of parsing extensions
+        is not an officially supported part of API (just as underscores in
+        their
+        names would indicate).
 
-    @type extType: int
-    @ivar extType: a 2^16-1 limited integer specifying the type of the
+    :vartype extType: int
+    :ivar extType: a 2^16-1 limited integer specifying the type of the
         extension that it contains, e.g. 0 indicates server name extension
 
-    @type extData: bytearray
-    @ivar extData: a byte array containing the value of the extension as
+    :vartype extData: bytearray
+    :ivar extData: a byte array containing the value of the extension as
         to be written on the wire
 
-    @type serverType: boolean
-    @ivar serverType: indicates that the extension was parsed with ServerHello
+    :vartype serverType: boolean
+    :ivar serverType: indicates that the extension was parsed with ServerHello
         specific parser, otherwise it used universal or ClientHello specific
         parser
 
-    @type _universalExtensions: dict
-    @cvar _universalExtensions: dictionary with concrete implementations of
+    :vartype _universalExtensions: dict
+    :cvar _universalExtensions: dictionary with concrete implementations of
         specific TLS extensions where key is the numeric value of the extension
         ID. Contains ClientHello version of extensions or universal
         implementations
 
-    @type _serverExtensions: dict
-    @cvar _serverExtensions: dictionary with concrete implementations of
+    :vartype _serverExtensions: dict
+    :cvar _serverExtensions: dictionary with concrete implementations of
         specific TLS extensions where key is the numeric value of the extension
         ID. Includes only those extensions that require special handlers for
         ServerHello versions.
@@ -75,14 +76,14 @@ class TLSExtension(object):
         """
         Creates a generic TLS extension.
 
-        You'll need to use L{create} or L{parse} methods to create an extension
+        You'll need to use :py:meth:`create` or :py:meth:`parse` methods to
+        create an extension
         that is actually usable.
 
-        @type server: boolean
-        @param server: whether to select ClientHello or ServerHello version
+        :param bool server: whether to select ClientHello or ServerHello
+            version
             for parsing
-        @type extType: int
-        @param extType: type of extension encoded as an integer, to be used
+        :param int extType: type of extension encoded as an integer, to be used
             by subclasses
         """
         self.extType = extType
@@ -99,7 +100,7 @@ class TLSExtension(object):
         common to all extension. In other words, without the extension ID and
         overall extension length.
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         return self._extData
 
@@ -119,19 +120,18 @@ class TLSExtension(object):
         The extension can carry arbitrary data and have arbitrary payload, can
         be used in client hello or server hello messages.
 
-        The legacy calling method uses two arguments - the extType and data.
+        The legacy calling method uses two arguments - the `extType` and
+        `data`.
         If the new calling method is used, only one argument is passed in -
-        data.
+        `data`.
 
         Child classes need to override this method so that it is possible
         to set values for all fields used by the extension.
 
-        @type  extType: int
-        @param extType: if int: type of the extension encoded as an integer
-            between M{0} and M{2^16-1}
-        @type  data: bytearray
-        @param data: raw data representing extension on the wire
-        @rtype: L{TLSExtension}
+        :param int extType: if int: type of the extension encoded as an integer
+            between `0` and `2^16-1`
+        :param bytearray data: raw data representing extension on the wire
+        :rtype: TLSExtension
         """
         # old style
         if len(args) + len(kwargs) == 2:
@@ -149,12 +149,12 @@ class TLSExtension(object):
 
         Note that child classes in general don't need to override this method.
 
-        @rtype: bytearray
-        @return: An array of bytes formatted as is supposed to be written on
+        :rtype: bytearray
+        :returns: An array of bytes formatted as is supposed to be written on
            the wire, including the extension_type, length and the extension
            data
 
-        @raise AssertionError: when the object was not initialized
+        :raises AssertionError: when the object was not initialized
         """
         assert self.extType is not None
 
@@ -180,15 +180,14 @@ class TLSExtension(object):
         extension from on the wire data. Note that child class parsers will
         not receive the generic header of the extension, but just a parser
         with the payload. In other words, the method should be the exact
-        reverse of the L{extData} property.
+        reverse of the `extData` property.
 
-        @type p: L{tlslite.util.codec.Parser}
-        @param p:  data to be parsed
+        :param tlslite.util.codec.Parser p:  data to be parsed
 
-        @raise SyntaxError: when the size of the passed element doesn't match
-        the internal representation
+        :raises SyntaxError: when the size of the passed element doesn't match
+            the internal representation
 
-        @rtype: L{TLSExtension}
+        :rtype: TLSExtension
         """
         extType = p.get(2)
         extLength = p.get(2)
@@ -230,7 +229,7 @@ class TLSExtension(object):
         Child classes should override this method to support more appropriate
         string rendering of the extension.
 
-        @rtype: str
+        :rtype: str
         """
         return "TLSExtension(extType={0!r}, extData={1!r},"\
                 " serverType={2!r})".format(self.extType, self.extData,
@@ -255,7 +254,7 @@ class VarListExtension(TLSExtension):
     def extData(self):
         """Return raw data encoding of the extension
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         if self._internalList is None:
             return bytearray(0)
@@ -269,8 +268,7 @@ class VarListExtension(TLSExtension):
     def create(self, values):
         """Set the list to specified values
 
-        @type values: list of int
-        @param values: list of values to save
+        :param list values: list of values to save
         """
         self._internalList = values
         return self
@@ -279,8 +277,8 @@ class VarListExtension(TLSExtension):
         """
         Deserialise extension from on-the-wire data
 
-        @type parser: L{Parser}
-        @rtype: Extension
+        :param tlslite.utils.codec.Parser parser: data
+        :rtype: Extension
         """
         if parser.getRemainingLength() == 0:
             self._internalList = None
@@ -326,8 +324,8 @@ class SNIExtension(TLSExtension):
     opaque byte strings, in case of DNS host names (records of type 0) they
     are UTF-8 encoded domain names (without the ending dot).
 
-    @type hostNames: tuple of bytearrays
-    @ivar hostNames: tuple of hostnames (server name records of type 0)
+    :vartype hostNames: tuple of bytearrays
+    :ivar hostNames: tuple of hostnames (server name records of type 0)
         advertised in the extension. Note that it may not include all names
         from client hello as the client can advertise other types. Also note
         that while it's not possible to change the returned array in place, it
@@ -342,20 +340,20 @@ class SNIExtension(TLSExtension):
            sni_extension.hostNames = names
 
 
-    @type serverNames: list of L{ServerName}
-    @ivar serverNames: list of all names advertised in extension.
-        L{ServerName} is a namedtuple with two elements, the first
+    :vartype serverNames: list of :py:class:`ServerName`
+    :ivar serverNames: list of all names advertised in extension.
+        :py:class:`ServerName` is a namedtuple with two elements, the first
         element (type) defines the type of the name (encoded as int)
         while the other (name) is a bytearray that carries the value.
-        Known types are defined in L{tlslite.constants.NameType}.
+        Known types are defined in :py:class:`tlslite.constants.NameType`.
         The list will be empty if the on the wire extension had and empty
         list while it will be None if the extension was empty.
 
-    @type extType: int
-    @ivar extType: numeric type of SNIExtension, i.e. 0
+    :vartype extType: int
+    :ivar extType: numeric type of SNIExtension, i.e. 0
 
-    @type extData: bytearray
-    @ivar extData: raw representation of the extension
+    :vartype extData: bytearray
+    :ivar extData: raw representation of the extension
     """
 
     ServerName = namedtuple('ServerName', 'name_type name')
@@ -364,7 +362,7 @@ class SNIExtension(TLSExtension):
         """
         Create an instance of SNIExtension.
 
-        See also: L{create} and L{parse}.
+        See also: :py:meth:`create` and :py:meth:`parse`.
         """
         super(SNIExtension, self).__init__(extType=ExtensionType.server_name)
         self.serverNames = None
@@ -373,7 +371,7 @@ class SNIExtension(TLSExtension):
         """
         Return programmer-readable representation of extension
 
-        @rtype: str
+        :rtype: str
         """
         return "SNIExtension(serverNames={0!r})".format(self.serverNames)
 
@@ -382,24 +380,22 @@ class SNIExtension(TLSExtension):
         Initializes an instance with provided hostname, host names or
         raw server names.
 
-        Any of the parameters may be None, in that case the list inside the
-        extension won't be defined, if either hostNames or serverNames is
-        an empty list, then the extension will define a list of lenght 0.
+        Any of the parameters may be `None`, in that case the list inside the
+        extension won't be defined, if either `hostNames` or `serverNames` is
+        an empty list, then the extension will define a list of length 0.
 
         If multiple parameters are specified at the same time, then the
         resulting list of names will be concatenated in order of hostname,
         hostNames and serverNames last.
 
-        @type  hostname: bytearray
-        @param hostname: raw UTF-8 encoding of the host name
+        :param bytearray hostname: raw UTF-8 encoding of the host name
 
-        @type  hostNames: list of bytearrays
-        @param hostNames: list of raw UTF-8 encoded host names
+        :param list hostNames: list of raw UTF-8 encoded host names
 
-        @type  serverNames: list of L{ServerName}
-        @param serverNames: pairs of name_type and name encoded as a namedtuple
+        :param list serverNames: pairs of name_type and name encoded as a
+            namedtuple
 
-        @rtype: L{SNIExtension}
+        :rtype: SNIExtension
         """
         if hostname is None and hostNames is None and serverNames is None:
             self.serverNames = None
@@ -425,7 +421,7 @@ class SNIExtension(TLSExtension):
     def hostNames(self):
         """ Returns a simulated list of hostNames from the extension.
 
-        @rtype: tuple of bytearrays
+        :rtype: tuple of bytearrays
         """
         # because we can't simulate assignments to array elements we return
         # an immutable type
@@ -438,13 +434,13 @@ class SNIExtension(TLSExtension):
     @hostNames.setter
     def hostNames(self, hostNames):
         """ Removes all host names from the extension and replaces them by
-        names in X{hostNames} parameter.
+        names in `hostNames` parameter.
 
-        Newly added parameters will be added at the I{beginning} of the list
+        Newly added parameters will be added at the beginning of the list
         of extensions.
 
-        @type hostNames: iterable of bytearrays
-        @param hostNames: host names to replace the old server names of type 0
+        :param iterable hostNames: host names (bytearrays) to replace the
+            old server names of type 0
         """
 
         self.serverNames = \
@@ -455,17 +451,19 @@ class SNIExtension(TLSExtension):
 
     @hostNames.deleter
     def hostNames(self):
-        """ Remove all host names from extension, leaves other name types
-        unmodified
+        """
+        Remove all host names from extension, leaves other name types
+        unmodified.
         """
         self.serverNames = [x for x in self.serverNames if \
                 x.name_type != NameType.host_name]
 
     @property
     def extData(self):
-        """ raw encoding of extension data, without type and length header
+        """
+        Raw encoding of extension data, without type and length header.
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         if self.serverNames is None:
             return bytearray(0)
@@ -483,10 +481,12 @@ class SNIExtension(TLSExtension):
         return w.bytes
 
     def write(self):
-        """ Returns encoded extension, as encoded on the wire
+        """
+        Returns encoded extension, as encoded on the wire
 
-        @rtype: bytearray
-        @return: an array of bytes formatted as they are supposed to be written
+        :rtype: bytearray
+        :returns: an array of bytes formatted as they are supposed to be
+            written
             on the wire, including the type, length and extension data
         """
 
@@ -505,11 +505,10 @@ class SNIExtension(TLSExtension):
 
         The parser should not include the type or length of extension!
 
-        @type p: L{tlslite.util.codec.Parser}
-        @param p: data to be parsed
+        :param tlslite.util.codec.Parser p: data to be parsed
 
-        @rtype: L{SNIExtension}
-        @raise SyntaxError: when the internal sizes don't match the attached
+        :rtype: SNIExtension
+        :raises SyntaxError: when the internal sizes don't match the attached
             data
         """
         if p.getRemainingLength() == 0:
@@ -535,21 +534,21 @@ class ClientCertTypeExtension(VarListExtension):
 
     See RFC 6091.
 
-    @type extType: int
-    @ivar extType: numeric type of Certificate Type extension, i.e. 9
+    :vartype extType: int
+    :ivar extType: numeric type of Certificate Type extension, i.e. 9
 
-    @type extData: bytearray
-    @ivar extData: raw representation of the extension data
+    :vartype extData: bytearray
+    :ivar extData: raw representation of the extension data
 
-    @type certTypes: list of int
-    @ivar certTypes: list of certificate type identifiers (each one byte long)
+    :vartype certTypes: list of int
+    :ivar certTypes: list of certificate type identifiers (each one byte long)
     """
 
     def __init__(self):
         """
         Create an instance of ClientCertTypeExtension
 
-        See also: L{create} and L{parse}
+        See also: :py:meth:`create` and :py:meth:`parse`
         """
         super(ClientCertTypeExtension, self).__init__(1, 1, 'certTypes', \
                 ExtensionType.cert_type)
@@ -559,21 +558,21 @@ class ServerCertTypeExtension(TLSExtension):
     This class handles the Certificate Type extension (variant sent by server)
     defined in RFC 6091.
 
-    @type extType: int
-    @ivar extType: binary type of Certificate Type extension, i.e. 9
+    :vartype extType: int
+    :ivar extType: binary type of Certificate Type extension, i.e. 9
 
-    @type extData: bytearray
-    @ivar extData: raw representation of the extension data
+    :vartype extData: bytearray
+    :ivar extData: raw representation of the extension data
 
-    @type cert_type: int
-    @ivar cert_type: the certificate type selected by server
+    :vartype cert_type: int
+    :ivar cert_type: the certificate type selected by server
     """
 
     def __init__(self):
         """
         Create an instance of ServerCertTypeExtension
 
-        See also: L{create} and L{parse}
+        See also: :py:meth:`create` and :py:meth:`parse`
         """
         super(ServerCertTypeExtension, self).__init__(server=True, \
                                                extType=ExtensionType.cert_type)
@@ -582,7 +581,7 @@ class ServerCertTypeExtension(TLSExtension):
     def __repr__(self):
         """ Return programmer-centric description of object
 
-        @rtype: str
+        :rtype: str
         """
         return "ServerCertTypeExtension(cert_type={0!r})".format(self.cert_type)
 
@@ -591,7 +590,7 @@ class ServerCertTypeExtension(TLSExtension):
         """
         Return the raw encoding of the extension data
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         if self.cert_type is None:
             return bytearray(0)
@@ -604,8 +603,7 @@ class ServerCertTypeExtension(TLSExtension):
     def create(self, val):
         """Create an instance for sending the extension to client.
 
-        @type val: int
-        @param val: selected type of certificate
+        :param int val: selected type of certificate
         """
         self.cert_type = val
         return self
@@ -613,8 +611,7 @@ class ServerCertTypeExtension(TLSExtension):
     def parse(self, p):
         """Parse the extension from on the wire format
 
-        @type p: L{Parser}
-        @param p: parser with data
+        :param Parser p: parser with data
         """
         self.cert_type = p.get(1)
         if p.getRemainingLength() > 0:
@@ -627,21 +624,21 @@ class SRPExtension(TLSExtension):
     This class handles the Secure Remote Password protocol TLS extension
     defined in RFC 5054.
 
-    @type extType: int
-    @ivar extType: numeric type of SRPExtension, i.e. 12
+    :vartype extType: int
+    :ivar extType: numeric type of SRPExtension, i.e. 12
 
-    @type extData: bytearray
-    @ivar extData: raw representation of extension data
+    :vartype extData: bytearray
+    :ivar extData: raw representation of extension data
 
-    @type identity: bytearray
-    @ivar identity: UTF-8 encoding of user name
+    :vartype identity: bytearray
+    :ivar identity: UTF-8 encoding of user name
     """
 
     def __init__(self):
         """
         Create an instance of SRPExtension
 
-        See also: L{create} and L{parse}
+        See also: :py:meth:`create` and :py:meth:`parse`
         """
         super(SRPExtension, self).__init__(extType=ExtensionType.srp)
 
@@ -651,7 +648,7 @@ class SRPExtension(TLSExtension):
         """
         Return programmer-centric description of extension
 
-        @rtype: str
+        :rtype: str
         """
         return "SRPExtension(identity={0!r})".format(self.identity)
 
@@ -660,7 +657,7 @@ class SRPExtension(TLSExtension):
         """
         Return raw data encoding of the extension
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
 
         if self.identity is None:
@@ -675,11 +672,11 @@ class SRPExtension(TLSExtension):
     def create(self, identity=None):
         """ Create and instance of SRPExtension with specified protocols
 
-        @type identity: bytearray
-        @param identity: UTF-8 encoded identity (user name) to be provided
+        :param bytearray identity: UTF-8 encoded identity (user name) to be
+            provided
             to user. MUST be shorter than 2^8-1.
 
-        @raise ValueError: when the identity lenght is longer than 2^8-1
+        :raises ValueError: when the identity lenght is longer than 2^8-1
         """
 
         if identity is None:
@@ -695,12 +692,11 @@ class SRPExtension(TLSExtension):
         """
         Parse the extension from on the wire format
 
-        @type p: L{tlslite.util.codec.Parser}
-        @param p: data to be parsed
+        :param Parser p: data to be parsed
 
-        @raise SyntaxError: when the data is internally inconsistent
+        :raises SyntaxError: when the data is internally inconsistent
 
-        @rtype: L{SRPExtension}
+        :rtype: SRPExtension
         """
 
         self.identity = p.getVarBytes(1)
@@ -711,21 +707,21 @@ class NPNExtension(TLSExtension):
     """
     This class handles the unofficial Next Protocol Negotiation TLS extension.
 
-    @type protocols: list of bytearrays
-    @ivar protocols: list of protocol names supported by the server
+    :vartype protocols: list of bytearrays
+    :ivar protocols: list of protocol names supported by the server
 
-    @type extType: int
-    @ivar extType: numeric type of NPNExtension, i.e. 13172
+    :vartype extType: int
+    :ivar extType: numeric type of NPNExtension, i.e. 13172
 
-    @type extData: bytearray
-    @ivar extData: raw representation of extension data
+    :vartype extData: bytearray
+    :ivar extData: raw representation of extension data
     """
 
     def __init__(self):
         """
         Create an instance of NPNExtension
 
-        See also: L{create} and L{parse}
+        See also: :py:meth:`create` and :py:meth:`parse`
         """
         super(NPNExtension, self).__init__(extType=ExtensionType.supports_npn)
 
@@ -735,7 +731,7 @@ class NPNExtension(TLSExtension):
         """
         Create programmer-readable version of representation
 
-        @rtype: str
+        :rtype: str
         """
         return "NPNExtension(protocols={0!r})".format(self.protocols)
 
@@ -743,7 +739,7 @@ class NPNExtension(TLSExtension):
     def extData(self):
         """ Return the raw data encoding of the extension
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         if self.protocols is None:
             return bytearray(0)
@@ -758,8 +754,7 @@ class NPNExtension(TLSExtension):
     def create(self, protocols=None):
         """ Create an instance of NPNExtension with specified protocols
 
-        @type protocols: list of bytearray
-        @param protocols: list of protocol names that are supported
+        :param list protocols: list of protocol names that are supported
         """
         self.protocols = protocols
         return self
@@ -767,13 +762,12 @@ class NPNExtension(TLSExtension):
     def parse(self, p):
         """ Parse the extension from on the wire format
 
-        @type p: L{tlslite.util.codec.Parser}
-        @param p: data to be parsed
+        :param Parser p: data to be parsed
 
-        @raise SyntaxError: when the size of the passed element doesn't match
+        :raises SyntaxError: when the size of the passed element doesn't match
             the internal representation
 
-        @rtype: L{NPNExtension}
+        :rtype: NPNExtension
         """
         self.protocols = []
 
@@ -787,11 +781,11 @@ class TACKExtension(TLSExtension):
     This class handles the server side TACK extension (see
     draft-perrin-tls-tack-02).
 
-    @type tacks: list
-    @ivar tacks: list of L{TACK}'s supported by server
+    :vartype tacks: list
+    :ivar tacks: list of TACK's supported by server
 
-    @type activation_flags: int
-    @ivar activation_flags: activation flags for the tacks
+    :vartype activation_flags: int
+    :ivar activation_flags: activation flags for the tacks
     """
 
     class TACK(object):
@@ -813,7 +807,7 @@ class TACKExtension(TLSExtension):
             """
             Return programmmer readable representation of TACK object
 
-            @rtype: str
+            :rtype: str
             """
             return "TACK(public_key={0!r}, min_generation={1!r}, "\
                     "generation={2!r}, expiration={3!r}, target_hash={4!r}, "\
@@ -839,7 +833,7 @@ class TACKExtension(TLSExtension):
             """
             Convert the TACK into on the wire format
 
-            @rtype: bytearray
+            :rtype: bytearray
             """
             w = Writer()
             if len(self.public_key) != 64:
@@ -860,11 +854,10 @@ class TACKExtension(TLSExtension):
             """
             Parse the TACK from on the wire format
 
-            @type p: L{tlslite.util.codec.Parser}
-            @param p: data to be parsed
+            :param Parser p: data to be parsed
 
-            @rtype: L{TACK}
-            @raise SyntaxError: when the internal sizes don't match the
+            :rtype: TACK
+            :raises SyntaxError: when the internal sizes don't match the
                 provided data
             """
 
@@ -904,7 +897,7 @@ class TACKExtension(TLSExtension):
         """
         Create an instance of TACKExtension
 
-        See also: L{create} and L{parse}
+        See also: :py:meth:`create` and :py:meth`parse`
         """
         super(TACKExtension, self).__init__(extType=ExtensionType.tack)
 
@@ -915,7 +908,7 @@ class TACKExtension(TLSExtension):
         """
         Create a programmer readable representation of TACK extension
 
-        @rtype: str
+        :rtype: str
         """
         return "TACKExtension(activation_flags={0!r}, tacks={1!r})".format(
                 self.activation_flags, self.tacks)
@@ -925,7 +918,7 @@ class TACKExtension(TLSExtension):
         """
         Return the raw data encoding of the extension
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         w2 = Writer()
         for t in self.tacks:
@@ -941,7 +934,7 @@ class TACKExtension(TLSExtension):
         """
         Initialize the instance of TACKExtension
 
-        @rtype: TACKExtension
+        :rtype: TACKExtension
         """
 
         self.tacks = tacks
@@ -952,10 +945,9 @@ class TACKExtension(TLSExtension):
         """
         Parse the extension from on the wire format
 
-        @type p: L{tlslite.util.codec.Parser}
-        @param p: data to be parsed
+        :param Parser p: data to be parsed
 
-        @rtype: L{TACKExtension}
+        :rtype: TACKExtension
         """
         self.tacks = []
 
@@ -974,8 +966,8 @@ class SupportedGroupsExtension(VarListExtension):
 
     See RFC4492, RFC7027 and RFC-ietf-tls-negotiated-ff-dhe-10
 
-    @type groups: int
-    @ivar groups: list of groups that the client supports
+    :vartype groups: int
+    :ivar groups: list of groups that the client supports
     """
 
     def __init__(self):
@@ -989,8 +981,8 @@ class ECPointFormatsExtension(VarListExtension):
 
     See RFC4492.
 
-    @type formats: list of int
-    @ivar formats: list of point formats supported by peer
+    :vartype formats: list of int
+    :ivar formats: list of point formats supported by peer
     """
 
     def __init__(self):
@@ -1021,7 +1013,7 @@ class SignatureAlgorithmsExtension(TLSExtension):
         """
         Return raw encoding of the extension
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         if self.sigalgs is None:
             return bytearray(0)
@@ -1035,9 +1027,8 @@ class SignatureAlgorithmsExtension(TLSExtension):
         """
         Set the list of supported algorithm types
 
-        @type sigalgs: list of tuples
-        @param sigalgs: list of pairs of a hash algorithm and signature
-        algorithm
+        :param list sigalgs: list of pairs of a hash algorithm and signature
+            algorithm
         """
         self.sigalgs = sigalgs
         return self
@@ -1046,8 +1037,8 @@ class SignatureAlgorithmsExtension(TLSExtension):
         """
         Deserialise extension from on the wire data
 
-        @type parser: L{Parser}
-        @rtype: SignatureAlgorithmsExtension
+        :type Parser parser: data
+        :rtype: SignatureAlgorithmsExtension
         """
         if parser.getRemainingLength() == 0:
             self.sigalgs = None
@@ -1083,7 +1074,7 @@ class PaddingExtension(TLSExtension):
         """
         Return raw encoding of the extension.
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         return self.paddingData
 
@@ -1091,8 +1082,7 @@ class PaddingExtension(TLSExtension):
         """
         Set the padding size and create null byte padding of defined size.
 
-        @type size: int
-        @param size: required padding size in bytes
+        :param int size: required padding size in bytes
         """
         self.paddingData = bytearray(size)
         return self
@@ -1101,13 +1091,12 @@ class PaddingExtension(TLSExtension):
         """
         Deserialise extension from on the wire data.
 
-        @type p: L{tlslite.util.codec.Parser}
-        @param p:  data to be parsed
+        :param Parser p:  data to be parsed
 
-        @raise SyntaxError: when the size of the passed element doesn't match
-        the internal representation
+        :raises SyntaxError: when the size of the passed element doesn't match
+            the internal representation
 
-        @rtype: L{TLSExtension}
+        :rtype: TLSExtension
         """
         self.paddingData = p.getFixBytes(p.getRemainingLength())
         return self
@@ -1131,7 +1120,7 @@ class RenegotiationInfoExtension(TLSExtension):
         """
         Return raw encoding of the extension.
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         if self.renegotiated_connection is None:
             return bytearray(0)
@@ -1144,7 +1133,7 @@ class RenegotiationInfoExtension(TLSExtension):
         """
         Set the finished message payload from previous connection.
 
-        @type renegotiated_connection: bytearray
+        :param bytearray renegotiated_connection: data
         """
         self.renegotiated_connection = renegotiated_connection
         return self
@@ -1153,10 +1142,9 @@ class RenegotiationInfoExtension(TLSExtension):
         """
         Deserialise extension from on the wire data.
 
-        @type parser: L{tlslite.util.codec.Parser}
-        @param parser: data to be parsed
+        :param Parser parser: data to be parsed
 
-        @rtype: L{RenegotiationInfoExtension}
+        :rtype: RenegotiationInfoExtension
         """
         if parser.getRemainingLength() == 0:
             self.renegotiated_connection = None
@@ -1170,21 +1158,21 @@ class ALPNExtension(TLSExtension):
     """
     Handling of Application Layer Protocol Negotiation extension from RFC 7301.
 
-    @type protocol_names: list of bytearrays
-    @ivar protocol_names: list of protocol names acceptable or selected by peer
+    :vartype protocol_names: list of bytearrays
+    :ivar protocol_names: list of protocol names acceptable or selected by peer
 
-    @type extType: int
-    @ivar extType: numberic type of ALPNExtension, i.e. 16
+    :vartype extType: int
+    :ivar extType: numberic type of ALPNExtension, i.e. 16
 
-    @type extData: bytearray
-    @ivar extData: raw encoding of the extension data
+    :vartype extData: bytearray
+    :ivar extData: raw encoding of the extension data
     """
 
     def __init__(self):
         """
         Create instance of ALPNExtension
 
-        See also: L{create} and L{parse}
+        See also: :py:meth:`create` and :py:meth:`parse`
         """
         super(ALPNExtension, self).__init__(extType=ExtensionType.alpn)
 
@@ -1194,7 +1182,7 @@ class ALPNExtension(TLSExtension):
         """
         Create programmer-readable representation of object
 
-        @rtype: str
+        :rtype: str
         """
         return "ALPNExtension(protocol_names={0!r})".format(self.protocol_names)
 
@@ -1203,7 +1191,7 @@ class ALPNExtension(TLSExtension):
         """
         Return encoded payload of the extension
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         if self.protocol_names is None:
             return bytearray(0)
@@ -1223,8 +1211,7 @@ class ALPNExtension(TLSExtension):
         """
         Create an instance of ALPNExtension with specified protocols
 
-        @type protocols: list of bytearray
-        @param protocols: list of protocol names that are to be sent
+        :param list protocols: list of protocol names that are to be sent
         """
         self.protocol_names = protocol_names
         return self
@@ -1233,13 +1220,12 @@ class ALPNExtension(TLSExtension):
         """
         Parse the extension from on the wire format
 
-        @type parser: L{tlslite.util.codec.Parser}
-        @param parser: data to be parsed as extension
+        :param Parser parser: data to be parsed as extension
 
-        @raise SyntaxError: when the encoding of the extension is self
+        :raises SyntaxError: when the encoding of the extension is self
             inconsistent
 
-        @rtype: L{ALPNExtension}
+        :rtype: ALPNExtension
         """
         self.protocol_names = []
         parser.startLengthCheck(2)
@@ -1256,15 +1242,15 @@ class StatusRequestExtension(TLSExtension):
     """
     Handling of the Certificate Status Request extension from RFC 6066.
 
-    @type status_type: int
-    @ivar status_type: type of the status request
+    :vartype status_type: int
+    :ivar status_type: type of the status request
 
-    @type responder_id_list: list of bytearray
-    @ivar responder_id_list: list of DER encoded OCSP responder identifiers
+    :vartype responder_id_list: list of bytearray
+    :ivar responder_id_list: list of DER encoded OCSP responder identifiers
         that the client trusts
 
-    @type request_extensions: bytearray
-    @ivar request_extensions: DER encoded list of OCSP extensions, as defined
+    :vartype request_extensions: bytearray
+    :ivar request_extensions: DER encoded list of OCSP extensions, as defined
         in RFC 2560
     """
 
@@ -1280,7 +1266,7 @@ class StatusRequestExtension(TLSExtension):
         """
         Create programmer-readable representation of object
 
-        @rtype: str
+        :rtype: str
         """
         return ("StatusRequestExtension(status_type={0}, "
                 "responder_id_list={1!r}, "
@@ -1293,7 +1279,7 @@ class StatusRequestExtension(TLSExtension):
         """
         Return encoded payload of the extension.
 
-        @rtype: bytearray
+        :rtype: bytearray
         """
         if self.status_type is None:
             return bytearray()
@@ -1317,15 +1303,14 @@ class StatusRequestExtension(TLSExtension):
         """
         Create an instance of StatusRequestExtension with specified options.
 
-        @type status_type: int
-        @param status_type: type of status returned
+        :param int status_type: type of status returned
 
-        @type responder_id_list: list
-        @param responder_id_list: list of encoded OCSP responder identifiers
+        :param list responder_id_list: list of encoded OCSP responder
+            identifiers
             that the client trusts
 
-        @type request_extensions: bytearray
-        @param request_extensions: DER encoding of requested OCSP extensions
+        :param bytearray request_extensions: DER encoding of requested OCSP
+            extensions
         """
         self.status_type = status_type
         self.responder_id_list = list(responder_id_list)
@@ -1336,10 +1321,9 @@ class StatusRequestExtension(TLSExtension):
         """
         Parse the extension from on the wire format.
 
-        @type parser: L{tlslite.util.codec.Parser}
-        @param parser: data to be parsed as extension
+        :param Parser parser: data to be parsed as extension
 
-        @rtype: L{StatusRequestExtension}
+        :rtype: StatusRequestExtension
         """
         # handling of server side message
         if parser.getRemainingLength() == 0:

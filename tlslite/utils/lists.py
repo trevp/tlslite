@@ -8,15 +8,16 @@
 
 def getFirstMatching(values, matches):
     """
-    Return the first element in values that is also in matches.
+    Return the first element in :py:obj:`values` that is also in
+    :py:obj:`matches`.
 
     Return None if values is None, empty or no element in values is also in
     matches.
 
-    @type values: collections.abc.Iterable
-    @param values: list of items to look through, can be None
-    @type matches: collections.abc.Container
-    @param matches: list of items to check against
+    :type values: collections.abc.Iterable
+    :param values: list of items to look through, can be None
+    :type matches: collections.abc.Container
+    :param matches: list of items to check against
     """
     assert matches is not None
     if not values:

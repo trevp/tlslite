@@ -121,6 +121,11 @@ def HKDF_expand(PRK, info, L, algorithm):
 # **************************************************************************
 
 def bytesToNumber(b, endian="big"):
+    """
+    Convert a number stored in bytearray to an integer.
+
+    By default assumes big-endian encoding of the number.
+    """
     if endian == "big":
         return int(b2a_hex(b), 16)
     elif endian == "little":

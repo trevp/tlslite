@@ -11,19 +11,19 @@ from .x509 import X509
 class X509CertChain(object):
     """This class represents a chain of X.509 certificates.
 
-    @type x509List: list
-    @ivar x509List: A list of L{tlslite.x509.X509} instances,
-    starting with the end-entity certificate and with every
-    subsequent certificate certifying the previous.
+    :vartype x509List: list
+    :ivar x509List: A list of :py:class:`tlslite.x509.X509` instances,
+        starting with the end-entity certificate and with every
+        subsequent certificate certifying the previous.
     """
 
     def __init__(self, x509List=None):
         """Create a new X509CertChain.
 
-        @type x509List: list
-        @param x509List: A list of L{tlslite.x509.X509} instances,
-        starting with the end-entity certificate and with every
-        subsequent certificate certifying the previous.
+        :type x509List: list
+        :param x509List: A list of :py:class:`tlslite.x509.X509` instances,
+            starting with the end-entity certificate and with every
+            subsequent certificate certifying the previous.
         """
         if x509List:
             self.x509List = x509List
@@ -46,14 +46,14 @@ class X509CertChain(object):
     def getNumCerts(self):
         """Get the number of certificates in this chain.
 
-        @rtype: int
+        :rtype: int
         """
         return len(self.x509List)
 
     def getEndEntityPublicKey(self):
         """Get the public key from the end-entity certificate.
 
-        @rtype: L{tlslite.utils.rsakey.RSAKey}
+        :rtype: ~tlslite.utils.rsakey.RSAKey`
         """
         if self.getNumCerts() == 0:
             raise AssertionError()
@@ -62,13 +62,13 @@ class X509CertChain(object):
     def getFingerprint(self):
         """Get the hex-encoded fingerprint of the end-entity certificate.
 
-        @rtype: str
-        @return: A hex-encoded fingerprint.
+        :rtype: str
+        :returns: A hex-encoded fingerprint.
         """
         if self.getNumCerts() == 0:
             raise AssertionError()
         return self.x509List[0].getFingerprint()
-        
+
     def checkTack(self, tack):
         if self.x509List:
             tlsCert = TlsCertificate(self.x509List[0].bytes)

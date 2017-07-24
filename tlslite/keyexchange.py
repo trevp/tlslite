@@ -112,8 +112,8 @@ class KeyExchange(object):
         """
         Sign a server key exchange using default or specified algorithm
 
-        @type sigHash: str
-        @param sigHash: name of the signature hash to be used for signing
+        :type sigHash: str
+        :param sigHash: name of the signature hash to be used for signing
         """
         if self.serverHello.server_version < (3, 3):
             hashBytes = serverKeyExchange.hash(self.clientHello.random,
@@ -227,15 +227,17 @@ class KeyExchange(object):
                               clientRandom, serverRandom):
         """Create a Certificate Verify message
 
-        @param version: protocol version in use
-        @param handshakeHashes: the running hash of all handshake messages
-        @param validSigAlgs: acceptable signature algorithms for client side,
-        applicable only to TLSv1.2 (or later)
-        @param certificateRequest: the server provided Certificate Request
-        message
-        @param premasterSecret: the premaster secret, needed only for SSLv3
-        @param clientRandom: client provided random value, needed only for SSLv3
-        @param serverRandom: server provided random value, needed only for SSLv3
+        :param version: protocol version in use
+        :param handshakeHashes: the running hash of all handshake messages
+        :param validSigAlgs: acceptable signature algorithms for client side,
+            applicable only to TLSv1.2 (or later)
+        :param certificateRequest: the server provided Certificate Request
+            message
+        :param premasterSecret: the premaster secret, needed only for SSLv3
+        :param clientRandom: client provided random value, needed only for
+            SSLv3
+        :param serverRandom: server provided random value, needed only for
+            SSLv3
         """
         signatureAlgorithm = None
         # in TLS 1.2 we must decide which algorithm to use for signing
@@ -451,11 +453,11 @@ class DHE_RSAKeyExchange(AuthenticatedKeyExchange, ADHKeyExchange):
         """
         Create helper object for Diffie-Hellamn key exchange.
 
-        @param dhParams: Diffie-Hellman parameters that will be used by
+        :param dhParams: Diffie-Hellman parameters that will be used by
             server. First element of the tuple is the generator, the second
             is the prime. If not specified it will use a secure set (currently
             a 2048-bit safe prime).
-        @type dhParams: 2-element tuple of int
+        :type dhParams: 2-element tuple of int
         """
         super(DHE_RSAKeyExchange, self).__init__(cipherSuite, clientHello,
                                                  serverHello, dhParams,
@@ -476,7 +478,7 @@ class AECDHKeyExchange(KeyExchange):
         """
         Verify using constant time operation that the bytearray is not zero
 
-        @raises TLSIllegalParameterException: if the value is all zero
+        :raises TLSIllegalParameterException: if the value is all zero
         """
         summa = 0
         for i in value:

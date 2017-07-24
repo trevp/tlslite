@@ -28,7 +28,7 @@ class RecordSocket(object):
         """
         Assign socket to wrapper
 
-        @type sock: socket.socket
+        :type sock: socket.socket
         """
         self.sock = sock
         self.version = (0, 0)
@@ -37,9 +37,9 @@ class RecordSocket(object):
         """
         Send all data through socket
 
-        @type data: bytearray
-        @param data: data to send
-        @raise socket.error: when write to socket failed
+        :type data: bytearray
+        :param data: data to send
+        :raises socket.error: when write to socket failed
         """
         while 1:
             try:
@@ -59,11 +59,11 @@ class RecordSocket(object):
         """
         Send the message through socket.
 
-        @type msg: bytearray
-        @param msg: TLS message to send
-        @type padding: int
-        @param padding: amount of padding to specify for SSLv2
-        @raise socket.error: when write to socket failed
+        :type msg: bytearray
+        :param msg: TLS message to send
+        :type padding: int
+        :param padding: amount of padding to specify for SSLv2
+        :raises socket.error: when write to socket failed
         """
         data = msg.write()
 
@@ -84,10 +84,10 @@ class RecordSocket(object):
         """
         Read exactly the amount of bytes specified in L{length} from raw socket.
 
-        @rtype: generator
-        @return: generator that will return 0 or 1 in case the socket is non
-           blocking and would block and bytearray in case the read finished
-        @raise TLSAbruptCloseError: when the socket closed
+        :rtype: generator
+        :returns: generator that will return 0 or 1 in case the socket is non
+            blocking and would block and bytearray in case the read finished
+        :raises TLSAbruptCloseError: when the socket closed
         """
         buf = bytearray(0)
 
@@ -172,17 +172,17 @@ class RecordSocket(object):
         """
         Read a single record from socket, handle SSLv2 and SSLv3 record layer
 
-        @rtype: generator
-        @return: generator that returns 0 or 1 in case the read would be
+        :rtype: generator
+        :returns: generator that returns 0 or 1 in case the read would be
             blocking or a tuple containing record header (object) and record
             data (bytearray) read from socket
-        @raise socket.error: In case of network error
-        @raise TLSAbruptCloseError: When the socket was closed on the other
-        side in middle of record receiving
-        @raise TLSRecordOverflow: When the received record was longer than
-        allowed by TLS
-        @raise TLSIllegalParameterException: When the record header was
-        malformed
+        :raises socket.error: In case of network error
+        :raises TLSAbruptCloseError: When the socket was closed on the other
+            side in middle of record receiving
+        :raises TLSRecordOverflow: When the received record was longer than
+            allowed by TLS
+        :raises TLSIllegalParameterException: When the record header was
+            malformed
         """
         record = None
         for record in self._recvHeader():
@@ -234,12 +234,12 @@ class RecordLayer(object):
     """
     Implementation of TLS record layer protocol
 
-    @ivar version: the TLS version to use (tuple encoded as on the wire)
-    @ivar sock: underlying socket
-    @ivar client: whether the connection should use encryption
-    @ivar encryptThenMAC: use the encrypt-then-MAC mechanism for record
-    integrity
-    @ivar handshake_finished: used in SSL2, True if handshake protocol is over
+    :ivar version: the TLS version to use (tuple encoded as on the wire)
+    :ivar sock: underlying socket
+    :ivar client: whether the connection should use encryption
+    :ivar encryptThenMAC: use the encrypt-then-MAC mechanism for record
+        integrity
+    :ivar handshake_finished: used in SSL2, True if handshake protocol is over
     """
 
     def __init__(self, sock):
@@ -279,8 +279,8 @@ class RecordLayer(object):
         """
         Return the name of the bulk cipher used by this connection
 
-        @rtype: str
-        @return: The name of the cipher, like 'aes128', 'rc4', etc.
+        :rtype: str
+        :returns: The name of the cipher, like 'aes128', 'rc4', etc.
         """
         if self._writeState.encContext is None:
             return None
@@ -292,8 +292,8 @@ class RecordLayer(object):
 
         'python' for tlslite internal implementation, 'openssl' for M2crypto
         and 'pycrypto' for pycrypto
-        @rtype: str
-        @return: Name of cipher implementation used, None if not initialised
+        :rtype: str
+        :returns: Name of cipher implementation used, None if not initialised
         """
         if self._writeState.encContext is None:
             return None
@@ -454,8 +454,8 @@ class RecordLayer(object):
         Note that if the message was not fragmented to below 2**14 bytes
         it will be rejected by the other connection side.
 
-        @param msg: TLS message to send
-        @type msg: ApplicationData, HandshakeMessage, etc.
+        :param msg: TLS message to send
+        :type msg: ApplicationData, HandshakeMessage, etc.
         """
         data = msg.write()
         contentType = msg.contentType
@@ -561,8 +561,8 @@ class RecordLayer(object):
         """
         Check MAC of data, then decrypt and remove padding
 
-        @raise TLSBadRecordMAC: when the mac value is invalid
-        @raise TLSDecryptionFailed: when the data to decrypt has invalid size
+        :raises TLSBadRecordMAC: when the mac value is invalid
+        :raises TLSDecryptionFailed: when the data to decrypt has invalid size
         """
         if self._readState.macContext:
             macLength = self._readState.macContext.digest_size
@@ -685,11 +685,11 @@ class RecordLayer(object):
         """
         Read, decrypt and check integrity of a single record
 
-        @rtype: tuple
-        @return: message header and decrypted message payload
-        @raise TLSDecryptionFailed: when decryption of data failed
-        @raise TLSBadRecordMAC: when record has bad MAC or padding
-        @raise socket.error: when reading from socket was unsuccessful
+        :rtype: tuple
+        :returns: message header and decrypted message payload
+        :raises TLSDecryptionFailed: when decryption of data failed
+        :raises TLSBadRecordMAC: when record has bad MAC or padding
+        :raises socket.error: when reading from socket was unsuccessful
         """
         result = None
         for result in self._recordSocket.recv():
@@ -731,8 +731,10 @@ class RecordLayer(object):
         """
         Change the cipher state to the pending one for write operations.
 
-        This should be done only once after a call to L{calcPendingStates} was
-        performed and directly after sending a L{ChangeCipherSpec} message.
+        This should be done only once after a call to
+        :py:meth:`calcPendingStates` was
+        performed and directly after sending a :py:class:`ChangeCipherSpec`
+        message.
         """
         if self.version in ((0, 2), (2, 0)):
             # in SSLv2 sequence numbers carry over from plaintext to encrypted
@@ -745,8 +747,10 @@ class RecordLayer(object):
         """
         Change the cipher state to the pending one for read operations.
 
-        This should be done only once after a call to L{calcPendingStates} was
-        performed and directly after receiving a L{ChangeCipherSpec} message.
+        This should be done only once after a call to
+        :py:meth:`calcPendingStates` was
+        performed and directly after receiving a :py:class:`ChangeCipherSpec`
+        message.
         """
         if self.version in ((0, 2), (2, 0)):
             # in SSLv2 sequence numbers carry over from plaintext to encrypted

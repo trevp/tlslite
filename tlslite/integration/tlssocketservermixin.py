@@ -7,12 +7,12 @@ from tlslite.tlsconnection import TLSConnection
 
 class TLSSocketServerMixIn:
     """
-    This class can be mixed in with any L{SocketServer.TCPServer} to
+    This class can be mixed in with any :py:class:`SocketServer.TCPServer` to
     add TLS support.
 
     To use this class, define a new class that inherits from it and
-    some L{SocketServer.TCPServer} (with the mix-in first). Then
-    implement the handshake() method, doing some sort of server
+    some :py:class:`SocketServer.TCPServer` (with the mix-in first). Then
+    implement the :py:meth:`handshake` method, doing some sort of server
     handshake on the connection argument.  If the handshake method
     returns True, the RequestHandler will be triggered.  Below is a
     complete example of a threaded HTTPS server::

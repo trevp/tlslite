@@ -26,6 +26,7 @@ class ClientHelper(object):
         """
         For client authentication, use one of these argument
         combinations:
+
          - username, password (SRP)
          - certChain, privateKey (certificate)
 
@@ -33,6 +34,7 @@ class ClientHelper(object):
         implicit mutual authentication performed by SRP,
         or you can do certificate-based server
         authentication with one of these argument combinations:
+
          - x509Fingerprint
 
         Certificate-based server authentication is compatible with
@@ -43,43 +45,40 @@ class ClientHelper(object):
         performed only when this class needs to connect with the
         server.  Then you should be prepared to handle TLS-specific
         exceptions.  See the client handshake functions in
-        L{tlslite.TLSConnection.TLSConnection} for details on which
+        :py:class:`~tlslite.tlsconnection.TLSConnection` for details on which
         exceptions might be raised.
 
-        @type username: str
-        @param username: SRP username.  Requires the
-        'password' argument.
+        :param str username: SRP username.  Requires the
+            'password' argument.
 
-        @type password: str
-        @param password: SRP password for mutual authentication.
-        Requires the 'username' argument.
+        :param str password: SRP password for mutual authentication.
+            Requires the 'username' argument.
 
-        @type certChain: L{tlslite.x509certchain.X509CertChain}
-        @param certChain: Certificate chain for client authentication.
-        Requires the 'privateKey' argument.  Excludes the SRP arguments.
+        :param X509CertChain certChain: Certificate chain for client
+            authentication.
+            Requires the 'privateKey' argument.  Excludes the SRP arguments.
 
-        @type privateKey: L{tlslite.utils.rsakey.RSAKey}
-        @param privateKey: Private key for client authentication.
-        Requires the 'certChain' argument.  Excludes the SRP arguments.
+        :param RSAKey privateKey: Private key for client authentication.
+            Requires the 'certChain' argument.  Excludes the SRP arguments.
 
-        @type checker: L{tlslite.checker.Checker}
-        @param checker: Callable object called after handshaking to 
-        evaluate the connection and raise an Exception if necessary.
+        :param Checker checker: Callable object called after handshaking to
+            evaluate the connection and raise an Exception if necessary.
 
-        @type settings: L{tlslite.handshakesettings.HandshakeSettings}
-        @param settings: Various settings which can be used to control
-        the ciphersuites, certificate types, and SSL/TLS versions
-        offered by the client.
+        :type settings: HandshakeSettings
+        :param settings: Various settings which can be used to control
+            the ciphersuites, certificate types, and SSL/TLS versions
+            offered by the client.
 
-        @type anon: bool
-        @param anon: set to True if the negotiation should advertise only
-        anonymous TLS ciphersuites. Mutually exclusive with client certificate
-        authentication or SRP authentication
+        :param bool anon: set to True if the negotiation should advertise only
+            anonymous TLS ciphersuites. Mutually exclusive with client
+            certificate
+            authentication or SRP authentication
 
-        @type host: str or None
-        @param host: the hostname that the connection is made to. Can be an
-        IP address (in which case the SNI extension won't be sent). Can
-        include the port (in which case the port will be stripped and ignored).
+        :type host: str or None
+        :param host: the hostname that the connection is made to. Can be an
+            IP address (in which case the SNI extension won't be sent). Can
+            include the port (in which case the port will be stripped and
+            ignored).
         """
 
         self.username = None

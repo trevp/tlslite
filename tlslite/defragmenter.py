@@ -19,11 +19,11 @@ class Defragmenter(object):
     Supports messages with given size (like Alerts) or with a length header
     in specific place (like Handshake messages).
 
-    @ivar priorities: order in which messages from given types should be
-    returned.
-    @ivar buffers: data buffers for message types
-    @ivar decoders: functions which check buffers if a message of given type
-    is complete
+    :ivar priorities: order in which messages from given types should be
+        returned.
+    :ivar buffers: data buffers for message types
+    :ivar decoders: functions which check buffers if a message of given type
+        is complete
     """
 
     def __init__(self):

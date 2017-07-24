@@ -27,10 +27,9 @@ class HandshakeHashes(object):
 
     def update(self, data):
         """
-        Add L{data} to hash input.
+        Add `data` to hash input.
 
-        @type data: bytearray
-        @param data: serialized TLS handshake message
+        :param bytearray data: serialized TLS handshake message
         """
         text = compat26Str(data)
         self._handshakeMD5.update(text)
@@ -46,8 +45,7 @@ class HandshakeHashes(object):
 
         Used for Finished and CertificateVerify messages.
 
-        @type digest: str
-        @param digest: name of digest to return
+        :param str digest: name of digest to return
         """
         if digest is None:
             return self._handshakeMD5.digest() + self._handshakeSHA.digest()
@@ -72,10 +70,8 @@ class HandshakeHashes(object):
 
         Used for Finished and CertificateVerify messages.
 
-        @type masterSecret: bytearray
-        @param masterSecret: value of the master secret
-        @type label: bytearray
-        @param label: label to include in the calculation
+        :param bytearray masterSecret: value of the master secret
+        :param bytearray label: label to include in the calculation
         """
         #pylint: disable=maybe-no-member
         imacMD5 = self._handshakeMD5.copy()
@@ -102,7 +98,7 @@ class HandshakeHashes(object):
         Return a copy of the object with all the hashes in the same state
         as the source object.
 
-        @rtype: HandshakeHashes
+        :rtype: HandshakeHashes
         """
         other = HandshakeHashes()
         other._handshakeMD5 = self._handshakeMD5.copy()

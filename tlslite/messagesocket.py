@@ -27,27 +27,27 @@ class MessageSocket(RecordLayer):
     This class tries to provide a useful abstraction for handling Handshake
     protocol messages.
 
-    @type recordSize: int
-    @ivar recordSize: maximum size of records sent through socket. Messages
-    bigger than this size will be fragmented to smaller chunks. Setting it
-    to higher value than the default 2^14 will make the implementation
-    non RFC compliant and likely not interoperable with other peers.
+    :vartype recordSize: int
+    :ivar recordSize: maximum size of records sent through socket. Messages
+        bigger than this size will be fragmented to smaller chunks. Setting it
+        to higher value than the default 2^14 will make the implementation
+        non RFC compliant and likely not interoperable with other peers.
 
-    @type defragmenter: L{Defragmenter}
-    @ivar defragmenter: defragmenter used for read records
+    :vartype defragmenter: Defragmenter
+    :ivar defragmenter: defragmenter used for read records
 
-    @type unfragmentedDataTypes: tuple
-    @ivar unfragmentedDataTypes: data types which will be passed as-read,
-    TLS application_data by default
+    :vartype unfragmentedDataTypes: tuple
+    :ivar unfragmentedDataTypes: data types which will be passed as-read,
+        TLS application_data by default
     """
 
     def __init__(self, sock, defragmenter):
         """Apply TLS Record Layer abstraction to raw network socket.
 
-        @type sock: L{socket.socket}
-        @param sock: network socket to wrap
-        @type defragmenter: L{Defragmenter}
-        @param defragmenter: defragmenter to apply on the records read
+        :type sock: socket.socket
+        :param sock: network socket to wrap
+        :type defragmenter: Defragmenter
+        :param defragmenter: defragmenter to apply on the records read
         """
         super(MessageSocket, self).__init__(sock)
 
@@ -65,9 +65,10 @@ class MessageSocket(RecordLayer):
         Read next message in queue
 
         will return a 0 or 1 if the read is blocking, a tuple of
-        L{RecordHeader3} and L{Parser} in case a message was received.
+        :py:class:`RecordHeader3` and :py:class:`Parser` in case a message was
+        received.
 
-        @rtype: generator
+        :rtype: generator
         """
         while True:
             while True:
@@ -96,7 +97,7 @@ class MessageSocket(RecordLayer):
             self._lastRecordVersion = header.version
 
     def recvMessageBlocking(self):
-        """Blocking variant of L{recvMessage}"""
+        """Blocking variant of :py:meth:`recvMessage`."""
         for res in self.recvMessage():
             if res in (0, 1):
                 pass
@@ -110,7 +111,7 @@ class MessageSocket(RecordLayer):
         Will fragment the messages and write them in as little records as
         possible.
 
-        @rtype: generator
+        :rtype: generator
         """
         while len(self._sendBuffer) > 0:
             recordPayload = self._sendBuffer[:self.recordSize]
@@ -123,7 +124,7 @@ class MessageSocket(RecordLayer):
         self._sendBufferType = None
 
     def flushBlocking(self):
-        """Blocking variant of L{flush}"""
+        """Blocking variant of :py:meth:`flush`."""
         for _ in self.flush():
             pass
 
@@ -137,7 +138,7 @@ class MessageSocket(RecordLayer):
         If the message is of different type as messages in queue, the queue is
         flushed and then the message is queued.
 
-        @rtype: generator
+        :rtype: generator
         """
         if self._sendBufferType is None:
             self._sendBufferType = msg.contentType
@@ -154,7 +155,7 @@ class MessageSocket(RecordLayer):
         self._sendBuffer += msg.write()
 
     def queueMessageBlocking(self, msg):
-        """Blocking variant of L{queueMessage}"""
+        """Blocking variant of :py:meth:`queueMessage`."""
         for _ in self.queueMessage(msg):
             pass
 
@@ -171,7 +172,7 @@ class MessageSocket(RecordLayer):
         Use the sendRecord() message if you want to send a message outside
         the queue, or a message of zero size.
 
-        @rtype: generator
+        :rtype: generator
         """
         for res in self.queueMessage(msg):
             yield res
@@ -180,6 +181,6 @@ class MessageSocket(RecordLayer):
             yield res
 
     def sendMessageBlocking(self, msg):
-        """Blocking variant of L{sendMessage}"""
+        """Blocking variant of :py:meth:`sendMessage`."""
         for _ in self.sendMessage(msg):
             pass

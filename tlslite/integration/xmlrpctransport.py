@@ -34,9 +34,11 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
                  checker=None,
                  settings=None,
                  ignoreAbruptClose=False):
-        """Create a new XMLRPCTransport.
+        """
+        Create a new XMLRPCTransport.
 
-        An instance of this class can be passed to L{xmlrpclib.ServerProxy}
+        An instance of this class can be passed to
+        :py:class:`xmlrpclib.ServerProxy`
         to use TLS with XML-RPC calls::
 
             from tlslite import XMLRPCTransport
@@ -47,6 +49,7 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
 
         For client authentication, use one of these argument
         combinations:
+
          - username, password (SRP)
          - certChain, privateKey (certificate)
 
@@ -54,6 +57,7 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
         implicit mutual authentication performed by SRP or
         you can do certificate-based server
         authentication with one of these argument combinations:
+
          - x509Fingerprint
 
         Certificate-based server authentication is compatible with
@@ -63,41 +67,41 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
         simply stores these arguments for later.  The handshake is
         performed only when this class needs to connect with the
         server.  Thus you should be prepared to handle TLS-specific
-        exceptions when calling methods of L{xmlrpclib.ServerProxy}.  See the
+        exceptions when calling methods of :py:class:`xmlrpclib.ServerProxy`.
+        See the
         client handshake functions in
-        L{tlslite.TLSConnection.TLSConnection} for details on which
+        :py:class:`~tlslite.tlsconnection.TLSConnection` for details on which
         exceptions might be raised.
 
-        @type username: str
-        @param username: SRP username.  Requires the
-        'password' argument.
+        :type username: str
+        :param username: SRP username.  Requires the
+            'password' argument.
 
-        @type password: str
-        @param password: SRP password for mutual authentication.
-        Requires the 'username' argument.
+        :type password: str
+        :param password: SRP password for mutual authentication.
+            Requires the 'username' argument.
 
-        @type certChain: L{tlslite.x509certchain.X509CertChain}
-        @param certChain: Certificate chain for client authentication.
-        Requires the 'privateKey' argument.  Excludes the SRP arguments.
+        :type certChain: ~tlslite.x509certchain.X509CertChain
+        :param certChain: Certificate chain for client authentication.
+            Requires the 'privateKey' argument.  Excludes the SRP arguments.
 
-        @type privateKey: L{tlslite.utils.rsakey.RSAKey}
-        @param privateKey: Private key for client authentication.
-        Requires the 'certChain' argument.  Excludes the SRP arguments.
+        :type privateKey: ~tlslite.utils.rsakey.RSAKey
+        :param privateKey: Private key for client authentication.
+            Requires the 'certChain' argument.  Excludes the SRP arguments.
 
-        @type checker: L{tlslite.checker.Checker}
-        @param checker: Callable object called after handshaking to 
-        evaluate the connection and raise an Exception if necessary.
+        :type checker: ~tlslite.checker.Checker
+        :param checker: Callable object called after handshaking to
+            evaluate the connection and raise an Exception if necessary.
 
-        @type settings: L{tlslite.handshakesettings.HandshakeSettings}
-        @param settings: Various settings which can be used to control
-        the ciphersuites, certificate types, and SSL/TLS versions
-        offered by the client.
+        :type settings: ~tlslite.handshakesettings.HandshakeSettings
+        :param settings: Various settings which can be used to control
+            the ciphersuites, certificate types, and SSL/TLS versions
+            offered by the client.
 
-        @type ignoreAbruptClose: bool
-        @param ignoreAbruptClose: ignore the TLSAbruptCloseError on 
-        unexpected hangup.
+        :type ignoreAbruptClose: bool
+        :param ignoreAbruptClose: ignore the TLSAbruptCloseError on
+            unexpected hangup.
         """
-
         # self._connection is new in python 2.7, since we're using it here,
         # we'll add this ourselves too, just in case we're pre-2.7
         self._connection = (None, None)
@@ -110,6 +114,7 @@ class XMLRPCTransport(xmlrpclib.Transport, ClientHelper):
                  settings)
 
     def make_connection(self, host):
+        """Make a connection to `host`. Reuse keepalive connections."""
         # return an existing connection if possible.  This allows
         # HTTP/1.1 keep-alive.
         if self._connection and host == self._connection[0]:

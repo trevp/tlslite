@@ -426,8 +426,8 @@ def paramStrength(param):
     field (DSA, DH) or integer factorisation cryptography (RSA) when provided
     with the prime defining the field or the modulus of the public key.
 
-    @param param: prime or modulus
-    @type param: int
+    :param param: prime or modulus
+    :type param: int
     """
     size = numBits(param)
     if size < 512:
@@ -558,12 +558,12 @@ def calcFinished(version, masterSecret, cipherSuite, handshakeHashes,
                  isClient):
     """Calculate the Handshake protocol Finished value
 
-    @param version: TLS protocol version tuple
-    @param masterSecret: negotiated master secret of the connection
-    @param cipherSuite: negotiated cipher suite of the connection,
-    @param handshakeHashes: running hash of the handshake messages
-    @param isClient: whether the calculation should be performed for message
-    sent by client (True) or by server (False) side of connection
+    :param version: TLS protocol version tuple
+    :param masterSecret: negotiated master secret of the connection
+    :param cipherSuite: negotiated cipher suite of the connection,
+    :param handshakeHashes: running hash of the handshake messages
+    :param isClient: whether the calculation should be performed for message
+        sent by client (True) or by server (False) side of connection
     """
     assert version in ((3, 0), (3, 1), (3, 2), (3, 3))
     if version == (3,0):

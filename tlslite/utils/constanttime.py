@@ -12,11 +12,11 @@ def ct_lt_u32(val_a, val_b):
     """
     Returns 1 if val_a < val_b, 0 otherwise. Constant time.
 
-    @type val_a: int
-    @type val_b: int
-    @param val_a: an unsigned integer representable as a 32 bit value
-    @param val_b: an unsigned integer representable as a 32 bit value
-    @rtype: int
+    :type val_a: int
+    :type val_b: int
+    :param val_a: an unsigned integer representable as a 32 bit value
+    :param val_b: an unsigned integer representable as a 32 bit value
+    :rtype: int
     """
     val_a &= 0xffffffff
     val_b &= 0xffffffff
@@ -27,11 +27,11 @@ def ct_gt_u32(val_a, val_b):
     """
     Return 1 if val_a > val_b, 0 otherwise. Constant time.
 
-    @type val_a: int
-    @type val_b: int
-    @param val_a: an unsigned integer representable as a 32 bit value
-    @param val_b: an unsigned integer representable as a 32 bit value
-    @rtype: int
+    :type val_a: int
+    :type val_b: int
+    :param val_a: an unsigned integer representable as a 32 bit value
+    :param val_b: an unsigned integer representable as a 32 bit value
+    :rtype: int
     """
     return ct_lt_u32(val_b, val_a)
 
@@ -39,11 +39,11 @@ def ct_le_u32(val_a, val_b):
     """
     Return 1 if val_a <= val_b, 0 otherwise. Constant time.
 
-    @type val_a: int
-    @type val_b: int
-    @param val_a: an unsigned integer representable as a 32 bit value
-    @param val_b: an unsigned integer representable as a 32 bit value
-    @rtype: int
+    :type val_a: int
+    :type val_b: int
+    :param val_a: an unsigned integer representable as a 32 bit value
+    :param val_b: an unsigned integer representable as a 32 bit value
+    :rtype: int
     """
     return 1 ^ ct_gt_u32(val_a, val_b)
 
@@ -59,9 +59,9 @@ def ct_isnonzero_u32(val):
     """
     Returns 1 if val is != 0, 0 otherwise. Constant time.
 
-    @type val: int
-    @param val: an unsigned integer representable as a 32 bit value
-    @rtype: int
+    :type val: int
+    :param val: an unsigned integer representable as a 32 bit value
+    :rtype: int
     """
     val &= 0xffffffff
     return (val|(-val&0xffffffff)) >> 31
@@ -70,11 +70,11 @@ def ct_neq_u32(val_a, val_b):
     """
     Return 1 if val_a != val_b, 0 otherwise. Constant time.
 
-    @type val_a: int
-    @type val_b: int
-    @param val_a: an unsigned integer representable as a 32 bit value
-    @param val_b: an unsigned integer representable as a 32 bit value
-    @rtype: int
+    :type val_a: int
+    :type val_b: int
+    :param val_a: an unsigned integer representable as a 32 bit value
+    :param val_b: an unsigned integer representable as a 32 bit value
+    :rtype: int
     """
     val_a &= 0xffffffff
     val_b &= 0xffffffff
@@ -85,11 +85,11 @@ def ct_eq_u32(val_a, val_b):
     """
     Return 1 if val_a == val_b, 0 otherwise. Constant time.
 
-    @type val_a: int
-    @type val_b: int
-    @param val_a: an unsigned integer representable as a 32 bit value
-    @param val_b: an unsigned integer representable as a 32 bit value
-    @rtype: int
+    :type val_a: int
+    :type val_b: int
+    :param val_a: an unsigned integer representable as a 32 bit value
+    :param val_b: an unsigned integer representable as a 32 bit value
+    :rtype: int
     """
     return 1 ^ ct_neq_u32(val_a, val_b)
 
@@ -97,24 +97,24 @@ def ct_check_cbc_mac_and_pad(data, mac, seqnumBytes, contentType, version):
     """
     Check CBC cipher HMAC and padding. Close to constant time.
 
-    @type data: bytearray
-    @param data: data with HMAC value to test and padding
+    :type data: bytearray
+    :param data: data with HMAC value to test and padding
 
-    @type mac: hashlib mac
-    @param mac: empty HMAC, initialised with a key
+    :type mac: hashlib mac
+    :param mac: empty HMAC, initialised with a key
 
-    @type seqnumBytes: bytearray
-    @param seqnumBytes: TLS sequence number, used as input to HMAC
+    :type seqnumBytes: bytearray
+    :param seqnumBytes: TLS sequence number, used as input to HMAC
 
-    @type contentType: int
-    @param contentType: a single byte, used as input to HMAC
+    :type contentType: int
+    :param contentType: a single byte, used as input to HMAC
 
-    @type version: tuple of int
-    @param version: a tuple of two ints, used as input to HMAC and to guide
-    checking of padding
+    :type version: tuple of int
+    :param version: a tuple of two ints, used as input to HMAC and to guide
+        checking of padding
 
-    @rtype: boolean
-    @return: True if MAC and pad is ok, False otherwise
+    :rtype: boolean
+    :returns: True if MAC and pad is ok, False otherwise
     """
     assert version in ((3, 0), (3, 1), (3, 2), (3, 3))
 

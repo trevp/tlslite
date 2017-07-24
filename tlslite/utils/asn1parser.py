@@ -12,17 +12,17 @@ class ASN1Parser(object):
     """
     Parser and storage of ASN.1 DER encoded objects.
 
-    @type length: int
-    @ivar length: length of the value of the tag
-    @type value: bytearray
-    @ivar value: literal value of the tag
+    :vartype length: int
+    :ivar length: length of the value of the tag
+    :vartype value: bytearray
+    :ivar value: literal value of the tag
     """
 
     def __init__(self, bytes):
         """Create an object from bytes.
 
-        @type bytes: bytearray
-        @param bytes: DER encoded ANS.1 object
+        :type bytes: bytearray
+        :param bytes: DER encoded ANS.1 object
         """
         p = Parser(bytes)
         p.get(1) #skip Type
@@ -37,11 +37,11 @@ class ASN1Parser(object):
         """
         Return n-th child assuming that the object is a SEQUENCE.
 
-        @type which: int
-        @param which: ordinal of the child to return
+        :type which: int
+        :param which: ordinal of the child to return
 
-        @rtype: ASN1Parser
-        @return: decoded child object
+        :rtype: ASN1Parser
+        :returns: decoded child object
         """
         return ASN1Parser(self.getChildBytes(which))
 
@@ -49,8 +49,8 @@ class ASN1Parser(object):
         """
         Return number of children, assuming that the object is a SEQUENCE.
 
-        @rtype: int
-        @return number of children in the object
+        :rtype: int
+        :returns: number of children in the object
         """
         p = Parser(self.value)
         count = 0
@@ -67,11 +67,11 @@ class ASN1Parser(object):
         """
         Return raw encoding of n-th child, assume self is a SEQUENCE
 
-        @type which: int
-        @param which: ordinal of the child to return
+        :type which: int
+        :param which: ordinal of the child to return
 
-        @rtype: bytearray
-        @return: raw child object
+        :rtype: bytearray
+        :returns: raw child object
         """
         p = Parser(self.value)
         for _ in range(which+1):

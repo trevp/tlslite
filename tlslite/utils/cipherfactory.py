@@ -34,14 +34,14 @@ if cryptomath.pycryptoLoaded:
 def createAES(key, IV, implList=None):
     """Create a new AES object.
 
-    @type key: str
-    @param key: A 16, 24, or 32 byte string.
+    :type key: str
+    :param key: A 16, 24, or 32 byte string.
 
-    @type IV: str
-    @param IV: A 16 byte string
+    :type IV: str
+    :param IV: A 16 byte string
 
-    @rtype: L{tlslite.utils.AES}
-    @return: An AES object.
+    :rtype: tlslite.utils.AES
+    :returns: An AES object.
     """
     if implList is None:
         implList = ["openssl", "pycrypto", "python"]
@@ -58,11 +58,11 @@ def createAES(key, IV, implList=None):
 def createAESGCM(key, implList=None):
     """Create a new AESGCM object.
 
-    @type key: bytearray
-    @param key: A 16 or 32 byte byte array.
+    :type key: bytearray
+    :param key: A 16 or 32 byte byte array.
 
-    @rtype: L{tlslite.utils.AESGCM}
-    @return: An AESGCM object.
+    :rtype: tlslite.utils.AESGCM
+    :returns: An AESGCM object.
     """
     if implList is None:
         implList = ["pycrypto", "python"]
@@ -77,11 +77,11 @@ def createAESGCM(key, implList=None):
 def createCHACHA20(key, implList=None):
     """Create a new CHACHA20_POLY1305 object.
 
-    @type key: bytearray
-    @param key: a 32 byte array to serve as key
+    :type key: bytearray
+    :param key: a 32 byte array to serve as key
 
-    @rtype: L{tlslite.utils.CHACHA20_POLY1305}
-    @return: A ChaCha20/Poly1305 object
+    :rtype: tlslite.utils.CHACHA20_POLY1305
+    :returns: A ChaCha20/Poly1305 object
     """
     if implList is None:
         implList = ["python"]
@@ -94,14 +94,14 @@ def createCHACHA20(key, implList=None):
 def createRC4(key, IV, implList=None):
     """Create a new RC4 object.
 
-    @type key: str
-    @param key: A 16 to 32 byte string.
+    :type key: str
+    :param key: A 16 to 32 byte string.
 
-    @type IV: object
-    @param IV: Ignored, whatever it is.
+    :type IV: object
+    :param IV: Ignored, whatever it is.
 
-    @rtype: L{tlslite.utils.RC4}
-    @return: An RC4 object.
+    :rtype: tlslite.utils.RC4
+    :returns: An RC4 object.
     """
     if implList is None:
         implList = ["openssl", "pycrypto", "python"]
@@ -121,14 +121,14 @@ def createRC4(key, IV, implList=None):
 def createTripleDES(key, IV, implList=None):
     """Create a new 3DES object.
 
-    @type key: str
-    @param key: A 24 byte string.
+    :type key: str
+    :param key: A 24 byte string.
 
-    @type IV: str
-    @param IV: An 8 byte string
+    :type IV: str
+    :param IV: An 8 byte string
 
-    @rtype: L{tlslite.utils.TripleDES}
-    @return: A 3DES object.
+    :rtype: tlslite.utils.TripleDES
+    :returns: A 3DES object.
     """
     if implList is None:
         implList = ["openssl", "pycrypto"]

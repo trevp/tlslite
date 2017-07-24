@@ -13,48 +13,50 @@ from .utils.pem import *
 
 
 class X509(object):
-    """This class represents an X.509 certificate.
+    """
+    This class represents an X.509 certificate.
 
-    @type bytes: L{bytearray} of unsigned bytes
-    @ivar bytes: The DER-encoded ASN.1 certificate
+    :vartype bytes: bytearray
+    :ivar bytes: The DER-encoded ASN.1 certificate
 
-    @type publicKey: L{tlslite.utils.rsakey.RSAKey}
-    @ivar publicKey: The subject public key from the certificate.
+    :vartype publicKey: ~tlslite.utils.rsakey.RSAKey
+    :ivar publicKey: The subject public key from the certificate.
 
-    @type subject: L{bytearray} of unsigned bytes
-    @ivar subject: The DER-encoded ASN.1 subject distinguished name.
+    :vartype subject: bytearray
+    :ivar subject: The DER-encoded ASN.1 subject distinguished name.
 
-    @type certAlg: str
-    @ivar certAlg: algorithm of the public key, "rsa" for RSASSA-PKCS#1 v1.5
-    and "rsa-pss" for RSASSA-PSS
+    :vartype certAlg: str
+    :ivar certAlg: algorithm of the public key, "rsa" for RSASSA-PKCS#1 v1.5
+        and "rsa-pss" for RSASSA-PSS
     """
 
     def __init__(self):
+        """Create empty certificate object."""
         self.bytes = bytearray(0)
         self.publicKey = None
         self.subject = None
         self.certAlg = None
 
     def parse(self, s):
-        """Parse a PEM-encoded X.509 certificate.
-
-        @type s: str
-        @param s: A PEM-encoded X.509 certificate (i.e. a base64-encoded
-        certificate wrapped with "-----BEGIN CERTIFICATE-----" and
-        "-----END CERTIFICATE-----" tags).
         """
+        Parse a PEM-encoded X.509 certificate.
 
+        :type s: str
+        :param s: A PEM-encoded X.509 certificate (i.e. a base64-encoded
+            certificate wrapped with "-----BEGIN CERTIFICATE-----" and
+            "-----END CERTIFICATE-----" tags).
+        """
         bytes = dePem(s, "CERTIFICATE")
         self.parseBinary(bytes)
         return self
 
     def parseBinary(self, bytes):
-        """Parse a DER-encoded X.509 certificate.
-
-        @type bytes: str or L{bytearray} of unsigned bytes
-        @param bytes: A DER-encoded X.509 certificate.
         """
+        Parse a DER-encoded X.509 certificate.
 
+        :type bytes: str or L{bytearray} of unsigned bytes
+        :param bytes: A DER-encoded X.509 certificate.
+        """
         self.bytes = bytearray(bytes)
         p = ASN1Parser(bytes)
 
@@ -120,14 +122,16 @@ class X509(object):
         self.publicKey = _createPublicRSAKey(n, e)
 
     def getFingerprint(self):
-        """Get the hex-encoded fingerprint of this certificate.
+        """
+        Get the hex-encoded fingerprint of this certificate.
 
-        @rtype: str
-        @return: A hex-encoded fingerprint.
+        :rtype: str
+        :returns: A hex-encoded fingerprint.
         """
         return b2a_hex(SHA1(self.bytes))
 
     def writeBytes(self):
+        """Serialise object to a DER encoded string."""
         return self.bytes
 
 

@@ -38,115 +38,129 @@ ALL_DH_GROUP_NAMES = ["ffdhe2048", "ffdhe3072", "ffdhe4096", "ffdhe6144",
                       "ffdhe8192"]
 
 class HandshakeSettings(object):
-    """This class encapsulates various parameters that can be used with
+    """
+    This class encapsulates various parameters that can be used with
     a TLS handshake.
-    @sort: minKeySize, maxKeySize, cipherNames, macNames, certificateTypes,
-    minVersion, maxVersion
 
-    @type minKeySize: int
-    @ivar minKeySize: The minimum bit length for asymmetric keys.
+    :vartype minKeySize: int
+    :ivar minKeySize: The minimum bit length for asymmetric keys.
 
-    If the other party tries to use SRP, RSA, or Diffie-Hellman
-    parameters smaller than this length, an alert will be
-    signalled.  The default is 1023.
-
-    @type maxKeySize: int
-    @ivar maxKeySize: The maximum bit length for asymmetric keys.
-
-    If the other party tries to use SRP, RSA, or Diffie-Hellman
-    parameters larger than this length, an alert will be signalled.
-    The default is 8193.
-
-    @type cipherNames: list
-    @ivar cipherNames: The allowed ciphers.
-
-    The allowed values in this list are 'aes256', 'aes128', '3des', and
-    'rc4'.  If these settings are used with a client handshake, they
-    determine the order of the ciphersuites offered in the ClientHello
-    message.
-
-    If these settings are used with a server handshake, the server will
-    choose whichever ciphersuite matches the earliest entry in this
-    list.
-
-    NOTE:  If '3des' is used in this list, but TLS Lite can't find an
-    add-on library that supports 3DES, then '3des' will be silently
-    removed.
-
-    The default value is ['rc4', 'aes256', 'aes128', '3des'].
-
-    @type macNames: list
-    @ivar macNames: The allowed MAC algorithms.
-    
-    The allowed values in this list are 'sha' and 'md5'.
-    
-    The default value is ['sha'].
+        If the other party tries to use SRP, RSA, or Diffie-Hellman
+        parameters smaller than this length, an alert will be
+        signalled.  The default is 1023.
 
 
-    @type certificateTypes: list
-    @ivar certificateTypes: The allowed certificate types.
+    :vartype maxKeySize: int
+    :ivar maxKeySize: The maximum bit length for asymmetric keys.
 
-    The only allowed certificate type is 'x509'.  This list is only used with a
-    client handshake.  The client will advertise to the server which certificate
-    types are supported, and will check that the server uses one of the
-    appropriate types.
+        If the other party tries to use SRP, RSA, or Diffie-Hellman
+        parameters larger than this length, an alert will be signalled.
+        The default is 8193.
+
+    :vartype cipherNames: list
+    :ivar cipherNames: The allowed ciphers.
+
+        The allowed values in this list are 'chacha20-poly1305', 'aes256gcm',
+        'aes128gcm', 'aes256', 'aes128', '3des', 'chacha20-poly1305_draft00',
+        'null' and
+        'rc4'.  If these settings are used with a client handshake, they
+        determine the order of the ciphersuites offered in the ClientHello
+        message.
+
+        If these settings are used with a server handshake, the server will
+        choose whichever ciphersuite matches the earliest entry in this
+        list.
+
+        .. note:: If '3des' is used in this list, but TLS Lite can't find an
+            add-on library that supports 3DES, then '3des' will be silently
+            removed.
+
+        The default value is list that excludes 'rc4', 'null' and
+        'chacha20-poly1305_draft00'.
+
+    :vartype macNames: list
+    :ivar macNames: The allowed MAC algorithms.
+
+        The allowed values in this list are 'sha384', 'sha256', 'aead', 'sha'
+        and 'md5'.
+
+        The default value is list that excludes 'md5'.
+
+    :vartype certificateTypes: list
+    :ivar certificateTypes: The allowed certificate types.
+
+        The only allowed certificate type is 'x509'.  This list is only used
+        with a
+        client handshake.  The client will advertise to the server which
+        certificate
+        types are supported, and will check that the server uses one of the
+        appropriate types.
 
 
-    @type minVersion: tuple
-    @ivar minVersion: The minimum allowed SSL/TLS version.
+    :vartype minVersion: tuple
+    :ivar minVersion: The minimum allowed SSL/TLS version.
 
-    This variable can be set to (3,0) for SSL 3.0, (3,1) for TLS 1.0, (3,2) for
-    TLS 1.1, or (3,3) for TLS 1.2.  If the other party wishes to use a lower
-    version, a protocol_version alert will be signalled.  The default is (3,1).
+        This variable can be set to (3, 0) for SSL 3.0, (3, 1) for TLS 1.0,
+        (3, 2) for
+        TLS 1.1, or (3, 3) for TLS 1.2.  If the other party wishes to use a
+        lower
+        version, a protocol_version alert will be signalled.  The default is
+        (3, 1).
 
-    @type maxVersion: tuple
-    @ivar maxVersion: The maximum allowed SSL/TLS version.
+    :vartype maxVersion: tuple
+    :ivar maxVersion: The maximum allowed SSL/TLS version.
 
-    This variable can be set to (3,0) for SSL 3.0, (3,1) for TLS 1.0, (3,2) for
-    TLS 1.1, or (3,3) for TLS 1.2.  If the other party wishes to use a higher
-    version, a protocol_version alert will be signalled.  The default is (3,3).
-    (WARNING: Some servers may (improperly) reject clients which offer support
-    for TLS 1.1.  In this case, try lowering maxVersion to (3,1)).
-    
-    @type useExperimentalTackExtension: bool
-    @ivar useExperimentalTackExtension: Whether to enabled TACK support.
-    
-    Note that TACK support is not standardized by IETF and uses a temporary
-    TLS Extension number, so should NOT be used in production software.
+        This variable can be set to (3, 0) for SSL 3.0, (3, 1) for TLS 1.0,
+        (3, 2) for TLS 1.1, or (3, 3) for TLS 1.2.  If the other party wishes
+        to use a
+        higher version, a protocol_version alert will be signalled.  The
+        default is (3, 3).
 
-    @type sendFallbackSCSV: bool
-    @ivar sendFallbackSCSV: Whether to, as a client, send FALLBACK_SCSV.
+        .. warning:: Some servers may (improperly) reject clients which offer
+            support
+            for TLS 1.1 or higher.  In this case, try lowering maxVersion to
+            (3, 1).
 
-    @type rsaSigHashes: list
-    @ivar rsaSigHashes: List of hashes supported (and advertised as such) for
-    TLS 1.2 signatures over Server Key Exchange or Certificate Verify with
-    RSA signature algorithm.
+    :vartype useExperimentalTackExtension: bool
+    :ivar useExperimentalTackExtension: Whether to enabled TACK support.
 
-    The list is sorted from most wanted to least wanted algorithm.
+        Note that TACK support is not standardized by IETF and uses a temporary
+        TLS Extension number, so should NOT be used in production software.
 
-    The allowed hashes are: "md5", "sha1", "sha224", "sha256",
-    "sha384" and "sha512". The default list does not include md5.
+    :vartype sendFallbackSCSV: bool
+    :ivar sendFallbackSCSV: Whether to, as a client, send FALLBACK_SCSV.
 
-    @type eccCurves: list
-    @ivar eccCurves: List of named curves that are to be supported
+    :vartype rsaSigHashes: list
+    :ivar rsaSigHashes: List of hashes supported (and advertised as such) for
+        TLS 1.2 signatures over Server Key Exchange or Certificate Verify with
+        RSA signature algorithm.
 
-    @type useEncryptThenMAC: bool
-    @ivar useEncryptThenMAC: whether to support the encrypt then MAC extension
-    from RFC 7366. True by default.
+        The list is sorted from most wanted to least wanted algorithm.
 
-    @type useExtendedMasterSecret: bool
-    @ivar useExtendedMasterSecret: whether to support the extended master
-    secret calculation from RFC 7627. True by default.
+        The allowed hashes are: "md5", "sha1", "sha224", "sha256",
+        "sha384" and "sha512". The default list does not include md5.
 
-    @type requireExtendedMasterSecret: bool
-    @ivar requireExtendedMasterSecret: whether to require negotiation of
-    extended master secret calculation for successful connection. Requires
-    useExtendedMasterSecret to be set to true. False by default.
+    :vartype eccCurves: list
+    :ivar eccCurves: List of named curves that are to be supported
 
-    @type defaultCurve: str
-    @ivar defaultCurve: curve that will be used by server in case the client
-    did not advertise support for any curves. It does not have to be the
-    first curve for eccCurves and may be distinct from curves from that list.
+    :vartype useEncryptThenMAC: bool
+    :ivar useEncryptThenMAC: whether to support the encrypt then MAC extension
+        from RFC 7366. True by default.
+
+    :vartype useExtendedMasterSecret: bool
+    :ivar useExtendedMasterSecret: whether to support the extended master
+        secret calculation from RFC 7627. True by default.
+
+    :vartype requireExtendedMasterSecret: bool
+    :ivar requireExtendedMasterSecret: whether to require negotiation of
+        extended master secret calculation for successful connection. Requires
+        useExtendedMasterSecret to be set to true. False by default.
+
+    :vartype defaultCurve: str
+    :ivar defaultCurve: curve that will be used by server in case the client
+        did not advertise support for any curves. It does not have to be the
+        first curve for eccCurves and may be distinct from curves from that
+        list.
     """
     def __init__(self):
         self.minKeySize = 1023
@@ -275,9 +289,9 @@ class HandshakeSettings(object):
         Validate the settings, filter out unsupported ciphersuites and return
         a copy of object. Does not modify the original object.
 
-        @rtype: HandshakeSettings
-        @return: a self-consistent copy of settings
-        @raise ValueError: when settings are invalid, insecure or unsupported.
+        :rtype: HandshakeSettings
+        :returns: a self-consistent copy of settings
+        :raises ValueError: when settings are invalid, insecure or unsupported.
         """
         other = HandshakeSettings()
         other.minKeySize = self.minKeySize

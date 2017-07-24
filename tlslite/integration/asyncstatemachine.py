@@ -76,8 +76,8 @@ class AsyncStateMachine:
         operation wants to read from the socket.  If an operation is
         not active, this returns None.
 
-        @rtype: bool or None
-        @return: If the state machine wants to read.
+        :rtype: bool or None
+        :returns: If the state machine wants to read.
         """
         if self.result != None:
             return self.result == 0
@@ -90,8 +90,8 @@ class AsyncStateMachine:
         operation wants to write to the socket.  If an operation is
         not active, this returns None.
 
-        @rtype: bool or None
-        @return: If the state machine wants to write.
+        :rtype: bool or None
+        :returns: If the state machine wants to write.
         """
         if self.result != None:
             return self.result == 1
@@ -194,10 +194,10 @@ class AsyncStateMachine:
     def setHandshakeOp(self, handshaker):
         """Start a handshake operation.
 
-        @type handshaker: generator
-        @param handshaker: A generator created by using one of the
-        asynchronous handshake functions (i.e. handshakeServerAsync, or
-        handshakeClientxxx(..., async=True).
+        :param generator handshaker: A generator created by using one of the
+            asynchronous handshake functions (i.e.
+            :py:meth:`~.TLSConnection.handshakeServerAsync` , or
+            handshakeClientxxx(..., async=True).
         """
         try:
             self._checkAssert(0)
@@ -211,7 +211,7 @@ class AsyncStateMachine:
         """Start a handshake operation.
 
         The arguments passed to this function will be forwarded to
-        L{tlslite.tlsconnection.TLSConnection.handshakeServerAsync}.
+        :py:obj:`~tlslite.tlsconnection.TLSConnection.handshakeServerAsync`.
         """
         handshaker = self.tlsConnection.handshakeServerAsync(**args)
         self.setHandshakeOp(handshaker)
@@ -230,8 +230,7 @@ class AsyncStateMachine:
     def setWriteOp(self, writeBuffer):
         """Start a write operation.
 
-        @type writeBuffer: str
-        @param writeBuffer: The string to transmit.
+        :param str writeBuffer: The string to transmit.
         """
         try:
             self._checkAssert(0)
