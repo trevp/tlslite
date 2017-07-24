@@ -64,7 +64,8 @@ Implemented features of TLS include:
 2 Licenses/Acknowledgements
 ============================
 
-tlslite-ng is a fork of TLS Lite. TLS Lite was written (mostly) by Trevor
+tlslite-ng is a fork of TLS Lite, it is currently maintained and developed by
+Hubert Kario. TLS Lite was written (mostly) by Trevor
 Perrin. It includes code from Bram Cohen, Google, Kees Bos, Sam Rushing,
 Dimitris Moraitis, Marcelo Fernandez, Martin von Loewis, Dave Baggett, Yngve
 N. Pettersen (ported by Paul Sokolovsky), Mirko Dziadzka, David Benjamin,
