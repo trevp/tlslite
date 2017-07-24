@@ -36,8 +36,9 @@ python socket interface or as a backend for multiple other libraries.
 tlslite-ng is pure python, however it can use other libraries for faster crypto
 operations. tlslite-ng integrates with several stdlib neworking libraries.
 
-API documentation is available in the 'docs' directory of the PyPI package
-or can be automatically generated using `make docs` with Epydoc installed.
+API documentation is available in the `docs/_build/html` directory of the PyPI
+package
+or can be automatically generated using `make docs` with Sphinx installed.
 
 If you have questions or feedback, feel free to contact me. Issues and pull
 requests can also be submitted through github issue tracking system, see
@@ -74,8 +75,6 @@ authors, or placed under a BSD-style license. See the LICENSE file for
 details.
 
 Currently it is distributed under Gnu LGPLv2 license.
-
-Thanks to Edward Loper for Epydoc, which generated the API docs.
 
 3 Installation
 ===============

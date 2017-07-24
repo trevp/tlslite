@@ -27,12 +27,13 @@ clean:
 	rm -rf unit_tests/*.pyc
 	rm -rf unit_tests/__pycache__
 	rm -rf dist
-	rm -rf docs
 	rm -rf build
 	rm -f MANIFEST
+	$(MAKE) -C docs clean
 
+.PHONY : docs
 docs:
-	epydoc --html -v --introspect-only -o docs --graph all tlslite
+	$(MAKE) -C docs html
 
 dist: docs
 	./setup.py sdist
@@ -66,7 +67,7 @@ ifndef PYTHON3
 	cd tests/ && PYTHONPATH=.. python ./tlstest.py client localhost:4433 .
 endif
 endif
-	epydoc --check --fail-on-error -v tlslite
+	$(MAKE) -C docs dummy
 	pylint --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" tlslite > pylint_report.txt || :
 	diff-quality --violations=pylint --fail-under=90 pylint_report.txt
 ifdef COVERAGE2
