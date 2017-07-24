@@ -18,6 +18,7 @@ Functionality implemented include:
  - secp256r1, secp384r1, secp521r1, secp256k1, secp224r1 and secp192r1 curves
    for ECDHE_RSA key exchange (support for last two depends on the version
    of ecdsa library used)
+ - x25519 and x448 curves for ECDHE_RSA key exchage (RFC 7748. RFC 4492bis)
  - anonymous DHE key exchange
  - anonymous ECDH key exchange
  - NULL encryption ciphersuites

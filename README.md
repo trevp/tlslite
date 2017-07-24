@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.7.0-alpha9                                    2017-07-20
+tlslite-ng version 0.7.0-beta1                                     2017-07-24
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -59,6 +59,7 @@ Implemented features of TLS include:
 * padding extension
 * keying material exporter
 * RSA-PSS signatures in TLSv1.2, RSA-PSS in certificates (TLSv1.3 extension)
+* X25519 and X448 ECDHE key exchange
 * (experimental) TACK extension
 
 2 Licenses/Acknowledgements
@@ -612,6 +613,7 @@ encrypt-then-MAC mode for CBC ciphers.
 * Allow negotiation of ECDHE ciphersuites even if client doesn't advertise
   any curves, default to P-256 curve support, support configuring it.
 * Stricter checks on received SNI (server_name) extension
+* Support for x25519 and x448 curve for ECDHE
 
 0.6.0 - 2016-09-07
 
