@@ -1392,6 +1392,24 @@ class TestSignatureAlgorithmsExtension(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             ext.parse(parser)
 
+    def test___repr__(self):
+        ext = SignatureAlgorithmsExtension().create([(HashAlgorithm.sha1,
+                                                      SignatureAlgorithm.rsa),
+                                                     (HashAlgorithm.sha256,
+                                                      SignatureAlgorithm.rsa),
+                                                     (HashAlgorithm.sha384,
+                                                      SignatureAlgorithm.dsa)])
+
+        self.assertEqual(repr(ext),
+                "SignatureAlgorithmsExtension("
+                "sigalgs=[rsa_pkcs1_sha1, rsa_pkcs1_sha256, (sha384, dsa)])")
+
+    def test___repr___with_none(self):
+        ext = SignatureAlgorithmsExtension()
+
+        self.assertEqual(repr(ext), "SignatureAlgorithmsExtension("
+                "sigalgs=None)")
+
 class TestPaddingExtension(unittest.TestCase):
     def test__init__(self):
         ext = PaddingExtension()
