@@ -2606,6 +2606,15 @@ class TestFinished(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             finished.parse(parser)
 
+    def test_parse_tls_1_3(self):
+        finished = Finished((3, 4), 32)
+
+        parser = Parser(bytearray(b'\x00\x00\x20' + b'\x04' * 32))
+
+        finished = finished.parse(parser)
+
+        self.assertEqual(finished.verify_data, bytearray(b'\x04' * 32))
+
     def test_write_tls_1_2(self):
         finished = Finished((3, 3))
 
@@ -2613,6 +2622,14 @@ class TestFinished(unittest.TestCase):
 
         self.assertEqual(finished.write(),
                          bytearray(b'\x14' + b'\x00\x00\x0c' + b'\x04' * 12))
+
+    def test_write_tls_1_3(self):
+        finished = Finished((3, 4), 32)
+
+        finished = finished.create(bytearray(b'\x04' * 32))
+
+        self.assertEqual(finished.write(),
+                         bytearray(b'\x14' + b'\x00\x00\x20' + b'\x04' * 32))
 
 
 class TestClientFinished(unittest.TestCase):

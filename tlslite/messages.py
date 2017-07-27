@@ -1654,10 +1654,11 @@ class NextProtocol(HandshakeMsg):
 
 
 class Finished(HandshakeMsg):
-    def __init__(self, version):
+    def __init__(self, version, hash_length=None):
         HandshakeMsg.__init__(self, HandshakeType.finished)
         self.version = version
         self.verify_data = bytearray(0)
+        self.hash_length = hash_length
 
     def create(self, verify_data):
         self.verify_data = verify_data
@@ -1669,6 +1670,8 @@ class Finished(HandshakeMsg):
             self.verify_data = p.getFixBytes(36)
         elif self.version in ((3, 1), (3, 2), (3, 3)):
             self.verify_data = p.getFixBytes(12)
+        elif self.version > (3, 3):
+            self.verify_data = p.getFixBytes(self.hash_length)
         else:
             raise AssertionError()
         p.stopLengthCheck()
