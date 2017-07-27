@@ -637,7 +637,7 @@ class SNIExtension(TLSExtension):
         return self
 
 
-class SupportedVersionsExtension(TLSExtension):
+class SupportedVersionsExtension(VarSeqListExtension):
     """
     This class handles the SupportedVersion extensions used in TLS 1.3.
 
@@ -656,49 +656,11 @@ class SupportedVersionsExtension(TLSExtension):
 
     def __init__(self):
         """Create an instance of SupportedVersionsExtension."""
-        super(SupportedVersionsExtension, self).__init__(extType=
+        super(SupportedVersionsExtension, self).__init__(1, 2, 1,
+                                                         "versions",
+                                                         extType=
                                                          ExtensionType.
                                                          supported_versions)
-        self.versions = None
-
-    @property
-    def extData(self):
-        """
-        Return raw encoding of the extension
-
-        :rtype: bytearray
-        """
-        if self.versions is None:
-            return bytearray(0)
-
-        writer = Writer()
-        # elelements 1 byte each, overall length encoded in 1 byte
-        writer.addVarTupleSeq(self.versions, 1, 1)
-        return writer.bytes
-
-    def create(self, versions):
-        """
-        Set the list of supported version identifiers
-
-        :param list versions: list of 2-element tuples that specifiy the
-            protocol identifiers
-        """
-        self.versions = versions
-        return self
-
-    def parse(self, parser):
-        """
-        Deserialise extension from on the wire data
-
-        :param Parser parser: data to be parsed
-        :rtype SupportedVersionsExtension
-        """
-        self.versions = parser.getVarTupleList(1, 2, 1)
-
-        if parser.getRemainingLength() != 0:
-            raise SyntaxError()
-
-        return self
 
 
 class ClientCertTypeExtension(VarListExtension):
@@ -1163,8 +1125,7 @@ class ECPointFormatsExtension(VarListExtension):
         super(ECPointFormatsExtension, self).__init__(1, 1, 'formats', \
                 ExtensionType.ec_point_formats)
 
-class SignatureAlgorithmsExtension(TLSExtension):
-
+class SignatureAlgorithmsExtension(VarSeqListExtension):
     """
     Client side list of supported signature algorithms.
 
@@ -1176,10 +1137,11 @@ class SignatureAlgorithmsExtension(TLSExtension):
 
     def __init__(self):
         """Create instance of class"""
-        super(SignatureAlgorithmsExtension, self).__init__(extType=
+        super(SignatureAlgorithmsExtension, self).__init__(1, 2, 2,
+                                                           'sigalgs',
+                                                           extType=
                                                            ExtensionType.
                                                            signature_algorithms)
-        self.sigalgs = None
 
     def _repr_sigalgs(self):
         """Return a text representation of sigalgs field."""
@@ -1201,49 +1163,6 @@ class SignatureAlgorithmsExtension(TLSExtension):
         """Return a text representation of the extension."""
         return "SignatureAlgorithmsExtension(sigalgs={0})".format(
                 self._repr_sigalgs())
-
-    @property
-    def extData(self):
-        """
-        Return raw encoding of the extension
-
-        :rtype: bytearray
-        """
-        if self.sigalgs is None:
-            return bytearray(0)
-
-        writer = Writer()
-        # elements 1 byte each, overall length encoded in 2 bytes
-        writer.addVarTupleSeq(self.sigalgs, 1, 2)
-        return writer.bytes
-
-    def create(self, sigalgs):
-        """
-        Set the list of supported algorithm types
-
-        :param list sigalgs: list of pairs of a hash algorithm and signature
-            algorithm
-        """
-        self.sigalgs = sigalgs
-        return self
-
-    def parse(self, parser):
-        """
-        Deserialise extension from on the wire data
-
-        :type Parser parser: data
-        :rtype: SignatureAlgorithmsExtension
-        """
-        if parser.getRemainingLength() == 0:
-            self.sigalgs = None
-            return self
-
-        self.sigalgs = parser.getVarTupleList(1, 2, 2)
-
-        if parser.getRemainingLength() != 0:
-            raise SyntaxError()
-
-        return self
 
 
 class PaddingExtension(TLSExtension):
