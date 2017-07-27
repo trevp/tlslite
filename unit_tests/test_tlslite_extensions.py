@@ -8,13 +8,21 @@ try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+try:
+    import mock
+    from mock import call
+except ImportError:
+    import unittest.mock as mock
+    from unittest.mock import call
+
 from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension,\
         TACKExtension, SupportedGroupsExtension, ECPointFormatsExtension,\
         SignatureAlgorithmsExtension, PaddingExtension, VarListExtension, \
         RenegotiationInfoExtension, ALPNExtension, StatusRequestExtension, \
-        SupportedVersionsExtension, VarSeqListExtension, ListExtension
-from tlslite.utils.codec import Parser
+        SupportedVersionsExtension, VarSeqListExtension, ListExtension, \
+        ClientKeyShareExtension, KeyShareEntry
+from tlslite.utils.codec import Parser, Writer
 from tlslite.constants import NameType, ExtensionType, GroupName,\
         ECPointFormat, HashAlgorithm, SignatureAlgorithm, \
         CertificateStatusType
@@ -1858,6 +1866,106 @@ class TestSupportedVersionsExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             ext.parse(p)
+
+
+class TestKeyShareEntry(unittest.TestCase):
+    def setUp(self):
+        self.kse = KeyShareEntry()
+
+    def test___init__(self):
+        self.assertIsNotNone(self.kse)
+
+    def test_parse(self):
+        p = Parser(bytearray(b'\x00\x12'  # group ID
+                             b'\x00\x02'  # share length
+                             b'\x01\x01'))  # key share
+
+        self.kse = self.kse.parse(p)
+
+        self.assertEqual(self.kse.group, 18)
+        self.assertEqual(self.kse.key_exchange, bytearray(b'\x01\x01'))
+
+    def test_write(self):
+        w = Writer()
+
+        self.kse.group = 18
+        self.kse.key_exchange = bytearray(b'\x01\x01')
+
+        self.kse.write(w)
+
+        self.assertEqual(w.bytes, bytearray(b'\x00\x12'  # group ID
+                                            b'\x00\x02'  # share length
+                                            b'\x01\x01'))  # key share
+
+
+class TestKeyShareExtension(unittest.TestCase):
+    def setUp(self):
+        self.cks = ClientKeyShareExtension()
+
+    def test___init__(self):
+        self.assertIsNotNone(self.cks)
+
+    def test_create(self):
+        entry = mock.Mock()
+        self.cks = self.cks.create([entry])
+
+        self.assertIs(self.cks.client_shares[0], entry)
+
+    def test_extData(self):
+        entries = [KeyShareEntry().create(10, bytearray(b'\x12\x13\x14')),
+                   KeyShareEntry().create(12, bytearray(b'\x02'))]
+        self.cks = self.cks.create(entries)
+
+        self.assertEqual(self.cks.extData, bytearray(
+            b'\x00\x0c'  # list length
+            b'\x00\x0a'  # ID of first entry
+            b'\x00\x03'  # length of share of first entry
+            b'\x12\x13\x14'  # value of share of first entry
+            b'\x00\x0c'  # ID of second entry
+            b'\x00\x01'  # length of share of second entry
+            b'\x02'))  # Value of share of second entry
+
+    def test_parse(self):
+        p = Parser(bytearray(
+            b'\x00\x0c'  # list length
+            b'\x00\x0a'  # ID of first entry
+            b'\x00\x03'  # length of share of first entry
+            b'\x12\x13\x14'  # value of share of first entry
+            b'\x00\x0c'  # ID of second entry
+            b'\x00\x01'  # length of share of second entry
+            b'\x02'))  # Value of share of second entry
+
+        self.cks = self.cks.parse(p)
+
+        self.assertEqual(len(self.cks.client_shares), 2)
+        self.assertIsInstance(self.cks.client_shares[0], KeyShareEntry)
+        self.assertEqual(self.cks.client_shares[0].group, 10)
+        self.assertEqual(self.cks.client_shares[0].key_exchange,
+                         bytearray(b'\x12\x13\x14'))
+        self.assertIsInstance(self.cks.client_shares[1], KeyShareEntry)
+        self.assertEqual(self.cks.client_shares[1].group, 12)
+        self.assertEqual(self.cks.client_shares[1].key_exchange,
+                         bytearray(b'\x02'))
+
+    def test_parse_missing_list(self):
+        p = Parser(bytearray())
+
+        self.cks = self.cks.parse(p)
+
+        self.assertIsNone(self.cks.client_shares)
+
+    def test_parse_empty_list(self):
+        p = Parser(bytearray(b'\x00\x00'))
+
+        self.cks = self.cks.parse(p)
+
+        self.assertEqual([], self.cks.client_shares)
+
+    def test_parse_with_trailing_data(self):
+        p = Parser(bytearray(b'\x00\x00\x01'))
+
+        with self.assertRaises(SyntaxError):
+            self.cks.parse(p)
 
 
 if __name__ == '__main__':

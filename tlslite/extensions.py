@@ -1457,6 +1457,116 @@ class StatusRequestExtension(TLSExtension):
         return self
 
 
+class KeyShareEntry(object):
+    """Handler for of the item of the Key Share extension."""
+
+    def __init__(self):
+        """Initialise the object."""
+        self.group = None
+        self.key_exchange = None
+        self.private = None
+
+    def create(self, group, key_exchange, private=None):
+        """
+        Initialise the Key Share Entry from Key Share extension.
+
+        :param int group: ID of the key share
+        :param bytearray key_exchange: value of the key share
+        :param object private: private value for the given share (won't be
+            encoded during serialisation)
+        :rtype: KeyShareEntry
+        """
+        self.group = group
+        self.key_exchange = key_exchange
+        self.private = private
+        return self
+
+    def parse(self, parser):
+        """
+        Parse the value from on the wire format.
+
+        :param Parser parser: data to be parsed as extension
+
+        :rtype: KeyShareEntry
+        """
+        self.group = parser.get(2)
+        self.key_exchange = parser.getVarBytes(2)
+        return self
+
+    def write(self, writer):
+        """
+        Write the on the wire representation of the item to writer.
+
+        :param Writer writer: buffer to write the data to
+        """
+        writer.addTwo(self.group)
+        writer.addTwo(len(self.key_exchange))
+        writer.bytes += self.key_exchange
+
+
+class ClientKeyShareExtension(TLSExtension):
+    """
+    Class for handling the Client Hello version of the Key Share extension.
+
+    Extension for sending the key shares to server
+    """
+
+    def __init__(self):
+        """Create instance of the object."""
+        super(ClientKeyShareExtension, self).__init__(extType=ExtensionType.
+                                                      key_share)
+        self.client_shares = None
+
+    @property
+    def extData(self):
+        """
+        Return the on the wire raw encoding of the extension
+
+        :rtype: bytearray
+        """
+        shares = Writer()
+        for share in self.client_shares:
+            share.write(shares)
+
+        w = Writer()
+        w.addTwo(len(shares.bytes))
+        w.bytes += shares.bytes
+
+        return w.bytes
+
+    def create(self, client_shares):
+        """Set the advertised client shares in the extension."""
+        self.client_shares = client_shares
+        return self
+
+    def parse(self, parser):
+        """
+        Parse the extension from on the wire format
+
+        :param Parser parser: data to be parsed
+
+        :raises SyntaxError: when the data does not match the definition
+
+        :rtype: ClientKeyShareExtension
+        """
+        if not parser.getRemainingLength():
+            self.client_shares = None
+            return self
+
+        self.client_shares = []
+        parser.startLengthCheck(2)
+
+        while not parser.atLengthCheck():
+            self.client_shares.append(KeyShareEntry().parse(parser))
+
+        parser.stopLengthCheck()
+
+        if parser.getRemainingLength():
+            raise SyntaxError("Trailing data in client Key Share extension")
+
+        return self
+
+
 TLSExtension._universalExtensions = \
     {
         ExtensionType.server_name: SNIExtension,
@@ -1470,7 +1580,8 @@ TLSExtension._universalExtensions = \
         ExtensionType.supports_npn: NPNExtension,
         ExtensionType.client_hello_padding: PaddingExtension,
         ExtensionType.renegotiation_info: RenegotiationInfoExtension,
-        ExtensionType.supported_versions: SupportedVersionsExtension}
+        ExtensionType.supported_versions: SupportedVersionsExtension,
+        ExtensionType.key_share: ClientKeyShareExtension}
 
 TLSExtension._serverExtensions = \
     {
