@@ -1117,6 +1117,24 @@ class TestServerHello(unittest.TestCase):
         self.assertEqual([bytearray(b'http/1.1'), bytearray(b'spdy/3')],
                 server_hello.next_protos)
 
+    def test_parse_tls1_3(self):
+        parser = Parser(bytearray(
+            # b'\x02' +  # type - server_hello
+            b'\x00\x00\x26' +  # overall length
+            b'\x03\x04' +  # protocol version
+            b'\x02' * 32 +  # random
+            b'\x00\x04'  + # cipher suite
+            b'\x00\x00'))  # extensions
+
+        server_hello = ServerHello().parse(parser)
+
+        self.assertIsInstance(server_hello, ServerHello)
+        self.assertEqual(server_hello.server_version, (3, 4))
+        self.assertEqual(server_hello.random, bytearray(b'\x02' * 32))
+        self.assertEqual(server_hello.cipher_suite, 4)
+        self.assertEqual(server_hello.extensions, [])
+
+
     def test_write(self):
         server_hello = ServerHello().create(
                 (1,1),                          # server version
@@ -1165,6 +1183,23 @@ class TestServerHello(unittest.TestCase):
             # utf-8 endoding of 'http/1.1'
             b'\x68\x74\x74\x70\x2f\x31\x2e\x31'
             )), list(server_hello.write()))
+
+    def test_write_tls1_3(self):
+        server_hello = ServerHello().create(
+                (3, 4),  # version
+                bytearray(b'\x02'*32),  # random
+                None,  # session id
+                4,  # cipher suite
+                extensions=[])
+
+        self.assertEqual(list(bytearray(
+            b'\x02' +  # type - server_hello
+            b'\x00\x00\x26' +  # overall length
+            b'\x03\x04' +  # protocol version
+            b'\x02' * 32 +  # random
+            b'\x00\x04'  + # cipher suite
+            b'\x00\x00')),  # extensions
+            list(server_hello.write()))
 
     def test___str__(self):
         server_hello = ServerHello()

@@ -869,9 +869,15 @@ class ServerHello(HelloMessage):
         p.startLengthCheck(3)
         self.server_version = (p.get(1), p.get(1))
         self.random = p.getFixBytes(32)
-        self.session_id = p.getVarBytes(1)
+        if self.server_version <= (3, 3):
+            self.session_id = p.getVarBytes(1)
+        else:
+            self.session_id = None
         self.cipher_suite = p.get(2)
-        self.compression_method = p.get(1)
+        if self.server_version <= (3, 3):
+            self.compression_method = p.get(1)
+        else:
+            self.compression_method = None
         if not p.atLengthCheck():
             self.extensions = []
             totalExtLength = p.get(2)
@@ -887,9 +893,11 @@ class ServerHello(HelloMessage):
         w.add(self.server_version[0], 1)
         w.add(self.server_version[1], 1)
         w.bytes += self.random
-        w.addVarSeq(self.session_id, 1, 1)
+        if self.server_version <= (3, 3):
+            w.addVarSeq(self.session_id, 1, 1)
         w.add(self.cipher_suite, 2)
-        w.add(self.compression_method, 1)
+        if self.server_version <= (3, 3):
+            w.add(self.compression_method, 1)
 
         if self.extensions is not None:
             w2 = Writer()
