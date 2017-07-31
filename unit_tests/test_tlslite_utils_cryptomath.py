@@ -444,10 +444,8 @@ class TestBytesToNumber(unittest.TestCase):
         with self.assertRaises(ValueError):
             bytesToNumber(bytearray(b'\xf0'), "middle")
 
-    @unittest.expectedFailure
     def test_with_empty_string(self):
         self.assertEqual(0, bytesToNumber(b''))
 
-    @unittest.expectedFailure
     def test_with_empty_string_little_endian(self):
         self.assertEqual(0, bytesToNumber(b'', "little"))

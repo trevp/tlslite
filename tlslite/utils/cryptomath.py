@@ -126,6 +126,12 @@ def bytesToNumber(b, endian="big"):
 
     By default assumes big-endian encoding of the number.
     """
+    # if string is empty, consider it to be representation of zero
+    # while it may be a bit unorthodox, it is the inverse of numberToByteArray
+    # with default parameters
+    if not b:
+        return 0
+
     if endian == "big":
         return int(b2a_hex(b), 16)
     elif endian == "little":
