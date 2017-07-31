@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.7.0-beta1                                     2017-07-24
+tlslite-ng version 0.7.0                                           2017-07-31
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -586,7 +586,7 @@ encrypt-then-MAC mode for CBC ciphers.
 12 History
 ===========
 
-0.7.0 - in-dev
+0.7.0 - 2017-07-31
 
 * enable and add missing definitions of TLS_ECDHE_RSA_WITH_RC4_128_SHA and
   TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
@@ -611,7 +611,7 @@ encrypt-then-MAC mode for CBC ciphers.
   follow RFC recommendations with regards to session resumption, reject
   non-empty
 * Allow negotiation of ECDHE ciphersuites even if client doesn't advertise
-  any curves, default to P-256 curve support, support configuring it.
+  any curves, default to P-256 curve support, support configuring the default
 * Stricter checks on received SNI (server_name) extension
 * Support for x25519 and x448 curve for ECDHE
 
