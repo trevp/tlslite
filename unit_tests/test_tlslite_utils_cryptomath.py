@@ -443,3 +443,9 @@ class TestBytesToNumber(unittest.TestCase):
     def test_with_unknown_type(self):
         with self.assertRaises(ValueError):
             bytesToNumber(bytearray(b'\xf0'), "middle")
+
+    def test_with_empty_string(self):
+        self.assertEqual(0, bytesToNumber(b''))
+
+    def test_with_empty_string_little_endian(self):
+        self.assertEqual(0, bytesToNumber(b'', "little"))
