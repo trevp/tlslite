@@ -29,12 +29,10 @@ if pycryptoLoaded:
             return self.rsa.has_private()
 
         def _rawPrivateKeyOp(self, m):
-            c = self.rsa.decrypt((m,))
-            return c
+            return self.rsa.decrypt((compatLong(m),))
 
         def _rawPublicKeyOp(self, c):
-            m = self.rsa.encrypt(c, None)[0]
-            return m
+            return self.rsa.encrypt(compatLong(c), None)[0]
 
         def generate(bits):
             key = PyCrypto_RSAKey()
