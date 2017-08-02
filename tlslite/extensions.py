@@ -72,13 +72,22 @@ class TLSExtension(object):
         specific TLS extensions where key is the numeric value of the extension
         ID. Includes only those extensions that require special handlers for
         ServerHello versions.
+
+    :vartype _certificateExtensions: dict
+    :cvat _certificateExtensions: dictionary with concrete implementations of
+        specific TLS extensions where the key is the numeric value of the
+        type of the extension and the value is the class. Includes only
+        those extensions that require special handlers for Certificate
+        message.
     """
     # actual definition at the end of file, after definitions of all classes
     _universalExtensions = {}
     _serverExtensions = {}
     #_encryptedExtensions = {}
+    _certificateExtensions = {}
 
-    def __init__(self, server=False, extType=None, encExt=False):
+    def __init__(self, server=False, extType=None, encExt=False,
+                 cert=False):
         """
         Creates a generic TLS extension.
 
@@ -93,11 +102,14 @@ class TLSExtension(object):
             by subclasses
         :param bool encExt: whether to select the EncryptedExtensions type
             for parsing
+        :param bool cert: whether to select the Certificate type
+            of extension for parsing
         """
         self.extType = extType
         self._extData = bytearray(0)
         self.serverType = server
         self.encExtType = encExt
+        self.cert = cert
 
     @property
     def extData(self):
@@ -200,6 +212,11 @@ class TLSExtension(object):
         """
         extType = p.get(2)
         extLength = p.get(2)
+
+        # check if we shouldn't use Certificate extensions parser
+        if self.cert and extType in self._certificateExtensions:
+            return self._parseExt(p, extType, extLength,
+                                  self._certificateExtensions)
 
         # Check if we shouldn't use Encrypted Extensions parser
         #if self.encExtType and extType in self._encryptedExtensions:
