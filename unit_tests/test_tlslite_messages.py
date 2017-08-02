@@ -10,7 +10,8 @@ except ImportError:
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
-        ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus
+        ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus, \
+        Certificate
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
@@ -19,6 +20,26 @@ from tlslite.constants import CipherSuite, CertificateType, ContentType, \
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension, NPNExtension
 from tlslite.errors import TLSInternalError
+from tlslite.x509 import X509
+from tlslite.x509certchain import X509CertChain
+
+
+srv_raw_certificate = str(
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIB9jCCAV+gAwIBAgIJAMyn9DpsTG55MA0GCSqGSIb3DQEBCwUAMBQxEjAQBgNV\n"
+    "BAMMCWxvY2FsaG9zdDAeFw0xNTAxMjExNDQzMDFaFw0xNTAyMjAxNDQzMDFaMBQx\n"
+    "EjAQBgNVBAMMCWxvY2FsaG9zdDCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEA\n"
+    "0QkEeakSyV/LMtTeARdRtX5pdbzVuUuqOIdz3lg7YOyRJ/oyLTPzWXpKxr//t4FP\n"
+    "QvYsSJiVOlPk895FNu6sNF/uJQyQGfFWYKkE6fzFifQ6s9kssskFlL1DVI/dD/Zn\n"
+    "7sgzua2P1SyLJHQTTs1MtMb170/fX2EBPkDz+2kYKN0CAwEAAaNQME4wHQYDVR0O\n"
+    "BBYEFJtvXbRmxRFXYVMOPH/29pXCpGmLMB8GA1UdIwQYMBaAFJtvXbRmxRFXYVMO\n"
+    "PH/29pXCpGmLMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQELBQADgYEAkOgC7LP/\n"
+    "Rd6uJXY28HlD2K+/hMh1C3SRT855ggiCMiwstTHACGgNM+AZNqt6k8nSfXc6k1gw\n"
+    "5a7SGjzkWzMaZC3ChBeCzt/vIAGlMyXeqTRhjTCdc/ygRv3NPrhUKKsxUYyXRk5v\n"
+    "g/g6MwxzXfQP3IyFu3a9Jia/P89Z1rQCNRY=\n"
+    "-----END CERTIFICATE-----\n"
+    )
+
 
 class TestMessage(unittest.TestCase):
     def test___init__(self):
@@ -2452,6 +2473,105 @@ class TestCertificateStatus(unittest.TestCase):
             b'\x01'
             b'\x00\x00\x02'
             b'\xbc\xaa'))
+
+
+class TestCertificate(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.x509_cert = X509().parse(srv_raw_certificate)
+        cls.der_cert = cls.x509_cert.writeBytes()
+
+    def test___init__(self):
+        cert = Certificate(CertificateType.x509)
+
+        self.assertIsNotNone(cert)
+        self.assertIsInstance(cert, Certificate)
+
+    def test_write_empty(self):
+        cert = Certificate(CertificateType.x509)
+        cert.create(X509CertChain())
+
+        self.assertEqual(cert.write(),
+            bytearray(b'\x0b'  # type of message - certificate
+                      b'\x00\x00\x03'  # length of message - 3 bytes
+                      b'\x00\x00\x00'))  # length of the list of certs
+
+    def test_write_none(self):
+        cert = Certificate(CertificateType.x509)
+        cert.create(None)
+
+        self.assertEqual(cert.write(),
+            bytearray(b'\x0b'
+                      b'\x00\x00\x03'  # length of message - 3 bytes
+                      b'\x00\x00\x00'))  # length of the list of certs
+
+    def test_parse_empty(self):
+        cert = Certificate(CertificateType.x509)
+        parser = Parser(
+            bytearray(# b'\x0b'  # type of message - certificate
+                      b'\x00\x00\x03'  # length of message - 3 bytes
+                      b'\x00\x00\x00'))  # length of the list of certs
+        cert = cert.parse(parser)
+
+        self.assertIsNone(cert.certChain)
+
+    def test_parse_empty_with_leftover_byte(self):
+        cert = Certificate(CertificateType.x509)
+        parser = Parser(
+            bytearray(# b'\x0b'  # type of message - certificate
+                      b'\x00\x00\x04'  # length of message - 3 bytes
+                      b'\x00\x00\x00'  # length of the list of certs
+                      b'\x00'))  # extra byte
+        with self.assertRaises(SyntaxError):
+            cert.parse(parser)
+
+    def test_write_with_cert(self):
+        cert = Certificate(CertificateType.x509)
+        cert.create(X509CertChain([self.x509_cert]))
+
+        # just sanity check
+        self.assertEqual(len(self.der_cert), 0x0001fa)
+        # verify that the message is encoded correctly
+        self.assertEqual(cert.write(),
+            bytearray(b'\x0b' +  # type of message - certificate
+                      b'\x00\x02\x00' +  # length of handshake message
+                      b'\x00\x01\xfd' +  # length of array of certificates
+                      b'\x00\x01\xfa' +  # length of the first certificate
+                      self.der_cert))
+
+    def test_parse_with_cert(self):
+        cert = Certificate(CertificateType.x509)
+        parser = Parser(
+            bytearray(#b'\x0b' +  # type of message - certificate
+                      b'\x00\x02\x00' +  # length of handshake message
+                      b'\x00\x01\xfd' +  # length of array of certificates
+                      b'\x00\x01\xfa' +  # length of the first certificate
+                      self.der_cert))
+
+        cert = cert.parse(parser)
+        self.assertIsNotNone(cert.certChain)
+        self.assertIsInstance(cert.certChain, X509CertChain)
+        self.assertEqual(len(cert.certChain.x509List), 1)
+        self.assertEqual(cert.certChain.x509List[0].writeBytes(),
+                self.der_cert)
+
+    def test_parse_with_openpgp_type(self):
+        cert = Certificate(CertificateType.openpgp)
+
+        parser = Parser(
+            bytearray(# b'\x0b'  # type of message - certificate
+                      b'\x00\x00\x03'  # length of message - 3 bytes
+                      b'\x00\x00\x00'))  # length of the list of certs
+
+        with self.assertRaises(AssertionError):
+            cert.parse(parser)
+
+    def test_write_with_openpgp_type(self):
+        cert = Certificate(CertificateType.openpgp)
+
+        with self.assertRaises(AssertionError):
+            cert.write()
 
 
 if __name__ == '__main__':
