@@ -11,7 +11,7 @@ from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
         ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus, \
-        Certificate
+        Certificate, Finished
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
@@ -2366,6 +2366,67 @@ class TestServerHelloDone(unittest.TestCase):
         shd = ServerHelloDone()
 
         self.assertEqual("ServerHelloDone()", repr(shd))
+
+
+class TestFinished(unittest.TestCase):
+    def test___init__(self):
+        finished = Finished((3, 3))
+
+        self.assertIsNotNone(finished)
+        self.assertEqual(finished.handshakeType, 20)
+
+    def test_parse_ssl2(self):
+        finished = Finished((2, 0))
+
+        parser = Parser(bytearray(b'\x00\x00\x24' +
+                                  b'\x0f' * 0x24))
+
+        with self.assertRaises(AssertionError):
+            finished.parse(parser)
+
+    def test_parse_ssl3(self):
+        finished = Finished((3, 0))
+
+        parser = Parser(bytearray(b'\x00\x00\x24' +
+                                  b'\x0f' * 0x24))
+
+        finished = finished.parse(parser)
+
+        self.assertEqual(finished.verify_data, bytearray(b'\x0f' * 36))
+
+    def test_write_ssl3(self):
+        finished = Finished((3, 0))
+
+        finished = finished.create(bytearray(b'\x03' * 36))
+
+        self.assertEqual(finished.write(),
+                bytearray(b'\x14' + b'\x00\x00\x24' + b'\x03' * 36))
+
+    def test_parse_tls_1_2(self):
+        finished = Finished((3, 3))
+
+        parser = Parser(bytearray(b'\x00\x00\x0c' + b'\x04' * 12))
+
+        finished = finished.parse(parser)
+
+        self.assertEqual(finished.verify_data, bytearray(b'\x04' * 12))
+
+    def test_parse_tls_1_2_with_invalid_number_of_bytes(self):
+        finished = Finished((3, 3))
+
+        parser = Parser(bytearray(b'\x00\x00\x0d' + b'\x04' * 13))
+
+        with self.assertRaises(SyntaxError):
+            finished.parse(parser)
+
+    def test_write_tls_1_2(self):
+        finished = Finished((3, 3))
+
+        finished = finished.create(bytearray(b'\x04' * 12))
+
+        self.assertEqual(finished.write(),
+                         bytearray(b'\x14' + b'\x00\x00\x0c' + b'\x04' * 12))
+
 
 class TestClientFinished(unittest.TestCase):
     def test___init__(self):
