@@ -784,7 +784,7 @@ class TLSRecordLayer(object):
                 elif subType == HandshakeType.server_hello:
                     yield ServerHello().parse(p)
                 elif subType == HandshakeType.certificate:
-                    yield Certificate(constructorType).parse(p)
+                    yield Certificate(constructorType, self.version).parse(p)
                 elif subType == HandshakeType.certificate_request:
                     yield CertificateRequest(self.version).parse(p)
                 elif subType == HandshakeType.certificate_verify:
@@ -798,7 +798,7 @@ class TLSRecordLayer(object):
                     yield ClientKeyExchange(constructorType, \
                                             self.version).parse(p)
                 elif subType == HandshakeType.finished:
-                    yield Finished(self.version).parse(p)
+                    yield Finished(self.version, constructorType).parse(p)
                 elif subType == HandshakeType.next_protocol:
                     yield NextProtocol().parse(p)
                 elif subType == HandshakeType.encrypted_extensions:
