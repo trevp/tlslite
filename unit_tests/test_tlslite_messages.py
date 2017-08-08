@@ -11,7 +11,7 @@ from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
         ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus, \
-        Certificate, Finished, HelloMessage
+        Certificate, Finished, HelloMessage, ChangeCipherSpec
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
@@ -2782,6 +2782,36 @@ class TestCertificate(unittest.TestCase):
 
         with self.assertRaises(AssertionError):
             cert.write()
+
+
+class TestChangeCipherSpec(unittest.TestCase):
+    def test___init__(self):
+        ccs = ChangeCipherSpec()
+
+        self.assertIsNotNone(ccs)
+        self.assertEqual(ccs.type, 1)
+
+    def test_create(self):
+        ccs = ChangeCipherSpec().create()
+
+        self.assertIsNotNone(ccs)
+        self.assertIsInstance(ccs, ChangeCipherSpec)
+
+        self.assertEqual(ccs.type, 1)
+
+    def test_write(self):
+        ccs = ChangeCipherSpec().create()
+
+        self.assertEqual(bytearray(b'\x01'), ccs.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(b'\x01'))
+
+        ccs = ChangeCipherSpec()
+        ccs = ccs.parse(parser)
+
+        self.assertIsInstance(ccs, ChangeCipherSpec)
+        self.assertEqual(ccs.type, 1)
 
 
 if __name__ == '__main__':
