@@ -779,15 +779,19 @@ class ServerHello(HelloMessage):
         :type val: int
         :param val: type of certificate
         """
-        # XXX backwards compatibility, 0 means x.509 and should not be sent
-        if val == 0 or val is None:
-            return
-
         cert_type = self.getExtension(ExtensionType.cert_type)
         if cert_type is None:
+            # XXX backwards compatibility, 0 means x.509 and should not be sent
+            if val == CertificateType.x509 or val is None:
+                return
             ext = ServerCertTypeExtension().create(val)
             self.addExtension(ext)
         else:
+            if val == CertificateType.x509 or val is None:
+                # XXX backwards compatibility, 0 means x.509 and should not be
+                # sent
+                self._removeExt(ExtensionType.cert_type)
+                return
             cert_type.cert_type = val
 
     @property

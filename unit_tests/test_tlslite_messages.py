@@ -841,7 +841,6 @@ class TestServerHello(unittest.TestCase):
         self.assertEqual(None, server_hello.tackExt)
         self.assertEqual(None, server_hello.next_protos_advertised)
 
-    @unittest.expectedFailure
     def test_certificate_type_update_to_x509(self):
         server_hello = ServerHello().create(
                 (1,1),                          # server version
