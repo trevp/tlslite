@@ -11,7 +11,7 @@ from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
         ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus, \
-        Certificate, Finished, HelloMessage, ChangeCipherSpec
+        Certificate, Finished, HelloMessage, ChangeCipherSpec, NextProtocol
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
@@ -2812,6 +2812,46 @@ class TestChangeCipherSpec(unittest.TestCase):
 
         self.assertIsInstance(ccs, ChangeCipherSpec)
         self.assertEqual(ccs.type, 1)
+
+
+class TestNextProtocol(unittest.TestCase):
+    def test___init__(self):
+        np = NextProtocol()
+
+        self.assertIsNotNone(np)
+        self.assertIsNone(np.next_proto)
+
+    def test_create(self):
+        np = NextProtocol().create(bytearray(b'test'))
+
+        self.assertIsInstance(np, NextProtocol)
+        self.assertEqual(np.next_proto, bytearray(b'test'))
+
+    def test_write(self):
+        np = NextProtocol().create(bytearray(b'test'))
+
+        self.assertEqual(bytearray(b'\x43' +  # type - NPN
+                                   b'\x00\x00\x20' +  # length - 32 bytes
+                                   b'\x04' +  # value length
+                                   b'test' +  # value
+                                   b'\x1a' +  # length of padding
+                                   b'\x00' * 0x1a  # padding
+                                   ),
+                         np.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(#b'\x43' +  # type - NPN
+                                  b'\x00\x00\x20' +  # length - 32 bytes
+                                  b'\x04' +  # value length
+                                  b'test' +  # value
+                                  b'\x1a' +  # length of padding
+                                  b'\x00' * 0x1a  # padding
+                                  ))
+        np = NextProtocol()
+        np = np.parse(parser)
+
+        self.assertIsInstance(np, NextProtocol)
+        self.assertEqual(np.next_proto, bytearray(b'test'))
 
 
 if __name__ == '__main__':
