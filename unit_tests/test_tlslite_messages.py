@@ -2436,6 +2436,32 @@ class TestServerHelloDone(unittest.TestCase):
 
         self.assertIsNotNone(shd)
 
+    def test_create(self):
+        shd = ServerHelloDone().create()
+
+        self.assertIsInstance(shd, ServerHelloDone)
+
+    def test_parse(self):
+        p = Parser(bytearray(b'\x00\x00\x00'))
+        shd = ServerHelloDone()
+
+        shd = shd.parse(p)
+
+        self.assertIsInstance(shd, ServerHelloDone)
+
+    def test_parse_with_payload(self):
+        p = Parser(bytearray(b'\x00\x00\x01\x00'))
+        shd = ServerHelloDone()
+
+        with self.assertRaises(SyntaxError):
+            shd.parse(p)
+
+    def test_write(self):
+        shd = ServerHelloDone()
+
+        self.assertEqual(bytearray(b'\x0e\x00\x00\x00'),
+                         shd.write())
+
     def test___repr__(self):
         shd = ServerHelloDone()
 
