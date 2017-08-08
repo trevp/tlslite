@@ -16,7 +16,8 @@ from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
         HashAlgorithm, SignatureAlgorithm, ECCurveType, GroupName, \
-        SSL2HandshakeType, CertificateStatusType, HandshakeType
+        SSL2HandshakeType, CertificateStatusType, HandshakeType, \
+        SignatureScheme
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension, NPNExtension
 from tlslite.errors import TLSInternalError
@@ -2210,6 +2211,21 @@ class TestServerKeyExchange(unittest.TestCase):
             b'\xcb\xe6\xd3=\x8b$\xff\x97e&\xb2\x89\x1dA\xab>' +
             b'\x8e?YW\xcd\xad\xc6\x83\x91\x1d.fe,\x17y' +
             b'=\xc4T\x89'))
+
+    def test_hash_with_rsa_pss_sha256(self):
+        ske = ServerKeyExchange(
+                CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
+                (3, 3))
+
+        ske.createDH(dh_p=31, dh_g=2, dh_Ys=16)
+        ske.hashAlg, ske.signAlg = SignatureScheme.rsa_pss_sha256
+
+        hash1 = ske.hash(bytearray(32), bytearray(32))
+
+        self.assertEqual(hash1,
+                         bytearray(b'^\xfe\x0e\x8f\xd2\x87\x8e/%\xbeK9\xb7$'
+                                   b'\x93\x9a\x81TW\nI\xff\xb2\xbeo\xaf\x90'
+                                   b'\xa7\xfb\xe1sM'))
 
     def test_hash_with_invalid_ciphersuite(self):
         ske = ServerKeyExchange(0, (3, 1))
