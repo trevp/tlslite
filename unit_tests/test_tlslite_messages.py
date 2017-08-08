@@ -841,6 +841,20 @@ class TestServerHello(unittest.TestCase):
         self.assertEqual(None, server_hello.tackExt)
         self.assertEqual(None, server_hello.next_protos_advertised)
 
+    @unittest.expectedFailure
+    def test_certificate_type_update_to_x509(self):
+        server_hello = ServerHello().create(
+                (1,1),                          # server version
+                bytearray(b'\x00'*31+b'\x01'),  # random
+                bytearray(0),                   # session id
+                4,                              # cipher suite
+                1,                              # certificate type
+                None,                           # TACK ext
+                None)                           # next protos advertised
+
+        server_hello.certificate_type = CertificateType.x509
+        self.assertEqual(CertificateType.x509, server_hello.certificate_type)
+
     def test_create_with_minimal_options(self):
         server_hello = ServerHello().create(
                 (3, 3),                                 # server version
