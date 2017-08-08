@@ -11,7 +11,8 @@ from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
         ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus, \
-        Certificate, Finished, HelloMessage, ChangeCipherSpec, NextProtocol
+        Certificate, Finished, HelloMessage, ChangeCipherSpec, NextProtocol, \
+        ApplicationData
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
@@ -2852,6 +2853,43 @@ class TestNextProtocol(unittest.TestCase):
 
         self.assertIsInstance(np, NextProtocol)
         self.assertEqual(np.next_proto, bytearray(b'test'))
+
+
+class TestApplicationData(unittest.TestCase):
+    def test___init__(self):
+        app_data = ApplicationData()
+
+        self.assertIsNotNone(app_data)
+        self.assertEqual(bytearray(0), app_data.bytes)
+
+    def test_create(self):
+        app_data = ApplicationData().create(bytearray(b'test'))
+
+        self.assertIsInstance(app_data, ApplicationData)
+        self.assertEqual(bytearray(b'test'), app_data.bytes)
+
+    def test_write(self):
+        app_data = ApplicationData().create(bytearray(b'test'))
+
+        self.assertEqual(bytearray(b'test'), app_data.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(b'test2'))
+        app_data = ApplicationData()
+
+        app_data = app_data.parse(parser)
+
+        self.assertIsInstance(app_data, ApplicationData)
+        self.assertEqual(app_data.bytes, bytearray(b'test2'))
+
+    def test_splitFirstByte(self):
+        app_data = ApplicationData().create(bytearray(b'test'))
+
+        app_data1 = app_data.splitFirstByte()
+
+        self.assertIsInstance(app_data1, ApplicationData)
+        self.assertEqual(app_data1.bytes, bytearray(b't'))
+        self.assertEqual(app_data.bytes, bytearray(b'est'))
 
 
 if __name__ == '__main__':
