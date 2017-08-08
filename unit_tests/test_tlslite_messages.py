@@ -11,12 +11,12 @@ from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
         ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus, \
-        Certificate, Finished
+        Certificate, Finished, HelloMessage
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
         HashAlgorithm, SignatureAlgorithm, ECCurveType, GroupName, \
-        SSL2HandshakeType, CertificateStatusType
+        SSL2HandshakeType, CertificateStatusType, HandshakeType
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension, NPNExtension
 from tlslite.errors import TLSInternalError
@@ -52,6 +52,23 @@ class TestMessage(unittest.TestCase):
         msg = Message(0, bytearray(10))
 
         self.assertEqual(bytearray(10), msg.write())
+
+
+class TestHelloMessage(unittest.TestCase):
+    def test___init__(self):
+        msg = HelloMessage(HandshakeType.client_hello)
+
+        self.assertIsInstance(msg, HelloMessage)
+
+    def test_addExtension(self):
+        msg = HelloMessage(HandshakeType.client_hello)
+        msg.extensions = []
+
+        msg.addExtension(SNIExtension().create(bytearray(b'example.com')))
+
+        self.assertEqual(msg.extensions,
+                         [SNIExtension().create(bytearray(b'example.com'))])
+
 
 class TestClientHello(unittest.TestCase):
     def test___init__(self):
