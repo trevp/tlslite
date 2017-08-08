@@ -16,6 +16,12 @@ engines:
       - python
   fixme:
     enabled: true
+    config:
+      strings:
+        - TODO
+        - FIXME
+        - HACK
+        - BUG
     checks:
       bug:
         enabled: true
