@@ -842,6 +842,37 @@ class TestServerHello(unittest.TestCase):
         self.assertEqual(None, server_hello.tackExt)
         self.assertEqual(None, server_hello.next_protos_advertised)
 
+    def test_next_protos_reset(self):
+        server_hello = ServerHello().create(
+                (1,1),                          # server version
+                bytearray(b'\x00'*31+b'\x02'),  # random
+                bytearray(0),                   # session id
+                4,                              # cipher suite
+                0,                              # certificate type
+                None,                           # TACK ext
+                [bytearray(b'http/1.1')])       # next protos advertised
+
+        self.assertEqual(server_hello.next_protos, [bytearray(b'http/1.1')])
+        server_hello.next_protos = [bytearray(b'spdy/3'),
+                                    bytearray(b'http/1.1')]
+        self.assertEqual([bytearray(b'spdy/3'), bytearray(b'http/1.1')],
+                         server_hello.next_protos)
+
+    @unittest.expectedFailure
+    def test_next_protos_reset_to_None(self):
+        server_hello = ServerHello().create(
+                (1,1),                          # server version
+                bytearray(b'\x00'*31+b'\x02'),  # random
+                bytearray(0),                   # session id
+                4,                              # cipher suite
+                0,                              # certificate type
+                None,                           # TACK ext
+                [bytearray(b'http/1.1')])       # next protos advertised
+
+        self.assertEqual(server_hello.next_protos, [bytearray(b'http/1.1')])
+        server_hello.next_protos = None
+        self.assertIsNone(server_hello.next_protos)
+
     def test_certificate_type_update_to_x509(self):
         server_hello = ServerHello().create(
                 (1,1),                          # server version
