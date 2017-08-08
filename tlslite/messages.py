@@ -816,18 +816,23 @@ class ServerHello(HelloMessage):
         :type val: list
         :param val: list of protocols to advertise as UTF-8 encoded names
         """
-        if val is None:
-            return
-        else:
+        if val is not None:
             # convinience function, make sure the values are properly encoded
             val = [bytearray(x) for x in val]
 
         npn_ext = self.getExtension(ExtensionType.supports_npn)
 
         if npn_ext is None:
+            if val is None:
+                # XXX: do not send empty extension
+                return
             ext = NPNExtension().create(val)
             self.addExtension(ext)
         else:
+            if val is None:
+                # XXX: do not send empty extension
+                self._removeExt(ExtensionType.supports_npn)
+                return
             npn_ext.protocols = val
 
     @property

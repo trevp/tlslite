@@ -858,7 +858,6 @@ class TestServerHello(unittest.TestCase):
         self.assertEqual([bytearray(b'spdy/3'), bytearray(b'http/1.1')],
                          server_hello.next_protos)
 
-    @unittest.expectedFailure
     def test_next_protos_reset_to_None(self):
         server_hello = ServerHello().create(
                 (1,1),                          # server version
