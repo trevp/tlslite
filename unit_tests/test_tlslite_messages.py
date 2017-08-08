@@ -622,7 +622,7 @@ class TestClientHello(unittest.TestCase):
 
         self.assertEqual(client_hello.server_name, bytearray(0))
 
-    def test_parse_with_SSLv2_client_hello(self):
+    def test_parse_with_SSLv2_client_hello_and_short_random(self):
         parser = Parser(bytearray(
             # length and type is handled by hello protocol parser
             #b'\x80\x2e' +           # length - 46 bytes
