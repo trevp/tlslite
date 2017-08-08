@@ -1030,6 +1030,20 @@ class TestServerHello(unittest.TestCase):
         server_hello = ServerHello().parse(p)
         self.assertEqual(1, server_hello.certificate_type)
 
+    def test_parse_with_no_extensions(self):
+        p = Parser(bytearray(
+            b'\x00\x00\x26' +               # length - 45 bytes
+            b'\x03\x03' +                   # version - TLS 1.2
+            b'\x01'*31 + b'\x02' +          # random
+            b'\x00' +                       # session id length
+            b'\x00\x9d' +                   # cipher suite
+            b'\x00'                         # compression method (none)
+            ))
+
+        server_hello = ServerHello().parse(p)
+        self.assertIsNone(server_hello.extensions)
+
+
     def test_parse_with_bad_cert_type_extension(self):
         p = Parser(bytearray(
             b'\x00\x00\x2e' +               # length - 46 bytes
