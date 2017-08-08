@@ -1180,6 +1180,25 @@ class TestServerHello(unittest.TestCase):
                 "compression method(0)",
                 str(server_hello))
 
+    def test___str___with_extension(self):
+        server_hello = ServerHello()
+        server_hello = server_hello.create(
+                (3,0),
+                bytearray(b'\x00'*32),
+                bytearray(b'\x01\x20'),
+                34500,
+                0,
+                None,
+                None,
+                extensions=[SNIExtension().create(bytearray(b'test'))])
+
+        self.assertEqual("server_hello,length(55),version(3.0),random(...),"
+                "session ID(bytearray(b'\\x01 ')),cipher(0x86c4),"
+                "compression method(0),extensions[SNIExtension("
+                "serverNames=[ServerName(name_type=0, "
+                "name=bytearray(b'test'))])]",
+                str(server_hello))
+
     def test___repr__(self):
         server_hello = ServerHello()
         server_hello = server_hello.create(
