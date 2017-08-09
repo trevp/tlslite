@@ -12,7 +12,8 @@ from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension,\
         TACKExtension, SupportedGroupsExtension, ECPointFormatsExtension,\
         SignatureAlgorithmsExtension, PaddingExtension, VarListExtension, \
-        RenegotiationInfoExtension, ALPNExtension, StatusRequestExtension
+        RenegotiationInfoExtension, ALPNExtension, StatusRequestExtension, \
+        SupportedVersionsExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType, ExtensionType, GroupName,\
         ECPointFormat, HashAlgorithm, SignatureAlgorithm, \
@@ -1710,6 +1711,62 @@ class TestStatusRequestExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             self.ext.parse(parser)
+
+
+class TestSupportedVersionsExtension(unittest.TestCase):
+    def test___init__(self):
+        ext = SupportedVersionsExtension()
+
+        self.assertIsNotNone(ext)
+        self.assertIsNone(ext.versions)
+        self.assertEqual(bytearray(0), ext.extData)
+        self.assertEqual(43, ext.extType)
+
+    def test_create(self):
+        ext = SupportedVersionsExtension()
+
+        ext = ext.create([(3, 1), (3, 2)])
+
+        self.assertEqual([(3, 1), (3, 2)], ext.versions)
+
+    def test_extData(self):
+        ext = SupportedVersionsExtension()
+
+        ext = ext.create([(3, 3), (3, 4)])
+
+        self.assertEqual(ext.extData, bytearray(b'\x04'  # overall length
+                                                b'\x03\x03'  # first item
+                                                b'\x03\x04'))  # second item
+
+    def test_parse(self):
+        ext = TLSExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x2b'  # type of ext
+            b'\x00\x05'  # length
+            b'\x04'      # length of array inside
+            b'\x03\x03'  # first item
+            b'\x03\x04'))  # second item
+
+        ext = ext.parse(p)
+
+        self.assertIsInstance(ext, SupportedVersionsExtension)
+        self.assertEqual([(3, 3), (3, 4)], ext.versions)
+
+    def test_parse_with_trailing_data(self):
+        ext = TLSExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x2b'  # type of ext
+            b'\x00\x06'  # length
+            b'\x04'      # length of array inside
+            b'\x03\x03'  # first item
+            b'\x03\x04'  # second item
+            b'\x00'))    # trailing byte
+
+        with self.assertRaises(SyntaxError):
+            ext.parse(p)
+
 
 if __name__ == '__main__':
     unittest.main()

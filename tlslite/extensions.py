@@ -529,6 +529,71 @@ class SNIExtension(TLSExtension):
 
         return self
 
+
+class SupportedVersionsExtension(TLSExtension):
+    """
+    This class handles the SupportedVersion extensions used in TLS 1.3.
+
+    See draft-ietf-tls-tls13.
+
+    :vartype extType: int
+    :ivar extType: numeric type of the Supported Versions extension, i.e. 43
+
+    :vartype extData: bytearray
+    :ivar extData: raw representation of the extension data
+
+    :vartype versions: list of tuples
+    :ivar versions: list of supported protocol versions; each tuple has two
+        one byte long integers
+    """
+
+    def __init__(self):
+        """Create an instance of SupportedVersionsExtension."""
+        super(SupportedVersionsExtension, self).__init__(extType=
+                                                         ExtensionType.
+                                                         supported_versions)
+        self.versions = None
+
+    @property
+    def extData(self):
+        """
+        Return raw encoding of the extension
+
+        :rtype: bytearray
+        """
+        if self.versions is None:
+            return bytearray(0)
+
+        writer = Writer()
+        # elelements 1 byte each, overall length encoded in 1 byte
+        writer.addVarTupleSeq(self.versions, 1, 1)
+        return writer.bytes
+
+    def create(self, versions):
+        """
+        Set the list of supported version identifiers
+
+        :param list versions: list of 2-element tuples that specifiy the
+            protocol identifiers
+        """
+        self.versions = versions
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on the wire data
+
+        :param Parser parser: data to be parsed
+        :rtype SupportedVersionsExtension
+        """
+        self.versions = parser.getVarTupleList(1, 2, 1)
+
+        if parser.getRemainingLength() != 0:
+            raise SyntaxError()
+
+        return self
+
+
 class ClientCertTypeExtension(VarListExtension):
     """
     This class handles the (client variant of) Certificate Type extension
@@ -1378,7 +1443,8 @@ TLSExtension._universalExtensions = \
         ExtensionType.alpn: ALPNExtension,
         ExtensionType.supports_npn: NPNExtension,
         ExtensionType.client_hello_padding: PaddingExtension,
-        ExtensionType.renegotiation_info: RenegotiationInfoExtension}
+        ExtensionType.renegotiation_info: RenegotiationInfoExtension,
+        ExtensionType.supported_versions: SupportedVersionsExtension}
 
 TLSExtension._serverExtensions = \
     {

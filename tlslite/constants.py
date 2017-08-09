@@ -132,6 +132,7 @@ class ExtensionType(TLSEnum):
     client_hello_padding = 21  # RFC 7685
     encrypt_then_mac = 22  # RFC 7366
     extended_master_secret = 23  # RFC 7627
+    supported_versions = 43  # TLS 1.3
     supports_npn = 13172
     tack = 0xF300
     renegotiation_info = 0xff01  # RFC 5746
