@@ -13,7 +13,7 @@ from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         TACKExtension, SupportedGroupsExtension, ECPointFormatsExtension,\
         SignatureAlgorithmsExtension, PaddingExtension, VarListExtension, \
         RenegotiationInfoExtension, ALPNExtension, StatusRequestExtension, \
-        SupportedVersionsExtension
+        SupportedVersionsExtension, VarSeqListExtension, ListExtension
 from tlslite.utils.codec import Parser
 from tlslite.constants import NameType, ExtensionType, GroupName,\
         ECPointFormat, HashAlgorithm, SignatureAlgorithm, \
@@ -347,6 +347,21 @@ class TestTLSExtension(unittest.TestCase):
                 "extData=bytearray(b'\\x00\\x00'), serverType=False)",
                 repr(ext))
 
+
+class TestListExtension(unittest.TestCase):
+    def setUp(self):
+        self.ext = ListExtension('groups', 0)
+
+    def test_extData(self):
+        with self.assertRaises(NotImplementedError):
+            _ = self.ext.extData
+
+    def test_parse(self):
+        p = Parser(bytearray(0))
+        with self.assertRaises(NotImplementedError):
+            self.ext.parse(p)
+
+
 class TestVarListExtension(unittest.TestCase):
     def setUp(self):
         self.ext = VarListExtension(1, 1, 'groups', 42)
@@ -368,6 +383,72 @@ class TestVarListExtension(unittest.TestCase):
 
         self.assertEqual(str(e.exception),
                 "type object 'VarListExtension' has no attribute 'gruppen'")
+
+
+class TestVarSeqListExtension(unittest.TestCase):
+    def setUp(self):
+        self.ext = VarSeqListExtension(2, 2, 1, 'values', 42)
+
+    def test___init__(self):
+        self.assertIsNotNone(self.ext)
+
+    def test_get_attribute(self):
+        self.assertIsNone(self.ext.values)
+
+    def test_set_attribute(self):
+        self.ext.values = [(2, 3), (3, 4), (7, 9)]
+
+        self.assertEqual(self.ext.values, [(2, 3), (3, 4), (7, 9)])
+
+    def test_get_non_existant_attribute(self):
+        with self.assertRaises(AttributeError) as e:
+            val = self.ext.value
+
+        self.assertEqual(str(e.exception),
+                "type object 'VarSeqListExtension' has no attribute 'value'")
+
+    def test_empty_extData(self):
+        self.assertEqual(self.ext.extData, bytearray())
+
+    def test_extData(self):
+        self.ext.create([(2, 3), (10, 1)])
+
+        self.assertEqual(self.ext.extData,
+                         bytearray(#b'\x00\x2a'  # ID
+                                   #b'\x00\x09'  # ext length
+                                   b'\x08'  # array length
+                                   b'\x00\x02\x00\x03'  # first tuple
+                                   b'\x00\x0a\x00\x01'))  # second tuple
+
+    def test_parse(self):
+        p = Parser(bytearray(#b'\x00\x2a'  # ID
+                             #b'\x00\x09'  # ext length
+                             b'\x08'  # array length
+                             b'\x00\x02\x00\x03'  # first tuple
+                             b'\x00\x0a\x00\x01'))  # second tuple
+
+        self.ext = self.ext.parse(p)
+
+        self.assertEqual(self.ext.values, [(2, 3), (10, 1)])
+
+    def test_parse_with_trailing_data(self):
+        p = Parser(bytearray(#b'\x00\x2a'  # ID
+                             #b'\x00\x0a'  # ext length
+                             b'\x08'  # array length
+                             b'\x00\x02\x00\x03'  # first tuple
+                             b'\x00\x0a\x00\x01'  # second tuple
+                             b'\x00'))  # trailing byte
+
+        with self.assertRaises(SyntaxError):
+            self.ext.parse(p)
+
+    def test_parse_empty(self):
+        p = Parser(bytearray(0))
+
+        self.ext = self.ext.parse(p)
+
+        self.assertIsNone(self.ext.values)
+
 
 class TestSNIExtension(unittest.TestCase):
     def test___init__(self):
@@ -1291,6 +1372,17 @@ class TestSupportedGroups(unittest.TestCase):
 
         self.assertEqual(ext.extType, ExtensionType.supported_groups)
         self.assertIsNone(ext.groups)
+
+    def test_parse_with_trailing_data(self):
+        parser = Parser(bytearray(
+            b'\x00\x04' +           # length of extension list array
+            b'\x00\x13' +           # secp192r1
+            b'\x00\x15' +           # secp224r1
+            b'\x00'                 # trailing byte
+            ))
+
+        with self.assertRaises(SyntaxError):
+            SupportedGroupsExtension().parse(parser)
 
     def test_parse_with_empty_array(self):
         parser = Parser(bytearray(2))

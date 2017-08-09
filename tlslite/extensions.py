@@ -236,24 +236,98 @@ class TLSExtension(object):
                 " serverType={2!r})".format(self.extType, self.extData,
                                             self.serverType)
 
-class VarListExtension(TLSExtension):
+
+class ListExtension(TLSExtension):
     """
-    Abstract extension for handling extensions comprised only of a value list
+    Abstract class for extensions that deal with single list in payload.
+
+    Extension for handling arbitrary extensions comprising of just a list
+    of same-sized elementes inside an array
+    """
+
+    def __init__(self, fieldName, extType):
+        """
+        Create instance of the class.
+
+        :param str fieldName: name of the field to store the list that is
+            the payload
+        :type int extType: numerical ID of the extension
+        """
+        super(ListExtension, self).__init__(extType=extType)
+        self._fieldName = fieldName
+        self._internalList = None
+
+    @property
+    def extData(self):
+        """
+        Return raw data encoding of the extension.
+
+        :rtype: bytearray
+        """
+        raise NotImplementedError("Abstract class")
+
+    def create(self, values):
+        """
+        Set the list to specified values.
+
+        :param list values: list of values to save
+        """
+        self._internalList = values
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on-the-wire data.
+
+        :param tlslite.utils.codec.Parser parser: data
+        :rtype: Extension
+        """
+        raise NotImplementedError("Abstract class")
+
+    def __getattr__(self, name):
+        """Return the special field name value."""
+        if name == '_fieldName':
+            raise AttributeError("type object '{0}' has no attribute '{1}'"\
+                    .format(self.__class__.__name__, name))
+        if name == self._fieldName:
+            return self._internalList
+        raise AttributeError("type object '{0}' has no attribute '{1}'"\
+                .format(self.__class__.__name__, name))
+
+    def __setattr__(self, name, value):
+        """Set the special field value."""
+        if name == '_fieldName':
+            super(ListExtension, self).__setattr__(name, value)
+            return
+        if hasattr(self, '_fieldName') and name == self._fieldName:
+            self._internalList = value
+            return
+        super(ListExtension, self).__setattr__(name, value)
+
+    def __repr__(self):
+        """Return human readable representation of the extension."""
+        return "{0}({1}={2!r})".format(self.__class__.__name__,
+                                       self._fieldName,
+                                       self._internalList)
+
+
+class VarListExtension(ListExtension):
+    """
+    Abstract extension for handling extensions comprised of uniform value list.
 
     Extension for handling arbitrary extensions comprising of just a list
     of same-sized elementes inside an array
     """
 
     def __init__(self, elemLength, lengthLength, fieldName, extType):
-        super(VarListExtension, self).__init__(extType=extType)
-        self._fieldName = fieldName
-        self._internalList = None
+        super(VarListExtension, self).__init__(fieldName, extType=extType)
         self._elemLength = elemLength
         self._lengthLength = lengthLength
 
     @property
     def extData(self):
-        """Return raw data encoding of the extension
+        """
+        Return raw data encoding of the extension.
 
         :rtype: bytearray
         """
@@ -266,17 +340,9 @@ class VarListExtension(TLSExtension):
                          self._lengthLength)
         return writer.bytes
 
-    def create(self, values):
-        """Set the list to specified values
-
-        :param list values: list of values to save
-        """
-        self._internalList = values
-        return self
-
     def parse(self, parser):
         """
-        Deserialise extension from on-the-wire data
+        Deserialise extension from on-the-wire data.
 
         :param tlslite.utils.codec.Parser parser: data
         :rtype: Extension
@@ -287,32 +353,73 @@ class VarListExtension(TLSExtension):
 
         self._internalList = parser.getVarList(self._elemLength,
                                                self._lengthLength)
+
+        if parser.getRemainingLength():
+            raise SyntaxError()
+
         return self
 
-    def __getattr__(self, name):
-        """Return the special field name value"""
-        if name == '_fieldName':
-            raise AttributeError("type object '{0}' has no attribute '{1}'"\
-                    .format(self.__class__.__name__, name))
-        if name == self._fieldName:
-            return self._internalList
-        raise AttributeError("type object '{0}' has no attribute '{1}'"\
-                .format(self.__class__.__name__, name))
 
-    def __setattr__(self, name, value):
-        """Set the special field value"""
-        if name == '_fieldName':
-            super(VarListExtension, self).__setattr__(name, value)
-            return
-        if hasattr(self, '_fieldName') and name == self._fieldName:
-            self._internalList = value
-            return
-        super(VarListExtension, self).__setattr__(name, value)
+class VarSeqListExtension(ListExtension):
+    """
+    Abstract extension for handling extensions comprised of tuple list.
 
-    def __repr__(self):
-        return "{0}({1}={2!r})".format(self.__class__.__name__,
-                                       self._fieldName,
-                                       self._internalList)
+    Extension for handling arbitrary extensions comprising of a single list
+    of same-sized elements in same-sized tuples
+    """
+
+    def __init__(self, elemLength, elemNum, lengthLength, fieldName, extType):
+        """
+        Create a handler for extension that has a list of tuples as payload.
+
+        :param int elemLength: number of bytes needed to encode single element
+            of a tuple
+        :param int elemNum: number of elements in a tuple
+        :param int lengthLength: number of bytes needed to encode overall
+            length of the list
+        :param str fieldName: name of the field storing the list of elements
+        :param int extType: numerical ID of the extension encoded
+        """
+        super(VarSeqListExtension, self).__init__(fieldName, extType=extType)
+        self._elemLength = elemLength
+        self._elemNum = elemNum
+        self._lengthLength = lengthLength
+
+    @property
+    def extData(self):
+        """
+        Return raw data encoding of the extension.
+
+        :rtype: bytearray
+        """
+        if self._internalList is None:
+            return bytearray(0)
+
+        writer = Writer()
+        writer.addVarTupleSeq(self._internalList,
+                              self._elemLength,
+                              self._lengthLength)
+        return writer.bytes
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on-the-wire data.
+
+        :param tlslite.utils.codec.Parser parser: data
+        :rtype: Extension
+        """
+        if parser.getRemainingLength() == 0:
+            self._internalList = None
+            return self
+
+        self._internalList = parser.getVarTupleList(self._elemLength,
+                                                    self._elemNum,
+                                                    self._lengthLength)
+        if parser.getRemainingLength():
+            raise SyntaxError()
+
+        return self
+
 
 class SNIExtension(TLSExtension):
     """
