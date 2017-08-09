@@ -386,6 +386,7 @@ class AlertDescription(TLSEnum):
     inappropriate_fallback = 86
     user_canceled = 90
     no_renegotiation = 100
+    missing_extension = 109
     unsupported_extension = 110  # RFC 5246
     certificate_unobtainable = 111  # RFC 6066
     unrecognized_name = 112  # RFC 6066
