@@ -1680,6 +1680,50 @@ class Finished(HandshakeMsg):
         return self.postWrite(w)
 
 
+class EncryptedExtensions(HandshakeMsg):
+    """Handling of the TLS1.3 Encrypted Extensions message."""
+
+    def __init__(self):
+        super(EncryptedExtensions, self).__init__(
+                HandshakeType.encrypted_extensions)
+        self.extensions = None
+
+    def create(self, extensions):
+        """Set the extensions in the message."""
+        self.extensions = extensions
+
+    def parse(self, parser):
+        """Parse the extensions from on the wire data."""
+        parser.startLengthCheck(3)
+
+        if not parser.getRemainingLength():
+            raise SyntaxError("No list of extensions")
+        else:
+            self.extensions = []
+            p2 = Parser(parser.getVarBytes(2))
+            while p2.getRemainingLength():
+                self.extensions.append(TLSExtension(encExt=True).parse(p2))
+
+        parser.stopLengthCheck()
+        return self
+
+    def write(self):
+        """
+        Serialise the message to on the wire data.
+
+        :rtype: bytearray
+        """
+        w = Writer()
+        w2 = Writer()
+        for ext in self.extensions:
+            w2.bytes += ext.write()
+
+        w.add(len(w2.bytes), 2)
+        w.bytes += w2.bytes
+
+        return self.postWrite(w)
+
+
 class SSL2Finished(HandshakeMsg):
     """Handling of the SSL2 FINISHED messages."""
 

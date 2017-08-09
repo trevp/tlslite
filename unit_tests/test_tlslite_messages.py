@@ -12,7 +12,7 @@ from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
         ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus, \
         Certificate, Finished, HelloMessage, ChangeCipherSpec, NextProtocol, \
-        ApplicationData
+        ApplicationData, EncryptedExtensions
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
@@ -20,7 +20,7 @@ from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         SSL2HandshakeType, CertificateStatusType, HandshakeType, \
         SignatureScheme
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
-    SRPExtension, TLSExtension, NPNExtension
+    SRPExtension, TLSExtension, NPNExtension, SupportedGroupsExtension
 from tlslite.errors import TLSInternalError
 from tlslite.x509 import X509
 from tlslite.x509certchain import X509CertChain
@@ -1256,6 +1256,7 @@ class TestServerHello(unittest.TestCase):
                 "session_id=bytearray(b''), "\
                 "cipher_suite=34500, compression_method=0, _tack_ext=None, "\
                 "extensions=[])", repr(server_hello))
+
 
 class TestServerHello2(unittest.TestCase):
     def test___init__(self):
@@ -2926,6 +2927,83 @@ class TestApplicationData(unittest.TestCase):
         self.assertIsInstance(app_data1, ApplicationData)
         self.assertEqual(app_data1.bytes, bytearray(b't'))
         self.assertEqual(app_data.bytes, bytearray(b'est'))
+
+
+class TestEncryptedExtensions(unittest.TestCase):
+    def setUp(self):
+        self.msg = EncryptedExtensions()
+
+    def test___init__(self):
+        self.assertIsNotNone(self.msg)
+        self.assertEqual(self.msg.handshakeType, 8)
+
+    def test_create(self):
+
+        ext = SNIExtension()
+
+        self.msg.create([ext])
+
+        self.assertIsInstance(self.msg.extensions[0], SNIExtension)
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            # b'\x08'  # type
+            b'\x00\x00\x02'  # overall length
+            b'\x00\x00'))  # extensions list
+
+        ext = self.msg.parse(parser)
+
+        self.assertEqual(ext.extensions, [])
+
+    def test_parse_with_list_missing(self):
+        parser = Parser(bytearray(
+            b'\x00\x00\x00'))
+
+        with self.assertRaises(SyntaxError):
+            self.msg.parse(parser)
+
+    def test_parse_with_extension(self):
+        parser = Parser(bytearray(
+            b'\x00\x00\x0c'  # overall length
+            b'\x00\x0a'  # extensions list length
+            b'\x00\x0a'  # supported groups extension
+            b'\x00\x06'  # key share extension length
+            b'\x00\x04'  # length of named_group_list
+            b'\x00\x17\x00\x1D'))  # secp256r1 and x25519
+
+        ext = self.msg.parse(parser)
+
+        self.assertEqual(len(ext.extensions), 1)
+        self.assertIsInstance(ext.extensions[0], SupportedGroupsExtension)
+        self.assertEqual(ext.extensions[0].groups, [GroupName.secp256r1,
+                                                    GroupName.x25519])
+
+    def test_parse_with_trailing_data(self):
+        parser = Parser(bytearray(
+            b'\x00\x00\x0d'  # overall length
+            b'\x00\x0a'  # extensions list length
+            b'\x00\x0a'  # supported groups extension
+            b'\x00\x06'  # key share extension length
+            b'\x00\x04'  # length of named_group_list
+            b'\x00\x17\x00\x1D'  # secp256r1 and x25519
+            b'\x00'))  # tailing data
+
+        with self.assertRaises(SyntaxError):
+            self.msg.parse(parser)
+
+    def test_write(self):
+        ext = SupportedGroupsExtension().create([GroupName.secp256r1,
+                                                 GroupName.x25519])
+        self.msg.create([ext])
+
+        self.assertEqual(self.msg.write(),
+                bytearray(b'\x08'  # handshake type - encrypted extensions
+                          b'\x00\x00\x0c'  # overall length
+                          b'\x00\x0a'  # extensions list length
+                          b'\x00\x0a'  # supported groups extension
+                          b'\x00\x06'  # key share extension length
+                          b'\x00\x04'  # length of named_group_list
+                          b'\x00\x17\x00\x1D'))  # secp256r1 and x25519
 
 
 if __name__ == '__main__':
