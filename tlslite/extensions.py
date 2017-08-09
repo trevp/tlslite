@@ -1567,6 +1567,55 @@ class ClientKeyShareExtension(TLSExtension):
         return self
 
 
+class ServerKeyShareExtension(TLSExtension):
+    """
+    Class for handling the Server Hello variant of the Key Share extension.
+
+    Extension for sending the key shares to client
+    """
+
+    def __init__(self):
+        """Create instance of the object."""
+        super(ServerKeyShareExtension, self).__init__(extType=ExtensionType.
+                                                      key_share,
+                                                      server=True)
+        self.server_share = None
+
+    def create(self, server_share):
+        """Set the advertised server share in the extension."""
+        self.server_share = server_share
+        return self
+
+    @property
+    def extData(self):
+        """Serialise the payload of the extension"""
+        if self.server_share is None:
+            return bytearray(0)
+
+        w = Writer()
+        self.server_share.write(w)
+        return w.bytes
+
+    def parse(self, parser):
+        """
+        Parse the extension from on the wire format.
+
+        :param Parser parser: data to be parsed
+
+        :rtype: ServerKeyShareExtension
+        """
+        if not parser.getRemainingLength():
+            self.server_share = None
+            return self
+
+        self.server_share = KeyShareEntry().parse(parser)
+
+        if parser.getRemainingLength():
+            raise SyntaxError("Trailing data in server Key Share extension")
+
+        return self
+
+
 TLSExtension._universalExtensions = \
     {
         ExtensionType.server_name: SNIExtension,
@@ -1586,4 +1635,5 @@ TLSExtension._universalExtensions = \
 TLSExtension._serverExtensions = \
     {
         ExtensionType.cert_type: ServerCertTypeExtension,
-        ExtensionType.tack: TACKExtension}
+        ExtensionType.tack: TACKExtension,
+        ExtensionType.key_share: ServerKeyShareExtension}

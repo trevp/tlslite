@@ -21,7 +21,7 @@ from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SignatureAlgorithmsExtension, PaddingExtension, VarListExtension, \
         RenegotiationInfoExtension, ALPNExtension, StatusRequestExtension, \
         SupportedVersionsExtension, VarSeqListExtension, ListExtension, \
-        ClientKeyShareExtension, KeyShareEntry
+        ClientKeyShareExtension, KeyShareEntry, ServerKeyShareExtension
 from tlslite.utils.codec import Parser, Writer
 from tlslite.constants import NameType, ExtensionType, GroupName,\
         ECPointFormat, HashAlgorithm, SignatureAlgorithm, \
@@ -1966,6 +1966,78 @@ class TestKeyShareExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             self.cks.parse(p)
+
+
+class TestServerKeyShareExtension(unittest.TestCase):
+    def setUp(self):
+        self.ext = ServerKeyShareExtension()
+
+    def test__init__(self):
+        self.assertIsNotNone(self.ext)
+        self.assertIsInstance(self.ext, ServerKeyShareExtension)
+        self.assertIsNone(self.ext.server_share)
+
+    def test_create(self):
+        ext = self.ext.create(bytearray(b'test'))
+
+        self.assertIsInstance(ext, ServerKeyShareExtension)
+        self.assertEqual(ext.server_share, bytearray(b'test'))
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            b'\x00\x28'  # ID of key_share extension
+            b'\x00\x07'  # length of the extension
+            b'\x00\x0a'  # group ID of first entry
+            b'\x00\x03'  # length of share of first entry
+            b'\x12\x13\x14'  # value of share of first entry
+            ))
+
+        ext = TLSExtension(server=True)
+        ext = ext.parse(parser)
+
+        self.assertIsInstance(ext, ServerKeyShareExtension)
+        self.assertIsInstance(ext.server_share, KeyShareEntry)
+        self.assertEqual(ext.server_share.group, 10)
+        self.assertEqual(ext.server_share.key_exchange,
+                         bytearray(b'\x12\x13\x14'))
+
+    def test_parse_with_no_data(self):
+        parser = Parser(bytearray(
+            b'\x00\x28'  # ID of key_share
+            b'\x00\x00'  # empty payload
+            ))
+        ext = TLSExtension(server=True)
+        ext = ext.parse(parser)
+
+        self.assertIsInstance(ext, ServerKeyShareExtension)
+        self.assertIsNone(ext.server_share)
+
+    def test_parse_with_trailing_data(self):
+        parser = Parser(bytearray(
+            b'\x00\x28'  # ID of key_share extension
+            b'\x00\x08'  # length of the extension
+            b'\x00\x0a'  # group ID of first entry
+            b'\x00\x03'  # length of share of first entry
+            b'\x12\x13\x14'  # value of share of first entry
+            b'\x00'  # trailing data
+            ))
+
+        ext = TLSExtension(server=True)
+        with self.assertRaises(SyntaxError):
+            ext.parse(parser)
+
+    def test_extData(self):
+        entry = KeyShareEntry().create(10, bytearray(b'\x12\x13\x14'))
+        self.ext.create(entry)
+
+        self.assertEqual(self.ext.extData,
+                bytearray(b'\x00\x0a'
+                          b'\x00\x03'
+                          b'\x12\x13\x14'))
+
+    def test_extData_with_no_entry(self):
+        self.assertEqual(self.ext.extData,
+                         bytearray(0))
 
 
 if __name__ == '__main__':
