@@ -1489,6 +1489,43 @@ class StatusRequestExtension(TLSExtension):
         return self
 
 
+class CertificateStatusExtension(TLSExtension):
+    """Handling of Certificate Status response as redefined in TLS1.3"""
+
+    def __init__(self):
+        """Create instance of CertificateStatusExtension."""
+        super(CertificateStatusExtension, self).__init__(
+                extType=ExtensionType.status_request)
+        self.status_type = None
+        self.response = None
+
+    def create(self, status_type, response):
+        """Set values of the extension."""
+        self.status_type = status_type
+        self.response = response
+        return self
+
+    def parse(self, parser):
+        """Deserialise the data from on the wire representation."""
+        self.status_type = parser.get(1)
+        if self.status_type == 1:
+            self.response = parser.getVarBytes(3)
+        else:
+            raise SyntaxError("Unrecognised type")
+        if parser.getRemainingLength():
+            raise SyntaxError("Trailing data")
+        return self
+
+    @property
+    def extData(self):
+        """Serialise the object."""
+        writer = Writer()
+        writer.add(self.status_type, 1)
+        writer.addVarSeq(self.response, 1, 3)
+
+        return writer.bytes
+
+
 class KeyShareEntry(object):
     """Handler for of the item of the Key Share extension."""
 
@@ -1669,3 +1706,7 @@ TLSExtension._serverExtensions = \
         ExtensionType.cert_type: ServerCertTypeExtension,
         ExtensionType.tack: TACKExtension,
         ExtensionType.key_share: ServerKeyShareExtension}
+
+TLSExtension._certificateExtensions = \
+    {
+        ExtensionType.status_request: CertificateStatusExtension}

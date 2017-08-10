@@ -21,7 +21,8 @@ from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SignatureAlgorithmsExtension, PaddingExtension, VarListExtension, \
         RenegotiationInfoExtension, ALPNExtension, StatusRequestExtension, \
         SupportedVersionsExtension, VarSeqListExtension, ListExtension, \
-        ClientKeyShareExtension, KeyShareEntry, ServerKeyShareExtension
+        ClientKeyShareExtension, KeyShareEntry, ServerKeyShareExtension, \
+        CertificateStatusExtension
 from tlslite.utils.codec import Parser, Writer
 from tlslite.constants import NameType, ExtensionType, GroupName,\
         ECPointFormat, HashAlgorithm, SignatureAlgorithm, \
@@ -342,6 +343,19 @@ class TestTLSExtension(unittest.TestCase):
 
         self.assertIsInstance(ext, SupportedGroupsExtension)
         self.assertEqual(ext.groups, [GroupName.secp192r1])
+
+    def test_parse_of_certificate_extension(self):
+        ext = TLSExtension(cert=True)
+        p = Parser(bytearray(
+            b'\x00\x05' +  # status_request
+            b'\x00\x05' +  # length
+            b'\x01' +  # status_type - ocsp
+            b'\x00\x00\x01' +  # ocsp response length
+            b'\xba'))  # ocsp payload
+
+        ext = ext.parse(p)
+
+        self.assertIsInstance(ext, CertificateStatusExtension)
 
     def test_parse_with_client_cert_type_extension(self):
         ext = TLSExtension()
@@ -2050,6 +2064,66 @@ class TestServerKeyShareExtension(unittest.TestCase):
     def test_extData_with_no_entry(self):
         self.assertEqual(self.ext.extData,
                          bytearray(0))
+
+
+class TestCertificateStatusExtension(unittest.TestCase):
+    def test___init__(self):
+        cs = CertificateStatusExtension()
+
+        self.assertIsNone(cs.status_type)
+        self.assertIsNone(cs.response)
+
+    def test_create(self):
+        cs = CertificateStatusExtension()
+        cs = cs.create(CertificateStatusType.ocsp, bytearray(b'resp'))
+
+        self.assertIsInstance(cs, CertificateStatusExtension)
+        self.assertEqual(cs.status_type, CertificateStatusType.ocsp)
+        self.assertEqual(cs.response, bytearray(b'resp'))
+
+    def test_extData(self):
+        cs = CertificateStatusExtension()
+        cs = cs.create(CertificateStatusType.ocsp, bytearray(b'resp'))
+
+        self.assertEqual(cs.extData,
+                bytearray(b'\x01'  # status type
+                          b'\x00\x00\x04'  # length of response
+                          b'resp'  # payload
+                          ))
+
+    def test_parse(self):
+        cs = CertificateStatusExtension()
+
+        parser = Parser(bytearray(b'\x01'  # type of ocsp response
+                                  b'\x00\x00\x04'  # length
+                                  b'resp'))  # payload
+
+        cs = cs.parse(parser)
+
+        self.assertIsInstance(cs, CertificateStatusExtension)
+        self.assertEqual(cs.status_type, CertificateStatusType.ocsp)
+        self.assertEqual(cs.response, bytearray(b'resp'))
+
+    def test_parse_with_unknown_type(self):
+        cs = CertificateStatusExtension()
+
+        parser = Parser(bytearray(b'\x02'  # type of response
+                                  b'\x00\x00\x04'  # length
+                                  b'resp'))
+
+        with self.assertRaises(SyntaxError):
+            cs.parse(parser)
+
+    def test_parse_with_trailing_data(self):
+        cs = CertificateStatusExtension()
+        parser = Parser(bytearray(b'\x01'  # type of ocsp response
+                                  b'\x00\x00\x04'  # length
+                                  b'resp'  # payload
+                                  b'\x01'  # trailing data
+                                  ))
+
+        with self.assertRaises(SyntaxError):
+            cs.parse(parser)
 
 
 if __name__ == '__main__':
