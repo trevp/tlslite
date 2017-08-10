@@ -1850,6 +1850,65 @@ class EncryptedExtensions(HandshakeMsg):
         return self.postWrite(w)
 
 
+class NewSessionTicket(HandshakeMsg):
+    """Handling of the TLS1.3 New Session Ticket message."""
+
+    def __init__(self):
+        """Create New Session Ticket object."""
+        super(NewSessionTicket, self).__init__(HandshakeType
+                                               .new_session_ticket)
+        self.ticket_lifetime = 0
+        self.ticket_age_add = 0
+        self.ticket_nonce = bytearray(0)
+        self.ticket = bytearray(0)
+        self.extensions = []
+
+    def create(self, ticket_lifetime, ticket_age_add, ticket_nonce, ticket,
+               extensions):
+        """Initialise a New Session Ticket."""
+        self.ticket_lifetime = ticket_lifetime
+        self.ticket_age_add = ticket_age_add
+        self.ticket_nonce = ticket_nonce
+        self.ticket = ticket
+        self.extensions = extensions
+        return self
+
+    def write(self):
+        """
+        Serialise the message to on the wire data.
+
+        :rtype: bytearray
+        """
+        w = Writer()
+        w.add(self.ticket_lifetime, 4)
+        w.add(self.ticket_age_add, 4)
+        w.addVarSeq(self.ticket_nonce, 1, 1)
+        w.addVarSeq(self.ticket, 1, 2)
+        w2 = Writer()
+        for ext in self.extensions:
+            w2.bytes += ext.write()
+        w.add(len(w2.bytes), 2)
+        w.bytes += w2.bytes
+
+        return self.postWrite(w)
+
+    def parse(self, parser):
+        """Parse the object from on the wire data."""
+        parser.startLengthCheck(3)
+
+        self.ticket_lifetime = parser.get(4)
+        self.ticket_age_add = parser.get(4)
+        self.ticket_nonce = parser.getVarBytes(1)
+        self.ticket = parser.getVarBytes(2)
+        self.extensions = []
+        ext_parser = Parser(parser.getVarBytes(2))
+        while ext_parser.getRemainingLength():
+            self.extensions.append(TLSExtension().parse(ext_parser))
+
+        parser.stopLengthCheck()
+        return self
+
+
 class SSL2Finished(HandshakeMsg):
     """Handling of the SSL2 FINISHED messages."""
 

@@ -20,7 +20,8 @@ from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
         ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus, \
         Certificate, Finished, HelloMessage, ChangeCipherSpec, NextProtocol, \
-        ApplicationData, EncryptedExtensions, CertificateEntry
+        ApplicationData, EncryptedExtensions, CertificateEntry, \
+        NewSessionTicket
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
@@ -3197,6 +3198,102 @@ class TestEncryptedExtensions(unittest.TestCase):
                           b'\x00\x06'  # key share extension length
                           b'\x00\x04'  # length of named_group_list
                           b'\x00\x17\x00\x1D'))  # secp256r1 and x25519
+
+
+class TestNewSessionTicket(unittest.TestCase):
+    def test___init__(self):
+        ticket = NewSessionTicket()
+
+        self.assertEqual(ticket.ticket_lifetime, 0)
+        self.assertEqual(ticket.ticket_age_add, 0)
+        self.assertEqual(ticket.ticket_nonce, bytearray(0))
+        self.assertEqual(ticket.ticket, bytearray(0))
+        self.assertEqual(ticket.extensions, [])
+
+    def test_create(self):
+        ticket = NewSessionTicket()
+        lifetime = mock.Mock()
+        age_add = mock.Mock()
+        nonce = mock.Mock()
+        ticket_proper = mock.Mock()
+        ext = mock.Mock()
+
+        ticket = ticket.create(lifetime, age_add, nonce, ticket_proper, [ext])
+
+        self.assertIs(ticket.ticket_lifetime, lifetime)
+        self.assertIs(ticket.ticket_age_add, age_add)
+        self.assertIs(ticket.ticket_nonce, nonce)
+        self.assertIs(ticket.ticket, ticket_proper)
+        self.assertEqual(len(ticket.extensions), 1)
+        self.assertIs(ticket.extensions[0], ext)
+
+    def test_write(self):
+        ticket = NewSessionTicket()
+        ticket = ticket.create(1, 2, bytearray(b'abc'), bytearray(b'ticket'),
+                               [TLSExtension(extType=ExtensionType.early_data)
+                                .create(bytearray())])
+
+
+        self.assertEqual(ticket.write(), bytearray(
+            b'\x04'  # handshake type - new session ticket
+            b'\x00\x00\x1a'  # overall length
+            b'\x00\x00\x00\x01'  # ticket_lifetime
+            b'\x00\x00\x00\x02'  # ticket_age_add
+            b'\x03'  # ticket nonce length
+            b'abc'  # ticket nonce
+            b'\x00\x06'  # ticket length
+            b'ticket'  # ticket proper
+            b'\x00\x04'  # length of extensions
+            b'\x00\x2a'  # extension type - early_data
+            b'\x00\x00'  # extension length - empty
+            ))
+
+    def test_parse(self):
+        ticket = NewSessionTicket()
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x1a'  # overall length
+            b'\x00\x00\x00\x01'  # ticket_lifetime
+            b'\x00\x00\x00\x02'  # ticket_age_add
+            b'\x03'  # ticket nonce length
+            b'abc'  # ticket nonce
+            b'\x00\x06'  # ticket length
+            b'ticket'  # ticket proper
+            b'\x00\x04'  # length of extensions
+            b'\x00\x2a'  # extension type - early_data
+            b'\x00\x00'  # extension length - empty
+            ))
+
+        ticket = ticket.parse(parser)
+
+        self.assertIsInstance(ticket, NewSessionTicket)
+        self.assertEqual(ticket.ticket_lifetime, 1)
+        self.assertEqual(ticket.ticket_age_add, 2)
+        self.assertEqual(ticket.ticket_nonce, bytearray(b'abc'))
+        self.assertEqual(ticket.ticket, bytearray(b'ticket'))
+        self.assertEqual(ticket.extensions,
+                [TLSExtension(extType=ExtensionType.early_data)
+                 .create(bytearray())])
+
+    def test_parse_with_trailing_data(self):
+        ticket = NewSessionTicket()
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x1b'  # overall length
+            b'\x00\x00\x00\x01'  # ticket_lifetime
+            b'\x00\x00\x00\x02'  # ticket_age_add
+            b'\x03'  # ticket nonce length
+            b'abc'  # ticket nonce
+            b'\x00\x06'  # ticket length
+            b'ticket'  # ticket proper
+            b'\x00\x04'  # length of extensions
+            b'\x00\x2a'  # extension type - early_data
+            b'\x00\x00'  # extension length - empty
+            b'\x00'  # trailing byte
+            ))
+
+        with self.assertRaises(SyntaxError):
+            ticket.parse(parser)
 
 
 if __name__ == '__main__':
