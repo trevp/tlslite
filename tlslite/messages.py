@@ -1057,6 +1057,10 @@ class CertificateEntry(object):
         parser.stopLengthCheck()
         return self
 
+    def __repr__(self):
+        return "CertificateEntry(certificate={0!r}, extensions={1!r})".format(
+                self.certificate, self.extensions)
+
 
 class Certificate(HandshakeMsg):
     def __init__(self, certificateType, version=(3, 2)):
@@ -1160,6 +1164,16 @@ class Certificate(HandshakeMsg):
         else:
             writer = self._write_tls13()
         return self.postWrite(writer)
+
+    def __repr__(self):
+        if self.version <= (3, 3):
+            return "Certificate(certChain={0!r})".format(
+                    self.certChain.x509List)
+        else:
+            return "Certificate(request_context={0!r}, "\
+                   "certificate_list={1!r})"\
+                    .format(self.certificate_request_context,
+                            self.certificate_list)
 
 
 class CertificateRequest(HandshakeMsg):

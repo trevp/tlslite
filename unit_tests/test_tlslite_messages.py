@@ -28,7 +28,8 @@ from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         SSL2HandshakeType, CertificateStatusType, HandshakeType, \
         SignatureScheme
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
-    SRPExtension, TLSExtension, NPNExtension, SupportedGroupsExtension
+    SRPExtension, TLSExtension, NPNExtension, SupportedGroupsExtension, \
+    ServerCertTypeExtension
 from tlslite.errors import TLSInternalError
 from tlslite.x509 import X509
 from tlslite.x509certchain import X509CertChain
@@ -2852,6 +2853,30 @@ class TestCertificate(unittest.TestCase):
 
         self.assertIsNotNone(cert)
         self.assertIsInstance(cert, Certificate)
+
+    def test___repr__(self):
+        cert = Certificate(CertificateType.x509)
+        cert = cert.create(X509CertChain([bytearray(b'one'),
+                                          bytearray(b'two')]))
+        self.assertEqual(repr(cert),
+                "Certificate(certChain=[bytearray(b'one'), "
+                "bytearray(b'two')])")
+
+    def test___repr___tls_1_3(self):
+        cert = Certificate(CertificateType.x509, (3, 4))
+        ext = ServerCertTypeExtension().create(CertificateType.x509)
+        entry = CertificateEntry(CertificateType.x509)
+        entry = entry.create(bytearray(b'this is certificate'), [ext])
+        cert = cert.create([entry], bytearray(b'context'))
+
+        self.maxDiff = None
+
+        self.assertEqual(repr(cert),
+                "Certificate(request_context=bytearray(b'context'), "
+                "certificate_list=[CertificateEntry(certificate="
+                "bytearray(b'this is certificate'), extensions=["
+                "ServerCertTypeExtension(cert_type=0)"
+                "])])")
 
     def test_write_empty(self):
         cert = Certificate(CertificateType.x509)
