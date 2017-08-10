@@ -803,6 +803,8 @@ class TLSRecordLayer(object):
                     yield NextProtocol().parse(p)
                 elif subType == HandshakeType.encrypted_extensions:
                     yield EncryptedExtensions().parse(p)
+                elif subType == HandshakeType.new_session_ticket:
+                    yield NewSessionTicket().parse(p)
                 else:
                     raise AssertionError()
 
