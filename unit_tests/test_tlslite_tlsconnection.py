@@ -9,6 +9,9 @@ try:
 except ImportError:
     import unittest
 
+import socket
+import threading
+
 from tlslite.recordlayer import RecordLayer
 from tlslite.messages import ServerHello, ClientHello, Alert, RecordHeader3
 from tlslite.constants import CipherSuite, AlertDescription, ContentType
@@ -319,6 +322,50 @@ class TestTLSConnection(unittest.TestCase):
         self.assertEqual(mat,
                 bytearray(b'\x1f\xf8\x18\x01:\x9f\x15a\xd5x\xaa;Y>' +
                           b'\xafG\x92AH\xa4'))
+
+class TestRealConnection(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.certChain = X509CertChain([X509().parse(srv_raw_certificate)])
+        cls.certKey = parsePEMKey(srv_raw_key, private=True)
+
+    def setUp(self):
+        self.client_socket, self.server_socket = socket.socketpair()
+
+        self.server_socket.settimeout(1)
+        self.server = TLSConnection(self.server_socket)
+
+        def server_process(server):
+            server.handshakeServer(certChain=self.certChain,
+                                   privateKey=self.certKey)
+            ret = server.read(min=len("client hello"))
+            if ret != bytearray(b"client hello"):
+                raise AssertionError("incorrect query")
+            server.write(bytearray(b"Conn OK"))
+            server.close()
+
+        self.thread = threading.Thread(target=server_process,
+                                       args=(self.server, ))
+        self.thread.start()
+
+    def test_connection_no_rsa_pss(self):
+        settings = HandshakeSettings()
+        # exclude pss as the keys in this module are too small for
+        # the needed salt size for sha512 hash
+        settings.rsaSchemes = ["pkcs1"]
+        conn = TLSConnection(self.client_socket)
+        conn.handshakeClientCert(serverName="localhost",
+                                 settings=settings)
+        self.assertIn(conn.session.cipherSuite, CipherSuite.aeadSuites)
+        conn.write(bytearray(b"client hello"))
+        ret = conn.read(min=len("Conn OK"))
+        self.assertEqual(ret, bytearray(b"Conn OK"))
+
+    def tearDown(self):
+        self.thread.join()
+        self.client_socket.close()
+        self.server_socket.close()
+
 
 if __name__ == '__main__':
     unittest.main()
