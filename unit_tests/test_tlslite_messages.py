@@ -7,12 +7,20 @@ try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+try:
+    import mock
+    from mock import call
+except ImportError:
+    import unittest.mock as mock
+    from unittest.mock import call
+
+
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
         ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus, \
         Certificate, Finished, HelloMessage, ChangeCipherSpec, NextProtocol, \
-        ApplicationData, EncryptedExtensions
+        ApplicationData, EncryptedExtensions, CertificateEntry
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
@@ -2740,6 +2748,98 @@ class TestCertificateStatus(unittest.TestCase):
             b'\xbc\xaa'))
 
 
+class TestCertificateEntry(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.x509_cert = X509().parse(srv_raw_certificate)
+        cls.der_cert = cls.x509_cert.writeBytes()
+
+    def test___init__(self):
+        entry = CertificateEntry(CertificateType.x509)
+
+        self.assertIsNotNone(entry)
+        self.assertIsInstance(entry, CertificateEntry)
+
+    def test_create(self):
+        entry = CertificateEntry(CertificateType.x509)
+        a = mock.Mock()
+        b = mock.Mock()
+        entry = entry.create(a, b)
+
+        self.assertIs(entry.certificate, a)
+        self.assertIs(entry.extensions, b)
+
+    def test_write(self):
+        entry = CertificateEntry(CertificateType.x509)
+        ext = TLSExtension(extType=255).create(bytearray(b'\xde\xad'))
+        entry = entry.create(self.x509_cert, [ext])
+
+        self.assertEqual(entry.write(),
+                bytearray(b'\x00\x01\xfa' +  #length of certificate
+                          self.der_cert +
+                          b'\x00\x06' +  # length of extensions
+                          b'\x00\xff' +  # type of first extension
+                          b'\x00\x02' +  # length of first extension
+                          b'\xde\xad'))  # extension payload
+
+    def test_write_without_extensions(self):
+        entry = CertificateEntry(CertificateType.x509)
+        entry = entry.create(self.x509_cert, [])
+
+        self.assertEqual(entry.write(),
+                bytearray(b'\x00\x01\xfa' +  # length of certificate
+                          self.der_cert +
+                          b'\x00\x00'))  # length of extensions
+
+    def test_write_with_null_extensions(self):
+        # that's invalid formatting of the entry, used for debugging/fuzzer
+        entry = CertificateEntry(CertificateType.x509)
+        entry = entry.create(self.x509_cert, None)
+
+        self.assertEqual(entry.write(),
+                bytearray(b'\x00\x01\xfa' +  # length of certificate
+                          self.der_cert))
+
+    def test_write_with_unsupported_type(self):
+        entry = CertificateEntry(CertificateType.openpgp)
+        entry = entry.create(self.x509_cert, [])
+
+        with self.assertRaises(ValueError):
+            entry.write()
+
+    def test_parse(self):
+        parser = Parser(
+                bytearray(b'\x00\x01\xfa' +  #length of certificate
+                          self.der_cert +
+                          b'\x00\x06' +  # length of extensions
+                          b'\x00\xff' +  # type of first extension
+                          b'\x00\x02' +  # length of first extension
+                          b'\xde\xad'))  # extension payload
+
+        entry = CertificateEntry(CertificateType.x509)
+        entry = entry.parse(parser)
+
+        self.assertIsInstance(entry, CertificateEntry)
+        self.assertEqual(entry.certificate.writeBytes(), self.der_cert)
+        self.assertEqual(len(entry.extensions), 1)
+        self.assertEqual(entry.extensions[0].extData, bytearray(b'\xde\xad'))
+
+    def test_parse_with_unsupported_type(self):
+        parser = Parser(
+                bytearray(b'\x00\x01\xfa' +  #length of certificate
+                          self.der_cert +
+                          b'\x00\x06' +  # length of extensions
+                          b'\x00\xff' +  # type of first extension
+                          b'\x00\x02' +  # length of first extension
+                          b'\xde\xad'))  # extension payload
+
+        entry = CertificateEntry(CertificateType.openpgp)
+
+        with self.assertRaises(ValueError):
+            entry.parse(parser)
+
+
 class TestCertificate(unittest.TestCase):
 
     @classmethod
@@ -2805,6 +2905,25 @@ class TestCertificate(unittest.TestCase):
                       b'\x00\x01\xfa' +  # length of the first certificate
                       self.der_cert))
 
+    def test_write_tls13_with_cert(self):
+        cert = Certificate(CertificateType.x509, (3, 4))
+        ext = TLSExtension(extType=255).create(bytearray(b'\xde\xad'))
+        entry = CertificateEntry(CertificateType.x509)
+        entry = entry.create(self.x509_cert, [ext])
+        cert = cert.create([entry], bytearray(b''))
+
+        self.assertEqual(cert.write(),
+                bytearray(b'\x0b' +  # type of message - certificate
+                          b'\x00\x02\x09' +  # length of handshake message
+                          b'\x00' +  # length of certificate request context
+                          b'\x00\x02\x05' +  # length of certificate list
+                          b'\x00\x01\xfa' +  # length of certificate
+                          self.der_cert +
+                          b'\x00\x06' +  # length of extensions
+                          b'\x00\xff' +  # type of first extension
+                          b'\x00\x02' +  # length of first extension
+                          b'\xde\xad'))
+
     def test_parse_with_cert(self):
         cert = Certificate(CertificateType.x509)
         parser = Parser(
@@ -2815,6 +2934,38 @@ class TestCertificate(unittest.TestCase):
                       self.der_cert))
 
         cert = cert.parse(parser)
+        self.assertIsNotNone(cert.certChain)
+        self.assertIsInstance(cert.certChain, X509CertChain)
+        self.assertEqual(len(cert.certChain.x509List), 1)
+        self.assertEqual(cert.certChain.x509List[0].writeBytes(),
+                self.der_cert)
+
+    def test_parse_tls1_3_with_cert(self):
+        cert = Certificate(CertificateType.x509, (3, 4))
+        self.assertEqual(0x0001fa, len(self.der_cert))
+        parser = Parser(
+                bytearray(#b'\x0b' +  # type of message - certificate
+                          b'\x00\x02\x09' +  # length of handshake message
+                          b'\x00' +  # length of certificate request context
+                          b'\x00\x02\x05' +  # length of certificate list
+                          b'\x00\x01\xfa' +  # length of certificate
+                          self.der_cert +
+                          b'\x00\x06' +  # length of extensions
+                          b'\x00\xff' +  # type of first extension
+                          b'\x00\x02' +  # length of first extension
+                          b'\xde\xad'))
+
+        cert = cert.parse(parser)
+
+        self.assertIsNotNone(cert)
+        self.assertEqual(cert.certificate_request_context, bytearray(b''))
+        self.assertIsNotNone(cert.certificate_list)
+        self.assertEqual(len(cert.certificate_list), 1)
+        self.assertIsInstance(cert.certificate_list[0], CertificateEntry)
+        entry = cert.certificate_list[0]
+        self.assertEqual(entry.certificate.writeBytes(), self.der_cert)
+        self.assertEqual(len(entry.extensions), 1)
+        self.assertEqual(entry.extensions[0].extData, bytearray(b'\xde\xad'))
         self.assertIsNotNone(cert.certChain)
         self.assertIsInstance(cert.certChain, X509CertChain)
         self.assertEqual(len(cert.certChain.x509List), 1)

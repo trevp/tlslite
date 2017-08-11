@@ -1001,17 +1001,104 @@ class ServerHello2(HandshakeMsg):
         return self
 
 
-class Certificate(HandshakeMsg):
-    def __init__(self, certificateType):
-        HandshakeMsg.__init__(self, HandshakeType.certificate)
-        self.certificateType = certificateType
-        self.certChain = None
+class CertificateEntry(object):
+    """
+    Object storing a single certificate from TLS 1.3.
 
-    def create(self, certChain):
-        self.certChain = certChain
+    Stores a certificate (or possibly a raw public key) together with
+    associated extensions
+    """
+
+    def __init__(self, certificateType):
+        """Initialise the object for given certificate type."""
+        self.certificateType = certificateType
+        self.certificate = None
+        self.extensions = None
+
+    def create(self, certificate, extensions):
+        """Set all values of the certificate entry."""
+        self.certificate = certificate
+        self.extensions = extensions
         return self
 
-    def parse(self, p):
+    def write(self):
+        """Serialise the object."""
+        writer = Writer()
+        if self.certificateType == CertificateType.x509:
+            writer.addVarSeq(self.certificate.writeBytes(), 1, 3)
+        else:
+            raise ValueError("Set certificate type ({0}) unsupported"
+                             .format(self.certificateType))
+
+        if self.extensions is not None:
+            writer2 = Writer()
+            for ext in self.extensions:
+                writer2.bytes += ext.write()
+            writer.addVarSeq(writer2.bytes, 1, 2)
+
+        return writer.bytes
+
+    def parse(self, parser):
+        """Deserialise the object from on the wire data."""
+        if self.certificateType == CertificateType.x509:
+            certBytes = parser.getVarBytes(3)
+            x509 = X509()
+            x509.parseBinary(certBytes)
+            self.certificate = x509
+        else:
+            raise ValueError("Set certificate type ({0}) unsupported"
+                             .format(self.certificateType))
+
+        self.extensions = []
+        parser.startLengthCheck(2)
+        while not parser.atLengthCheck():
+            ext = TLSExtension(cert=True).parse(parser)
+            self.extensions.append(ext)
+        parser.stopLengthCheck()
+        return self
+
+
+class Certificate(HandshakeMsg):
+    def __init__(self, certificateType, version=(3, 2)):
+        HandshakeMsg.__init__(self, HandshakeType.certificate)
+        self.certificateType = certificateType
+        self._certChain = None
+        self.version = version
+        self.certificate_list = None
+        self.certificate_request_context = None
+
+    @property
+    def certChain(self):
+        if self._certChain:
+            return self._certChain
+        elif self.certificate_list is None:
+            return None
+        else:
+            return X509CertChain([i.certificate
+                                  for i in self.certificate_list])
+
+    def create(self, certChain, context=None):
+        if isinstance(certChain, X509CertChain):
+            self._certChain = certChain
+        else:
+            self.certificate_list = certChain
+        self.certificate_request_context = context
+        return self
+
+    def _parse_certificate_list(self, parser):
+        self.certificate_list = []
+        while parser.getRemainingLength():
+            entry = CertificateEntry(self.certificateType)
+            self.certificate_list.append(entry.parse(parser))
+
+    def _parse_tls13(self, parser):
+        parser.startLengthCheck(3)
+        self.certificate_request_context = parser.getVarBytes(1)
+        self._parse_certificate_list(Parser(parser.getVarBytes(3)))
+        parser.stopLengthCheck()
+        return self
+
+    def _parse_tls12(self, p):
         p.startLengthCheck(3)
         if self.certificateType == CertificateType.x509:
             chainLength = p.get(3)
@@ -1024,19 +1111,34 @@ class Certificate(HandshakeMsg):
                 certificate_list.append(x509)
                 index += len(certBytes)+3
             if certificate_list:
-                self.certChain = X509CertChain(certificate_list)
+                self._certChain = X509CertChain(certificate_list)
         else:
             raise AssertionError()
 
         p.stopLengthCheck()
         return self
 
-    def write(self):
+    def parse(self, p):
+        if self.version <= (3, 3):
+            return self._parse_tls12(p)
+        else:
+            return self._parse_tls13(p)
+
+    def _write_tls13(self):
+        w = Writer()
+        w.addVarSeq(self.certificate_request_context, 1, 1)
+        w2 = Writer()
+        for entry in self.certificate_list:
+            w2.bytes += entry.write()
+        w.addVarSeq(w2.bytes, 1, 3)
+        return w
+
+    def _write_tls12(self):
         w = Writer()
         if self.certificateType == CertificateType.x509:
             chainLength = 0
-            if self.certChain:
-                certificate_list = self.certChain.x509List
+            if self._certChain:
+                certificate_list = self._certChain.x509List
             else:
                 certificate_list = []
             # determine length
@@ -1050,7 +1152,14 @@ class Certificate(HandshakeMsg):
                 w.addVarSeq(bytes, 1, 3)
         else:
             raise AssertionError()
-        return self.postWrite(w)
+        return w
+
+    def write(self):
+        if self.version <= (3, 3):
+            writer = self._write_tls12()
+        else:
+            writer = self._write_tls13()
+        return self.postWrite(writer)
 
 
 class CertificateRequest(HandshakeMsg):
