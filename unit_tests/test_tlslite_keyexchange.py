@@ -1273,6 +1273,12 @@ class TestECDHE_RSAKeyExchange(unittest.TestCase):
         self.assertEqual(ske.curve_type, ECCurveType.named_curve)
         self.assertEqual(ske.named_curve, GroupName.secp256r1)
 
+    def test_ECDHE_key_exchange_with_no_curves_in_ext(self):
+        self.client_hello.extensions = [SupportedGroupsExtension()]
+
+        with self.assertRaises(TLSInternalError):
+            ske = self.keyExchange.makeServerKeyExchange('sha1')
+
     def test_ECDHE_key_exchange_with_no_mutual_curves(self):
         ext = SupportedGroupsExtension().create([GroupName.secp160r1])
         self.client_hello.extensions = [ext]
@@ -1309,6 +1315,17 @@ class TestECDHE_RSAKeyExchange(unittest.TestCase):
         with self.assertRaises(TLSIllegalParameterException):
             client_keyExchange.processServerKeyExchange(None, srv_key_ex)
 
+    def test_client_ECDHE_key_exchange_with_no_share(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+        srv_key_ex.ecdh_Ys = bytearray()
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.secp256r1])
+        with self.assertRaises(TLSDecodeError):
+            client_keyExchange.processServerKeyExchange(None, srv_key_ex)
 
 class TestRSAKeyExchange_with_PSS_scheme(unittest.TestCase):
     def setUp(self):
