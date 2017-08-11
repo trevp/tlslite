@@ -13,7 +13,9 @@ engines:
     - 2c398389f33ea2572edefc5370ed49c0
     config:
       languages:
-      - python
+        python:
+          python_version: 3
+          mass_threshold: 35
   fixme:
     enabled: true
     config:
