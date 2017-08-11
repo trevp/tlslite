@@ -381,11 +381,12 @@ class ADHKeyExchange(KeyExchange):
                 raise TLSInternalError("DHE key exchange attempted despite no "
                                        "overlap between supported groups")
 
-        # Per RFC 3526, Section 1, the exponent should have double the entropy
-        # of the strength of the group.
-        randBytesNeeded = divceil(paramStrength(self.dh_p) * 2, 8)
-        self.dh_Xs = bytesToNumber(getRandomBytes(randBytesNeeded))
-        dh_Ys = powMod(self.dh_g, self.dh_Xs, self.dh_p)
+        # for TLS < 1.3 we need special algorithm to select params (see above)
+        # so do not pass in the group, if we selected one
+        kex = FFDHKeyExchange(None, self.serverHello.server_version,
+                              self.dh_g, self.dh_p)
+        self.dh_Xs = kex.get_random_private_key()
+        dh_Ys = kex.calc_public_value(self.dh_Xs)
 
         version = self.serverHello.server_version
         serverKeyExchange = ServerKeyExchange(self.cipherSuite, version)
@@ -397,16 +398,9 @@ class ADHKeyExchange(KeyExchange):
         """Use client provided parameters to establish premaster secret"""
         dh_Yc = clientKeyExchange.dh_Yc
 
-        # First half of RFC 2631, Section 2.1.5. Validate the client's public
-        # key.
-        # use of safe primes also means that the p-1 is invalid
-        if not 2 <= dh_Yc < self.dh_p - 1:
-            raise TLSIllegalParameterException("Invalid dh_Yc value")
-
-        S = powMod(dh_Yc, self.dh_Xs, self.dh_p)
-        if S in (1, self.dh_p - 1):
-            raise TLSIllegalParameterException("Small subgroup capture")
-        return numberToByteArray(S)
+        kex = FFDHKeyExchange(None, self.serverHello.server_version,
+                              self.dh_g, self.dh_p)
+        return kex.calc_shared_key(self.dh_Xs, dh_Yc)
 
     def processServerKeyExchange(self, srvPublicKey, serverKeyExchange):
         """Process the server key exchange, return premaster secret."""
@@ -415,25 +409,15 @@ class ADHKeyExchange(KeyExchange):
         # TODO make the minimum changeable
         if dh_p < 2**1023:
             raise TLSInsufficientSecurity("DH prime too small")
-
         dh_g = serverKeyExchange.dh_g
-        if not 2 <= dh_g < dh_p - 1:
-            raise TLSIllegalParameterException("Invalid DH generator")
-
-        dh_Xc = bytesToNumber(getRandomBytes(32))
         dh_Ys = serverKeyExchange.dh_Ys
-        if not 2 <= dh_Ys < dh_p - 1:
-            raise TLSIllegalParameterException("Invalid server key share")
 
-        self.dh_Yc = powMod(dh_g, dh_Xc, dh_p)
-        if self.dh_Yc in (1, dh_p - 1):
-            raise TLSIllegalParameterException("Small subgroup capture")
+        kex = FFDHKeyExchange(None, self.serverHello.server_version,
+                              dh_g, dh_p)
 
-        S = powMod(dh_Ys, dh_Xc, dh_p)
-        if S in (1, dh_p - 1):
-            raise TLSIllegalParameterException("Small subgroup capture")
-
-        return numberToByteArray(S)
+        dh_Xc = kex.get_random_private_key()
+        self.dh_Yc = kex.calc_public_value(dh_Xc)
+        return kex.calc_shared_key(dh_Xc, dh_Ys)
 
     def makeClientKeyExchange(self):
         """Create client key share for the key exchange"""
@@ -734,3 +718,88 @@ class SRPKeyExchange(KeyExchange):
         cke = super(SRPKeyExchange, self).makeClientKeyExchange()
         cke.createSRP(self.A)
         return cke
+
+
+class RawDHKeyExchange(object):
+    """
+    Abstract class for performing Diffe-Hellman key exchange.
+
+    Provides a shared API for X25519, ECDHE and FFDHE key exchange.
+    """
+
+    def __init__(self, group, version):
+        """
+        Set the parameters of the key exchange
+
+        Sets group on which the KEX will take part and protocol version used.
+        """
+        self.group = group
+        self.version = version
+
+    def get_random_private_key(self):
+        """
+        Generate a random value suitable for use as the private value of KEX.
+        """
+        raise NotImplementedError("Abstract class")
+
+    def calc_public_value(self, private):
+        """Calculate the public value from the provided private value."""
+        raise NotImplementedError("Abstract class")
+
+    def calc_shared_key(self, private, peer_share):
+        """Calcualte the shared key given our private and remote share value"""
+        raise NotImplementedError("Abstract class")
+
+
+class FFDHKeyExchange(RawDHKeyExchange):
+    """Implemenation of the Finite Field Diffie-Hellman key exchange."""
+
+    def __init__(self, group, version, generator=None, prime=None):
+        super(FFDHKeyExchange, self).__init__(group, version)
+        if prime and group:
+            raise ValueError("Can't set the RFC7919 group and custom params"
+                             " at the same time")
+        if group:
+            self.generator, self.prime = RFC7919_GROUPS[group-256]
+        else:
+            self.prime = prime
+            self.generator = generator
+
+        if not 1 < self.generator < self.prime:
+            raise TLSIllegalParameterException("Invalid DH generator")
+
+    def get_random_private_key(self):
+        """
+        Return a random private value for the prime used.
+
+        :rtype: int
+        """
+        # Per RFC 3526, Section 1, the exponent should have double the entropy
+        # of the strength of the group.
+        needed_bytes = divceil(paramStrength(self.prime) * 2, 8)
+        return bytesToNumber(getRandomBytes(needed_bytes))
+
+    def calc_public_value(self, private):
+        """
+        Calculate the public value for given private value.
+
+        :rtype: int
+        """
+        dh_Y = powMod(self.generator, private, self.prime)
+        if dh_Y in (1, self.prime - 1):
+            raise TLSIllegalParameterException("Small subgroup capture")
+        return dh_Y
+
+    def calc_shared_key(self, private, peer_share):
+        """Calculate the shared key."""
+        # First half of RFC 2631, Section 2.1.5. Validate the client's public
+        # key.
+        # use of safe primes also means that the p-1 is invalid
+        if not 2 <= peer_share < self.prime - 1:
+            raise TLSIllegalParameterException("Invalid peer key share")
+
+        S = powMod(peer_share, private, self.prime)
+
+        if S in (1, self.prime - 1):
+            raise TLSIllegalParameterException("Small subgroup capture")
+        return numberToByteArray(S)
