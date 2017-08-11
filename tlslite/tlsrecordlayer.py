@@ -104,6 +104,9 @@ class TLSRecordLayer(object):
         throughput after sending few kiB of data. Setting to values greater
         than
         2**14 will cause the connection to be dropped by RFC compliant peers.
+
+    :vartype tickets: list of bytearray
+    :ivar tickets: list of session tickets received from server, oldest first.
     """
 
     def __init__(self, sock):
@@ -151,6 +154,9 @@ class TLSRecordLayer(object):
 
         #Limit the size of outgoing records to following size
         self.recordSize = 16384 # 2**14
+
+        # NewSessionTickets received from server
+        self.tickets = []
 
     @property
     def _client(self):
@@ -237,12 +243,23 @@ class TLSRecordLayer(object):
         :rtype: iterable
         :returns: A generator; see above for details.
         """
+        if self.version > (3, 3):
+            allowedTypes = (ContentType.application_data,
+                            ContentType.handshake)
+            allowedHsTypes = HandshakeType.new_session_ticket
+        else:
+            allowedTypes = ContentType.application_data
+            allowedHsTypes = None
         try:
-            while len(self._readBuffer)<min and not self.closed:
+            while len(self._readBuffer) < min and not self.closed:
                 try:
-                    for result in self._getMsg(ContentType.application_data):
-                        if result in (0,1):
+                    for result in self._getMsg(allowedTypes,
+                                               allowedHsTypes):
+                        if result in (0, 1):
                             yield result
+                    if isinstance(result, NewSessionTicket):
+                        self.tickets.append(result)
+                        continue
                     applicationData = result
                     self._readBuffer += applicationData.write()
                 except TLSRemoteAlert as alert:
