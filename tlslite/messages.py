@@ -779,19 +779,16 @@ class ServerHello(HelloMessage):
         :type val: int
         :param val: type of certificate
         """
+        if val == CertificateType.x509 or val is None:
+            # XXX backwards compatibility, x509 value should not be sent
+            self._removeExt(ExtensionType.cert_type)
+            return
+
         cert_type = self.getExtension(ExtensionType.cert_type)
         if cert_type is None:
-            # XXX backwards compatibility, 0 means x.509 and should not be sent
-            if val == CertificateType.x509 or val is None:
-                return
             ext = ServerCertTypeExtension().create(val)
             self.addExtension(ext)
         else:
-            if val == CertificateType.x509 or val is None:
-                # XXX backwards compatibility, 0 means x.509 and should not be
-                # sent
-                self._removeExt(ExtensionType.cert_type)
-                return
             cert_type.cert_type = val
 
     @property
@@ -816,23 +813,20 @@ class ServerHello(HelloMessage):
         :type val: list
         :param val: list of protocols to advertise as UTF-8 encoded names
         """
-        if val is not None:
+        if val is None:
+            # XXX: do not send empty extension
+            self._removeExt(ExtensionType.supports_npn)
+            return
+        else:
             # convinience function, make sure the values are properly encoded
             val = [bytearray(x) for x in val]
 
         npn_ext = self.getExtension(ExtensionType.supports_npn)
 
         if npn_ext is None:
-            if val is None:
-                # XXX: do not send empty extension
-                return
             ext = NPNExtension().create(val)
             self.addExtension(ext)
         else:
-            if val is None:
-                # XXX: do not send empty extension
-                self._removeExt(ExtensionType.supports_npn)
-                return
             npn_ext.protocols = val
 
     @property
