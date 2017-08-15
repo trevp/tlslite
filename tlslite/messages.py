@@ -779,8 +779,9 @@ class ServerHello(HelloMessage):
         :type val: int
         :param val: type of certificate
         """
-        # XXX backwards compatibility, 0 means x.509 and should not be sent
-        if val == 0 or val is None:
+        if val == CertificateType.x509 or val is None:
+            # XXX backwards compatibility, x509 value should not be sent
+            self._removeExt(ExtensionType.cert_type)
             return
 
         cert_type = self.getExtension(ExtensionType.cert_type)
@@ -813,6 +814,8 @@ class ServerHello(HelloMessage):
         :param val: list of protocols to advertise as UTF-8 encoded names
         """
         if val is None:
+            # XXX: do not send empty extension
+            self._removeExt(ExtensionType.supports_npn)
             return
         else:
             # convinience function, make sure the values are properly encoded

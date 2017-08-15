@@ -10,15 +10,38 @@ except ImportError:
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
-        ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus
+        ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus, \
+        Certificate, Finished, HelloMessage, ChangeCipherSpec, NextProtocol, \
+        ApplicationData
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
         HashAlgorithm, SignatureAlgorithm, ECCurveType, GroupName, \
-        SSL2HandshakeType, CertificateStatusType
+        SSL2HandshakeType, CertificateStatusType, HandshakeType, \
+        SignatureScheme
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
     SRPExtension, TLSExtension, NPNExtension
 from tlslite.errors import TLSInternalError
+from tlslite.x509 import X509
+from tlslite.x509certchain import X509CertChain
+
+
+srv_raw_certificate = str(
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIB9jCCAV+gAwIBAgIJAMyn9DpsTG55MA0GCSqGSIb3DQEBCwUAMBQxEjAQBgNV\n"
+    "BAMMCWxvY2FsaG9zdDAeFw0xNTAxMjExNDQzMDFaFw0xNTAyMjAxNDQzMDFaMBQx\n"
+    "EjAQBgNVBAMMCWxvY2FsaG9zdDCBnzANBgkqhkiG9w0BAQEFAAOBjQAwgYkCgYEA\n"
+    "0QkEeakSyV/LMtTeARdRtX5pdbzVuUuqOIdz3lg7YOyRJ/oyLTPzWXpKxr//t4FP\n"
+    "QvYsSJiVOlPk895FNu6sNF/uJQyQGfFWYKkE6fzFifQ6s9kssskFlL1DVI/dD/Zn\n"
+    "7sgzua2P1SyLJHQTTs1MtMb170/fX2EBPkDz+2kYKN0CAwEAAaNQME4wHQYDVR0O\n"
+    "BBYEFJtvXbRmxRFXYVMOPH/29pXCpGmLMB8GA1UdIwQYMBaAFJtvXbRmxRFXYVMO\n"
+    "PH/29pXCpGmLMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQELBQADgYEAkOgC7LP/\n"
+    "Rd6uJXY28HlD2K+/hMh1C3SRT855ggiCMiwstTHACGgNM+AZNqt6k8nSfXc6k1gw\n"
+    "5a7SGjzkWzMaZC3ChBeCzt/vIAGlMyXeqTRhjTCdc/ygRv3NPrhUKKsxUYyXRk5v\n"
+    "g/g6MwxzXfQP3IyFu3a9Jia/P89Z1rQCNRY=\n"
+    "-----END CERTIFICATE-----\n"
+    )
+
 
 class TestMessage(unittest.TestCase):
     def test___init__(self):
@@ -31,6 +54,23 @@ class TestMessage(unittest.TestCase):
         msg = Message(0, bytearray(10))
 
         self.assertEqual(bytearray(10), msg.write())
+
+
+class TestHelloMessage(unittest.TestCase):
+    def test___init__(self):
+        msg = HelloMessage(HandshakeType.client_hello)
+
+        self.assertIsInstance(msg, HelloMessage)
+
+    def test_addExtension(self):
+        msg = HelloMessage(HandshakeType.client_hello)
+        msg.extensions = []
+
+        msg.addExtension(SNIExtension().create(bytearray(b'example.com')))
+
+        self.assertEqual(msg.extensions,
+                         [SNIExtension().create(bytearray(b'example.com'))])
+
 
 class TestClientHello(unittest.TestCase):
     def test___init__(self):
@@ -584,7 +624,7 @@ class TestClientHello(unittest.TestCase):
 
         self.assertEqual(client_hello.server_name, bytearray(0))
 
-    def test_parse_with_SSLv2_client_hello(self):
+    def test_parse_with_SSLv2_client_hello_and_short_random(self):
         parser = Parser(bytearray(
             # length and type is handled by hello protocol parser
             #b'\x80\x2e' +           # length - 46 bytes
@@ -803,6 +843,63 @@ class TestServerHello(unittest.TestCase):
         self.assertEqual(None, server_hello.tackExt)
         self.assertEqual(None, server_hello.next_protos_advertised)
 
+    def test_next_protos_reset(self):
+        server_hello = ServerHello().create(
+                (1,1),                          # server version
+                bytearray(b'\x00'*31+b'\x02'),  # random
+                bytearray(0),                   # session id
+                4,                              # cipher suite
+                0,                              # certificate type
+                None,                           # TACK ext
+                [bytearray(b'http/1.1')])       # next protos advertised
+
+        self.assertEqual(server_hello.next_protos, [bytearray(b'http/1.1')])
+        server_hello.next_protos = [bytearray(b'spdy/3'),
+                                    bytearray(b'http/1.1')]
+        self.assertEqual([bytearray(b'spdy/3'), bytearray(b'http/1.1')],
+                         server_hello.next_protos)
+
+    def test_next_protos_reset_to_None(self):
+        server_hello = ServerHello().create(
+                (1,1),                          # server version
+                bytearray(b'\x00'*31+b'\x02'),  # random
+                bytearray(0),                   # session id
+                4,                              # cipher suite
+                0,                              # certificate type
+                None,                           # TACK ext
+                [bytearray(b'http/1.1')])       # next protos advertised
+
+        self.assertEqual(server_hello.next_protos, [bytearray(b'http/1.1')])
+        server_hello.next_protos = None
+        self.assertIsNone(server_hello.next_protos)
+
+    def test_certificate_type_update_to_x509(self):
+        server_hello = ServerHello().create(
+                (1,1),                          # server version
+                bytearray(b'\x00'*31+b'\x01'),  # random
+                bytearray(0),                   # session id
+                4,                              # cipher suite
+                1,                              # certificate type
+                None,                           # TACK ext
+                None)                           # next protos advertised
+
+        server_hello.certificate_type = CertificateType.x509
+        self.assertEqual(CertificateType.x509, server_hello.certificate_type)
+
+    def test_certificate_type_set_to_raw(self):
+        server_hello = ServerHello().create(
+                (1,1),                          # server version
+                bytearray(b'\x00'*31+b'\x01'),  # random
+                bytearray(0),                   # session id
+                4,                              # cipher suite
+                1,                              # certificate type
+                None,                           # TACK ext
+                None)                           # next protos advertised
+
+        server_hello.certificate_type = 2
+        self.assertEqual(2, server_hello.certificate_type)
+
+
     def test_create_with_minimal_options(self):
         server_hello = ServerHello().create(
                 (3, 3),                                 # server version
@@ -965,6 +1062,20 @@ class TestServerHello(unittest.TestCase):
         server_hello = ServerHello().parse(p)
         self.assertEqual(1, server_hello.certificate_type)
 
+    def test_parse_with_no_extensions(self):
+        p = Parser(bytearray(
+            b'\x00\x00\x26' +               # length - 45 bytes
+            b'\x03\x03' +                   # version - TLS 1.2
+            b'\x01'*31 + b'\x02' +          # random
+            b'\x00' +                       # session id length
+            b'\x00\x9d' +                   # cipher suite
+            b'\x00'                         # compression method (none)
+            ))
+
+        server_hello = ServerHello().parse(p)
+        self.assertIsNone(server_hello.extensions)
+
+
     def test_parse_with_bad_cert_type_extension(self):
         p = Parser(bytearray(
             b'\x00\x00\x2e' +               # length - 46 bytes
@@ -1068,6 +1179,25 @@ class TestServerHello(unittest.TestCase):
         self.assertEqual("server_hello,length(40),version(3.0),random(...),"\
                 "session ID(bytearray(b'\\x01 ')),cipher(0x86c4),"\
                 "compression method(0)",
+                str(server_hello))
+
+    def test___str___with_extension(self):
+        server_hello = ServerHello()
+        server_hello = server_hello.create(
+                (3,0),
+                bytearray(b'\x00'*32),
+                bytearray(b'\x01\x20'),
+                34500,
+                0,
+                None,
+                None,
+                extensions=[SNIExtension().create(bytearray(b'test'))])
+
+        self.assertEqual("server_hello,length(55),version(3.0),random(...),"
+                "session ID(bytearray(b'\\x01 ')),cipher(0x86c4),"
+                "compression method(0),extensions[SNIExtension("
+                "serverNames=[ServerName(name_type=0, "
+                "name=bytearray(b'test'))])]",
                 str(server_hello))
 
     def test___repr__(self):
@@ -2132,6 +2262,21 @@ class TestServerKeyExchange(unittest.TestCase):
             b'\x8e?YW\xcd\xad\xc6\x83\x91\x1d.fe,\x17y' +
             b'=\xc4T\x89'))
 
+    def test_hash_with_rsa_pss_sha256(self):
+        ske = ServerKeyExchange(
+                CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
+                (3, 3))
+
+        ske.createDH(dh_p=31, dh_g=2, dh_Ys=16)
+        ske.hashAlg, ske.signAlg = SignatureScheme.rsa_pss_sha256
+
+        hash1 = ske.hash(bytearray(32), bytearray(32))
+
+        self.assertEqual(hash1,
+                         bytearray(b'^\xfe\x0e\x8f\xd2\x87\x8e/%\xbeK9\xb7$'
+                                   b'\x93\x9a\x81TW\nI\xff\xb2\xbeo\xaf\x90'
+                                   b'\xa7\xfb\xe1sM'))
+
     def test_hash_with_invalid_ciphersuite(self):
         ske = ServerKeyExchange(0, (3, 1))
 
@@ -2341,10 +2486,97 @@ class TestServerHelloDone(unittest.TestCase):
 
         self.assertIsNotNone(shd)
 
+    def test_create(self):
+        shd = ServerHelloDone().create()
+
+        self.assertIsInstance(shd, ServerHelloDone)
+
+    def test_parse(self):
+        p = Parser(bytearray(b'\x00\x00\x00'))
+        shd = ServerHelloDone()
+
+        shd = shd.parse(p)
+
+        self.assertIsInstance(shd, ServerHelloDone)
+
+    def test_parse_with_payload(self):
+        p = Parser(bytearray(b'\x00\x00\x01\x00'))
+        shd = ServerHelloDone()
+
+        with self.assertRaises(SyntaxError):
+            shd.parse(p)
+
+    def test_write(self):
+        shd = ServerHelloDone()
+
+        self.assertEqual(bytearray(b'\x0e\x00\x00\x00'),
+                         shd.write())
+
     def test___repr__(self):
         shd = ServerHelloDone()
 
         self.assertEqual("ServerHelloDone()", repr(shd))
+
+
+class TestFinished(unittest.TestCase):
+    def test___init__(self):
+        finished = Finished((3, 3))
+
+        self.assertIsNotNone(finished)
+        self.assertEqual(finished.handshakeType, 20)
+
+    def test_parse_ssl2(self):
+        finished = Finished((2, 0))
+
+        parser = Parser(bytearray(b'\x00\x00\x24' +
+                                  b'\x0f' * 0x24))
+
+        with self.assertRaises(AssertionError):
+            finished.parse(parser)
+
+    def test_parse_ssl3(self):
+        finished = Finished((3, 0))
+
+        parser = Parser(bytearray(b'\x00\x00\x24' +
+                                  b'\x0f' * 0x24))
+
+        finished = finished.parse(parser)
+
+        self.assertEqual(finished.verify_data, bytearray(b'\x0f' * 36))
+
+    def test_write_ssl3(self):
+        finished = Finished((3, 0))
+
+        finished = finished.create(bytearray(b'\x03' * 36))
+
+        self.assertEqual(finished.write(),
+                bytearray(b'\x14' + b'\x00\x00\x24' + b'\x03' * 36))
+
+    def test_parse_tls_1_2(self):
+        finished = Finished((3, 3))
+
+        parser = Parser(bytearray(b'\x00\x00\x0c' + b'\x04' * 12))
+
+        finished = finished.parse(parser)
+
+        self.assertEqual(finished.verify_data, bytearray(b'\x04' * 12))
+
+    def test_parse_tls_1_2_with_invalid_number_of_bytes(self):
+        finished = Finished((3, 3))
+
+        parser = Parser(bytearray(b'\x00\x00\x0d' + b'\x04' * 13))
+
+        with self.assertRaises(SyntaxError):
+            finished.parse(parser)
+
+    def test_write_tls_1_2(self):
+        finished = Finished((3, 3))
+
+        finished = finished.create(bytearray(b'\x04' * 12))
+
+        self.assertEqual(finished.write(),
+                         bytearray(b'\x14' + b'\x00\x00\x0c' + b'\x04' * 12))
+
 
 class TestClientFinished(unittest.TestCase):
     def test___init__(self):
@@ -2452,6 +2684,212 @@ class TestCertificateStatus(unittest.TestCase):
             b'\x01'
             b'\x00\x00\x02'
             b'\xbc\xaa'))
+
+
+class TestCertificate(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.x509_cert = X509().parse(srv_raw_certificate)
+        cls.der_cert = cls.x509_cert.writeBytes()
+
+    def test___init__(self):
+        cert = Certificate(CertificateType.x509)
+
+        self.assertIsNotNone(cert)
+        self.assertIsInstance(cert, Certificate)
+
+    def test_write_empty(self):
+        cert = Certificate(CertificateType.x509)
+        cert.create(X509CertChain())
+
+        self.assertEqual(cert.write(),
+            bytearray(b'\x0b'  # type of message - certificate
+                      b'\x00\x00\x03'  # length of message - 3 bytes
+                      b'\x00\x00\x00'))  # length of the list of certs
+
+    def test_write_none(self):
+        cert = Certificate(CertificateType.x509)
+        cert.create(None)
+
+        self.assertEqual(cert.write(),
+            bytearray(b'\x0b'
+                      b'\x00\x00\x03'  # length of message - 3 bytes
+                      b'\x00\x00\x00'))  # length of the list of certs
+
+    def test_parse_empty(self):
+        cert = Certificate(CertificateType.x509)
+        parser = Parser(
+            bytearray(# b'\x0b'  # type of message - certificate
+                      b'\x00\x00\x03'  # length of message - 3 bytes
+                      b'\x00\x00\x00'))  # length of the list of certs
+        cert = cert.parse(parser)
+
+        self.assertIsNone(cert.certChain)
+
+    def test_parse_empty_with_leftover_byte(self):
+        cert = Certificate(CertificateType.x509)
+        parser = Parser(
+            bytearray(# b'\x0b'  # type of message - certificate
+                      b'\x00\x00\x04'  # length of message - 3 bytes
+                      b'\x00\x00\x00'  # length of the list of certs
+                      b'\x00'))  # extra byte
+        with self.assertRaises(SyntaxError):
+            cert.parse(parser)
+
+    def test_write_with_cert(self):
+        cert = Certificate(CertificateType.x509)
+        cert.create(X509CertChain([self.x509_cert]))
+
+        # just sanity check
+        self.assertEqual(len(self.der_cert), 0x0001fa)
+        # verify that the message is encoded correctly
+        self.assertEqual(cert.write(),
+            bytearray(b'\x0b' +  # type of message - certificate
+                      b'\x00\x02\x00' +  # length of handshake message
+                      b'\x00\x01\xfd' +  # length of array of certificates
+                      b'\x00\x01\xfa' +  # length of the first certificate
+                      self.der_cert))
+
+    def test_parse_with_cert(self):
+        cert = Certificate(CertificateType.x509)
+        parser = Parser(
+            bytearray(#b'\x0b' +  # type of message - certificate
+                      b'\x00\x02\x00' +  # length of handshake message
+                      b'\x00\x01\xfd' +  # length of array of certificates
+                      b'\x00\x01\xfa' +  # length of the first certificate
+                      self.der_cert))
+
+        cert = cert.parse(parser)
+        self.assertIsNotNone(cert.certChain)
+        self.assertIsInstance(cert.certChain, X509CertChain)
+        self.assertEqual(len(cert.certChain.x509List), 1)
+        self.assertEqual(cert.certChain.x509List[0].writeBytes(),
+                self.der_cert)
+
+    def test_parse_with_openpgp_type(self):
+        cert = Certificate(CertificateType.openpgp)
+
+        parser = Parser(
+            bytearray(# b'\x0b'  # type of message - certificate
+                      b'\x00\x00\x03'  # length of message - 3 bytes
+                      b'\x00\x00\x00'))  # length of the list of certs
+
+        with self.assertRaises(AssertionError):
+            cert.parse(parser)
+
+    def test_write_with_openpgp_type(self):
+        cert = Certificate(CertificateType.openpgp)
+
+        with self.assertRaises(AssertionError):
+            cert.write()
+
+
+class TestChangeCipherSpec(unittest.TestCase):
+    def test___init__(self):
+        ccs = ChangeCipherSpec()
+
+        self.assertIsNotNone(ccs)
+        self.assertEqual(ccs.type, 1)
+
+    def test_create(self):
+        ccs = ChangeCipherSpec().create()
+
+        self.assertIsNotNone(ccs)
+        self.assertIsInstance(ccs, ChangeCipherSpec)
+
+        self.assertEqual(ccs.type, 1)
+
+    def test_write(self):
+        ccs = ChangeCipherSpec().create()
+
+        self.assertEqual(bytearray(b'\x01'), ccs.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(b'\x01'))
+
+        ccs = ChangeCipherSpec()
+        ccs = ccs.parse(parser)
+
+        self.assertIsInstance(ccs, ChangeCipherSpec)
+        self.assertEqual(ccs.type, 1)
+
+
+class TestNextProtocol(unittest.TestCase):
+    def test___init__(self):
+        np = NextProtocol()
+
+        self.assertIsNotNone(np)
+        self.assertIsNone(np.next_proto)
+
+    def test_create(self):
+        np = NextProtocol().create(bytearray(b'test'))
+
+        self.assertIsInstance(np, NextProtocol)
+        self.assertEqual(np.next_proto, bytearray(b'test'))
+
+    def test_write(self):
+        np = NextProtocol().create(bytearray(b'test'))
+
+        self.assertEqual(bytearray(b'\x43' +  # type - NPN
+                                   b'\x00\x00\x20' +  # length - 32 bytes
+                                   b'\x04' +  # value length
+                                   b'test' +  # value
+                                   b'\x1a' +  # length of padding
+                                   b'\x00' * 0x1a  # padding
+                                   ),
+                         np.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(#b'\x43' +  # type - NPN
+                                  b'\x00\x00\x20' +  # length - 32 bytes
+                                  b'\x04' +  # value length
+                                  b'test' +  # value
+                                  b'\x1a' +  # length of padding
+                                  b'\x00' * 0x1a  # padding
+                                  ))
+        np = NextProtocol()
+        np = np.parse(parser)
+
+        self.assertIsInstance(np, NextProtocol)
+        self.assertEqual(np.next_proto, bytearray(b'test'))
+
+
+class TestApplicationData(unittest.TestCase):
+    def test___init__(self):
+        app_data = ApplicationData()
+
+        self.assertIsNotNone(app_data)
+        self.assertEqual(bytearray(0), app_data.bytes)
+
+    def test_create(self):
+        app_data = ApplicationData().create(bytearray(b'test'))
+
+        self.assertIsInstance(app_data, ApplicationData)
+        self.assertEqual(bytearray(b'test'), app_data.bytes)
+
+    def test_write(self):
+        app_data = ApplicationData().create(bytearray(b'test'))
+
+        self.assertEqual(bytearray(b'test'), app_data.write())
+
+    def test_parse(self):
+        parser = Parser(bytearray(b'test2'))
+        app_data = ApplicationData()
+
+        app_data = app_data.parse(parser)
+
+        self.assertIsInstance(app_data, ApplicationData)
+        self.assertEqual(app_data.bytes, bytearray(b'test2'))
+
+    def test_splitFirstByte(self):
+        app_data = ApplicationData().create(bytearray(b'test'))
+
+        app_data1 = app_data.splitFirstByte()
+
+        self.assertIsInstance(app_data1, ApplicationData)
+        self.assertEqual(app_data1.bytes, bytearray(b't'))
+        self.assertEqual(app_data.bytes, bytearray(b'est'))
 
 
 if __name__ == '__main__':
