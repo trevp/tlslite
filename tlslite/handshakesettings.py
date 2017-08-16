@@ -178,7 +178,7 @@ class HandshakeSettings(object):
         self.cipherImplementations = list(CIPHER_IMPLEMENTATIONS)
         self.certificateTypes = list(CERTIFICATE_TYPES)
         self.minVersion = (3, 1)
-        self.maxVersion = (3, 3)
+        self.maxVersion = (3, 4)
         self.versions = [TLS_1_3_DRAFT, (3, 3), (3, 2), (3, 1)]
         self.useExperimentalTackExtension = False
         self.sendFallbackSCSV = False

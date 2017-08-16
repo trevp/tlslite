@@ -30,7 +30,8 @@ from .mathtls import *
 from .handshakesettings import HandshakeSettings
 from .utils.tackwrapper import *
 from .keyexchange import KeyExchange, RSAKeyExchange, DHE_RSAKeyExchange, \
-        ECDHE_RSAKeyExchange, SRPKeyExchange, ADHKeyExchange, AECDHKeyExchange
+        ECDHE_RSAKeyExchange, SRPKeyExchange, ADHKeyExchange, \
+        AECDHKeyExchange, FFDHKeyExchange, ECDHKeyExchange
 from .handshakehelpers import HandshakeHelpers
 
 class TLSConnection(TLSRecordLayer):
@@ -72,6 +73,7 @@ class TLSConnection(TLSRecordLayer):
         self.extendedMasterSecret = False
         self._clientRandom = bytearray(0)
         self._serverRandom = bytearray(0)
+        self.next_proto = None
 
     def keyingMaterialExporter(self, label, length=20):
         """Return keying material as described in RFC 5705
@@ -462,11 +464,13 @@ class TLSConnection(TLSRecordLayer):
         if password and self.fault == Fault.badPassword:
             password += bytearray(b"GARBAGE")
 
-        #Tentatively set the version to the client's minimum version.
-        #We'll use this for the ClientHello, and if an error occurs
-        #parsing the Server Hello, we'll use this version for the response
-        self.version = settings.maxVersion
-        
+        # Tentatively set the client's record version.
+        # We'll use this for the ClientHello, and if an error occurs
+        # parsing the Server Hello, we'll use this version for the response
+        # in TLS 1.3 it always needs to be set to TLS 1.0
+        self.version = \
+            (3, 1) if settings.maxVersion > (3, 3) else settings.maxVersion
+
         # OK Start sending messages!
         # *****************************
 
@@ -485,7 +489,24 @@ class TLSConnection(TLSRecordLayer):
             else: break
         serverHello = result
         cipherSuite = serverHello.cipher_suite
-        
+
+        # if we're doing tls1.3, use the new code as the negotiation is much
+        # different
+        if serverHello.server_version > (3, 3):
+            for result in self._clientTLS13Handshake(settings, clientHello,
+                                                     serverHello):
+                if result in (0, 1):
+                    yield result
+                else:
+                    break
+            if result == "finished":
+                self._handshakeDone(resumed=False)
+                self._serverRandom = serverHello.random
+                self._clientRandom = clientHello.random
+                return
+            else:
+                raise Exception("unexpected return")
+
         # Choose a matching Next Protocol from server list against ours
         # (string or None)
         nextProto = self._clientSelectNextProto(nextProtos, serverHello)
@@ -603,6 +624,7 @@ class TLSConnection(TLSRecordLayer):
         if srpParams:
             cipherSuites += CipherSuite.getSrpAllSuites(settings)
         elif certParams:
+            cipherSuites += CipherSuite.getTLS13Suites(settings)
             cipherSuites += CipherSuite.getEcdheCertSuites(settings)
             cipherSuites += CipherSuite.getDheCertSuites(settings)
             cipherSuites += CipherSuite.getCertSuites(settings)
@@ -655,9 +677,31 @@ class TLSConnection(TLSRecordLayer):
         # if we know any protocols for ALPN, advertise them
         if alpn:
             extensions.append(ALPNExtension().create(alpn))
+
+        # when TLS 1.3 advertised, add key shares
+        if next((i for i in settings.versions if i > (3, 3)), None):
+            extensions.append(SupportedVersionsExtension().
+                              create(settings.versions))
+
+            shares = []
+            for group_name in settings.keyShares:
+                group_id = getattr(GroupName, group_name)
+                if group_id in GroupName.allFF:
+                    kex = FFDHKeyExchange(group_id, (3, 4))
+                else:
+                    kex = ECDHKeyExchange(group_id, (3, 4))
+                private = kex.get_random_private_key()
+                share = kex.calc_public_value(private)
+
+                shares.append(KeyShareEntry().create(group_id, share, private))
+            if shares:
+                extensions.append(ClientKeyShareExtension().create(shares))
+
         # don't send empty list of extensions or extensions in SSLv3
         if not extensions or settings.maxVersion == (3, 0):
             extensions = None
+
+        sent_version = min(settings.maxVersion, (3, 3))
 
         #Either send ClientHello (with a resumable session)...
         if session and session.sessionID:
@@ -668,7 +712,7 @@ class TLSConnection(TLSRecordLayer):
                                  "with parameters")
             else:
                 clientHello = ClientHello()
-                clientHello.create(settings.maxVersion, getRandomBytes(32),
+                clientHello.create(sent_version, getRandomBytes(32),
                                    session.sessionID, wireCipherSuites,
                                    certificateTypes, 
                                    session.srpUsername,
@@ -679,7 +723,7 @@ class TLSConnection(TLSRecordLayer):
         #Or send ClientHello (without)
         else:
             clientHello = ClientHello()
-            clientHello.create(settings.maxVersion, getRandomBytes(32),
+            clientHello.create(sent_version, getRandomBytes(32),
                                bytearray(0), wireCipherSuites,
                                certificateTypes, 
                                srpUsername,
@@ -698,6 +742,8 @@ class TLSConnection(TLSRecordLayer):
 
 
     def _clientGetServerHello(self, settings, clientHello):
+        # TODO: add Handshake Retry Request handling
+        # TODO: reset handshake_hashes if we do get HRR
         for result in self._getMsg(ContentType.handshake,
                                   HandshakeType.server_hello):
             if result in (0,1): yield result
@@ -707,6 +753,10 @@ class TLSConnection(TLSRecordLayer):
         #Get the server version.  Do this before anything else, so any
         #error alerts will use the server's version
         self.version = serverHello.server_version
+        # TODO remove when TLS 1.3 is final (server_version will be set to
+        # draft version in draft protocol implementations)
+        if self.version > (3, 4):
+            self.version = (3, 4)
 
         #Check ServerHello
         if serverHello.server_version < settings.minVersion:
@@ -714,7 +764,8 @@ class TLSConnection(TLSRecordLayer):
                 AlertDescription.protocol_version,
                 "Too old version: %s" % str(serverHello.server_version)):
                 yield result
-        if serverHello.server_version > settings.maxVersion:
+        if serverHello.server_version > settings.maxVersion and \
+                serverHello.server_version not in settings.versions:
             for result in self._sendError(\
                 AlertDescription.protocol_version,
                 "Too new version: %s" % str(serverHello.server_version)):
@@ -733,7 +784,7 @@ class TLSConnection(TLSRecordLayer):
                 AlertDescription.illegal_parameter,
                 "Server responded with incorrect certificate type"):
                 yield result
-        if serverHello.compression_method != 0:
+        if serverVer <= (3, 3) and serverHello.compression_method != 0:
             for result in self._sendError(\
                 AlertDescription.illegal_parameter,
                 "Server responded with incorrect compression method"):
@@ -781,6 +832,196 @@ class TLSConnection(TLSRecordLayer):
                         "Server selected ALPN protocol we did not advertise"):
                     yield result
         yield serverHello
+
+    def _clientTLS13Handshake(self, settings, clientHello, serverHello):
+        """Perform TLS 1.3 handshake as a client."""
+        # we have client and server hello in TLS 1.3 so we have the necessary
+        # key shares to derive the handshake receive key
+        srKex = serverHello.getExtension(ExtensionType.key_share).server_share
+        cl_key_share_ex = clientHello.getExtension(ExtensionType.key_share)
+        cl_kex = next((i for i in cl_key_share_ex.client_shares
+                       if i.group == srKex.group), None)
+        if cl_kex is None:
+            raise TLSIllegalParameterException("Server selected not advertised"
+                                               " group.")
+        if srKex.group in GroupName.allFF:
+            kex = FFDHKeyExchange(srKex.group, self.version)
+        else:
+            kex = ECDHKeyExchange(srKex.group, self.version)
+
+        Z = kex.calc_shared_key(cl_kex.private, srKex.key_exchange)
+
+        prfName = 'sha384' if serverHello.cipher_suite \
+                   in CipherSuite.sha384PrfSuites \
+                   else 'sha256'
+        prf_size = getattr(hashlib, prfName)().digest_size
+
+        secret = bytearray(prf_size)
+        psk = bytearray(prf_size)
+        # Early Secret
+        secret = secureHMAC(secret, psk, prfName)
+
+        # Handshake Secret
+        secret = derive_secret(secret, bytearray(b'derived'),
+                               None, prfName)
+        secret = secureHMAC(secret, Z, prfName)
+
+        sr_handshake_traffic_secret = derive_secret(secret,
+                                                    bytearray(b's hs traffic'),
+                                                    self._handshake_hash,
+                                                    prfName)
+        cl_handshake_traffic_secret = derive_secret(secret,
+                                                    bytearray(b'c hs traffic'),
+                                                    self._handshake_hash,
+                                                    prfName)
+
+        # prepare for reading encrypted messages
+        self._recordLayer.calcTLS1_3PendingState(
+            serverHello.cipher_suite,
+            cl_handshake_traffic_secret,
+            sr_handshake_traffic_secret,
+            settings.cipherImplementations)
+
+        self._changeReadState()
+
+        for result in self._getMsg(ContentType.handshake,
+                                   HandshakeType.encrypted_extensions):
+            if result in (0, 1):
+                yield result
+            else:
+                break
+        encrypted_extensions = result
+        assert isinstance(encrypted_extensions, EncryptedExtensions)
+
+        for result in self._getMsg(ContentType.handshake,
+                                   HandshakeType.certificate,
+                                   CertificateType.x509):
+            if result in (0, 1):
+                yield result
+            else:
+                break
+
+        certificate = result
+        assert isinstance(certificate, Certificate)
+
+        srv_cert_verify_hh = self._handshake_hash.copy()
+
+        for result in self._getMsg(ContentType.handshake,
+                                   HandshakeType.certificate_verify):
+            if result in (0, 1):
+                yield result
+            else:
+                break
+        certificate_verify = result
+        assert isinstance(certificate_verify, CertificateVerify)
+
+        signature_scheme = certificate_verify.signatureAlgorithm
+
+        scheme = SignatureScheme.toRepr(signature_scheme)
+        # keyType = SignatureScheme.getKeyType(scheme)
+        padType = SignatureScheme.getPadding(scheme)
+        hashName = SignatureScheme.getHash(scheme)
+        saltLen = getattr(hashlib, hashName)().digest_size
+
+        signature_context = bytearray(b'\x20' * 64 +
+                                      b'TLS 1.3, server CertificateVerify' +
+                                      b'\x00') + \
+                            srv_cert_verify_hh.digest(prfName)
+
+        signature_context = secureHash(signature_context, hashName)
+
+        publicKey = certificate.certChain.getEndEntityPublicKey()
+
+        if not publicKey.verify(certificate_verify.signature,
+                                signature_context,
+                                padType,
+                                hashName,
+                                saltLen):
+            raise TLSDecryptionFailed("server Certificate Verify signature "
+                                      "verification failed")
+
+        transcript_hash = self._handshake_hash.digest(prfName)
+
+        for result in self._getMsg(ContentType.handshake,
+                                   HandshakeType.finished,
+                                   prf_size):
+            if result in (0, 1):
+                yield result
+            else:
+                break
+        finished = result
+
+        server_finish_hs = self._handshake_hash.copy()
+
+        assert isinstance(finished, Finished)
+
+        finished_key = HKDF_expand_label(sr_handshake_traffic_secret,
+                                         b"finished", b'', prf_size, prfName)
+        verify_data = secureHMAC(finished_key, transcript_hash, prfName)
+
+        if finished.verify_data != verify_data:
+            raise TLSDecryptionFailed("Finished value is not valid")
+
+        # now send client set of messages
+        self._changeWriteState()
+
+        cl_finished_key = HKDF_expand_label(cl_handshake_traffic_secret,
+                                            b"finished", b'',
+                                            prf_size, prfName)
+        cl_verify_data = secureHMAC(
+            cl_finished_key,
+            self._handshake_hash.digest(prfName),
+            prfName)
+
+        cl_finished = Finished(self.version, prf_size)
+        cl_finished.create(cl_verify_data)
+
+        for result in self._sendMsg(cl_finished):
+            yield result
+
+        # Master secret
+        secret = derive_secret(secret, bytearray(b'derived'), None, prfName)
+        secret = secureHMAC(secret, bytearray(prf_size), prfName)
+
+        cl_app_traffic = derive_secret(secret, bytearray(b'c ap traffic'),
+                                       server_finish_hs, prfName)
+        sr_app_traffic = derive_secret(secret, bytearray(b's ap traffic'),
+                                       server_finish_hs, prfName)
+
+        self._recordLayer.calcTLS1_3PendingState(
+            serverHello.cipher_suite,
+            cl_app_traffic,
+            sr_app_traffic,
+            settings.cipherImplementations)
+        self._changeReadState()
+        self._changeWriteState()
+
+        self.session = Session()
+        self.extendedMasterSecret = True
+
+        serverName = None
+        if clientHello.server_name:
+            serverName = clientHello.server_name.decode("utf-8")
+
+        appProto = None
+        alpnExt = encrypted_extensions.getExtension(ExtensionType.alpn)
+        if alpnExt:
+            appProto = alpnExt.protocol_names[0]
+
+        self.session.create(secret,
+                            bytearray(b''),  # no session_id in TLS 1.3
+                            serverHello.cipher_suite,
+                            bytearray(b''),  # no SRP
+                            None,  # no client cert chain
+                            certificate.certChain,
+                            None,  # no TACK
+                            False,  # no TACK in hello
+                            serverName,
+                            encryptThenMAC=False,  # all ciphers are AEAD
+                            extendedMasterSecret=True,  # all TLS1.3 are EMS
+                            appProto=appProto)
+
+        yield "finished"
 
     def _clientSelectNextProto(self, nextProtos, serverHello):
         # nextProtos is None or non-empty list of strings
@@ -1254,7 +1495,13 @@ class TLSConnection(TLSRecordLayer):
             settings = HandshakeSettings()
         settings = settings.validate()
         self.sock.padding_cb = settings.padding_cb
-        
+
+        # Do not support TLS 1.3 on server side
+        if settings.maxVersion > (3, 3):
+            settings.maxVersion = (3, 3)
+        if (0x7f, 21) in settings.versions:
+            settings.versions.remove((0x7f, 21))
+
         # OK Start exchanging messages
         # ******************************
         

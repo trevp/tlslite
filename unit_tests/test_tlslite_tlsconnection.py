@@ -218,7 +218,10 @@ class TestTLSConnection(unittest.TestCase):
         # create hostname extension
         with self.assertRaises(TLSRemoteAlert):
             # use serverName with 252 bytes
-            conn.handshakeClientCert(
+            settings = HandshakeSettings()
+            settings.maxVersion = (3, 3)
+            settings.keyShares = []
+            conn.handshakeClientCert(settings=settings,
                 serverName='aaaaaaaaaabbbbbbbbbbccccccccccdddddddddd.' +
                            'eeeeeeeeeeffffffffffgggggggggghhhhhhhhhh.' +
                            'iiiiiiiiiijjjjjjjjjjkkkkkkkkkkllllllllll.' +
