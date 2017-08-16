@@ -28,6 +28,7 @@ from .errors import *
 from .messages import *
 from .mathtls import *
 from .handshakesettings import HandshakeSettings
+from .handshakehashes import HandshakeHashes
 from .utils.tackwrapper import *
 from .keyexchange import KeyExchange, RSAKeyExchange, DHE_RSAKeyExchange, \
         ECDHE_RSAKeyExchange, SRPKeyExchange, ADHKeyExchange, \
@@ -686,14 +687,9 @@ class TLSConnection(TLSRecordLayer):
             shares = []
             for group_name in settings.keyShares:
                 group_id = getattr(GroupName, group_name)
-                if group_id in GroupName.allFF:
-                    kex = FFDHKeyExchange(group_id, (3, 4))
-                else:
-                    kex = ECDHKeyExchange(group_id, (3, 4))
-                private = kex.get_random_private_key()
-                share = kex.calc_public_value(private)
+                key_share = self._genKeyShareEntry(group_id, (3, 4))
 
-                shares.append(KeyShareEntry().create(group_id, share, private))
+                shares.append(key_share)
             if shares:
                 extensions.append(ClientKeyShareExtension().create(shares))
 
@@ -740,14 +736,99 @@ class TLSConnection(TLSRecordLayer):
             yield result
         yield clientHello
 
-
     def _clientGetServerHello(self, settings, clientHello):
-        # TODO: add Handshake Retry Request handling
-        # TODO: reset handshake_hashes if we do get HRR
+        client_hello_hash = self._handshake_hash.copy()
         for result in self._getMsg(ContentType.handshake,
-                                  HandshakeType.server_hello):
+                                   (HandshakeType.server_hello,
+                                    HandshakeType.hello_retry_request)):
             if result in (0,1): yield result
             else: break
+
+        hello_retry = None
+        if isinstance(result, HelloRetryRequest):
+            hello_retry = result
+
+            # create synthetic handshake hash
+            prf_name, prf_size = self._getPRFParams(hello_retry.cipher_suite)
+
+            self._handshake_hash = HandshakeHashes()
+            writer = Writer()
+            writer.add(HandshakeType.message_hash, 1)
+            writer.addVarSeq(client_hello_hash.digest(prf_name), 1, 3)
+            self._handshake_hash.update(writer.bytes)
+            self._handshake_hash.update(hello_retry.write())
+
+            # check if all extensions in the HRR were present in client hello
+            ch_ext_types = set(i.extType for i in clientHello.extensions)
+            ch_ext_types.add(ExtensionType.cookie)
+
+            bad_ext = next((i for i in hello_retry.extensions
+                            if i.extType not in ch_ext_types), None)
+            if bad_ext:
+                bad_ext = ExtensionType.toStr(bad_ext)
+                for result in self._sendError(AlertDescription
+                                              .unsupported_extension,
+                                              ("Unexpected extension in HRR: "
+                                               "{0}").format(bad_ext)):
+                    yield result
+
+            # handle cookie extension
+            cookie = hello_retry.getExtension(ExtensionType.cookie)
+            if cookie:
+                clientHello.addExtension(cookie)
+
+            # handle key share extension
+            sr_key_share_ext = hello_retry.getExtension(ExtensionType
+                                                        .key_share)
+            if sr_key_share_ext:
+                group_id = sr_key_share_ext.selected_group
+                # check if group selected by server is valid
+                groups_ext = clientHello.getExtension(ExtensionType
+                                                      .supported_groups)
+                if group_id not in groups_ext.groups:
+                    for result in self._sendError(AlertDescription
+                                                  .illegal_parameter,
+                                                  "Server selected group we "
+                                                  "did not advertise"):
+                        yield result
+
+                cl_key_share_ext = clientHello.getExtension(ExtensionType
+                                                            .key_share)
+                # check if the server didn't ask for a group we already sent
+                if next((entry for entry in cl_key_share_ext.client_shares
+                         if entry.group == group_id), None):
+                    for result in self._sendError(AlertDescription
+                                                  .illegal_parameter,
+                                                  "Server selected group we "
+                                                  "did sent the key share "
+                                                  "for"):
+                        yield result
+
+                key_share = self._genKeyShareEntry(group_id, (3, 4))
+
+                # old key shares need to be removed
+                cl_key_share_ext.client_shares = [key_share]
+
+            if not cookie and not sr_key_share_ext:
+                # HRR did not result in change to Client Hello
+                for result in self._sendError(AlertDescription.
+                                              illegal_parameter,
+                                              "Received HRR did not cause "
+                                              "update to Client Hello"):
+                    yield result
+
+            # resend the client hello with performed changes
+            for result in self._sendMsg(clientHello):
+                yield result
+
+            # retry getting server hello
+            for result in self._getMsg(ContentType.handshake,
+                                       HandshakeType.server_hello):
+                if result in (0, 1):
+                    yield result
+                else:
+                    break
+
         serverHello = result
 
         #Get the server version.  Do this before anything else, so any
@@ -759,6 +840,12 @@ class TLSConnection(TLSRecordLayer):
             self.version = (3, 4)
 
         #Check ServerHello
+        if hello_retry and \
+                hello_retry.cipher_suite != serverHello.cipher_suite:
+            for result in self._sendError(AlertDescription.illegal_parameter,
+                                          "server selected different cipher "
+                                          "in HRR and Server Hello"):
+                yield result
         if serverHello.server_version < settings.minVersion:
             for result in self._sendError(\
                 AlertDescription.protocol_version,
@@ -833,6 +920,29 @@ class TLSConnection(TLSRecordLayer):
                     yield result
         yield serverHello
 
+    @staticmethod
+    def _getKEX(group, version):
+        """Get object for performing key exchange."""
+        if group in GroupName.allFF:
+            return FFDHKeyExchange(group, version)
+        return ECDHKeyExchange(group, version)
+
+    @classmethod
+    def _genKeyShareEntry(cls, group, version):
+        """Generate KeyShareEntry object from randomly selected private value.
+        """
+        kex = cls._getKEX(group, version)
+        private = kex.get_random_private_key()
+        share = kex.calc_public_value(private)
+        return KeyShareEntry().create(group, share, private)
+
+    @staticmethod
+    def _getPRFParams(cipher_suite):
+        """Return name of hash used for PRF and the hash output size."""
+        if cipher_suite in CipherSuite.sha384PrfSuites:
+            return 'sha384', 48
+        return 'sha256', 32
+
     def _clientTLS13Handshake(self, settings, clientHello, serverHello):
         """Perform TLS 1.3 handshake as a client."""
         # we have client and server hello in TLS 1.3 so we have the necessary
@@ -844,17 +954,11 @@ class TLSConnection(TLSRecordLayer):
         if cl_kex is None:
             raise TLSIllegalParameterException("Server selected not advertised"
                                                " group.")
-        if srKex.group in GroupName.allFF:
-            kex = FFDHKeyExchange(srKex.group, self.version)
-        else:
-            kex = ECDHKeyExchange(srKex.group, self.version)
+        kex = self._getKEX(sr_kex.group, self.version)
 
         Z = kex.calc_shared_key(cl_kex.private, srKex.key_exchange)
 
-        prfName = 'sha384' if serverHello.cipher_suite \
-                   in CipherSuite.sha384PrfSuites \
-                   else 'sha256'
-        prf_size = getattr(hashlib, prfName)().digest_size
+        prfName, prf_size = self._getPRFParams(serverHello.cipher_suite)
 
         secret = bytearray(prf_size)
         psk = bytearray(prf_size)
