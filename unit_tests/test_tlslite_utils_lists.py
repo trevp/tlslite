@@ -9,7 +9,7 @@ try:
 except ImportError:
     import unittest
 
-from tlslite.utils.lists import getFirstMatching
+from tlslite.utils.lists import getFirstMatching, to_str_delimiter
 
 class TestGetFirstMatching(unittest.TestCase):
     def test_empty_list(self):
@@ -33,3 +33,21 @@ class TestGetFirstMatching(unittest.TestCase):
     def test_no_matches(self):
         with self.assertRaises(AssertionError):
             getFirstMatching([1, 2, 3], None)
+
+
+class TestToStrDelimiter(unittest.TestCase):
+    def test_empty_list(self):
+        self.assertEqual("", to_str_delimiter([]))
+
+    def test_one_element(self):
+        self.assertEqual("12", to_str_delimiter([12]))
+
+    def test_two_elements(self):
+        self.assertEqual("12 or 13", to_str_delimiter([12, 13]))
+
+    def test_three_elements(self):
+        self.assertEqual("12, 13 or 14", to_str_delimiter([12, 13, 14]))
+
+    def test_with_strings(self):
+        self.assertEqual("abc, def or ghi",
+                         to_str_delimiter(['abc', 'def', 'ghi']))
