@@ -9,6 +9,7 @@ try:
 except ImportError:
     import unittest
 
+from tlslite.handshakesettings import HandshakeSettings
 from tlslite.constants import CipherSuite, HashAlgorithm, SignatureAlgorithm, \
         ContentType, AlertDescription, AlertLevel, HandshakeType, GroupName, \
         TLSEnum, SignatureScheme
@@ -113,12 +114,13 @@ class TestCipherSuite(unittest.TestCase):
 
         self.assertEqual(filtered, [])
 
-    def test_filterForVersion_with_TLS_1_2_ciphers(self):
+    def test_filterForVersion_with_TLS_1_1(self):
         suites = [CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
                   CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
                   CipherSuite.TLS_RSA_WITH_RC4_128_MD5,
                   CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA256,
-                  CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA256]
+                  CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA256,
+                  CipherSuite.TLS_AES_128_GCM_SHA256]
 
         filtered = CipherSuite.filterForVersion(suites, (3, 2), (3, 2))
 
@@ -126,6 +128,48 @@ class TestCipherSuite(unittest.TestCase):
                          [CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
                           CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
                           CipherSuite.TLS_RSA_WITH_RC4_128_MD5])
+
+    def test_filterForVersion_with_TLS_1_2(self):
+        suites = [CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+                  CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                  CipherSuite.TLS_RSA_WITH_RC4_128_MD5,
+                  CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA256,
+                  CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA256,
+                  CipherSuite.TLS_AES_128_GCM_SHA256]
+
+        filtered = CipherSuite.filterForVersion(suites, (3, 3), (3, 3))
+
+        self.assertEqual(filtered,
+                         [CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+                          CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+                          CipherSuite.TLS_RSA_WITH_RC4_128_MD5,
+                          CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA256,
+                          CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA256])
+
+    def test_filterForVersion_with_TLS_1_3(self):
+        suites = [CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+                  CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA256,
+                  CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
+                  CipherSuite.TLS_AES_128_GCM_SHA256]
+
+        filtered = CipherSuite.filterForVersion(suites, (3, 4), (3, 4))
+
+        self.assertEqual(filtered,
+                         [CipherSuite.TLS_AES_128_GCM_SHA256])
+
+    def test_getTLS13Suites(self):
+        hs = HandshakeSettings()
+        hs.maxVersion = (3, 4)
+        self.assertEqual(CipherSuite.getTLS13Suites(hs),
+                         [CipherSuite.TLS_AES_256_GCM_SHA384,
+                          CipherSuite.TLS_AES_128_GCM_SHA256,
+                          CipherSuite.TLS_CHACHA20_POLY1305_SHA256])
+
+    def test_getTLS13Suites_with_TLS1_2(self):
+        hs = HandshakeSettings()
+        hs.maxVersion = (3, 4)
+        self.assertEqual(CipherSuite.getTLS13Suites(hs, (3, 3)),
+                         [])
 
 
 class TestSignatureScheme(unittest.TestCase):

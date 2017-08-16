@@ -553,6 +553,14 @@ class CipherSuite:
     TLS_EMPTY_RENEGOTIATION_INFO_SCSV = 0x00FF
     ietfNames[0x00FF] = 'TLS_EMPTY_RENEGOTIATION_INFO_SCSV'
 
+    # TLS 1.3 ciphersuites
+    TLS_AES_128_GCM_SHA256 = 0x1301
+    ietfNames[0x1301] = 'TLS_AES_128_GCM_SHA256'
+    TLS_AES_256_GCM_SHA384 = 0x1302
+    ietfNames[0x1302] = 'TLS_AES_256_GCM_SHA384'
+    TLS_CHACHA20_POLY1305_SHA256 = 0x1303
+    ietfNames[0x1303] = 'TLS_CHACHA20_POLY1305_SHA256'
+
     # RFC 7507 - Fallback Signaling Cipher Suite Value for Preventing Protocol
     # Downgrade Attacks
     TLS_FALLBACK_SCSV = 0x5600
@@ -752,6 +760,7 @@ class CipherSuite:
     aes128GcmSuites.append(TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256)  # unsupp
     aes128GcmSuites.append(TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256)  # unsupp
     aes128GcmSuites.append(TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256)
+    aes128GcmSuites.append(TLS_AES_128_GCM_SHA256)
 
     #: AES-256-GCM ciphers (implicit SHA384, see sha384PrfSuites)
     aes256GcmSuites = []
@@ -762,6 +771,7 @@ class CipherSuite:
     aes256GcmSuites.append(TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384)  # unsupp
     aes256GcmSuites.append(TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384)  # unsupported
     aes256GcmSuites.append(TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384)
+    aes256GcmSuites.append(TLS_AES_256_GCM_SHA384)
 
     #: CHACHA20 cipher, 00'th IETF draft (implicit POLY1305 authenticator)
     chacha20draft00Suites = []
@@ -772,6 +782,7 @@ class CipherSuite:
     chacha20Suites = []
     chacha20Suites.append(TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256)
     chacha20Suites.append(TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256)
+    chacha20Suites.append(TLS_CHACHA20_POLY1305_SHA256)
 
     #: RC4 128 stream cipher
     rc4Suites = []
@@ -895,14 +906,29 @@ class CipherSuite:
     tls12Suites.extend(sha384Suites)
     tls12Suites.extend(aeadSuites)
 
+    #: TLS1.3 specific ciphersuites
+    tls13Suites = []
+
+    # TLS 1.3 suites are not a superset of TLS 1.2 suites, but they
+    # use the same mechanism (AEAD), so we need to remove TLS 1.3 items
+    # from the TLS 1.2 list
+    tls13Suites.append(TLS_AES_256_GCM_SHA384)
+    tls12Suites.remove(TLS_AES_256_GCM_SHA384)
+    tls13Suites.append(TLS_AES_128_GCM_SHA256)
+    tls12Suites.remove(TLS_AES_128_GCM_SHA256)
+    tls13Suites.append(TLS_CHACHA20_POLY1305_SHA256)
+    tls12Suites.remove(TLS_CHACHA20_POLY1305_SHA256)
+
     @staticmethod
     def filterForVersion(suites, minVersion, maxVersion):
         """Return a copy of suites without ciphers incompatible with version"""
         includeSuites = set([])
         if (3, 0) <= minVersion <= (3, 3):
             includeSuites.update(CipherSuite.ssl3Suites)
-        if maxVersion == (3, 3):
+        if maxVersion >= (3, 3) and minVersion <= (3, 3):
             includeSuites.update(CipherSuite.tls12Suites)
+        if maxVersion > (3, 3):
+            includeSuites.update(CipherSuite.tls13Suites)
         return [s for s in suites if s in includeSuites]
 
     @staticmethod
@@ -945,6 +971,8 @@ class CipherSuite:
             cipherSuites += CipherSuite.nullSuites
 
         keyExchangeSuites = []
+        if version >= (3, 4):
+            keyExchangeSuites += CipherSuite.tls13Suites
         if "rsa" in keyExchangeNames:
             keyExchangeSuites += CipherSuite.certSuites
         if "dhe_rsa" in keyExchangeNames:
@@ -962,6 +990,11 @@ class CipherSuite:
 
         return [s for s in suites if s in macSuites and
                 s in cipherSuites and s in keyExchangeSuites]
+
+    @classmethod
+    def getTLS13Suites(cls, settings, version=None):
+        """Return cipher suites that are TLS 1.3 specific."""
+        return cls._filterSuites(CipherSuite.tls13Suites, settings, version)
 
     #: SRP key exchange, no certificate base authentication
     srpSuites = []
