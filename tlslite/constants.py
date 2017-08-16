@@ -107,6 +107,7 @@ class HandshakeType(TLSEnum):
     finished = 20
     certificate_status = 22
     next_protocol = 67
+    message_hash = 254  # TLS 1.3
 
 
 class ContentType(TLSEnum):
