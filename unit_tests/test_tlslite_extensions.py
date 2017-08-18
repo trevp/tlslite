@@ -332,6 +332,17 @@ class TestTLSExtension(unittest.TestCase):
 
         self.assertEqual(1, ext.cert_type)
 
+    def test_parse_with_encrypted_extensions_type_extension(self):
+        ext = TLSExtension(encExt=True)
+        parser = Parser(bytearray(b'\x00\x0a'
+                                  b'\x00\x04'
+                                  b'\x00\x02'
+                                  b'\x00\x13'))
+        ext = ext.parse(parser)
+
+        self.assertIsInstance(ext, SupportedGroupsExtension)
+        self.assertEqual(ext.groups, [GroupName.secp192r1])
+
     def test_parse_with_client_cert_type_extension(self):
         ext = TLSExtension()
 
@@ -352,7 +363,8 @@ class TestTLSExtension(unittest.TestCase):
         ext = ext.create(0, bytearray(b'\x00\x00'))
 
         self.assertEqual("TLSExtension(extType=0, "\
-                "extData=bytearray(b'\\x00\\x00'), serverType=False)",
+                "extData=bytearray(b'\\x00\\x00'), serverType=False, "
+                "encExtType=False)",
                 repr(ext))
 
 

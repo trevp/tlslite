@@ -57,6 +57,10 @@ class TLSExtension(object):
         specific parser, otherwise it used universal or ClientHello specific
         parser
 
+    :vartype encExtType: boolean
+    :ivar encExtType: indicates that the extension should be the type from
+        Encrypted Extensions
+
     :vartype _universalExtensions: dict
     :cvar _universalExtensions: dictionary with concrete implementations of
         specific TLS extensions where key is the numeric value of the extension
@@ -72,8 +76,9 @@ class TLSExtension(object):
     # actual definition at the end of file, after definitions of all classes
     _universalExtensions = {}
     _serverExtensions = {}
+    #_encryptedExtensions = {}
 
-    def __init__(self, server=False, extType=None):
+    def __init__(self, server=False, extType=None, encExt=False):
         """
         Creates a generic TLS extension.
 
@@ -86,10 +91,13 @@ class TLSExtension(object):
             for parsing
         :param int extType: type of extension encoded as an integer, to be used
             by subclasses
+        :param bool encExt: whether to select the EncryptedExtensions type
+            for parsing
         """
         self.extType = extType
         self._extData = bytearray(0)
         self.serverType = server
+        self.encExtType = encExt
 
     @property
     def extData(self):
@@ -193,12 +201,17 @@ class TLSExtension(object):
         extType = p.get(2)
         extLength = p.get(2)
 
-        # first check if we shouldn't use server side parser
+        # Check if we shouldn't use Encrypted Extensions parser
+        #if self.encExtType and extType in self._encryptedExtensions:
+        #    return self._parseExt(p, extType, extLength,
+        #                          self._encryptedExtensions)
+
+        # then check if we shouldn't use server side parser
         if self.serverType and extType in self._serverExtensions:
             return self._parseExt(p, extType, extLength,
                                   self._serverExtensions)
 
-        # then fallback to universal/ClientHello-specific parsers
+        # fallback to universal/ClientHello-specific parsers
         if extType in self._universalExtensions:
             return self._parseExt(p, extType, extLength,
                                   self._universalExtensions)
@@ -233,8 +246,10 @@ class TLSExtension(object):
         :rtype: str
         """
         return "TLSExtension(extType={0!r}, extData={1!r},"\
-                " serverType={2!r})".format(self.extType, self.extData,
-                                            self.serverType)
+                " serverType={2!r}, encExtType={3!r})".format(self.extType,
+                                                              self.extData,
+                                                              self.serverType,
+                                                              self.encExtType)
 
 
 class ListExtension(TLSExtension):
