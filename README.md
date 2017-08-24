@@ -1,5 +1,5 @@
 ```
-tlslite-ng version 0.7.0                                           2017-07-31
+tlslite-ng version 0.8.0-alpha1                                    2017-08-24
 Hubert Kario <hkario at redhat.com>
 https://github.com/tomato42/tlslite-ng/
 ```
@@ -585,6 +585,10 @@ encrypt-then-MAC mode for CBC ciphers.
 
 12 History
 ===========
+
+0.8.0 - wip
+* fix minor bugs in message objects, extend test coverage for tlslite.messages
+* repr() for SignatureAlgorithmsExtension and Certificate
 
 0.7.0 - 2017-07-31
 
