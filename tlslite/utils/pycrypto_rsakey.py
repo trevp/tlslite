@@ -3,6 +3,9 @@
 
 """PyCrypto RSA implementation."""
 
+from __future__ import print_function
+import sys
+
 from .cryptomath import *
 
 from .rsakey import *
@@ -29,10 +32,31 @@ if pycryptoLoaded:
             return self.rsa.has_private()
 
         def _rawPrivateKeyOp(self, m):
-            return self.rsa.decrypt((compatLong(m),))
+            try:
+                return self.rsa.decrypt((compatLong(m),))
+            except ValueError as e:
+                print("rsa: {0!r}".format(self.rsa), file=sys.stderr)
+                values = []
+                for name in ["n", "e", "d", "p", "q", "dP", "dQ", "qInv"]:
+                    values.append("{0}: {1}".format(name,
+                                                    getattr(self, name, None)))
+                print(", ".join(values), file=sys.stderr)
+                print("m: {0}".format(m), file=sys.stderr)
+                raise
+
 
         def _rawPublicKeyOp(self, c):
-            return self.rsa.encrypt(compatLong(c), None)[0]
+            try:
+                return self.rsa.encrypt(compatLong(c), None)[0]
+            except ValueError as e:
+                print("rsa: {0!r}".format(self.rsa), file=sys.stderr)
+                values = []
+                for name in ["n", "e", "d", "p", "q", "dP", "dQ", "qInv"]:
+                    values.append("{0}: {1}".format(name,
+                                                    getattr(self, name, None)))
+                print(", ".join(values), file=sys.stderr)
+                print("c: {0}".format(c), file=sys.stderr)
+                raise
 
         def generate(bits):
             key = PyCrypto_RSAKey()
