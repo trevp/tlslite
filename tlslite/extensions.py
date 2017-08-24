@@ -57,6 +57,10 @@ class TLSExtension(object):
         specific parser, otherwise it used universal or ClientHello specific
         parser
 
+    :vartype encExtType: boolean
+    :ivar encExtType: indicates that the extension should be the type from
+        Encrypted Extensions
+
     :vartype _universalExtensions: dict
     :cvar _universalExtensions: dictionary with concrete implementations of
         specific TLS extensions where key is the numeric value of the extension
@@ -68,12 +72,29 @@ class TLSExtension(object):
         specific TLS extensions where key is the numeric value of the extension
         ID. Includes only those extensions that require special handlers for
         ServerHello versions.
+
+    :vartype _certificateExtensions: dict
+    :cvar _certificateExtensions: dictionary with concrete implementations of
+        specific TLS extensions where the key is the numeric value of the
+        type of the extension and the value is the class. Includes only
+        those extensions that require special handlers for Certificate
+        message.
+
+    :vartype _hrrExtensions: dict
+    :cvar _hrrExtensions: dictionary with concrete implementation of specific
+        TLS extensions where the key is the numeric type of the extension
+        and the value is the class. Includes only those extensions that require
+        special handlers for the Hello Retry Request message.
     """
     # actual definition at the end of file, after definitions of all classes
     _universalExtensions = {}
     _serverExtensions = {}
+    #_encryptedExtensions = {}
+    _certificateExtensions = {}
+    _hrrExtensions = {}
 
-    def __init__(self, server=False, extType=None):
+    def __init__(self, server=False, extType=None, encExt=False,
+                 cert=False, hrr=False):
         """
         Creates a generic TLS extension.
 
@@ -86,10 +107,19 @@ class TLSExtension(object):
             for parsing
         :param int extType: type of extension encoded as an integer, to be used
             by subclasses
+        :param bool encExt: whether to select the EncryptedExtensions type
+            for parsing
+        :param bool cert: whether to select the Certificate type
+            of extension for parsing
+        :param bool hrr: whether to select the Hello Retry Request type
+            of extension for parsing
         """
         self.extType = extType
         self._extData = bytearray(0)
         self.serverType = server
+        self.encExtType = encExt
+        self.cert = cert
+        self.hrr = hrr
 
     @property
     def extData(self):
@@ -193,12 +223,26 @@ class TLSExtension(object):
         extType = p.get(2)
         extLength = p.get(2)
 
-        # first check if we shouldn't use server side parser
+        # check if we shouldn't use Certificate extensions parser
+        if self.cert and extType in self._certificateExtensions:
+            return self._parseExt(p, extType, extLength,
+                                  self._certificateExtensions)
+
+        # Check if we shouldn't use Encrypted Extensions parser
+        #if self.encExtType and extType in self._encryptedExtensions:
+        #    return self._parseExt(p, extType, extLength,
+        #                          self._encryptedExtensions)
+
+        # then check if we shouldn't use server side parser
         if self.serverType and extType in self._serverExtensions:
             return self._parseExt(p, extType, extLength,
                                   self._serverExtensions)
 
-        # then fallback to universal/ClientHello-specific parsers
+        if self.hrr and extType in self._hrrExtensions:
+            return self._parseExt(p, extType, extLength,
+                                  self._hrrExtensions)
+
+        # fallback to universal/ClientHello-specific parsers
         if extType in self._universalExtensions:
             return self._parseExt(p, extType, extLength,
                                   self._universalExtensions)
@@ -233,27 +277,103 @@ class TLSExtension(object):
         :rtype: str
         """
         return "TLSExtension(extType={0!r}, extData={1!r},"\
-                " serverType={2!r})".format(self.extType, self.extData,
-                                            self.serverType)
+                " serverType={2!r}, encExtType={3!r})".format(self.extType,
+                                                              self.extData,
+                                                              self.serverType,
+                                                              self.encExtType)
 
-class VarListExtension(TLSExtension):
+
+class ListExtension(TLSExtension):
     """
-    Abstract extension for handling extensions comprised only of a value list
+    Abstract class for extensions that deal with single list in payload.
+
+    Extension for handling arbitrary extensions comprising of just a list
+    of same-sized elementes inside an array
+    """
+
+    def __init__(self, fieldName, extType):
+        """
+        Create instance of the class.
+
+        :param str fieldName: name of the field to store the list that is
+            the payload
+        :type int extType: numerical ID of the extension
+        """
+        super(ListExtension, self).__init__(extType=extType)
+        self._fieldName = fieldName
+        self._internalList = None
+
+    @property
+    def extData(self):
+        """
+        Return raw data encoding of the extension.
+
+        :rtype: bytearray
+        """
+        raise NotImplementedError("Abstract class")
+
+    def create(self, values):
+        """
+        Set the list to specified values.
+
+        :param list values: list of values to save
+        """
+        self._internalList = values
+        return self
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on-the-wire data.
+
+        :param tlslite.utils.codec.Parser parser: data
+        :rtype: Extension
+        """
+        raise NotImplementedError("Abstract class")
+
+    def __getattr__(self, name):
+        """Return the special field name value."""
+        if name == '_fieldName':
+            raise AttributeError("type object '{0}' has no attribute '{1}'"\
+                    .format(self.__class__.__name__, name))
+        if name == self._fieldName:
+            return self._internalList
+        raise AttributeError("type object '{0}' has no attribute '{1}'"\
+                .format(self.__class__.__name__, name))
+
+    def __setattr__(self, name, value):
+        """Set the special field value."""
+        if name == '_fieldName':
+            super(ListExtension, self).__setattr__(name, value)
+            return
+        if hasattr(self, '_fieldName') and name == self._fieldName:
+            self._internalList = value
+            return
+        super(ListExtension, self).__setattr__(name, value)
+
+    def __repr__(self):
+        """Return human readable representation of the extension."""
+        return "{0}({1}={2!r})".format(self.__class__.__name__,
+                                       self._fieldName,
+                                       self._internalList)
+
+
+class VarListExtension(ListExtension):
+    """
+    Abstract extension for handling extensions comprised of uniform value list.
 
     Extension for handling arbitrary extensions comprising of just a list
     of same-sized elementes inside an array
     """
 
     def __init__(self, elemLength, lengthLength, fieldName, extType):
-        super(VarListExtension, self).__init__(extType=extType)
-        self._fieldName = fieldName
-        self._internalList = None
+        super(VarListExtension, self).__init__(fieldName, extType=extType)
         self._elemLength = elemLength
         self._lengthLength = lengthLength
 
     @property
     def extData(self):
-        """Return raw data encoding of the extension
+        """
+        Return raw data encoding of the extension.
 
         :rtype: bytearray
         """
@@ -266,17 +386,9 @@ class VarListExtension(TLSExtension):
                          self._lengthLength)
         return writer.bytes
 
-    def create(self, values):
-        """Set the list to specified values
-
-        :param list values: list of values to save
-        """
-        self._internalList = values
-        return self
-
     def parse(self, parser):
         """
-        Deserialise extension from on-the-wire data
+        Deserialise extension from on-the-wire data.
 
         :param tlslite.utils.codec.Parser parser: data
         :rtype: Extension
@@ -287,32 +399,73 @@ class VarListExtension(TLSExtension):
 
         self._internalList = parser.getVarList(self._elemLength,
                                                self._lengthLength)
+
+        if parser.getRemainingLength():
+            raise SyntaxError()
+
         return self
 
-    def __getattr__(self, name):
-        """Return the special field name value"""
-        if name == '_fieldName':
-            raise AttributeError("type object '{0}' has no attribute '{1}'"\
-                    .format(self.__class__.__name__, name))
-        if name == self._fieldName:
-            return self._internalList
-        raise AttributeError("type object '{0}' has no attribute '{1}'"\
-                .format(self.__class__.__name__, name))
 
-    def __setattr__(self, name, value):
-        """Set the special field value"""
-        if name == '_fieldName':
-            super(VarListExtension, self).__setattr__(name, value)
-            return
-        if hasattr(self, '_fieldName') and name == self._fieldName:
-            self._internalList = value
-            return
-        super(VarListExtension, self).__setattr__(name, value)
+class VarSeqListExtension(ListExtension):
+    """
+    Abstract extension for handling extensions comprised of tuple list.
 
-    def __repr__(self):
-        return "{0}({1}={2!r})".format(self.__class__.__name__,
-                                       self._fieldName,
-                                       self._internalList)
+    Extension for handling arbitrary extensions comprising of a single list
+    of same-sized elements in same-sized tuples
+    """
+
+    def __init__(self, elemLength, elemNum, lengthLength, fieldName, extType):
+        """
+        Create a handler for extension that has a list of tuples as payload.
+
+        :param int elemLength: number of bytes needed to encode single element
+            of a tuple
+        :param int elemNum: number of elements in a tuple
+        :param int lengthLength: number of bytes needed to encode overall
+            length of the list
+        :param str fieldName: name of the field storing the list of elements
+        :param int extType: numerical ID of the extension encoded
+        """
+        super(VarSeqListExtension, self).__init__(fieldName, extType=extType)
+        self._elemLength = elemLength
+        self._elemNum = elemNum
+        self._lengthLength = lengthLength
+
+    @property
+    def extData(self):
+        """
+        Return raw data encoding of the extension.
+
+        :rtype: bytearray
+        """
+        if self._internalList is None:
+            return bytearray(0)
+
+        writer = Writer()
+        writer.addVarTupleSeq(self._internalList,
+                              self._elemLength,
+                              self._lengthLength)
+        return writer.bytes
+
+    def parse(self, parser):
+        """
+        Deserialise extension from on-the-wire data.
+
+        :param tlslite.utils.codec.Parser parser: data
+        :rtype: Extension
+        """
+        if parser.getRemainingLength() == 0:
+            self._internalList = None
+            return self
+
+        self._internalList = parser.getVarTupleList(self._elemLength,
+                                                    self._elemNum,
+                                                    self._lengthLength)
+        if parser.getRemainingLength():
+            raise SyntaxError()
+
+        return self
+
 
 class SNIExtension(TLSExtension):
     """
@@ -528,6 +681,33 @@ class SNIExtension(TLSExtension):
             raise SyntaxError()
 
         return self
+
+
+class SupportedVersionsExtension(VarSeqListExtension):
+    """
+    This class handles the SupportedVersion extensions used in TLS 1.3.
+
+    See draft-ietf-tls-tls13.
+
+    :vartype extType: int
+    :ivar extType: numeric type of the Supported Versions extension, i.e. 43
+
+    :vartype extData: bytearray
+    :ivar extData: raw representation of the extension data
+
+    :vartype versions: list of tuples
+    :ivar versions: list of supported protocol versions; each tuple has two
+        one byte long integers
+    """
+
+    def __init__(self):
+        """Create an instance of SupportedVersionsExtension."""
+        super(SupportedVersionsExtension, self).__init__(1, 2, 1,
+                                                         "versions",
+                                                         extType=
+                                                         ExtensionType.
+                                                         supported_versions)
+
 
 class ClientCertTypeExtension(VarListExtension):
     """
@@ -991,8 +1171,7 @@ class ECPointFormatsExtension(VarListExtension):
         super(ECPointFormatsExtension, self).__init__(1, 1, 'formats', \
                 ExtensionType.ec_point_formats)
 
-class SignatureAlgorithmsExtension(TLSExtension):
-
+class SignatureAlgorithmsExtension(VarSeqListExtension):
     """
     Client side list of supported signature algorithms.
 
@@ -1004,10 +1183,11 @@ class SignatureAlgorithmsExtension(TLSExtension):
 
     def __init__(self):
         """Create instance of class"""
-        super(SignatureAlgorithmsExtension, self).__init__(extType=
+        super(SignatureAlgorithmsExtension, self).__init__(1, 2, 2,
+                                                           'sigalgs',
+                                                           extType=
                                                            ExtensionType.
                                                            signature_algorithms)
-        self.sigalgs = None
 
     def _repr_sigalgs(self):
         """Return a text representation of sigalgs field."""
@@ -1029,49 +1209,6 @@ class SignatureAlgorithmsExtension(TLSExtension):
         """Return a text representation of the extension."""
         return "SignatureAlgorithmsExtension(sigalgs={0})".format(
                 self._repr_sigalgs())
-
-    @property
-    def extData(self):
-        """
-        Return raw encoding of the extension
-
-        :rtype: bytearray
-        """
-        if self.sigalgs is None:
-            return bytearray(0)
-
-        writer = Writer()
-        # elements 1 byte each, overall length encoded in 2 bytes
-        writer.addVarTupleSeq(self.sigalgs, 1, 2)
-        return writer.bytes
-
-    def create(self, sigalgs):
-        """
-        Set the list of supported algorithm types
-
-        :param list sigalgs: list of pairs of a hash algorithm and signature
-            algorithm
-        """
-        self.sigalgs = sigalgs
-        return self
-
-    def parse(self, parser):
-        """
-        Deserialise extension from on the wire data
-
-        :type Parser parser: data
-        :rtype: SignatureAlgorithmsExtension
-        """
-        if parser.getRemainingLength() == 0:
-            self.sigalgs = None
-            return self
-
-        self.sigalgs = parser.getVarTupleList(1, 2, 2)
-
-        if parser.getRemainingLength() != 0:
-            raise SyntaxError()
-
-        return self
 
 
 class PaddingExtension(TLSExtension):
@@ -1366,6 +1503,246 @@ class StatusRequestExtension(TLSExtension):
         return self
 
 
+class CertificateStatusExtension(TLSExtension):
+    """Handling of Certificate Status response as redefined in TLS1.3"""
+
+    def __init__(self):
+        """Create instance of CertificateStatusExtension."""
+        super(CertificateStatusExtension, self).__init__(
+                extType=ExtensionType.status_request)
+        self.status_type = None
+        self.response = None
+
+    def create(self, status_type, response):
+        """Set values of the extension."""
+        self.status_type = status_type
+        self.response = response
+        return self
+
+    def parse(self, parser):
+        """Deserialise the data from on the wire representation."""
+        self.status_type = parser.get(1)
+        if self.status_type == 1:
+            self.response = parser.getVarBytes(3)
+        else:
+            raise SyntaxError("Unrecognised type")
+        if parser.getRemainingLength():
+            raise SyntaxError("Trailing data")
+        return self
+
+    @property
+    def extData(self):
+        """Serialise the object."""
+        writer = Writer()
+        writer.add(self.status_type, 1)
+        writer.addVarSeq(self.response, 1, 3)
+
+        return writer.bytes
+
+
+class KeyShareEntry(object):
+    """Handler for of the item of the Key Share extension."""
+
+    def __init__(self):
+        """Initialise the object."""
+        self.group = None
+        self.key_exchange = None
+        self.private = None
+
+    def create(self, group, key_exchange, private=None):
+        """
+        Initialise the Key Share Entry from Key Share extension.
+
+        :param int group: ID of the key share
+        :param bytearray key_exchange: value of the key share
+        :param object private: private value for the given share (won't be
+            encoded during serialisation)
+        :rtype: KeyShareEntry
+        """
+        self.group = group
+        self.key_exchange = key_exchange
+        self.private = private
+        return self
+
+    def parse(self, parser):
+        """
+        Parse the value from on the wire format.
+
+        :param Parser parser: data to be parsed as extension
+
+        :rtype: KeyShareEntry
+        """
+        self.group = parser.get(2)
+        self.key_exchange = parser.getVarBytes(2)
+        return self
+
+    def write(self, writer):
+        """
+        Write the on the wire representation of the item to writer.
+
+        :param Writer writer: buffer to write the data to
+        """
+        writer.addTwo(self.group)
+        writer.addTwo(len(self.key_exchange))
+        writer.bytes += self.key_exchange
+
+
+class ClientKeyShareExtension(TLSExtension):
+    """
+    Class for handling the Client Hello version of the Key Share extension.
+
+    Extension for sending the key shares to server
+    """
+
+    def __init__(self):
+        """Create instance of the object."""
+        super(ClientKeyShareExtension, self).__init__(extType=ExtensionType.
+                                                      key_share)
+        self.client_shares = None
+
+    @property
+    def extData(self):
+        """
+        Return the on the wire raw encoding of the extension
+
+        :rtype: bytearray
+        """
+        shares = Writer()
+        for share in self.client_shares:
+            share.write(shares)
+
+        w = Writer()
+        w.addTwo(len(shares.bytes))
+        w.bytes += shares.bytes
+
+        return w.bytes
+
+    def create(self, client_shares):
+        """Set the advertised client shares in the extension."""
+        self.client_shares = client_shares
+        return self
+
+    def parse(self, parser):
+        """
+        Parse the extension from on the wire format
+
+        :param Parser parser: data to be parsed
+
+        :raises SyntaxError: when the data does not match the definition
+
+        :rtype: ClientKeyShareExtension
+        """
+        if not parser.getRemainingLength():
+            self.client_shares = None
+            return self
+
+        self.client_shares = []
+        parser.startLengthCheck(2)
+
+        while not parser.atLengthCheck():
+            self.client_shares.append(KeyShareEntry().parse(parser))
+
+        parser.stopLengthCheck()
+
+        if parser.getRemainingLength():
+            raise SyntaxError("Trailing data in client Key Share extension")
+
+        return self
+
+
+class ServerKeyShareExtension(TLSExtension):
+    """
+    Class for handling the Server Hello variant of the Key Share extension.
+
+    Extension for sending the key shares to client
+    """
+
+    def __init__(self):
+        """Create instance of the object."""
+        super(ServerKeyShareExtension, self).__init__(extType=ExtensionType.
+                                                      key_share,
+                                                      server=True)
+        self.server_share = None
+
+    def create(self, server_share):
+        """Set the advertised server share in the extension."""
+        self.server_share = server_share
+        return self
+
+    @property
+    def extData(self):
+        """Serialise the payload of the extension"""
+        if self.server_share is None:
+            return bytearray(0)
+
+        w = Writer()
+        self.server_share.write(w)
+        return w.bytes
+
+    def parse(self, parser):
+        """
+        Parse the extension from on the wire format.
+
+        :param Parser parser: data to be parsed
+
+        :rtype: ServerKeyShareExtension
+        """
+        if not parser.getRemainingLength():
+            self.server_share = None
+            return self
+
+        self.server_share = KeyShareEntry().parse(parser)
+
+        if parser.getRemainingLength():
+            raise SyntaxError("Trailing data in server Key Share extension")
+
+        return self
+
+
+class HRRKeyShareExtension(TLSExtension):
+    """
+    Class for handling the Hello Retry Request variant of the Key Share ext.
+
+    Extension for notifying the client of the server selected group for
+    key exchange.
+    """
+    def __init__(self):
+        """Create instance of the object."""
+        super(HRRKeyShareExtension, self).__init__(extType=ExtensionType.
+                                                   key_share,
+                                                   hrr=True)
+        self.selected_group = None
+
+    def create(self, selected_group):
+        """Set the selected group in the extension."""
+        self.selected_group = selected_group
+        return self
+
+    @property
+    def extData(self):
+        """Serialise the payload of the extension."""
+        if self.selected_group is None:
+            return bytearray(0)
+
+        w = Writer()
+        w.add(self.selected_group, 2)
+        return w.bytes
+
+    def parse(self, parser):
+        """Parse the extension from on the wire format.
+
+        :param Parser parser: data to be parsed
+
+        :rtype: HRRKeyShareExtension
+        """
+        self.selected_group = parser.get(2)
+
+        if parser.getRemainingLength():
+            raise SyntaxError("Trailing data in HRR Key Share extension")
+
+        return self
+
+
 TLSExtension._universalExtensions = \
     {
         ExtensionType.server_name: SNIExtension,
@@ -1378,9 +1755,20 @@ TLSExtension._universalExtensions = \
         ExtensionType.alpn: ALPNExtension,
         ExtensionType.supports_npn: NPNExtension,
         ExtensionType.client_hello_padding: PaddingExtension,
-        ExtensionType.renegotiation_info: RenegotiationInfoExtension}
+        ExtensionType.renegotiation_info: RenegotiationInfoExtension,
+        ExtensionType.supported_versions: SupportedVersionsExtension,
+        ExtensionType.key_share: ClientKeyShareExtension}
 
 TLSExtension._serverExtensions = \
     {
         ExtensionType.cert_type: ServerCertTypeExtension,
-        ExtensionType.tack: TACKExtension}
+        ExtensionType.tack: TACKExtension,
+        ExtensionType.key_share: ServerKeyShareExtension}
+
+TLSExtension._certificateExtensions = \
+    {
+        ExtensionType.status_request: CertificateStatusExtension}
+
+TLSExtension._hrrExtensions = \
+    {
+        ExtensionType.key_share: HRRKeyShareExtension}

@@ -7,12 +7,21 @@ try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+try:
+    import mock
+    from mock import call
+except ImportError:
+    import unittest.mock as mock
+    from unittest.mock import call
+
+
 from tlslite.messages import ClientHello, ServerHello, RecordHeader3, Alert, \
         RecordHeader2, Message, ClientKeyExchange, ServerKeyExchange, \
         CertificateRequest, CertificateVerify, ServerHelloDone, ServerHello2, \
         ClientMasterKey, ClientFinished, ServerFinished, CertificateStatus, \
         Certificate, Finished, HelloMessage, ChangeCipherSpec, NextProtocol, \
-        ApplicationData
+        ApplicationData, EncryptedExtensions, CertificateEntry, \
+        NewSessionTicket, HelloRetryRequest
 from tlslite.utils.codec import Parser
 from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         AlertLevel, AlertDescription, ExtensionType, ClientCertificateType, \
@@ -20,7 +29,8 @@ from tlslite.constants import CipherSuite, CertificateType, ContentType, \
         SSL2HandshakeType, CertificateStatusType, HandshakeType, \
         SignatureScheme
 from tlslite.extensions import SNIExtension, ClientCertTypeExtension, \
-    SRPExtension, TLSExtension, NPNExtension
+    SRPExtension, TLSExtension, NPNExtension, SupportedGroupsExtension, \
+    ServerCertTypeExtension
 from tlslite.errors import TLSInternalError
 from tlslite.x509 import X509
 from tlslite.x509certchain import X509CertChain
@@ -478,7 +488,7 @@ class TestClientHello(unittest.TestCase):
                 "session ID(bytearray(b'')),cipher suites([]),"\
                 "compression methods([0]),extensions(["\
                 "TLSExtension(extType=0, extData=bytearray(b'\\x00'), "\
-                "serverType=False)])",
+                "serverType=False, encExtType=False)])",
                 str(client_hello))
 
     def test___repr__(self):
@@ -489,7 +499,8 @@ class TestClientHello(unittest.TestCase):
                 "random=bytearray(b'\\x00'), session_id=bytearray(b''), "\
                 "cipher_suites=[], compression_methods=[0], "\
                 "extensions=[TLSExtension(extType=0, "\
-                "extData=bytearray(b''), serverType=False)])",
+                "extData=bytearray(b''), serverType=False, "
+                "encExtType=False)])",
                 repr(client_hello))
 
     def test_getExtension(self):
@@ -1116,6 +1127,24 @@ class TestServerHello(unittest.TestCase):
         self.assertEqual([bytearray(b'http/1.1'), bytearray(b'spdy/3')],
                 server_hello.next_protos)
 
+    def test_parse_tls1_3(self):
+        parser = Parser(bytearray(
+            # b'\x02' +  # type - server_hello
+            b'\x00\x00\x26' +  # overall length
+            b'\x03\x04' +  # protocol version
+            b'\x02' * 32 +  # random
+            b'\x00\x04'  + # cipher suite
+            b'\x00\x00'))  # extensions
+
+        server_hello = ServerHello().parse(parser)
+
+        self.assertIsInstance(server_hello, ServerHello)
+        self.assertEqual(server_hello.server_version, (3, 4))
+        self.assertEqual(server_hello.random, bytearray(b'\x02' * 32))
+        self.assertEqual(server_hello.cipher_suite, 4)
+        self.assertEqual(server_hello.extensions, [])
+
+
     def test_write(self):
         server_hello = ServerHello().create(
                 (1,1),                          # server version
@@ -1164,6 +1193,23 @@ class TestServerHello(unittest.TestCase):
             # utf-8 endoding of 'http/1.1'
             b'\x68\x74\x74\x70\x2f\x31\x2e\x31'
             )), list(server_hello.write()))
+
+    def test_write_tls1_3(self):
+        server_hello = ServerHello().create(
+                (3, 4),  # version
+                bytearray(b'\x02'*32),  # random
+                None,  # session id
+                4,  # cipher suite
+                extensions=[])
+
+        self.assertEqual(list(bytearray(
+            b'\x02' +  # type - server_hello
+            b'\x00\x00\x26' +  # overall length
+            b'\x03\x04' +  # protocol version
+            b'\x02' * 32 +  # random
+            b'\x00\x04'  + # cipher suite
+            b'\x00\x00')),  # extensions
+            list(server_hello.write()))
 
     def test___str__(self):
         server_hello = ServerHello()
@@ -1220,6 +1266,7 @@ class TestServerHello(unittest.TestCase):
                 "session_id=bytearray(b''), "\
                 "cipher_suite=34500, compression_method=0, _tack_ext=None, "\
                 "extensions=[])", repr(server_hello))
+
 
 class TestServerHello2(unittest.TestCase):
     def test___init__(self):
@@ -2569,6 +2616,15 @@ class TestFinished(unittest.TestCase):
         with self.assertRaises(SyntaxError):
             finished.parse(parser)
 
+    def test_parse_tls_1_3(self):
+        finished = Finished((3, 4), 32)
+
+        parser = Parser(bytearray(b'\x00\x00\x20' + b'\x04' * 32))
+
+        finished = finished.parse(parser)
+
+        self.assertEqual(finished.verify_data, bytearray(b'\x04' * 32))
+
     def test_write_tls_1_2(self):
         finished = Finished((3, 3))
 
@@ -2576,6 +2632,14 @@ class TestFinished(unittest.TestCase):
 
         self.assertEqual(finished.write(),
                          bytearray(b'\x14' + b'\x00\x00\x0c' + b'\x04' * 12))
+
+    def test_write_tls_1_3(self):
+        finished = Finished((3, 4), 32)
+
+        finished = finished.create(bytearray(b'\x04' * 32))
+
+        self.assertEqual(finished.write(),
+                         bytearray(b'\x14' + b'\x00\x00\x20' + b'\x04' * 32))
 
 
 class TestClientFinished(unittest.TestCase):
@@ -2686,6 +2750,98 @@ class TestCertificateStatus(unittest.TestCase):
             b'\xbc\xaa'))
 
 
+class TestCertificateEntry(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.x509_cert = X509().parse(srv_raw_certificate)
+        cls.der_cert = cls.x509_cert.writeBytes()
+
+    def test___init__(self):
+        entry = CertificateEntry(CertificateType.x509)
+
+        self.assertIsNotNone(entry)
+        self.assertIsInstance(entry, CertificateEntry)
+
+    def test_create(self):
+        entry = CertificateEntry(CertificateType.x509)
+        a = mock.Mock()
+        b = mock.Mock()
+        entry = entry.create(a, b)
+
+        self.assertIs(entry.certificate, a)
+        self.assertIs(entry.extensions, b)
+
+    def test_write(self):
+        entry = CertificateEntry(CertificateType.x509)
+        ext = TLSExtension(extType=255).create(bytearray(b'\xde\xad'))
+        entry = entry.create(self.x509_cert, [ext])
+
+        self.assertEqual(entry.write(),
+                bytearray(b'\x00\x01\xfa' +  #length of certificate
+                          self.der_cert +
+                          b'\x00\x06' +  # length of extensions
+                          b'\x00\xff' +  # type of first extension
+                          b'\x00\x02' +  # length of first extension
+                          b'\xde\xad'))  # extension payload
+
+    def test_write_without_extensions(self):
+        entry = CertificateEntry(CertificateType.x509)
+        entry = entry.create(self.x509_cert, [])
+
+        self.assertEqual(entry.write(),
+                bytearray(b'\x00\x01\xfa' +  # length of certificate
+                          self.der_cert +
+                          b'\x00\x00'))  # length of extensions
+
+    def test_write_with_null_extensions(self):
+        # that's invalid formatting of the entry, used for debugging/fuzzer
+        entry = CertificateEntry(CertificateType.x509)
+        entry = entry.create(self.x509_cert, None)
+
+        self.assertEqual(entry.write(),
+                bytearray(b'\x00\x01\xfa' +  # length of certificate
+                          self.der_cert))
+
+    def test_write_with_unsupported_type(self):
+        entry = CertificateEntry(CertificateType.openpgp)
+        entry = entry.create(self.x509_cert, [])
+
+        with self.assertRaises(ValueError):
+            entry.write()
+
+    def test_parse(self):
+        parser = Parser(
+                bytearray(b'\x00\x01\xfa' +  #length of certificate
+                          self.der_cert +
+                          b'\x00\x06' +  # length of extensions
+                          b'\x00\xff' +  # type of first extension
+                          b'\x00\x02' +  # length of first extension
+                          b'\xde\xad'))  # extension payload
+
+        entry = CertificateEntry(CertificateType.x509)
+        entry = entry.parse(parser)
+
+        self.assertIsInstance(entry, CertificateEntry)
+        self.assertEqual(entry.certificate.writeBytes(), self.der_cert)
+        self.assertEqual(len(entry.extensions), 1)
+        self.assertEqual(entry.extensions[0].extData, bytearray(b'\xde\xad'))
+
+    def test_parse_with_unsupported_type(self):
+        parser = Parser(
+                bytearray(b'\x00\x01\xfa' +  #length of certificate
+                          self.der_cert +
+                          b'\x00\x06' +  # length of extensions
+                          b'\x00\xff' +  # type of first extension
+                          b'\x00\x02' +  # length of first extension
+                          b'\xde\xad'))  # extension payload
+
+        entry = CertificateEntry(CertificateType.openpgp)
+
+        with self.assertRaises(ValueError):
+            entry.parse(parser)
+
+
 class TestCertificate(unittest.TestCase):
 
     @classmethod
@@ -2698,6 +2854,30 @@ class TestCertificate(unittest.TestCase):
 
         self.assertIsNotNone(cert)
         self.assertIsInstance(cert, Certificate)
+
+    def test___repr__(self):
+        cert = Certificate(CertificateType.x509)
+        cert = cert.create(X509CertChain([bytearray(b'one'),
+                                          bytearray(b'two')]))
+        self.assertEqual(repr(cert),
+                "Certificate(certChain=[bytearray(b'one'), "
+                "bytearray(b'two')])")
+
+    def test___repr___tls_1_3(self):
+        cert = Certificate(CertificateType.x509, (3, 4))
+        ext = ServerCertTypeExtension().create(CertificateType.x509)
+        entry = CertificateEntry(CertificateType.x509)
+        entry = entry.create(bytearray(b'this is certificate'), [ext])
+        cert = cert.create([entry], bytearray(b'context'))
+
+        self.maxDiff = None
+
+        self.assertEqual(repr(cert),
+                "Certificate(request_context=bytearray(b'context'), "
+                "certificate_list=[CertificateEntry(certificate="
+                "bytearray(b'this is certificate'), extensions=["
+                "ServerCertTypeExtension(cert_type=0)"
+                "])])")
 
     def test_write_empty(self):
         cert = Certificate(CertificateType.x509)
@@ -2751,6 +2931,25 @@ class TestCertificate(unittest.TestCase):
                       b'\x00\x01\xfa' +  # length of the first certificate
                       self.der_cert))
 
+    def test_write_tls13_with_cert(self):
+        cert = Certificate(CertificateType.x509, (3, 4))
+        ext = TLSExtension(extType=255).create(bytearray(b'\xde\xad'))
+        entry = CertificateEntry(CertificateType.x509)
+        entry = entry.create(self.x509_cert, [ext])
+        cert = cert.create([entry], bytearray(b''))
+
+        self.assertEqual(cert.write(),
+                bytearray(b'\x0b' +  # type of message - certificate
+                          b'\x00\x02\x09' +  # length of handshake message
+                          b'\x00' +  # length of certificate request context
+                          b'\x00\x02\x05' +  # length of certificate list
+                          b'\x00\x01\xfa' +  # length of certificate
+                          self.der_cert +
+                          b'\x00\x06' +  # length of extensions
+                          b'\x00\xff' +  # type of first extension
+                          b'\x00\x02' +  # length of first extension
+                          b'\xde\xad'))
+
     def test_parse_with_cert(self):
         cert = Certificate(CertificateType.x509)
         parser = Parser(
@@ -2761,6 +2960,38 @@ class TestCertificate(unittest.TestCase):
                       self.der_cert))
 
         cert = cert.parse(parser)
+        self.assertIsNotNone(cert.certChain)
+        self.assertIsInstance(cert.certChain, X509CertChain)
+        self.assertEqual(len(cert.certChain.x509List), 1)
+        self.assertEqual(cert.certChain.x509List[0].writeBytes(),
+                self.der_cert)
+
+    def test_parse_tls1_3_with_cert(self):
+        cert = Certificate(CertificateType.x509, (3, 4))
+        self.assertEqual(0x0001fa, len(self.der_cert))
+        parser = Parser(
+                bytearray(#b'\x0b' +  # type of message - certificate
+                          b'\x00\x02\x09' +  # length of handshake message
+                          b'\x00' +  # length of certificate request context
+                          b'\x00\x02\x05' +  # length of certificate list
+                          b'\x00\x01\xfa' +  # length of certificate
+                          self.der_cert +
+                          b'\x00\x06' +  # length of extensions
+                          b'\x00\xff' +  # type of first extension
+                          b'\x00\x02' +  # length of first extension
+                          b'\xde\xad'))
+
+        cert = cert.parse(parser)
+
+        self.assertIsNotNone(cert)
+        self.assertEqual(cert.certificate_request_context, bytearray(b''))
+        self.assertIsNotNone(cert.certificate_list)
+        self.assertEqual(len(cert.certificate_list), 1)
+        self.assertIsInstance(cert.certificate_list[0], CertificateEntry)
+        entry = cert.certificate_list[0]
+        self.assertEqual(entry.certificate.writeBytes(), self.der_cert)
+        self.assertEqual(len(entry.extensions), 1)
+        self.assertEqual(entry.extensions[0].extData, bytearray(b'\xde\xad'))
         self.assertIsNotNone(cert.certChain)
         self.assertIsInstance(cert.certChain, X509CertChain)
         self.assertEqual(len(cert.certChain.x509List), 1)
@@ -2890,6 +3121,249 @@ class TestApplicationData(unittest.TestCase):
         self.assertIsInstance(app_data1, ApplicationData)
         self.assertEqual(app_data1.bytes, bytearray(b't'))
         self.assertEqual(app_data.bytes, bytearray(b'est'))
+
+
+class TestEncryptedExtensions(unittest.TestCase):
+    def setUp(self):
+        self.msg = EncryptedExtensions()
+
+    def test___init__(self):
+        self.assertIsNotNone(self.msg)
+        self.assertEqual(self.msg.handshakeType, 8)
+
+    def test_create(self):
+
+        ext = SNIExtension()
+
+        self.msg.create([ext])
+
+        self.assertIsInstance(self.msg.extensions[0], SNIExtension)
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            # b'\x08'  # type
+            b'\x00\x00\x02'  # overall length
+            b'\x00\x00'))  # extensions list
+
+        ext = self.msg.parse(parser)
+
+        self.assertEqual(ext.extensions, [])
+
+    def test_parse_with_list_missing(self):
+        parser = Parser(bytearray(
+            b'\x00\x00\x00'))
+
+        with self.assertRaises(SyntaxError):
+            self.msg.parse(parser)
+
+    def test_parse_with_extension(self):
+        parser = Parser(bytearray(
+            b'\x00\x00\x0c'  # overall length
+            b'\x00\x0a'  # extensions list length
+            b'\x00\x0a'  # supported groups extension
+            b'\x00\x06'  # key share extension length
+            b'\x00\x04'  # length of named_group_list
+            b'\x00\x17\x00\x1D'))  # secp256r1 and x25519
+
+        ext = self.msg.parse(parser)
+
+        self.assertEqual(len(ext.extensions), 1)
+        self.assertIsInstance(ext.extensions[0], SupportedGroupsExtension)
+        self.assertEqual(ext.extensions[0].groups, [GroupName.secp256r1,
+                                                    GroupName.x25519])
+
+    def test_parse_with_trailing_data(self):
+        parser = Parser(bytearray(
+            b'\x00\x00\x0d'  # overall length
+            b'\x00\x0a'  # extensions list length
+            b'\x00\x0a'  # supported groups extension
+            b'\x00\x06'  # key share extension length
+            b'\x00\x04'  # length of named_group_list
+            b'\x00\x17\x00\x1D'  # secp256r1 and x25519
+            b'\x00'))  # tailing data
+
+        with self.assertRaises(SyntaxError):
+            self.msg.parse(parser)
+
+    def test_write(self):
+        ext = SupportedGroupsExtension().create([GroupName.secp256r1,
+                                                 GroupName.x25519])
+        self.msg.create([ext])
+
+        self.assertEqual(self.msg.write(),
+                bytearray(b'\x08'  # handshake type - encrypted extensions
+                          b'\x00\x00\x0c'  # overall length
+                          b'\x00\x0a'  # extensions list length
+                          b'\x00\x0a'  # supported groups extension
+                          b'\x00\x06'  # key share extension length
+                          b'\x00\x04'  # length of named_group_list
+                          b'\x00\x17\x00\x1D'))  # secp256r1 and x25519
+
+
+class TestNewSessionTicket(unittest.TestCase):
+    def test___init__(self):
+        ticket = NewSessionTicket()
+
+        self.assertEqual(ticket.ticket_lifetime, 0)
+        self.assertEqual(ticket.ticket_age_add, 0)
+        self.assertEqual(ticket.ticket_nonce, bytearray(0))
+        self.assertEqual(ticket.ticket, bytearray(0))
+        self.assertEqual(ticket.extensions, [])
+
+    def test_create(self):
+        ticket = NewSessionTicket()
+        lifetime = mock.Mock()
+        age_add = mock.Mock()
+        nonce = mock.Mock()
+        ticket_proper = mock.Mock()
+        ext = mock.Mock()
+
+        ticket = ticket.create(lifetime, age_add, nonce, ticket_proper, [ext])
+
+        self.assertIs(ticket.ticket_lifetime, lifetime)
+        self.assertIs(ticket.ticket_age_add, age_add)
+        self.assertIs(ticket.ticket_nonce, nonce)
+        self.assertIs(ticket.ticket, ticket_proper)
+        self.assertEqual(len(ticket.extensions), 1)
+        self.assertIs(ticket.extensions[0], ext)
+
+    def test_write(self):
+        ticket = NewSessionTicket()
+        ticket = ticket.create(1, 2, bytearray(b'abc'), bytearray(b'ticket'),
+                               [TLSExtension(extType=ExtensionType.early_data)
+                                .create(bytearray())])
+
+
+        self.assertEqual(ticket.write(), bytearray(
+            b'\x04'  # handshake type - new session ticket
+            b'\x00\x00\x1a'  # overall length
+            b'\x00\x00\x00\x01'  # ticket_lifetime
+            b'\x00\x00\x00\x02'  # ticket_age_add
+            b'\x03'  # ticket nonce length
+            b'abc'  # ticket nonce
+            b'\x00\x06'  # ticket length
+            b'ticket'  # ticket proper
+            b'\x00\x04'  # length of extensions
+            b'\x00\x2a'  # extension type - early_data
+            b'\x00\x00'  # extension length - empty
+            ))
+
+    def test_parse(self):
+        ticket = NewSessionTicket()
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x1a'  # overall length
+            b'\x00\x00\x00\x01'  # ticket_lifetime
+            b'\x00\x00\x00\x02'  # ticket_age_add
+            b'\x03'  # ticket nonce length
+            b'abc'  # ticket nonce
+            b'\x00\x06'  # ticket length
+            b'ticket'  # ticket proper
+            b'\x00\x04'  # length of extensions
+            b'\x00\x2a'  # extension type - early_data
+            b'\x00\x00'  # extension length - empty
+            ))
+
+        ticket = ticket.parse(parser)
+
+        self.assertIsInstance(ticket, NewSessionTicket)
+        self.assertEqual(ticket.ticket_lifetime, 1)
+        self.assertEqual(ticket.ticket_age_add, 2)
+        self.assertEqual(ticket.ticket_nonce, bytearray(b'abc'))
+        self.assertEqual(ticket.ticket, bytearray(b'ticket'))
+        self.assertEqual(ticket.extensions,
+                [TLSExtension(extType=ExtensionType.early_data)
+                 .create(bytearray())])
+
+    def test_parse_with_trailing_data(self):
+        ticket = NewSessionTicket()
+
+        parser = Parser(bytearray(
+            b'\x00\x00\x1b'  # overall length
+            b'\x00\x00\x00\x01'  # ticket_lifetime
+            b'\x00\x00\x00\x02'  # ticket_age_add
+            b'\x03'  # ticket nonce length
+            b'abc'  # ticket nonce
+            b'\x00\x06'  # ticket length
+            b'ticket'  # ticket proper
+            b'\x00\x04'  # length of extensions
+            b'\x00\x2a'  # extension type - early_data
+            b'\x00\x00'  # extension length - empty
+            b'\x00'  # trailing byte
+            ))
+
+        with self.assertRaises(SyntaxError):
+            ticket.parse(parser)
+
+
+class TestHelloRetryRequest(unittest.TestCase):
+    def test___init__(self):
+        hrr = HelloRetryRequest()
+
+        self.assertEqual((0, 0), hrr.server_version)
+        self.assertEqual(0, hrr.cipher_suite)
+        self.assertEqual([], hrr.extensions)
+
+    def test_create(self):
+        version = mock.Mock()
+        cipher = mock.Mock()
+        ext = mock.Mock()
+
+        hrr = HelloRetryRequest()
+        hrr = hrr.create(version, cipher, [ext])
+
+        self.assertIs(hrr.server_version, version)
+        self.assertIs(hrr.cipher_suite, cipher)
+        self.assertEqual(len(hrr.extensions), 1)
+        self.assertIs(hrr.extensions[0], ext)
+
+    def test_write(self):
+        hrr = HelloRetryRequest()
+        hrr = hrr.create((3, 4), CipherSuite.TLS_AES_128_GCM_SHA256,
+                         [TLSExtension(extType=255).create(bytearray(0))])
+
+        self.assertEqual(hrr.write(), bytearray(
+            b'\x06'  # type - Hello Retry Request
+            b'\x00\x00\x0a'  # overall length
+            b'\x03\x04'  # protocol version
+            b'\x13\x01'  # cipher suite
+            b'\x00\x04'  # extensions length
+            b'\x00\xff'  # extension type
+            b'\x00\x00'  # extension length
+            ))
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            b'\x00\x00\x0a'  # overall length
+            b'\xfe\xfe'  # protocol version
+            b'\x13\x01'  # cipher suite
+            b'\x00\x04'  # extensions length
+            b'\x00\xff'  # extension type
+            b'\x00\x00'  # extension length
+            ))
+        hrr = HelloRetryRequest()
+
+        hrr = hrr.parse(parser)
+
+        self.assertEqual((0xfe, 0xfe), hrr.server_version)
+        self.assertEqual(0x1301, hrr.cipher_suite)
+        self.assertEqual([TLSExtension(extType=255).create(bytearray(0))],
+                         hrr.extensions)
+
+    def test_parse_with_trailing_data(self):
+        parser = Parser(bytearray(
+            b'\x00\x00\x0b'  # overall length
+            b'\xfe\xfe'  # protocol version
+            b'\x13\x01'  # cipher suite
+            b'\x00\x04'  # extensions length
+            b'\x00\xff'  # extension type
+            b'\x00\x00'  # extension length
+            b'\x00'  # trailing data
+            ))
+        hrr = HelloRetryRequest()
+
+        with self.assertRaises(SyntaxError):
+            hrr.parse(parser)
 
 
 if __name__ == '__main__':

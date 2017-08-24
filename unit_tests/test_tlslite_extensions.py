@@ -8,12 +8,22 @@ try:
     import unittest2 as unittest
 except ImportError:
     import unittest
+try:
+    import mock
+    from mock import call
+except ImportError:
+    import unittest.mock as mock
+    from unittest.mock import call
+
 from tlslite.extensions import TLSExtension, SNIExtension, NPNExtension,\
         SRPExtension, ClientCertTypeExtension, ServerCertTypeExtension,\
         TACKExtension, SupportedGroupsExtension, ECPointFormatsExtension,\
         SignatureAlgorithmsExtension, PaddingExtension, VarListExtension, \
-        RenegotiationInfoExtension, ALPNExtension, StatusRequestExtension
-from tlslite.utils.codec import Parser
+        RenegotiationInfoExtension, ALPNExtension, StatusRequestExtension, \
+        SupportedVersionsExtension, VarSeqListExtension, ListExtension, \
+        ClientKeyShareExtension, KeyShareEntry, ServerKeyShareExtension, \
+        CertificateStatusExtension, HRRKeyShareExtension
+from tlslite.utils.codec import Parser, Writer
 from tlslite.constants import NameType, ExtensionType, GroupName,\
         ECPointFormat, HashAlgorithm, SignatureAlgorithm, \
         CertificateStatusType
@@ -323,6 +333,30 @@ class TestTLSExtension(unittest.TestCase):
 
         self.assertEqual(1, ext.cert_type)
 
+    def test_parse_with_encrypted_extensions_type_extension(self):
+        ext = TLSExtension(encExt=True)
+        parser = Parser(bytearray(b'\x00\x0a'
+                                  b'\x00\x04'
+                                  b'\x00\x02'
+                                  b'\x00\x13'))
+        ext = ext.parse(parser)
+
+        self.assertIsInstance(ext, SupportedGroupsExtension)
+        self.assertEqual(ext.groups, [GroupName.secp192r1])
+
+    def test_parse_of_certificate_extension(self):
+        ext = TLSExtension(cert=True)
+        p = Parser(bytearray(
+            b'\x00\x05' +  # status_request
+            b'\x00\x05' +  # length
+            b'\x01' +  # status_type - ocsp
+            b'\x00\x00\x01' +  # ocsp response length
+            b'\xba'))  # ocsp payload
+
+        ext = ext.parse(p)
+
+        self.assertIsInstance(ext, CertificateStatusExtension)
+
     def test_parse_with_client_cert_type_extension(self):
         ext = TLSExtension()
 
@@ -343,8 +377,24 @@ class TestTLSExtension(unittest.TestCase):
         ext = ext.create(0, bytearray(b'\x00\x00'))
 
         self.assertEqual("TLSExtension(extType=0, "\
-                "extData=bytearray(b'\\x00\\x00'), serverType=False)",
+                "extData=bytearray(b'\\x00\\x00'), serverType=False, "
+                "encExtType=False)",
                 repr(ext))
+
+
+class TestListExtension(unittest.TestCase):
+    def setUp(self):
+        self.ext = ListExtension('groups', 0)
+
+    def test_extData(self):
+        with self.assertRaises(NotImplementedError):
+            _ = self.ext.extData
+
+    def test_parse(self):
+        p = Parser(bytearray(0))
+        with self.assertRaises(NotImplementedError):
+            self.ext.parse(p)
+
 
 class TestVarListExtension(unittest.TestCase):
     def setUp(self):
@@ -367,6 +417,72 @@ class TestVarListExtension(unittest.TestCase):
 
         self.assertEqual(str(e.exception),
                 "type object 'VarListExtension' has no attribute 'gruppen'")
+
+
+class TestVarSeqListExtension(unittest.TestCase):
+    def setUp(self):
+        self.ext = VarSeqListExtension(2, 2, 1, 'values', 42)
+
+    def test___init__(self):
+        self.assertIsNotNone(self.ext)
+
+    def test_get_attribute(self):
+        self.assertIsNone(self.ext.values)
+
+    def test_set_attribute(self):
+        self.ext.values = [(2, 3), (3, 4), (7, 9)]
+
+        self.assertEqual(self.ext.values, [(2, 3), (3, 4), (7, 9)])
+
+    def test_get_non_existant_attribute(self):
+        with self.assertRaises(AttributeError) as e:
+            val = self.ext.value
+
+        self.assertEqual(str(e.exception),
+                "type object 'VarSeqListExtension' has no attribute 'value'")
+
+    def test_empty_extData(self):
+        self.assertEqual(self.ext.extData, bytearray())
+
+    def test_extData(self):
+        self.ext.create([(2, 3), (10, 1)])
+
+        self.assertEqual(self.ext.extData,
+                         bytearray(#b'\x00\x2a'  # ID
+                                   #b'\x00\x09'  # ext length
+                                   b'\x08'  # array length
+                                   b'\x00\x02\x00\x03'  # first tuple
+                                   b'\x00\x0a\x00\x01'))  # second tuple
+
+    def test_parse(self):
+        p = Parser(bytearray(#b'\x00\x2a'  # ID
+                             #b'\x00\x09'  # ext length
+                             b'\x08'  # array length
+                             b'\x00\x02\x00\x03'  # first tuple
+                             b'\x00\x0a\x00\x01'))  # second tuple
+
+        self.ext = self.ext.parse(p)
+
+        self.assertEqual(self.ext.values, [(2, 3), (10, 1)])
+
+    def test_parse_with_trailing_data(self):
+        p = Parser(bytearray(#b'\x00\x2a'  # ID
+                             #b'\x00\x0a'  # ext length
+                             b'\x08'  # array length
+                             b'\x00\x02\x00\x03'  # first tuple
+                             b'\x00\x0a\x00\x01'  # second tuple
+                             b'\x00'))  # trailing byte
+
+        with self.assertRaises(SyntaxError):
+            self.ext.parse(p)
+
+    def test_parse_empty(self):
+        p = Parser(bytearray(0))
+
+        self.ext = self.ext.parse(p)
+
+        self.assertIsNone(self.ext.values)
+
 
 class TestSNIExtension(unittest.TestCase):
     def test___init__(self):
@@ -1291,6 +1407,17 @@ class TestSupportedGroups(unittest.TestCase):
         self.assertEqual(ext.extType, ExtensionType.supported_groups)
         self.assertIsNone(ext.groups)
 
+    def test_parse_with_trailing_data(self):
+        parser = Parser(bytearray(
+            b'\x00\x04' +           # length of extension list array
+            b'\x00\x13' +           # secp192r1
+            b'\x00\x15' +           # secp224r1
+            b'\x00'                 # trailing byte
+            ))
+
+        with self.assertRaises(SyntaxError):
+            SupportedGroupsExtension().parse(parser)
+
     def test_parse_with_empty_array(self):
         parser = Parser(bytearray(2))
 
@@ -1710,6 +1837,339 @@ class TestStatusRequestExtension(unittest.TestCase):
 
         with self.assertRaises(SyntaxError):
             self.ext.parse(parser)
+
+
+class TestSupportedVersionsExtension(unittest.TestCase):
+    def test___init__(self):
+        ext = SupportedVersionsExtension()
+
+        self.assertIsNotNone(ext)
+        self.assertIsNone(ext.versions)
+        self.assertEqual(bytearray(0), ext.extData)
+        self.assertEqual(43, ext.extType)
+
+    def test_create(self):
+        ext = SupportedVersionsExtension()
+
+        ext = ext.create([(3, 1), (3, 2)])
+
+        self.assertEqual([(3, 1), (3, 2)], ext.versions)
+
+    def test_extData(self):
+        ext = SupportedVersionsExtension()
+
+        ext = ext.create([(3, 3), (3, 4)])
+
+        self.assertEqual(ext.extData, bytearray(b'\x04'  # overall length
+                                                b'\x03\x03'  # first item
+                                                b'\x03\x04'))  # second item
+
+    def test_parse(self):
+        ext = TLSExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x2b'  # type of ext
+            b'\x00\x05'  # length
+            b'\x04'      # length of array inside
+            b'\x03\x03'  # first item
+            b'\x03\x04'))  # second item
+
+        ext = ext.parse(p)
+
+        self.assertIsInstance(ext, SupportedVersionsExtension)
+        self.assertEqual([(3, 3), (3, 4)], ext.versions)
+
+    def test_parse_with_trailing_data(self):
+        ext = TLSExtension()
+
+        p = Parser(bytearray(
+            b'\x00\x2b'  # type of ext
+            b'\x00\x06'  # length
+            b'\x04'      # length of array inside
+            b'\x03\x03'  # first item
+            b'\x03\x04'  # second item
+            b'\x00'))    # trailing byte
+
+        with self.assertRaises(SyntaxError):
+            ext.parse(p)
+
+
+class TestKeyShareEntry(unittest.TestCase):
+    def setUp(self):
+        self.kse = KeyShareEntry()
+
+    def test___init__(self):
+        self.assertIsNotNone(self.kse)
+
+    def test_parse(self):
+        p = Parser(bytearray(b'\x00\x12'  # group ID
+                             b'\x00\x02'  # share length
+                             b'\x01\x01'))  # key share
+
+        self.kse = self.kse.parse(p)
+
+        self.assertEqual(self.kse.group, 18)
+        self.assertEqual(self.kse.key_exchange, bytearray(b'\x01\x01'))
+
+    def test_write(self):
+        w = Writer()
+
+        self.kse.group = 18
+        self.kse.key_exchange = bytearray(b'\x01\x01')
+
+        self.kse.write(w)
+
+        self.assertEqual(w.bytes, bytearray(b'\x00\x12'  # group ID
+                                            b'\x00\x02'  # share length
+                                            b'\x01\x01'))  # key share
+
+
+class TestKeyShareExtension(unittest.TestCase):
+    def setUp(self):
+        self.cks = ClientKeyShareExtension()
+
+    def test___init__(self):
+        self.assertIsNotNone(self.cks)
+
+    def test_create(self):
+        entry = mock.Mock()
+        self.cks = self.cks.create([entry])
+
+        self.assertIs(self.cks.client_shares[0], entry)
+
+    def test_extData(self):
+        entries = [KeyShareEntry().create(10, bytearray(b'\x12\x13\x14')),
+                   KeyShareEntry().create(12, bytearray(b'\x02'))]
+        self.cks = self.cks.create(entries)
+
+        self.assertEqual(self.cks.extData, bytearray(
+            b'\x00\x0c'  # list length
+            b'\x00\x0a'  # ID of first entry
+            b'\x00\x03'  # length of share of first entry
+            b'\x12\x13\x14'  # value of share of first entry
+            b'\x00\x0c'  # ID of second entry
+            b'\x00\x01'  # length of share of second entry
+            b'\x02'))  # Value of share of second entry
+
+    def test_parse(self):
+        p = Parser(bytearray(
+            b'\x00\x0c'  # list length
+            b'\x00\x0a'  # ID of first entry
+            b'\x00\x03'  # length of share of first entry
+            b'\x12\x13\x14'  # value of share of first entry
+            b'\x00\x0c'  # ID of second entry
+            b'\x00\x01'  # length of share of second entry
+            b'\x02'))  # Value of share of second entry
+
+        self.cks = self.cks.parse(p)
+
+        self.assertEqual(len(self.cks.client_shares), 2)
+        self.assertIsInstance(self.cks.client_shares[0], KeyShareEntry)
+        self.assertEqual(self.cks.client_shares[0].group, 10)
+        self.assertEqual(self.cks.client_shares[0].key_exchange,
+                         bytearray(b'\x12\x13\x14'))
+        self.assertIsInstance(self.cks.client_shares[1], KeyShareEntry)
+        self.assertEqual(self.cks.client_shares[1].group, 12)
+        self.assertEqual(self.cks.client_shares[1].key_exchange,
+                         bytearray(b'\x02'))
+
+    def test_parse_missing_list(self):
+        p = Parser(bytearray())
+
+        self.cks = self.cks.parse(p)
+
+        self.assertIsNone(self.cks.client_shares)
+
+    def test_parse_empty_list(self):
+        p = Parser(bytearray(b'\x00\x00'))
+
+        self.cks = self.cks.parse(p)
+
+        self.assertEqual([], self.cks.client_shares)
+
+    def test_parse_with_trailing_data(self):
+        p = Parser(bytearray(b'\x00\x00\x01'))
+
+        with self.assertRaises(SyntaxError):
+            self.cks.parse(p)
+
+
+class TestServerKeyShareExtension(unittest.TestCase):
+    def setUp(self):
+        self.ext = ServerKeyShareExtension()
+
+    def test__init__(self):
+        self.assertIsNotNone(self.ext)
+        self.assertIsInstance(self.ext, ServerKeyShareExtension)
+        self.assertIsNone(self.ext.server_share)
+
+    def test_create(self):
+        ext = self.ext.create(bytearray(b'test'))
+
+        self.assertIsInstance(ext, ServerKeyShareExtension)
+        self.assertEqual(ext.server_share, bytearray(b'test'))
+
+    def test_parse(self):
+        parser = Parser(bytearray(
+            b'\x00\x28'  # ID of key_share extension
+            b'\x00\x07'  # length of the extension
+            b'\x00\x0a'  # group ID of first entry
+            b'\x00\x03'  # length of share of first entry
+            b'\x12\x13\x14'  # value of share of first entry
+            ))
+
+        ext = TLSExtension(server=True)
+        ext = ext.parse(parser)
+
+        self.assertIsInstance(ext, ServerKeyShareExtension)
+        self.assertIsInstance(ext.server_share, KeyShareEntry)
+        self.assertEqual(ext.server_share.group, 10)
+        self.assertEqual(ext.server_share.key_exchange,
+                         bytearray(b'\x12\x13\x14'))
+
+    def test_parse_with_no_data(self):
+        parser = Parser(bytearray(
+            b'\x00\x28'  # ID of key_share
+            b'\x00\x00'  # empty payload
+            ))
+        ext = TLSExtension(server=True)
+        ext = ext.parse(parser)
+
+        self.assertIsInstance(ext, ServerKeyShareExtension)
+        self.assertIsNone(ext.server_share)
+
+    def test_parse_with_trailing_data(self):
+        parser = Parser(bytearray(
+            b'\x00\x28'  # ID of key_share extension
+            b'\x00\x08'  # length of the extension
+            b'\x00\x0a'  # group ID of first entry
+            b'\x00\x03'  # length of share of first entry
+            b'\x12\x13\x14'  # value of share of first entry
+            b'\x00'  # trailing data
+            ))
+
+        ext = TLSExtension(server=True)
+        with self.assertRaises(SyntaxError):
+            ext.parse(parser)
+
+    def test_extData(self):
+        entry = KeyShareEntry().create(10, bytearray(b'\x12\x13\x14'))
+        self.ext.create(entry)
+
+        self.assertEqual(self.ext.extData,
+                bytearray(b'\x00\x0a'
+                          b'\x00\x03'
+                          b'\x12\x13\x14'))
+
+    def test_extData_with_no_entry(self):
+        self.assertEqual(self.ext.extData,
+                         bytearray(0))
+
+
+class TestCertificateStatusExtension(unittest.TestCase):
+    def test___init__(self):
+        cs = CertificateStatusExtension()
+
+        self.assertIsNone(cs.status_type)
+        self.assertIsNone(cs.response)
+
+    def test_create(self):
+        cs = CertificateStatusExtension()
+        cs = cs.create(CertificateStatusType.ocsp, bytearray(b'resp'))
+
+        self.assertIsInstance(cs, CertificateStatusExtension)
+        self.assertEqual(cs.status_type, CertificateStatusType.ocsp)
+        self.assertEqual(cs.response, bytearray(b'resp'))
+
+    def test_extData(self):
+        cs = CertificateStatusExtension()
+        cs = cs.create(CertificateStatusType.ocsp, bytearray(b'resp'))
+
+        self.assertEqual(cs.extData,
+                bytearray(b'\x01'  # status type
+                          b'\x00\x00\x04'  # length of response
+                          b'resp'  # payload
+                          ))
+
+    def test_parse(self):
+        cs = CertificateStatusExtension()
+
+        parser = Parser(bytearray(b'\x01'  # type of ocsp response
+                                  b'\x00\x00\x04'  # length
+                                  b'resp'))  # payload
+
+        cs = cs.parse(parser)
+
+        self.assertIsInstance(cs, CertificateStatusExtension)
+        self.assertEqual(cs.status_type, CertificateStatusType.ocsp)
+        self.assertEqual(cs.response, bytearray(b'resp'))
+
+    def test_parse_with_unknown_type(self):
+        cs = CertificateStatusExtension()
+
+        parser = Parser(bytearray(b'\x02'  # type of response
+                                  b'\x00\x00\x04'  # length
+                                  b'resp'))
+
+        with self.assertRaises(SyntaxError):
+            cs.parse(parser)
+
+    def test_parse_with_trailing_data(self):
+        cs = CertificateStatusExtension()
+        parser = Parser(bytearray(b'\x01'  # type of ocsp response
+                                  b'\x00\x00\x04'  # length
+                                  b'resp'  # payload
+                                  b'\x01'  # trailing data
+                                  ))
+
+        with self.assertRaises(SyntaxError):
+            cs.parse(parser)
+
+
+class TestHRRKeyShareExtension(unittest.TestCase):
+    def test___init__(self):
+        ext = HRRKeyShareExtension()
+
+        self.assertIsNone(ext.selected_group)
+
+    def test_create(self):
+        val = mock.Mock()
+
+        ext = HRRKeyShareExtension().create(val)
+
+        self.assertIs(ext.selected_group, val)
+
+    def test_extData(self):
+        ext = HRRKeyShareExtension().create(GroupName.x25519)
+
+        self.assertEqual(bytearray(b'\x00\x28'
+                                   b'\x00\x02'
+                                   b'\x00\x1d'),
+                         ext.write())
+
+    def test_extData_with_no_value(self):
+        ext = HRRKeyShareExtension()
+
+        self.assertEqual(ext.extData, bytearray())
+
+    def test_parse(self):
+        parser = Parser(bytearray(b'\x00\x28'
+                                  b'\x00\x02'
+                                  b'\x00\x1d'))
+        ext = TLSExtension(hrr=True)
+        ext = ext.parse(parser)
+
+        self.assertIsInstance(ext, HRRKeyShareExtension)
+        self.assertEqual(ext.selected_group, GroupName.x25519)
+
+    def test_parse_with_trailing_data(self):
+        parser = Parser(bytearray(b'\x00\x28'
+                                  b'\x00\x03'
+                                  b'\x00\x1d\x00'))
+        ext = TLSExtension(hrr=True)
+        with self.assertRaises(SyntaxError):
+            ext.parse(parser)
+
 
 if __name__ == '__main__':
     unittest.main()
