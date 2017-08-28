@@ -14,11 +14,22 @@ class Python_RSAKey(RSAKey):
             raise AssertionError()
         self.n = n
         self.e = e
+        if p and not q or not p and q:
+            raise ValueError("p and q must be set or left unset together")
+        if not d and p and q:
+            t = lcm(p - 1, q - 1)
+            d = invMod(e, t)
         self.d = d
         self.p = p
         self.q = q
+        if not dP and p:
+            dP = d % (p - 1)
         self.dP = dP
+        if not dQ and q:
+            dQ = d % (q - 1)
         self.dQ = dQ
+        if not qInv:
+            qInv = invMod(q, p)
         self.qInv = qInv
         self.blinder = 0
         self.unblinder = 0
