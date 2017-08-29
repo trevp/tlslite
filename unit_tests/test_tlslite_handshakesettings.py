@@ -308,5 +308,14 @@ class TestHandshakeSettings(unittest.TestCase):
 
         self.assertIn("ffdhe2048", str(e.exception))
 
+    def test_versions_and_maxVersion_mismatch(self):
+        hs = HandshakeSettings()
+        hs.maxVersion = (3, 3)
+        hs = hs.validate()
+
+        self.assertNotIn((3, 4), hs.versions)
+        self.assertNotIn((0x7f, 21), hs.versions)
+
+
 if __name__ == '__main__':
     unittest.main()

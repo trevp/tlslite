@@ -36,6 +36,7 @@ if ecdsaAllCurves:
     ALL_CURVE_NAMES += ["secp224r1", "secp192r1"]
 ALL_DH_GROUP_NAMES = ["ffdhe2048", "ffdhe3072", "ffdhe4096", "ffdhe6144",
                       "ffdhe8192"]
+KNOWN_VERSIONS = ((3, 0), (3, 1), (3, 2), (3, 3), (3, 4))
 
 class HandshakeSettings(object):
     """
@@ -284,10 +285,13 @@ class HandshakeSettings(object):
         """Check if set protocol version are sane"""
         if other.minVersion > other.maxVersion:
             raise ValueError("Versions set incorrectly")
-        if other.minVersion not in ((3, 0), (3, 1), (3, 2), (3, 3)):
+        if other.minVersion not in KNOWN_VERSIONS:
             raise ValueError("minVersion set incorrectly")
-        if other.maxVersion not in ((3, 0), (3, 1), (3, 2), (3, 3), (3, 4)):
+        if other.maxVersion not in KNOWN_VERSIONS:
             raise ValueError("maxVersion set incorrectly")
+
+        if other.maxVersion < (3, 4):
+            other.versions = [i for i in other.versions if i < (3, 4)]
 
     @staticmethod
     def _sanityCheckExtensions(other):
