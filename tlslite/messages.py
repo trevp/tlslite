@@ -1816,6 +1816,7 @@ class EncryptedExtensions(HelloMessage):
     def create(self, extensions):
         """Set the extensions in the message."""
         self.extensions = extensions
+        return self
 
     def parse(self, parser):
         """Parse the extensions from on the wire data."""

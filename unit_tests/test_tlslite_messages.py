@@ -3135,8 +3135,9 @@ class TestEncryptedExtensions(unittest.TestCase):
 
         ext = SNIExtension()
 
-        self.msg.create([ext])
+        self.msg = self.msg.create([ext])
 
+        self.assertIsInstance(self.msg, EncryptedExtensions)
         self.assertIsInstance(self.msg.extensions[0], SNIExtension)
 
     def test_parse(self):
