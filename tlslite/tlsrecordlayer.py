@@ -418,18 +418,16 @@ class TLSRecordLayer(object):
 
         :rtype: str
         :returns: The name of the TLS version used with this connection.
-            Either None, 'SSL 3.0', 'TLS 1.0', 'TLS 1.1', or 'TLS 1.2'.
+            Either None, 'SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2' or
+            'TLS 1.3'.
         """
-        if self.version == (3,0):
-            return "SSL 3.0"
-        elif self.version == (3,1):
-            return "TLS 1.0"
-        elif self.version == (3,2):
-            return "TLS 1.1"
-        elif self.version == (3,3):
-            return "TLS 1.2"
-        else:
-            return None
+        ver = {(3, 0): "SSL 3.0",
+               (3, 1): "TLS 1.0",
+               (3, 2): "TLS 1.1",
+               (3, 3): "TLS 1.2",
+               (3, 4): "TLS 1.3",
+               TLS_1_3_DRAFT: "TLS 1.3"}
+        return ver.get(self.version)
 
     def getCipherName(self):
         """Get the name of the cipher used with this connection.

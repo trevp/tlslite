@@ -339,6 +339,8 @@ class TestRealConnection(unittest.TestCase):
         self.server = TLSConnection(self.server_socket)
 
         def server_process(server):
+            settings = HandshakeSettings()
+            settings.maxVersion = (3, 3)
             server.handshakeServer(certChain=self.certChain,
                                    privateKey=self.certKey)
             ret = server.read(min=len("client hello"))
@@ -353,6 +355,7 @@ class TestRealConnection(unittest.TestCase):
 
     def test_connection_no_rsa_pss(self):
         settings = HandshakeSettings()
+        settings.maxVersion = (3, 3)
         # exclude pss as the keys in this module are too small for
         # the needed salt size for sha512 hash
         settings.rsaSchemes = ["pkcs1"]
