@@ -1084,6 +1084,9 @@ class Certificate(HandshakeMsg):
     def create(self, certChain, context=None):
         if isinstance(certChain, X509CertChain):
             self._certChain = certChain
+            self.certificate_list = [CertificateEntry(self.certificateType)
+                                     .create(i, []) for i
+                                     in certChain.x509List]
         else:
             self.certificate_list = certChain
         self.certificate_request_context = context
@@ -1816,6 +1819,7 @@ class EncryptedExtensions(HelloMessage):
     def create(self, extensions):
         """Set the extensions in the message."""
         self.extensions = extensions
+        return self
 
     def parse(self, parser):
         """Parse the extensions from on the wire data."""
