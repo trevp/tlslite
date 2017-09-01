@@ -691,8 +691,9 @@ class TLSConnection(TLSRecordLayer):
                 key_share = self._genKeyShareEntry(group_id, (3, 4))
 
                 shares.append(key_share)
-            if shares:
-                extensions.append(ClientKeyShareExtension().create(shares))
+            # if TLS 1.3 is enabled, key_share must always be sent
+            # (unless PSK is used)
+            extensions.append(ClientKeyShareExtension().create(shares))
 
         # don't send empty list of extensions or extensions in SSLv3
         if not extensions or settings.maxVersion == (3, 0):
