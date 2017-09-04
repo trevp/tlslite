@@ -10,6 +10,12 @@
 
 """Constants used in various places."""
 
+
+# protocol version number used for negotiating TLS 1.3 between implementations
+# of the draft specification
+TLS_1_3_DRAFT = (127, 21)
+
+
 class TLSEnum(object):
     """Base class for different enums of TLS IDs"""
 
