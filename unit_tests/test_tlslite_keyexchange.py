@@ -44,8 +44,10 @@ except ImportError:
     pass
 
 from tlslite.keyexchange import KeyExchange, RSAKeyExchange, \
-        DHE_RSAKeyExchange, SRPKeyExchange, ECDHE_RSAKeyExchange
+        DHE_RSAKeyExchange, SRPKeyExchange, ECDHE_RSAKeyExchange, \
+        RawDHKeyExchange, FFDHKeyExchange
 from tlslite.utils.x25519 import x25519, X25519_G, x448, X448_G
+from tlslite.mathtls import RFC7919_GROUPS
 
 srv_raw_key = str(
     "-----BEGIN RSA PRIVATE KEY-----\n"\
@@ -1271,6 +1273,12 @@ class TestECDHE_RSAKeyExchange(unittest.TestCase):
         self.assertEqual(ske.curve_type, ECCurveType.named_curve)
         self.assertEqual(ske.named_curve, GroupName.secp256r1)
 
+    def test_ECDHE_key_exchange_with_no_curves_in_ext(self):
+        self.client_hello.extensions = [SupportedGroupsExtension()]
+
+        with self.assertRaises(TLSInternalError):
+            ske = self.keyExchange.makeServerKeyExchange('sha1')
+
     def test_ECDHE_key_exchange_with_no_mutual_curves(self):
         ext = SupportedGroupsExtension().create([GroupName.secp160r1])
         self.client_hello.extensions = [ext]
@@ -1307,6 +1315,17 @@ class TestECDHE_RSAKeyExchange(unittest.TestCase):
         with self.assertRaises(TLSIllegalParameterException):
             client_keyExchange.processServerKeyExchange(None, srv_key_ex)
 
+    def test_client_ECDHE_key_exchange_with_no_share(self):
+        srv_key_ex = self.keyExchange.makeServerKeyExchange('sha1')
+        srv_key_ex.ecdh_Ys = bytearray()
+
+        client_keyExchange = ECDHE_RSAKeyExchange(self.cipher_suite,
+                                                  self.client_hello,
+                                                  self.server_hello,
+                                                  None,
+                                                  [GroupName.secp256r1])
+        with self.assertRaises(TLSDecodeError):
+            client_keyExchange.processServerKeyExchange(None, srv_key_ex)
 
 class TestRSAKeyExchange_with_PSS_scheme(unittest.TestCase):
     def setUp(self):
@@ -1644,3 +1663,47 @@ class TestECDHE_RSAKeyExchange_with_x448(unittest.TestCase):
         srv_key_ex.ecdh_Ys = bytearray(56)
         with self.assertRaises(TLSIllegalParameterException):
             client_keyExchange.processServerKeyExchange(None, srv_key_ex)
+
+
+class TestRawDHKeyExchange(unittest.TestCase):
+    def test___init__(self):
+        group = mock.Mock()
+        version = mock.Mock()
+        kex = RawDHKeyExchange(group, version)
+
+        self.assertIs(kex.group, group)
+        self.assertIs(kex.version, version)
+
+    def test_get_random_private_key(self):
+        kex = RawDHKeyExchange(None, None)
+
+        with self.assertRaises(NotImplementedError):
+            kex.get_random_private_key()
+
+    def test_calc_public_value(self):
+        kex = RawDHKeyExchange(None, None)
+
+        with self.assertRaises(NotImplementedError):
+            kex.calc_public_value(None)
+
+    def test_calc_shared_value(self):
+        kex = RawDHKeyExchange(None, None)
+
+        with self.assertRaises(NotImplementedError):
+            kex.calc_shared_key(None, None)
+
+
+class TestFFDHKeyExchange(unittest.TestCase):
+    def test___init___with_conflicting_options(self):
+        with self.assertRaises(ValueError):
+            FFDHKeyExchange(GroupName.ffdhe2048, (3, 3), 2, 31)
+
+    def test___init___with_invalid_generator(self):
+        with self.assertRaises(TLSIllegalParameterException):
+            FFDHKeyExchange(None, (3, 3), 31, 2)
+
+    def test___init___with_rfc7919_group(self):
+        kex = FFDHKeyExchange(GroupName.ffdhe2048, (3, 3))
+
+        self.assertEqual(kex.generator, 2)
+        self.assertEqual(kex.prime, RFC7919_GROUPS[0][1])

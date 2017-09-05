@@ -381,11 +381,12 @@ class ADHKeyExchange(KeyExchange):
                 raise TLSInternalError("DHE key exchange attempted despite no "
                                        "overlap between supported groups")
 
-        # Per RFC 3526, Section 1, the exponent should have double the entropy
-        # of the strength of the group.
-        randBytesNeeded = divceil(paramStrength(self.dh_p) * 2, 8)
-        self.dh_Xs = bytesToNumber(getRandomBytes(randBytesNeeded))
-        dh_Ys = powMod(self.dh_g, self.dh_Xs, self.dh_p)
+        # for TLS < 1.3 we need special algorithm to select params (see above)
+        # so do not pass in the group, if we selected one
+        kex = FFDHKeyExchange(None, self.serverHello.server_version,
+                              self.dh_g, self.dh_p)
+        self.dh_Xs = kex.get_random_private_key()
+        dh_Ys = kex.calc_public_value(self.dh_Xs)
 
         version = self.serverHello.server_version
         serverKeyExchange = ServerKeyExchange(self.cipherSuite, version)
@@ -397,16 +398,9 @@ class ADHKeyExchange(KeyExchange):
         """Use client provided parameters to establish premaster secret"""
         dh_Yc = clientKeyExchange.dh_Yc
 
-        # First half of RFC 2631, Section 2.1.5. Validate the client's public
-        # key.
-        # use of safe primes also means that the p-1 is invalid
-        if not 2 <= dh_Yc < self.dh_p - 1:
-            raise TLSIllegalParameterException("Invalid dh_Yc value")
-
-        S = powMod(dh_Yc, self.dh_Xs, self.dh_p)
-        if S in (1, self.dh_p - 1):
-            raise TLSIllegalParameterException("Small subgroup capture")
-        return numberToByteArray(S)
+        kex = FFDHKeyExchange(None, self.serverHello.server_version,
+                              self.dh_g, self.dh_p)
+        return kex.calc_shared_key(self.dh_Xs, dh_Yc)
 
     def processServerKeyExchange(self, srvPublicKey, serverKeyExchange):
         """Process the server key exchange, return premaster secret."""
@@ -415,25 +409,15 @@ class ADHKeyExchange(KeyExchange):
         # TODO make the minimum changeable
         if dh_p < 2**1023:
             raise TLSInsufficientSecurity("DH prime too small")
-
         dh_g = serverKeyExchange.dh_g
-        if not 2 <= dh_g < dh_p - 1:
-            raise TLSIllegalParameterException("Invalid DH generator")
-
-        dh_Xc = bytesToNumber(getRandomBytes(32))
         dh_Ys = serverKeyExchange.dh_Ys
-        if not 2 <= dh_Ys < dh_p - 1:
-            raise TLSIllegalParameterException("Invalid server key share")
 
-        self.dh_Yc = powMod(dh_g, dh_Xc, dh_p)
-        if self.dh_Yc in (1, dh_p - 1):
-            raise TLSIllegalParameterException("Small subgroup capture")
+        kex = FFDHKeyExchange(None, self.serverHello.server_version,
+                              dh_g, dh_p)
 
-        S = powMod(dh_Ys, dh_Xc, dh_p)
-        if S in (1, dh_p - 1):
-            raise TLSIllegalParameterException("Small subgroup capture")
-
-        return numberToByteArray(S)
+        dh_Xc = kex.get_random_private_key()
+        self.dh_Yc = kex.calc_public_value(dh_Xc)
+        return kex.calc_shared_key(dh_Xc, dh_Ys)
 
     def makeClientKeyExchange(self):
         """Create client key share for the key exchange"""
@@ -474,19 +458,6 @@ class AECDHKeyExchange(KeyExchange):
     ECDHE without signing serverKeyExchange useful for anonymous ECDH
     """
 
-    @staticmethod
-    def _non_zero_check(value):
-        """
-        Verify using constant time operation that the bytearray is not zero
-
-        :raises TLSIllegalParameterException: if the value is all zero
-        """
-        summa = 0
-        for i in value:
-            summa |= i
-        if summa == 0:
-            raise TLSIllegalParameterException("Invalid key share")
-
     def __init__(self, cipherSuite, clientHello, serverHello, acceptedCurves,
                  defaultCurve=GroupName.secp256r1):
         super(AECDHKeyExchange, self).__init__(cipherSuite, clientHello,
@@ -516,22 +487,10 @@ class AECDHKeyExchange(KeyExchange):
         self.group_id = getFirstMatching(client_curves, self.acceptedCurves)
         if self.group_id is None:
             raise TLSInsufficientSecurity("No mutual groups")
-        if self.group_id in [GroupName.x25519, GroupName.x448]:
-            if self.group_id == GroupName.x25519:
-                generator = bytearray(X25519_G)
-                fun = x25519
-                self.ecdhXs = getRandomBytes(X25519_ORDER_SIZE)
-            else:
-                generator = bytearray(X448_G)
-                fun = x448
-                self.ecdhXs = getRandomBytes(X448_ORDER_SIZE)
-            ecdhYs = fun(self.ecdhXs, generator)
-        else:
-            curve = getCurveByName(GroupName.toRepr(self.group_id))
-            generator = curve.generator
-            self.ecdhXs = ecdsa.util.randrange(generator.order())
 
-            ecdhYs = encodeX962Point(generator * self.ecdhXs)
+        kex = ECDHKeyExchange(self.group_id, self.serverHello.server_version)
+        self.ecdhXs = kex.get_random_private_key()
+        ecdhYs = kex.calc_public_value(self.ecdhXs)
 
         version = self.serverHello.server_version
         serverKeyExchange = ServerKeyExchange(self.cipherSuite, version)
@@ -547,30 +506,9 @@ class AECDHKeyExchange(KeyExchange):
 
         if not ecdhYc:
             raise TLSDecodeError("No key share")
-        if self.group_id in [GroupName.x25519, GroupName.x448]:
-            if self.group_id == GroupName.x25519:
-                if len(ecdhYc) != X25519_ORDER_SIZE:
-                    raise TLSIllegalParameterException("Invalid key share")
-                sharedSecret = x25519(self.ecdhXs, ecdhYc)
-            else:
-                if len(ecdhYc) != X448_ORDER_SIZE:
-                    raise TLSIllegalParameterException("Invalid key share")
-                sharedSecret = x448(self.ecdhXs, ecdhYc)
-            self._non_zero_check(sharedSecret)
-            return sharedSecret
-        else:
-            curveName = GroupName.toRepr(self.group_id)
-            try:
-                ecdhYc = decodeX962Point(ecdhYc,
-                                         getCurveByName(curveName))
-            # TODO update python-ecdsa library to raise something more on point
-            except AssertionError:
-                raise TLSIllegalParameterException("Invalid ECC point")
 
-            sharedSecret = ecdhYc * self.ecdhXs
-
-            return numberToByteArray(sharedSecret.x(),
-                                     getPointByteSize(ecdhYc))
+        kex = ECDHKeyExchange(self.group_id, self.serverHello.server_version)
+        return kex.calc_shared_key(self.ecdhXs, ecdhYc)
 
     def processServerKeyExchange(self, srvPublicKey, serverKeyExchange):
         """Process the server key exchange, return premaster secret"""
@@ -581,37 +519,15 @@ class AECDHKeyExchange(KeyExchange):
             raise TLSIllegalParameterException("Server picked curve we "
                                                "didn't advertise")
 
-        if serverKeyExchange.named_curve in [GroupName.x25519,
-                                             GroupName.x448]:
-            if serverKeyExchange.named_curve == GroupName.x25519:
-                generator = bytearray(X25519_G)
-                fun = x25519
-                ecdhXc = getRandomBytes(X25519_ORDER_SIZE)
-                if len(serverKeyExchange.ecdh_Ys) != X25519_ORDER_SIZE:
-                    raise TLSIllegalParameterException("Invalid server key "
-                                                       "share")
-            else:
-                generator = bytearray(X448_G)
-                fun = x448
-                ecdhXc = getRandomBytes(X448_ORDER_SIZE)
-                if len(serverKeyExchange.ecdh_Ys) != X448_ORDER_SIZE:
-                    raise TLSIllegalParameterException("Invalid server key "
-                                                       "share")
-            self.ecdhYc = fun(ecdhXc, generator)
-            S = fun(ecdhXc, serverKeyExchange.ecdh_Ys)
-            # check if the secret is not all-zero
-            self._non_zero_check(S)
-            return S
-        else:
-            curveName = GroupName.toStr(serverKeyExchange.named_curve)
-            curve = getCurveByName(curveName)
-            generator = curve.generator
+        ecdh_Ys = serverKeyExchange.ecdh_Ys
+        if not ecdh_Ys:
+            raise TLSDecodeError("Empty server key share")
 
-            ecdhXc = ecdsa.util.randrange(generator.order())
-            ecdhYs = decodeX962Point(serverKeyExchange.ecdh_Ys, curve)
-            self.ecdhYc = encodeX962Point(generator * ecdhXc)
-            S = ecdhYs * ecdhXc
-            return numberToByteArray(S.x(), getPointByteSize(S))
+        kex = ECDHKeyExchange(serverKeyExchange.named_curve,
+                              self.serverHello.server_version)
+        ecdhXc = kex.get_random_private_key()
+        self.ecdhYc = kex.calc_public_value(ecdhXc)
+        return kex.calc_shared_key(ecdhXc, ecdh_Ys)
 
     def makeClientKeyExchange(self):
         """Make client key exchange for ECDHE"""
@@ -734,3 +650,158 @@ class SRPKeyExchange(KeyExchange):
         cke = super(SRPKeyExchange, self).makeClientKeyExchange()
         cke.createSRP(self.A)
         return cke
+
+
+class RawDHKeyExchange(object):
+    """
+    Abstract class for performing Diffe-Hellman key exchange.
+
+    Provides a shared API for X25519, ECDHE and FFDHE key exchange.
+    """
+
+    def __init__(self, group, version):
+        """
+        Set the parameters of the key exchange
+
+        Sets group on which the KEX will take part and protocol version used.
+        """
+        self.group = group
+        self.version = version
+
+    def get_random_private_key(self):
+        """
+        Generate a random value suitable for use as the private value of KEX.
+        """
+        raise NotImplementedError("Abstract class")
+
+    def calc_public_value(self, private):
+        """Calculate the public value from the provided private value."""
+        raise NotImplementedError("Abstract class")
+
+    def calc_shared_key(self, private, peer_share):
+        """Calcualte the shared key given our private and remote share value"""
+        raise NotImplementedError("Abstract class")
+
+
+class FFDHKeyExchange(RawDHKeyExchange):
+    """Implemenation of the Finite Field Diffie-Hellman key exchange."""
+
+    def __init__(self, group, version, generator=None, prime=None):
+        super(FFDHKeyExchange, self).__init__(group, version)
+        if prime and group:
+            raise ValueError("Can't set the RFC7919 group and custom params"
+                             " at the same time")
+        if group:
+            self.generator, self.prime = RFC7919_GROUPS[group-256]
+        else:
+            self.prime = prime
+            self.generator = generator
+
+        if not 1 < self.generator < self.prime:
+            raise TLSIllegalParameterException("Invalid DH generator")
+
+    def get_random_private_key(self):
+        """
+        Return a random private value for the prime used.
+
+        :rtype: int
+        """
+        # Per RFC 3526, Section 1, the exponent should have double the entropy
+        # of the strength of the group.
+        needed_bytes = divceil(paramStrength(self.prime) * 2, 8)
+        return bytesToNumber(getRandomBytes(needed_bytes))
+
+    def calc_public_value(self, private):
+        """
+        Calculate the public value for given private value.
+
+        :rtype: int
+        """
+        dh_Y = powMod(self.generator, private, self.prime)
+        if dh_Y in (1, self.prime - 1):
+            raise TLSIllegalParameterException("Small subgroup capture")
+        return dh_Y
+
+    def calc_shared_key(self, private, peer_share):
+        """Calculate the shared key."""
+        # First half of RFC 2631, Section 2.1.5. Validate the client's public
+        # key.
+        # use of safe primes also means that the p-1 is invalid
+        if not 2 <= peer_share < self.prime - 1:
+            raise TLSIllegalParameterException("Invalid peer key share")
+
+        S = powMod(peer_share, private, self.prime)
+
+        if S in (1, self.prime - 1):
+            raise TLSIllegalParameterException("Small subgroup capture")
+        return numberToByteArray(S)
+
+
+class ECDHKeyExchange(RawDHKeyExchange):
+    """Implementation of the Elliptic Curve Diffie-Hellman key exchange."""
+
+    _x_groups = set((GroupName.x25519, GroupName.x448))
+
+    @staticmethod
+    def _non_zero_check(value):
+        """
+        Verify using constant time operation that the bytearray is not zero
+
+        :raises TLSIllegalParameterException: if the value is all zero
+        """
+        summa = 0
+        for i in value:
+            summa |= i
+        if summa == 0:
+            raise TLSIllegalParameterException("Invalid key share")
+
+    def __init__(self, group, version):
+        super(ECDHKeyExchange, self).__init__(group, version)
+
+    def get_random_private_key(self):
+        """Return random private key value for the selected curve."""
+        if self.group in self._x_groups:
+            if self.group == GroupName.x25519:
+                return getRandomBytes(X25519_ORDER_SIZE)
+            else:
+                return getRandomBytes(X448_ORDER_SIZE)
+        else:
+            curve = getCurveByName(GroupName.toStr(self.group))
+            return ecdsa.util.randrange(curve.generator.order())
+
+    def _get_fun_gen_size(self):
+        """Return the function and generator for X25519/X448 KEX."""
+        if self.group == GroupName.x25519:
+            return x25519, bytearray(X25519_G), X25519_ORDER_SIZE
+        else:
+            return x448, bytearray(X448_G), X448_ORDER_SIZE
+
+    def calc_public_value(self, private):
+        """Calculate public value for given private key."""
+        if self.group in self._x_groups:
+            fun, generator, _ = self._get_fun_gen_size()
+            return fun(private, generator)
+        else:
+            curve = getCurveByName(GroupName.toStr(self.group))
+            return encodeX962Point(curve.generator * private)
+
+    def calc_shared_key(self, private, peer_share):
+        """Calculate the shared key,"""
+        if self.group in self._x_groups:
+            fun, _, size = self._get_fun_gen_size()
+            if len(peer_share) != size:
+                raise TLSIllegalParameterException("Invalid key share")
+            S = fun(private, peer_share)
+            self._non_zero_check(S)
+            return S
+        else:
+            curve = getCurveByName(GroupName.toRepr(self.group))
+            try:
+                ecdhYc = decodeX962Point(peer_share,
+                                         curve)
+            except AssertionError:
+                raise TLSIllegalParameterException("Invalid ECC point")
+
+            S = ecdhYc * private
+
+            return numberToByteArray(S.x(), getPointByteSize(ecdhYc))
