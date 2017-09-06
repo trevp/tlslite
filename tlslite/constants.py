@@ -107,6 +107,7 @@ class HandshakeType(TLSEnum):
     finished = 20
     certificate_status = 22
     next_protocol = 67
+    message_hash = 254  # TLS 1.3
 
 
 class ContentType(TLSEnum):
@@ -144,6 +145,7 @@ class ExtensionType(TLSEnum):
     key_share = 40  # TLS 1.3
     early_data = 42  # TLS 1.3
     supported_versions = 43  # TLS 1.3
+    cookie = 44  # TLS 1.3
     supports_npn = 13172
     tack = 0xF300
     renegotiation_info = 0xff01  # RFC 5746
