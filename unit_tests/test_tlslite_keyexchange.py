@@ -1707,3 +1707,22 @@ class TestFFDHKeyExchange(unittest.TestCase):
 
         self.assertEqual(kex.generator, 2)
         self.assertEqual(kex.prime, RFC7919_GROUPS[0][1])
+
+    def test_calc_public_value(self):
+        kex = FFDHKeyExchange(GroupName.ffdhe2048, (3, 4))
+
+        private = 2
+        public = kex.calc_public_value(private)
+        # verify that numbers are zero-padded
+        self.assertEqual(public,
+                bytearray(b'\x00' * 255 + b'\x04'))
+
+    def test_calc_shared_secret(self):
+        kex = FFDHKeyExchange(GroupName.ffdhe2048, (3, 4))
+
+        private = 2
+        key_share = 4
+        shared = kex.calc_shared_key(private, key_share)
+        # verify that numbers are zero-padded on MSBs
+        self.assertEqual(shared,
+                bytearray(b'\x00' * 255 + b'\x10'))
