@@ -16,7 +16,7 @@ from .utils.ecc import decodeX962Point, encodeX962Point, getCurveByName, \
         getPointByteSize
 from .utils.rsakey import RSAKey
 from .utils.cryptomath import bytesToNumber, getRandomBytes, powMod, \
-        numBits, numberToByteArray, divceil
+        numBits, numberToByteArray, divceil, numBytes
 from .utils.lists import getFirstMatching
 from .utils import tlshashlib as hashlib
 from .utils.x25519 import x25519, x448, X25519_G, X448_G, X25519_ORDER_SIZE, \
@@ -720,7 +720,10 @@ class FFDHKeyExchange(RawDHKeyExchange):
         dh_Y = powMod(self.generator, private, self.prime)
         if dh_Y in (1, self.prime - 1):
             raise TLSIllegalParameterException("Small subgroup capture")
-        return dh_Y
+        if self.version < (3, 4):
+            return dh_Y
+        else:
+            return numberToByteArray(dh_Y, numBytes(self.prime))
 
     def calc_shared_key(self, private, peer_share):
         """Calculate the shared key."""
@@ -731,10 +734,12 @@ class FFDHKeyExchange(RawDHKeyExchange):
             raise TLSIllegalParameterException("Invalid peer key share")
 
         S = powMod(peer_share, private, self.prime)
-
         if S in (1, self.prime - 1):
             raise TLSIllegalParameterException("Small subgroup capture")
-        return numberToByteArray(S)
+        if self.version < (3, 4):
+            return numberToByteArray(S)
+        else:
+            return numberToByteArray(S, numBytes(self.prime))
 
 
 class ECDHKeyExchange(RawDHKeyExchange):
