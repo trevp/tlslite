@@ -17,6 +17,7 @@ import socket
 from .utils.compat import *
 from .utils.cryptomath import *
 from .utils.codec import Parser
+from .utils.lists import to_str_delimiter
 from .errors import *
 from .messages import *
 from .mathtls import *
@@ -763,9 +764,13 @@ class TLSRecordLayer(object):
                 else:
                     subType = p.get(1)
                     if subType not in secondaryType:
-                        for result in self._sendError(\
-                                AlertDescription.unexpected_message,
-                                "Expecting %s, got %s" % (str(secondaryType), subType)):
+                        exp = to_str_delimiter(HandshakeType.toStr(i) for i in
+                                               secondaryType)
+                        rec = HandshakeType.toStr(subType)
+                        for result in self._sendError(AlertDescription
+                                                      .unexpected_message,
+                                                      "Expecting {0}, got {1}"
+                                                      .format(exp, rec)):
                             yield result
 
                 #Update handshake hashes
