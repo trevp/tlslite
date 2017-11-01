@@ -177,6 +177,8 @@ class TLSRecordLayer(object):
         protocol version.
         """
         self._recordLayer.version = value
+        if value > (3, 3):
+            self._recordLayer.tls13record = True
 
     @property
     def encryptThenMAC(self):
