@@ -526,6 +526,7 @@ class TestRecordLayer(unittest.TestCase):
 
         recordLayer = RecordLayer(sock)
         recordLayer.version = (3, 4)
+        recordLayer.tls13record = True
 
         recordLayer.calcTLS1_3PendingState(CipherSuite.TLS_AES_128_GCM_SHA256,
                                            bytearray(32),  # cl_traffic_sec
@@ -568,6 +569,7 @@ class TestRecordLayer(unittest.TestCase):
         recordLayer = RecordLayer(sock)
         recordLayer.client = False
         recordLayer.version = (3, 4)
+        recordLayer.tls13record = True
 
         recordLayer.calcTLS1_3PendingState(CipherSuite.TLS_AES_128_GCM_SHA256,
                                            bytearray(32),  # cl_traffic_sec
@@ -598,6 +600,7 @@ class TestRecordLayer(unittest.TestCase):
 
         recordLayer = RecordLayer(sock)
         recordLayer.version = (3, 4)
+        recordLayer.tls13record = True
 
         recordLayer.calcTLS1_3PendingState(CipherSuite.TLS_AES_256_GCM_SHA384,
                                            bytearray(48),  # cl_traffic_sec
@@ -632,6 +635,7 @@ class TestRecordLayer(unittest.TestCase):
 
         recordLayer = RecordLayer(sock)
         recordLayer.version = (3, 4)
+        recordLayer.tls13record = True
 
         ciph = CipherSuite.TLS_CHACHA20_POLY1305_SHA256
         recordLayer.calcTLS1_3PendingState(ciph,
@@ -668,6 +672,7 @@ class TestRecordLayer(unittest.TestCase):
 
         recordLayer = RecordLayer(sock)
         recordLayer.version = (3, 4)
+        recordLayer.tls13record = True
         self.assertEqual((3, 4), recordLayer.version)
 
         recordLayer.calcTLS1_3PendingState(CipherSuite.TLS_AES_128_GCM_SHA256,
@@ -699,6 +704,7 @@ class TestRecordLayer(unittest.TestCase):
         sock = MockSocket(sock.sent[0])
         recordLayer = RecordLayer(sock)
         recordLayer.version = (3, 4)
+        recordLayer.tls13record = True
         recordLayer.client = False
 
         recordLayer.calcTLS1_3PendingState(CipherSuite.TLS_AES_128_GCM_SHA256,

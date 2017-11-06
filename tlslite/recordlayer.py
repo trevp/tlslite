@@ -252,12 +252,15 @@ class RecordLayer(object):
     :ivar encryptThenMAC: use the encrypt-then-MAC mechanism for record
         integrity
     :ivar handshake_finished: used in SSL2, True if handshake protocol is over
+    :ivar tls13record: if True, the record layer will use the TLS 1.3 version
+        and content type hiding
     """
 
     def __init__(self, sock):
         self.sock = sock
         self._recordSocket = RecordSocket(sock)
         self._version = (0, 0)
+        self._tls13record = False
 
         self.client = True
 
@@ -277,6 +280,30 @@ class RecordLayer(object):
         return self._writeState.encContext.block_size
 
     @property
+    def tls13record(self):
+        """Return the value of the tls13record state."""
+        return self._tls13record
+
+    @tls13record.setter
+    def tls13record(self, val):
+        """Change the record layer to TLS1.3-like operation, if applicable."""
+        self._tls13record = val
+        self._handle_tls13_record()
+
+    def _is_tls13_plus(self):
+        """Returns True if we're doing real TLS 1.3."""
+        return self._version > (3, 3) and self._tls13record
+
+    def _handle_tls13_record(self):
+        """Make sure that the version and tls13record setting is consistent."""
+        if self._is_tls13_plus():
+            # in TLS 1.3 all records need to be sent with the generic version
+            # which is the same as TLS 1.0
+            self._recordSocket.version = (3, 1)
+        else:
+            self._recordSocket.version = self._version
+
+    @property
     def version(self):
         """Return the TLS version used by record layer"""
         return self._version
@@ -285,12 +312,7 @@ class RecordLayer(object):
     def version(self, val):
         """Set the TLS version used by record layer"""
         self._version = val
-        if val <= (3, 3):
-            self._recordSocket.version = val
-        else:
-            # in TLS 1.3 all records need to be sent with the generic version
-            # which is the same as TLS 1.0
-            self._recordSocket.version = (3, 1)
+        self._handle_tls13_record()
 
     def getCipherName(self):
         """
@@ -407,7 +429,7 @@ class RecordLayer(object):
         """Calculate a nonce for a given enc/dec context"""
         # ChaCha is using the draft-TLS1.3-like nonce derivation
         if (state.encContext.name == "chacha20-poly1305" and
-                len(state.fixedNonce) == 12) or self.version > (3, 3):
+                len(state.fixedNonce) == 12) or self._is_tls13_plus():
             # 4 byte nonce is used by the draft cipher
             pad = bytearray(len(state.fixedNonce) - len(seqnum))
             nonce = bytearray(i ^ j for i, j in zip(pad + seqnum,
@@ -421,7 +443,7 @@ class RecordLayer(object):
         """Encrypt with AEAD cipher"""
         #Assemble the authenticated data.
         seqNumBytes = self._writeState.getSeqNumBytes()
-        if self.version <= (3, 3):
+        if not self._is_tls13_plus():
             authData = seqNumBytes + bytearray([contentType,
                                                 self.version[0],
                                                 self.version[1],
@@ -437,7 +459,8 @@ class RecordLayer(object):
         buf = self._writeState.encContext.seal(nonce, buf, authData)
 
         #AES-GCM, has an explicit variable nonce.
-        if "aes" in self._writeState.encContext.name and self.version < (3, 4):
+        if "aes" in self._writeState.encContext.name and \
+                not self._is_tls13_plus():
             buf = seqNumBytes + buf
 
         return buf
@@ -481,7 +504,7 @@ class RecordLayer(object):
         contentType = msg.contentType
 
         # TLS 1.3 hides the content type of messages
-        if self.version > (3, 3) and self._writeState.encContext:
+        if self._is_tls13_plus() and self._writeState.encContext:
             # TODO - add support for padding
             data += bytearray([contentType])
             # in TLS 1.3 contentType is ignored by _encryptThenSeal
@@ -646,7 +669,8 @@ class RecordLayer(object):
         """Decrypt AEAD encrypted data"""
         seqnumBytes = self._readState.getSeqNumBytes()
         #AES-GCM, has an explicit variable nonce.
-        if "aes" in self._readState.encContext.name and self.version < (3, 4):
+        if "aes" in self._readState.encContext.name and \
+                not self._is_tls13_plus():
             explicitNonceLength = 8
             if explicitNonceLength > len(buf):
                 #Publicly invalid.
@@ -660,7 +684,7 @@ class RecordLayer(object):
             #Publicly invalid.
             raise TLSBadRecordMAC("Truncated tag")
 
-        if self.version in [(3, 0), (3, 1), (3, 2), (3, 3)]:
+        if not self._is_tls13_plus():
             plaintextLen = len(buf) - self._readState.encContext.tagLength
             authData = seqnumBytes + bytearray([recordType, self.version[0],
                                                 self.version[1],
@@ -771,7 +795,7 @@ class RecordLayer(object):
             data = self._decryptStreamThenMAC(header.type, data)
 
         # TLS 1.3 encrypts the type
-        if self.version > (3, 3):
+        if self._is_tls13_plus():
             data, contentType = self._tls13_de_pad(data)
             header = RecordHeader3().create((3, 4), contentType, len(data))
 
