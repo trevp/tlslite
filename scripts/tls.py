@@ -278,6 +278,7 @@ def clientCmd(argv):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(5)
     sock.connect(address)
+    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     connection = TLSConnection(sock)
     
     settings = HandshakeSettings()
@@ -368,6 +369,8 @@ def serverCmd(argv):
                 settings = HandshakeSettings()
                 settings.useExperimentalTackExtension=True
                 settings.dhParams = dhparam
+                connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY,
+                                      1)
                 connection.handshakeServer(certChain=certChain,
                                               privateKey=privateKey,
                                               verifierDB=verifierDB,
