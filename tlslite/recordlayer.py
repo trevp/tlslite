@@ -233,6 +233,7 @@ class ConnectionState(object):
         self.encContext = None
         self.fixedNonce = None
         self.seqnum = 0
+        self.encryptThenMAC = False
 
     def getSeqNumBytes(self):
         """Return encoded sequence number and increment it."""
@@ -249,8 +250,6 @@ class RecordLayer(object):
     :ivar version: the TLS version to use (tuple encoded as on the wire)
     :ivar sock: underlying socket
     :ivar client: whether the connection should use encryption
-    :ivar encryptThenMAC: use the encrypt-then-MAC mechanism for record
-        integrity
     :ivar handshake_finished: used in SSL2, True if handshake protocol is over
     :ivar tls13record: if True, the record layer will use the TLS 1.3 version
         and content type hiding
@@ -270,9 +269,23 @@ class RecordLayer(object):
         self._pendingReadState = ConnectionState()
         self.fixedIVBlock = None
 
-        self.encryptThenMAC = False
-
         self.handshake_finished = False
+
+    @property
+    def encryptThenMAC(self):
+        """
+        Set or get the setting of Encrypt Then MAC mechanism.
+
+        set the encrypt-then-MAC mechanism for record
+        integrity for next parameter change (after CCS),
+        gets current state
+        """
+        return self._writeState.encryptThenMAC
+
+    @encryptThenMAC.setter
+    def encryptThenMAC(self, value):
+        self._pendingWriteState.encryptThenMAC = value
+        self._pendingReadState.encryptThenMAC = value
 
     @property
     def blockSize(self):
@@ -516,7 +529,7 @@ class RecordLayer(object):
         elif self._writeState.encContext and \
                 self._writeState.encContext.isAEAD:
             data = self._encryptThenSeal(data, contentType)
-        elif self.encryptThenMAC:
+        elif self._writeState.encryptThenMAC:
             data = self._encryptThenMAC(data, contentType)
         else:
             data = self._macThenEncrypt(data, contentType)
@@ -785,7 +798,7 @@ class RecordLayer(object):
             self._readState.encContext and \
             self._readState.encContext.isAEAD:
             data = self._decryptAndUnseal(header.type, data)
-        elif self.encryptThenMAC:
+        elif self._readState and self._readState.encryptThenMAC:
             data = self._macThenDecrypt(header.type, data)
         elif self._readState and \
                 self._readState.encContext and \
@@ -1079,10 +1092,18 @@ class RecordLayer(object):
 
         #Assign new connection states to pending states
         if self.client:
+            clientPendingState.encryptThenMAC = \
+                    self._pendingWriteState.encryptThenMAC
             self._pendingWriteState = clientPendingState
+            serverPendingState.encryptThenMAC = \
+                    self._pendingReadState.encryptThenMAC
             self._pendingReadState = serverPendingState
         else:
+            serverPendingState.encryptThenMAC = \
+                    self._pendingWriteState.encryptThenMAC
             self._pendingWriteState = serverPendingState
+            clientPendingState.encryptThenMAC = \
+                    self._pendingReadState.encryptThenMAC
             self._pendingReadState = clientPendingState
 
         if self.version >= (3, 2) and ivLength:
