@@ -2425,6 +2425,7 @@ class TestRecordLayer(unittest.TestCase):
                 bytearray(32), # server random
                 None)
         sendingRecordLayer.changeWriteState()
+        self.assertTrue(sendingRecordLayer.encryptThenMAC)
 
         msg = ApplicationData().create(bytearray(b'test'))
 
