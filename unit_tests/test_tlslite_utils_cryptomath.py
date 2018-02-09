@@ -16,7 +16,7 @@ import struct
 from tlslite.utils.cryptomath import isPrime, numBits, numBytes, \
         numberToByteArray, MD5, SHA1, secureHash, HMAC_MD5, HMAC_SHA1, \
         HMAC_SHA256, HMAC_SHA384, HKDF_expand, bytesToNumber, \
-        HKDF_expand_label, derive_secret
+        HKDF_expand_label, derive_secret, numberToMPI, mpiToNumber
 from tlslite.handshakehashes import HandshakeHashes
 
 class TestIsPrime(unittest.TestCase):
@@ -504,3 +504,17 @@ class TestDerive_secret(unittest.TestCase):
                          bytearray(b'\t\xec\x01W[Y\xdcP\xac\xebu\x13\xe6\x98'
                                    b'\x19\xccu;\xfa\x90\xc9\xe3\xc1\xe7\xb7'
                                    b'\xcf\x0c\x97;x\xf0F'))
+
+
+class TestMPI(unittest.TestCase):
+    def test_toMPI(self):
+        r = numberToMPI(200)
+        self.assertEqual(bytearray(b'\x00\x00\x00\x02\x00\xc8'), r)
+
+    def test_fromMPI(self):
+        r = mpiToNumber(bytearray(b'\x00\x00\x00\x02\x00\xc8'))
+        self.assertEqual(r, 200)
+
+    def test_fromMPI_with_negative_number(self):
+        with self.assertRaises(ValueError):
+            mpiToNumber(bytearray(b'\x00\x00\x00\x01\xc8'))
