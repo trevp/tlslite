@@ -4,6 +4,9 @@ language: python
 branches:
   only:
     - master
+    - tlslite-ng-0.5
+    - tlslite-ng-0.6
+    - tlslite-ng-0.7
 
 addons:
   apt_packages:
