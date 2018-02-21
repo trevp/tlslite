@@ -96,8 +96,7 @@ def clientTestCmd(argv):
 
     def connect():
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        if hasattr(sock, 'settimeout'): #It's a python 2.3 feature
-            sock.settimeout(15)
+        sock.settimeout(15)
         sock.connect(address)
         c = TLSConnection(sock)
         return c
@@ -779,7 +778,9 @@ def serverTestCmd(argv):
     synchro = synchroSocket.accept()[0]
 
     def connect():
-        return TLSConnection(lsock.accept()[0])
+        s = lsock.accept()[0]
+        s.settimeout(15)
+        return TLSConnection(s)
 
     x509Cert = X509().parse(open(os.path.join(dir, "serverX509Cert.pem")).read())
     x509Chain = X509CertChain([x509Cert])
