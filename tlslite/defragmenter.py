@@ -2,14 +2,20 @@
 #
 # See the LICENSE file for legal information regarding use of this file.
 
-""" Helper package for handling fragmentation of messages """
+"""Helper package for handling fragmentation of messages."""
 
 from __future__ import generators
 
 from .utils.codec import Parser
+from .utils.deprecations import deprecated_attrs, deprecated_params
 
+
+@deprecated_attrs({"add_static_size": "addStaticSize",
+                   "add_dynamic_size": "addDynamicSize",
+                   "add_data": "addData",
+                   "get_message": "getMessage",
+                   "clear_buffers": "clearBuffers"})
 class Defragmenter(object):
-
     """
     Class for demultiplexing TLS messages.
 
@@ -32,17 +38,18 @@ class Defragmenter(object):
         self.buffers = {}
         self.decoders = {}
 
-    def addStaticSize(self, msgType, size):
+    @deprecated_params({"msg_type": "msgType"})
+    def add_static_size(self, msg_type, size):
         """Add a message type which all messages are of same length"""
-        if msgType in self.priorities:
+        if msg_type in self.priorities:
             raise ValueError("Message type already defined")
         if size < 1:
             raise ValueError("Message size must be positive integer")
 
-        self.priorities += [msgType]
+        self.priorities += [msg_type]
 
-        self.buffers[msgType] = bytearray(0)
-        def sizeHandler(data):
+        self.buffers[msg_type] = bytearray(0)
+        def size_handler(data):
             """
             Size of message in parameter
 
@@ -53,64 +60,68 @@ class Defragmenter(object):
                 return None
             else:
                 return size
-        self.decoders[msgType] = sizeHandler
+        self.decoders[msg_type] = size_handler
 
-    def addDynamicSize(self, msgType, sizeOffset, sizeOfSize):
+    @deprecated_params({"msg_type": "msgType",
+                        "size_offset": "sizeOffset",
+                        "size_of_size": "sizeOfSize"})
+    def add_dynamic_size(self, msg_type, size_offset, size_of_size):
         """Add a message type which has a dynamic size set in a header"""
-        if msgType in self.priorities:
+        if msg_type in self.priorities:
             raise ValueError("Message type already defined")
-        if sizeOfSize < 1:
+        if size_of_size < 1:
             raise ValueError("Size of size must be positive integer")
-        if sizeOffset < 0:
+        if size_offset < 0:
             raise ValueError("Offset can't be negative")
 
-        self.priorities += [msgType]
-        self.buffers[msgType] = bytearray(0)
+        self.priorities += [msg_type]
+        self.buffers[msg_type] = bytearray(0)
 
-        def sizeHandler(data):
+        def size_handler(data):
             """
             Size of message in parameter
 
             If complete message is present in parameter returns its size,
             None otherwise.
             """
-            if len(data) < sizeOffset+sizeOfSize:
+            if len(data) < size_offset+size_of_size:
                 return None
             else:
                 parser = Parser(data)
                 # skip the header
-                parser.getFixBytes(sizeOffset)
+                parser.getFixBytes(size_offset)
 
-                payloadLength = parser.get(sizeOfSize)
-                if parser.getRemainingLength() < payloadLength:
+                payload_length = parser.get(size_of_size)
+                if parser.getRemainingLength() < payload_length:
                     # not enough bytes in buffer
                     return None
-                return sizeOffset + sizeOfSize + payloadLength
+                return size_offset + size_of_size + payload_length
 
-        self.decoders[msgType] = sizeHandler
+        self.decoders[msg_type] = size_handler
 
-    def addData(self, msgType, data):
+    @deprecated_params({"msg_type": "msgType"})
+    def add_data(self, msg_type, data):
         """Adds data to buffers"""
-        if msgType not in self.priorities:
+        if msg_type not in self.priorities:
             raise ValueError("Message type not defined")
 
-        self.buffers[msgType] += data
+        self.buffers[msg_type] += data
 
-    def getMessage(self):
+    def get_message(self):
         """Extract the highest priority complete message from buffer"""
-        for msgType in self.priorities:
-            length = self.decoders[msgType](self.buffers[msgType])
+        for msg_type in self.priorities:
+            length = self.decoders[msg_type](self.buffers[msg_type])
             if length is None:
                 continue
 
             # extract message
-            data = self.buffers[msgType][:length]
+            data = self.buffers[msg_type][:length]
             # remove it from buffer
-            self.buffers[msgType] = self.buffers[msgType][length:]
-            return (msgType, data)
+            self.buffers[msg_type] = self.buffers[msg_type][length:]
+            return (msg_type, data)
         return None
 
-    def clearBuffers(self):
+    def clear_buffers(self):
         """Remove all data from buffers"""
         for key in self.buffers.keys():
             self.buffers[key] = bytearray(0)
