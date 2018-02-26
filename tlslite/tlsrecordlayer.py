@@ -104,6 +104,9 @@ class TLSRecordLayer(object):
         throughput after sending few kiB of data. Setting to values greater
         than
         2**14 will cause the connection to be dropped by RFC compliant peers.
+
+    :vartype tickets: list of bytearray
+    :ivar tickets: list of session tickets received from server, oldest first.
     """
 
     def __init__(self, sock):
@@ -151,6 +154,9 @@ class TLSRecordLayer(object):
 
         #Limit the size of outgoing records to following size
         self.recordSize = 16384 # 2**14
+
+        # NewSessionTickets received from server
+        self.tickets = []
 
     @property
     def _client(self):
@@ -237,12 +243,23 @@ class TLSRecordLayer(object):
         :rtype: iterable
         :returns: A generator; see above for details.
         """
+        if self.version > (3, 3):
+            allowedTypes = (ContentType.application_data,
+                            ContentType.handshake)
+            allowedHsTypes = HandshakeType.new_session_ticket
+        else:
+            allowedTypes = ContentType.application_data
+            allowedHsTypes = None
         try:
-            while len(self._readBuffer)<min and not self.closed:
+            while len(self._readBuffer) < min and not self.closed:
                 try:
-                    for result in self._getMsg(ContentType.application_data):
-                        if result in (0,1):
+                    for result in self._getMsg(allowedTypes,
+                                               allowedHsTypes):
+                        if result in (0, 1):
                             yield result
+                    if isinstance(result, NewSessionTicket):
+                        self.tickets.append(result)
+                        continue
                     applicationData = result
                     self._readBuffer += applicationData.write()
                 except TLSRemoteAlert as alert:
@@ -401,18 +418,16 @@ class TLSRecordLayer(object):
 
         :rtype: str
         :returns: The name of the TLS version used with this connection.
-            Either None, 'SSL 3.0', 'TLS 1.0', 'TLS 1.1', or 'TLS 1.2'.
+            Either None, 'SSL 3.0', 'TLS 1.0', 'TLS 1.1', 'TLS 1.2' or
+            'TLS 1.3'.
         """
-        if self.version == (3,0):
-            return "SSL 3.0"
-        elif self.version == (3,1):
-            return "TLS 1.0"
-        elif self.version == (3,2):
-            return "TLS 1.1"
-        elif self.version == (3,3):
-            return "TLS 1.2"
-        else:
-            return None
+        ver = {(3, 0): "SSL 3.0",
+               (3, 1): "TLS 1.0",
+               (3, 2): "TLS 1.1",
+               (3, 3): "TLS 1.2",
+               (3, 4): "TLS 1.3",
+               TLS_1_3_DRAFT: "TLS 1.3"}
+        return ver.get(self.version)
 
     def getCipherName(self):
         """Get the name of the cipher used with this connection.
@@ -784,7 +799,7 @@ class TLSRecordLayer(object):
                 elif subType == HandshakeType.server_hello:
                     yield ServerHello().parse(p)
                 elif subType == HandshakeType.certificate:
-                    yield Certificate(constructorType).parse(p)
+                    yield Certificate(constructorType, self.version).parse(p)
                 elif subType == HandshakeType.certificate_request:
                     yield CertificateRequest(self.version).parse(p)
                 elif subType == HandshakeType.certificate_verify:
@@ -798,9 +813,15 @@ class TLSRecordLayer(object):
                     yield ClientKeyExchange(constructorType, \
                                             self.version).parse(p)
                 elif subType == HandshakeType.finished:
-                    yield Finished(self.version).parse(p)
+                    yield Finished(self.version, constructorType).parse(p)
                 elif subType == HandshakeType.next_protocol:
                     yield NextProtocol().parse(p)
+                elif subType == HandshakeType.encrypted_extensions:
+                    yield EncryptedExtensions().parse(p)
+                elif subType == HandshakeType.new_session_ticket:
+                    yield NewSessionTicket().parse(p)
+                elif subType == HandshakeType.hello_retry_request:
+                    yield HelloRetryRequest().parse(p)
                 else:
                     raise AssertionError()
 

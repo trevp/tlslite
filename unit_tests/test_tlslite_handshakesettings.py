@@ -284,5 +284,38 @@ class TestHandshakeSettings(unittest.TestCase):
         with self.assertRaises(ValueError):
             hs.validate()
 
+    def test_invalid_keyShares_name(self):
+        hs = HandshakeSettings()
+        hs.keyShares = ["ffdhe1024"]
+        with self.assertRaises(ValueError):
+            hs.validate()
+
+    def test_not_matching_keyShares(self):
+        hs = HandshakeSettings()
+        hs.keyShares = ["x25519"]
+        hs.eccCurves = ["x448"]
+        with self.assertRaises(ValueError) as e:
+            hs.validate()
+
+        self.assertIn("x25519", str(e.exception))
+
+    def test_not_matching_ffdhe_keyShares(self):
+        hs = HandshakeSettings()
+        hs.keyShares = ["ffdhe2048", "x25519"]
+        hs.dhGroups = ["ffdhe4096"]
+        with self.assertRaises(ValueError) as e:
+            hs.validate()
+
+        self.assertIn("ffdhe2048", str(e.exception))
+
+    def test_versions_and_maxVersion_mismatch(self):
+        hs = HandshakeSettings()
+        hs.maxVersion = (3, 3)
+        hs = hs.validate()
+
+        self.assertNotIn((3, 4), hs.versions)
+        self.assertNotIn((0x7f, 21), hs.versions)
+
+
 if __name__ == '__main__':
     unittest.main()

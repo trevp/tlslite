@@ -36,6 +36,7 @@ if ecdsaAllCurves:
     ALL_CURVE_NAMES += ["secp224r1", "secp192r1"]
 ALL_DH_GROUP_NAMES = ["ffdhe2048", "ffdhe3072", "ffdhe4096", "ffdhe6144",
                       "ffdhe8192"]
+KNOWN_VERSIONS = ((3, 0), (3, 1), (3, 2), (3, 3), (3, 4))
 
 class HandshakeSettings(object):
     """
@@ -162,6 +163,9 @@ class HandshakeSettings(object):
         first curve for eccCurves and may be distinct from curves from that
         list.
 
+    :vartype keyShares: list
+    :ivar keyShares: list of TLS 1.3 key shares to include in Client Hello
+
     :vartype padding_cb: func
     :ivar padding_cb: Callback to function computing number of padding bytes
         for TLS 1.3. Signature is cb_func(msg_size, content_type, max_size).
@@ -175,7 +179,7 @@ class HandshakeSettings(object):
         self.cipherImplementations = list(CIPHER_IMPLEMENTATIONS)
         self.certificateTypes = list(CERTIFICATE_TYPES)
         self.minVersion = (3, 1)
-        self.maxVersion = (3, 3)
+        self.maxVersion = (3, 4)
         self.versions = [TLS_1_3_DRAFT, (3, 3), (3, 2), (3, 1)]
         self.useExperimentalTackExtension = False
         self.sendFallbackSCSV = False
@@ -189,6 +193,7 @@ class HandshakeSettings(object):
         self.dhParams = None
         self.dhGroups = list(ALL_DH_GROUP_NAMES)
         self.defaultCurve = "secp256r1"
+        self.keyShares = ["secp256r1", "x25519"]
         self.padding_cb = None
 
     @staticmethod
@@ -261,15 +266,32 @@ class HandshakeSettings(object):
             raise ValueError("Unknown FFDHE group name: '{0}'"
                              .format(unknownDHGroup))
 
+        unknownKeyShare = [val for val in other.keyShares
+                           if val not in ALL_DH_GROUP_NAMES and
+                           val not in ALL_CURVE_NAMES]
+        if unknownKeyShare:
+            raise ValueError("Unknown key share: '{0}'"
+                             .format(unknownKeyShare))
+
+        nonAdvertisedGroup = [val for val in other.keyShares
+                              if val not in other.eccCurves and
+                              val not in other.dhGroups]
+        if nonAdvertisedGroup:
+            raise ValueError("Key shares for not enabled groups specified: {0}"
+                             .format(nonAdvertisedGroup))
+
     @staticmethod
     def _sanityCheckProtocolVersions(other):
         """Check if set protocol version are sane"""
         if other.minVersion > other.maxVersion:
             raise ValueError("Versions set incorrectly")
-        if other.minVersion not in ((3, 0), (3, 1), (3, 2), (3, 3)):
+        if other.minVersion not in KNOWN_VERSIONS:
             raise ValueError("minVersion set incorrectly")
-        if other.maxVersion not in ((3, 0), (3, 1), (3, 2), (3, 3), (3, 4)):
+        if other.maxVersion not in KNOWN_VERSIONS:
             raise ValueError("maxVersion set incorrectly")
+
+        if other.maxVersion < (3, 4):
+            other.versions = [i for i in other.versions if i < (3, 4)]
 
     @staticmethod
     def _sanityCheckExtensions(other):
@@ -322,6 +344,7 @@ class HandshakeSettings(object):
         other.defaultCurve = self.defaultCurve
         other.padding_cb = self.padding_cb
         other.versions = self.versions
+        other.keyShares = self.keyShares
 
         if not cipherfactory.tripleDESPresent:
             other.cipherNames = [i for i in self.cipherNames if i != "3des"]
