@@ -1,9 +1,7 @@
 # Author: Trevor Perrin
 # See the LICENSE file for legal information regarding use of this file.
 
-"""Factory functions for asymmetric cryptography.
-@sort: generateRSAKey, parsePEMKey, parseAsPublicKey
-"""
+"""Factory functions for asymmetric cryptography."""
 
 from .compat import *
 
@@ -24,11 +22,11 @@ if cryptomath.pycryptoLoaded:
 def generateRSAKey(bits, implementations=["openssl", "python"]):
     """Generate an RSA key with the specified bit length.
 
-    @type bits: int
-    @param bits: Desired bit length of the new key's modulus.
+    :type bits: int
+    :param bits: Desired bit length of the new key's modulus.
 
-    @rtype: L{tlslite.utils.rsakey.RSAKey}
-    @return: A new RSA private key.
+    :rtype: ~tlslite.utils.rsakey.RSAKey
+    :returns: A new RSA private key.
     """
     for implementation in implementations:
         if implementation == "openssl" and cryptomath.m2cryptoLoaded:
@@ -71,29 +69,29 @@ def parsePEMKey(s, private=False, public=False, passwordCallback=None,
     and M2Crypto are installed.  In this case, passwordCallback will be
     invoked to query the user for the password.
 
-    @type s: str
-    @param s: A string containing a PEM-encoded public or private key.
+    :type s: str
+    :param s: A string containing a PEM-encoded public or private key.
 
-    @type private: bool
-    @param private: If True, a L{SyntaxError} will be raised if the
-    private key component is not present.
+    :type private: bool
+    :param private: If True, a :py:class:`SyntaxError` will be raised if the
+        private key component is not present.
 
-    @type public: bool
-    @param public: If True, the private key component (if present) will
-    be discarded, so this function will always return a public key.
+    :type public: bool
+    :param public: If True, the private key component (if present) will
+        be discarded, so this function will always return a public key.
 
-    @type passwordCallback: callable
-    @param passwordCallback: This function will be called, with no
-    arguments, if the PEM-encoded private key is password-encrypted.
-    The callback should return the password string.  If the password is
-    incorrect, SyntaxError will be raised.  If no callback is passed
-    and the key is password-encrypted, a prompt will be displayed at
-    the console.
+    :type passwordCallback: callable
+    :param passwordCallback: This function will be called, with no
+        arguments, if the PEM-encoded private key is password-encrypted.
+        The callback should return the password string.  If the password is
+        incorrect, SyntaxError will be raised.  If no callback is passed
+        and the key is password-encrypted, a prompt will be displayed at
+        the console.
 
-    @rtype: L{tlslite.utils.RSAKey.RSAKey}
-    @return: An RSA key.
+    :rtype: ~tlslite.utils.rsakey.RSAKey
+    :returns: An RSA key.
 
-    @raise SyntaxError: If the key is not properly formatted.
+    :raises SyntaxError: If the key is not properly formatted.
     """
     for implementation in implementations:
         if implementation == "openssl" and cryptomath.m2cryptoLoaded:
@@ -127,26 +125,26 @@ def _parseKeyHelper(key, private, public):
 def parseAsPublicKey(s):
     """Parse a PEM-formatted public key.
 
-    @type s: str
-    @param s: A string containing a PEM-encoded public or private key.
+    :type s: str
+    :param s: A string containing a PEM-encoded public or private key.
 
-    @rtype: L{tlslite.utils.rsakey.RSAKey}
-    @return: An RSA public key.
+    :rtype: ~tlslite.utils.rsakey.RSAKey
+    :returns: An RSA public key.
 
-    @raise SyntaxError: If the key is not properly formatted.
+    :raises SyntaxError: If the key is not properly formatted.
     """
     return parsePEMKey(s, public=True)
 
 def parsePrivateKey(s):
     """Parse a PEM-formatted private key.
 
-    @type s: str
-    @param s: A string containing a PEM-encoded private key.
+    :type s: str
+    :param s: A string containing a PEM-encoded private key.
 
-    @rtype: L{tlslite.utils.rsakey.RSAKey}
-    @return: An RSA private key.
+    :rtype: ~tlslite.utils.rsakey.RSAKey
+    :returns: An RSA private key.
 
-    @raise SyntaxError: If the key is not properly formatted.
+    :raises SyntaxError: If the key is not properly formatted.
     """
     return parsePEMKey(s, private=True)
 

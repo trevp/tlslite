@@ -24,9 +24,10 @@ class BaseDB(object):
         self.lock = threading.Lock()
 
     def create(self):
-        """Create a new on-disk database.
+        """
+        Create a new on-disk database.
 
-        @raise anydbm.error: If there's a problem creating the database.
+        :raises anydbm.error: If there's a problem creating the database.
         """
         if self.filename:
             self.db = anydbm.open(self.filename, "n") #raises anydbm.error
@@ -36,10 +37,11 @@ class BaseDB(object):
             self.db = {}
 
     def open(self):
-        """Open a pre-existing on-disk database.
+        """
+        Open a pre-existing on-disk database.
 
-        @raise anydbm.error: If there's a problem opening the database.
-        @raise ValueError: If the database is not of the right type.
+        :raises anydbm.error: If there's a problem opening the database.
+        :raises ValueError: If the database is not of the right type.
         """
         if not self.filename:
             raise ValueError("Can only open on-disk databases")
@@ -89,22 +91,21 @@ class BaseDB(object):
             self.lock.release()
 
     def __contains__(self, username):
-        """Check if the database contains the specified username.
+        """
+        Check if the database contains the specified username.
 
-        @type username: str
-        @param username: The username to check for.
+        :param str username: The username to check for.
 
-        @rtype: bool
-        @return: True if the database contains the username, False
-        otherwise.
-
+        :rtype: bool
+        :returns: True if the database contains the username, False
+            otherwise.
         """
         if self.db == None:
             raise AssertionError("DB not open")
 
         self.lock.acquire()
         try:
-            return self.db.has_key(username)
+            return username in self.db
         finally:
             self.lock.release()
 
@@ -113,10 +114,11 @@ class BaseDB(object):
         return self._checkItem(value, username, param)
 
     def keys(self):
-        """Return a list of usernames in the database.
+        """
+        Return a list of usernames in the database.
 
-        @rtype: list
-        @return: The usernames in the database.
+        :rtype: list
+        :returns: The usernames in the database.
         """
         if self.db == None:
             raise AssertionError("DB not open")

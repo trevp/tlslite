@@ -18,51 +18,56 @@ install:
 
 .PHONY : clean
 clean:
+	rm -rf tlslite/__pycache__
+	rm -rf tlslite/integration/__pycache__
+	rm -rf tlslite/utils/__pycache__
 	rm -rf tlslite/*.pyc
 	rm -rf tlslite/utils/*.pyc
-	rm -rf tlslite/integration/*.pyc	
+	rm -rf tlslite/integration/*.pyc
 	rm -rf unit_tests/*.pyc
+	rm -rf unit_tests/__pycache__
 	rm -rf dist
-	rm -rf docs
 	rm -rf build
 	rm -f MANIFEST
+	$(MAKE) -C docs clean
 
+.PHONY : docs
 docs:
-	epydoc --html -v --introspect-only -o docs --graph all tlslite
+	$(MAKE) -C docs html
 
 dist: docs
 	./setup.py sdist
 
 test:
-	cd tests/ && python ./tlstest.py server localhost:4433 . & sleep 1
+	cd tests/ && python ./tlstest.py server localhost:4433 . & sleep 4
 	cd tests/ && python ./tlstest.py client localhost:4433 .
 
 test-local:
-	cd tests/ && PYTHONPATH=.. python ./tlstest.py server localhost:4433 . & sleep 1
+	cd tests/ && PYTHONPATH=.. python ./tlstest.py server localhost:4433 . & sleep 4
 	cd tests/ && PYTHONPATH=.. python ./tlstest.py client localhost:4433 .
 
 test-dev:
 ifdef PYTHON2
 	@echo "Running test suite with Python 2"
 	python2 -m unittest discover -v
-	cd tests/ && PYTHONPATH=.. python2 ./tlstest.py server localhost:4433 . & sleep 1
+	cd tests/ && PYTHONPATH=.. python2 ./tlstest.py server localhost:4433 . & sleep 4
 	cd tests/ && PYTHONPATH=.. python2 ./tlstest.py client localhost:4433 .
 endif
 ifdef PYTHON3
 	@echo "Running test suite with Python 3"
 	python3 -m unittest discover -v
-	cd tests/ && PYTHONPATH=.. python3 ./tlstest.py server localhost:4433 . & sleep 1
+	cd tests/ && PYTHONPATH=.. python3 ./tlstest.py server localhost:4433 . & sleep 4
 	cd tests/ && PYTHONPATH=.. python3 ./tlstest.py client localhost:4433 .
 endif
 ifndef PYTHON2
 ifndef PYTHON3
 	@echo "Running test suite with default Python"
 	python -m unittest discover -v
-	cd tests/ && PYTHONPATH=.. python ./tlstest.py server localhost:4433 . & sleep 1
+	cd tests/ && PYTHONPATH=.. python ./tlstest.py server localhost:4433 . & sleep 4
 	cd tests/ && PYTHONPATH=.. python ./tlstest.py client localhost:4433 .
 endif
 endif
-	epydoc --check --fail-on-error -v tlslite
+	$(MAKE) -C docs dummy
 	pylint --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" tlslite > pylint_report.txt || :
 	diff-quality --violations=pylint --fail-under=90 pylint_report.txt
 ifdef COVERAGE2

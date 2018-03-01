@@ -9,35 +9,36 @@ from .errors import *
 
 
 class Checker(object):
-    """This class is passed to a handshake function to check the other
+    """
+    This class is passed to a handshake function to check the other
     party's certificate chain.
 
     If a handshake function completes successfully, but the Checker
     judges the other party's certificate chain to be missing or
     inadequate, a subclass of
-    L{tlslite.errors.TLSAuthenticationError} will be raised.
+    :py:class:`tlslite.errors.TLSAuthenticationError`
+    will be raised.
 
     Currently, the Checker can check an X.509 chain.
     """
 
-    def __init__(self, 
+    def __init__(self,
                  x509Fingerprint=None,
                  checkResumedSession=False):
-        """Create a new Checker instance.
+        """
+        Create a new Checker instance.
 
         You must pass in one of these argument combinations:
          - x509Fingerprint
 
-        @type x509Fingerprint: str
-        @param x509Fingerprint: A hex-encoded X.509 end-entity
-        fingerprint which the other party's end-entity certificate must
-        match.
+        :param str x509Fingerprint: A hex-encoded X.509 end-entity
+            fingerprint which the other party's end-entity certificate must
+            match.
 
-        @type checkResumedSession: bool
-        @param checkResumedSession: If resumed sessions should be
-        checked.  This defaults to False, on the theory that if the
-        session was checked once, we don't need to bother
-        re-checking it.
+        :param bool checkResumedSession: If resumed sessions should be
+            checked.  This defaults to False, on the theory that if the
+            session was checked once, we don't need to bother
+            re-checking it.
         """
 
         self.x509Fingerprint = x509Fingerprint
@@ -49,11 +50,11 @@ class Checker(object):
         When a Checker is passed to a handshake function, this will
         be called at the end of the function.
 
-        @type connection: L{tlslite.tlsconnection.TLSConnection}
-        @param connection: The TLSConnection to examine.
+        :param tlslite.tlsconnection.TLSConnection connection: The
+            TLSConnection to examine.
 
-        @raise tlslite.errors.TLSAuthenticationError: If the other
-        party's certificate chain is missing or bad.
+        :raises tlslite.errors.TLSAuthenticationError: If the other
+            party's certificate chain is missing or bad.
         """
         if not self.checkResumedSession and connection.resumed:
             return

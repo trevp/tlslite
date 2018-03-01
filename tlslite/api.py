@@ -1,7 +1,7 @@
 # Author: Trevor Perrin
 # See the LICENSE file for legal information regarding use of this file.
 
-__version__ = "0.4.9"
+__version__ = "0.8.0-alpha1"
 from .constants import AlertLevel, AlertDescription, Fault
 from .errors import *
 from .checker import Checker
@@ -29,3 +29,4 @@ from .utils.cryptomath import m2cryptoLoaded, gmpyLoaded, \
 from .utils.keyfactory import generateRSAKey, parsePEMKey, \
                              parseAsPublicKey, parsePrivateKey
 from .utils.tackwrapper import tackpyLoaded
+from .dh import parse as parseDH

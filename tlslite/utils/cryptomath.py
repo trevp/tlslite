@@ -13,8 +13,10 @@ import os
 import math
 import base64
 import binascii
+import sys
 
-from .compat import *
+from .compat import compat26Str, compatHMAC, compatLong, b2a_hex
+from .codec import Writer
 
 
 # **************************************************************************
@@ -25,6 +27,14 @@ from .compat import *
 try:
     from M2Crypto import m2
     m2cryptoLoaded = True
+
+    try:
+        with open('/proc/sys/crypto/fips_enabled', 'r') as fipsFile:
+            if '1' in fipsFile.read():
+                m2cryptoLoaded = False
+    except (IOError, OSError):
+        # looks like we're running in container, likely not FIPS mode
+        m2cryptoLoaded = True
 
 except ImportError:
     m2cryptoLoaded = False
@@ -50,9 +60,7 @@ except ImportError:
 
 # Check that os.urandom works
 import zlib
-length = len(zlib.compress(os.urandom(1000)))
-assert(length > 900)
-del length
+assert len(zlib.compress(os.urandom(1000))) > 900
 
 def getRandomBytes(howMany):
     b = bytearray(os.urandom(howMany))
@@ -66,62 +74,141 @@ prngName = "os.urandom"
 # **************************************************************************
 
 import hmac
-import hashlib
+from . import tlshashlib as hashlib
 
 def MD5(b):
-    return bytearray(hashlib.md5(compat26Str(b)).digest())
+    """Return a MD5 digest of data"""
+    return secureHash(b, 'md5')
 
 def SHA1(b):
-    return bytearray(hashlib.sha1(compat26Str(b)).digest())
+    """Return a SHA1 digest of data"""
+    return secureHash(b, 'sha1')
+
+def secureHash(data, algorithm):
+    """Return a digest of `data` using `algorithm`"""
+    hashInstance = hashlib.new(algorithm)
+    hashInstance.update(compat26Str(data))
+    return bytearray(hashInstance.digest())
+
+def secureHMAC(k, b, algorithm):
+    """Return a HMAC using `b` and `k` using `algorithm`"""
+    k = compatHMAC(k)
+    b = compatHMAC(b)
+    return bytearray(hmac.new(k, b, getattr(hashlib, algorithm)).digest())
 
 def HMAC_MD5(k, b):
-    k = compatHMAC(k)
-    b = compatHMAC(b)
-    return bytearray(hmac.new(k, b, hashlib.md5).digest())
+    return secureHMAC(k, b, 'md5')
 
 def HMAC_SHA1(k, b):
-    k = compatHMAC(k)
-    b = compatHMAC(b)
-    return bytearray(hmac.new(k, b, hashlib.sha1).digest())
+    return secureHMAC(k, b, 'sha1')
 
 def HMAC_SHA256(k, b):
-    k = compatHMAC(k)
-    b = compatHMAC(b)
-    return bytearray(hmac.new(k, b, hashlib.sha256).digest())
+    return secureHMAC(k, b, 'sha256')
+
+def HMAC_SHA384(k, b):
+    return secureHMAC(k, b, 'sha384')
+
+def HKDF_expand(PRK, info, L, algorithm):
+    N = divceil(L, getattr(hashlib, algorithm)().digest_size)
+    T = bytearray()
+    Titer = bytearray()
+    for x in range(1, N+2):
+        T += Titer
+        Titer = secureHMAC(PRK, Titer + info + bytearray([x]), algorithm)
+    return T[:L]
+
+def HKDF_expand_label(secret, label, hashValue, length, algorithm):
+    """
+    TLS1.3 key derivation function (HKDF-Expand-Label).
+
+    :param bytearray secret: the key from which to derive the keying material
+    :param bytearray label: label used to differentiate the keying materials
+    :param bytearray hashValue: bytes used to "salt" the produced keying
+        material
+    :param int length: number of bytes to produce
+    :param str algorithm: name of the secure hash algorithm used as the
+        basis of the HKDF
+    :rtype: bytearray
+    """
+    hkdfLabel = Writer()
+    hkdfLabel.addTwo(length)
+    hkdfLabel.addVarSeq(bytearray(b"tls13 ") + label, 1, 1)
+    hkdfLabel.addVarSeq(hashValue, 1, 1)
+
+    return HKDF_expand(secret, hkdfLabel.bytes, length, algorithm)
+
+def derive_secret(secret, label, handshake_hashes, algorithm):
+    """
+    TLS1.3 key derivation function (Derive-Secret).
+
+    :param bytearray secret: secret key used to derive the keying material
+    :param bytearray label: label used to differentiate they keying materials
+    :param HandshakeHashes handshake_hashes: hashes of the handshake messages
+        or `None` if no handshake transcript is to be used for derivation of
+        keying material
+    :param str algorithm: name of the secure hash algorithm used as the
+        basis of the HKDF algorithm - governs how much keying material will
+        be generated
+    :rtype: bytearray
+    """
+    if handshake_hashes is None:
+        hs_hash = secureHash(bytearray(b''), algorithm)
+    else:
+        hs_hash = handshake_hashes.digest(algorithm)
+    return HKDF_expand_label(secret, label, hs_hash,
+                             getattr(hashlib, algorithm)().digest_size,
+                             algorithm)
 
 # **************************************************************************
 # Converter Functions
 # **************************************************************************
 
-def bytesToNumber(b):
-    total = 0
-    multiplier = 1
-    for count in range(len(b)-1, -1, -1):
-        byte = b[count]
-        total += multiplier * byte
-        multiplier *= 256
-    return total
+def bytesToNumber(b, endian="big"):
+    """
+    Convert a number stored in bytearray to an integer.
 
-def numberToByteArray(n, howManyBytes=None):
-    """Convert an integer into a bytearray, zero-pad to howManyBytes.
+    By default assumes big-endian encoding of the number.
+    """
+    # if string is empty, consider it to be representation of zero
+    # while it may be a bit unorthodox, it is the inverse of numberToByteArray
+    # with default parameters
+    if not b:
+        return 0
+
+    if endian == "big":
+        return int(b2a_hex(b), 16)
+    elif endian == "little":
+        return int(b2a_hex(b[::-1]), 16)
+    else:
+        raise ValueError("Only 'big' and 'little' endian supported")
+
+def numberToByteArray(n, howManyBytes=None, endian="big"):
+    """
+    Convert an integer into a bytearray, zero-pad to howManyBytes.
 
     The returned bytearray may be smaller than howManyBytes, but will
-    not be larger.  The returned bytearray will contain a big-endian
-    encoding of the input integer (n).
-    """    
+    not be larger.  The returned bytearray will contain a big- or little-endian
+    encoding of the input integer (n). Big endian encoding is used by default.
+    """
     if howManyBytes == None:
         howManyBytes = numBytes(n)
-    b = bytearray(howManyBytes)
-    for count in range(howManyBytes-1, -1, -1):
-        b[count] = int(n % 256)
-        n >>= 8
-    return b
+    if endian == "big":
+        return bytearray((n >> i) & 0xff
+                         for i in reversed(range(0, howManyBytes*8, 8)))
+    elif endian == "little":
+        return bytearray((n >> i) & 0xff
+                         for i in range(0, howManyBytes*8, 8))
+    else:
+        raise ValueError("Only 'big' and 'little' endian supported")
 
-def mpiToNumber(mpi): #mpi is an openssl-format bignum string
-    if (ord(mpi[4]) & 0x80) !=0: #Make sure this is a positive number
-        raise AssertionError()
-    b = bytearray(mpi[4:])
-    return bytesToNumber(b)
+
+def mpiToNumber(mpi):
+    """Convert a MPI (OpenSSL bignum string) to an integer."""
+    byte = bytearray(mpi)
+    if byte[4] & 0x80:
+        raise ValueError("Input must be a positive integer")
+    return bytesToNumber(byte[4:])
+
 
 def numberToMPI(n):
     b = numberToByteArray(n)
@@ -144,22 +231,22 @@ def numberToMPI(n):
 # **************************************************************************
 
 def numBits(n):
+    """Return number of bits necessary to represent the integer in binary"""
     if n==0:
         return 0
-    s = "%x" % n
-    return ((len(s)-1)*4) + \
-    {'0':0, '1':1, '2':2, '3':2,
-     '4':3, '5':3, '6':3, '7':3,
-     '8':4, '9':4, 'a':4, 'b':4,
-     'c':4, 'd':4, 'e':4, 'f':4,
-     }[s[0]]
-    return int(math.floor(math.log(n, 2))+1)
+    if sys.version_info < (2, 7):
+        # bit_length() was introduced in 2.7, and it is an order of magnitude
+        # faster than the below code
+        return len(bin(n))-2
+    else:
+        return n.bit_length()
 
 def numBytes(n):
+    """Return number of bytes necessary to represent the integer in bytes"""
     if n==0:
         return 0
     bits = numBits(n)
-    return int(math.ceil(bits / 8.0))
+    return (bits + 7) // 8
 
 # **************************************************************************
 # Big Number Math
@@ -218,6 +305,13 @@ else:
             return result
         else:
             return pow(base, power, modulus)
+
+
+def divceil(divident, divisor):
+    """Integer division with rounding up"""
+    quot, r = divmod(divident, divisor)
+    return quot + int(bool(r))
+
 
 #Pre-calculate a sieve of the ~100 primes < 1000:
 def makeSieve(n):

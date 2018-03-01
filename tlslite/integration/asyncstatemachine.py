@@ -22,6 +22,11 @@ class AsyncStateMachine:
     """
 
     def __init__(self):
+        self.result = None
+        self.handshaker = None
+        self.closer = None
+        self.reader = None
+        self.writer = None
         self._clear()
 
     def _clear(self):
@@ -71,8 +76,8 @@ class AsyncStateMachine:
         operation wants to read from the socket.  If an operation is
         not active, this returns None.
 
-        @rtype: bool or None
-        @return: If the state machine wants to read.
+        :rtype: bool or None
+        :returns: If the state machine wants to read.
         """
         if self.result != None:
             return self.result == 0
@@ -85,8 +90,8 @@ class AsyncStateMachine:
         operation wants to write to the socket.  If an operation is
         not active, this returns None.
 
-        @rtype: bool or None
-        @return: If the state machine wants to write.
+        :rtype: bool or None
+        :returns: If the state machine wants to write.
         """
         if self.result != None:
             return self.result == 1
@@ -157,7 +162,7 @@ class AsyncStateMachine:
 
     def _doHandshakeOp(self):
         try:
-            self.result = self.handshaker.next()
+            self.result = next(self.handshaker)
         except StopIteration:
             self.handshaker = None
             self.result = None
@@ -165,14 +170,14 @@ class AsyncStateMachine:
 
     def _doCloseOp(self):
         try:
-            self.result = self.closer.next()
+            self.result = next(self.closer)
         except StopIteration:
             self.closer = None
             self.result = None
             self.outCloseEvent()
 
     def _doReadOp(self):
-        self.result = self.reader.next()
+        self.result = next(self.reader)
         if not self.result in (0,1):
             readBuffer = self.result
             self.reader = None
@@ -181,7 +186,7 @@ class AsyncStateMachine:
 
     def _doWriteOp(self):
         try:
-            self.result = self.writer.next()
+            self.result = next(self.writer)
         except StopIteration:
             self.writer = None
             self.result = None
@@ -189,10 +194,10 @@ class AsyncStateMachine:
     def setHandshakeOp(self, handshaker):
         """Start a handshake operation.
 
-        @type handshaker: generator
-        @param handshaker: A generator created by using one of the
-        asynchronous handshake functions (i.e. handshakeServerAsync, or
-        handshakeClientxxx(..., async=True).
+        :param generator handshaker: A generator created by using one of the
+            asynchronous handshake functions (i.e.
+            :py:meth:`~.TLSConnection.handshakeServerAsync` , or
+            handshakeClientxxx(..., async_=True).
         """
         try:
             self._checkAssert(0)
@@ -206,7 +211,7 @@ class AsyncStateMachine:
         """Start a handshake operation.
 
         The arguments passed to this function will be forwarded to
-        L{tlslite.tlsconnection.TLSConnection.handshakeServerAsync}.
+        :py:obj:`~tlslite.tlsconnection.TLSConnection.handshakeServerAsync`.
         """
         handshaker = self.tlsConnection.handshakeServerAsync(**args)
         self.setHandshakeOp(handshaker)
@@ -225,8 +230,7 @@ class AsyncStateMachine:
     def setWriteOp(self, writeBuffer):
         """Start a write operation.
 
-        @type writeBuffer: str
-        @param writeBuffer: The string to transmit.
+        :param str writeBuffer: The string to transmit.
         """
         try:
             self._checkAssert(0)

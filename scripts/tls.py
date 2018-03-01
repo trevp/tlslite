@@ -13,6 +13,7 @@ import os.path
 import socket
 import time
 import getopt
+import binascii
 try:
     import httplib
     from SocketServer import *
@@ -23,12 +24,17 @@ except ImportError:
     from http import client as httplib
     from socketserver import *
     from http.server import *
+    from http.server import SimpleHTTPRequestHandler
 
 if __name__ != "__main__":
     raise "This must be run as a command, not used as a module!"
 
 from tlslite.api import *
+from tlslite.constants import CipherSuite, HashAlgorithm, SignatureAlgorithm, \
+        GroupName, SignatureScheme
 from tlslite import __version__
+from tlslite.utils.compat import b2a_hex
+from tlslite.utils.dns_utils import is_valid_hostname
 
 try:
     from tack.structures.Tack import Tack
@@ -67,12 +73,19 @@ def printUsage(s=None):
     print("""Commands:
 
   server  
-    [-k KEY] [-c CERT] [-t TACK] [-v VERIFIERDB] [-d DIR]
-    [--reqcert] HOST:PORT
+    [-k KEY] [-c CERT] [-t TACK] [-v VERIFIERDB] [-d DIR] [-l LABEL] [-L LENGTH]
+    [--reqcert] [--param DHFILE] HOST:PORT
 
   client
-    [-k KEY] [-c CERT] [-u USER] [-p PASS]
+    [-k KEY] [-c CERT] [-u USER] [-p PASS] [-l LABEL] [-L LENGTH] [-a ALPN]
     HOST:PORT
+
+  LABEL - TLS exporter label
+  LENGTH - amount of info to export using TLS exporter
+  ALPN - name of protocol for ALPN negotiation, can be present multiple times
+         in client to specify multiple protocols supported
+  DHFILE - file that includes Diffie-Hellman parameters to be used with DHE
+           key exchange
 """)
     sys.exit(-1)
 
@@ -99,13 +112,23 @@ def handleArgs(argv, argString, flagsList=[]):
     verifierDB = None
     reqCert = False
     directory = None
-    
+    expLabel = None
+    expLength = 20
+    alpn = []
+    dhparam = None
+
     for opt, arg in opts:
         if opt == "-k":
             s = open(arg, "rb").read()
-            privateKey = parsePEMKey(s, private=True)            
+            if sys.version_info[0] >= 3:
+                s = str(s, 'utf-8')
+            # OpenSSL/m2crypto does not support RSASSA-PSS certificates
+            privateKey = parsePEMKey(s, private=True,
+                                     implementations=["python"])
         elif opt == "-c":
             s = open(arg, "rb").read()
+            if sys.version_info[0] >= 3:
+                s = str(s, 'utf-8')
             x509 = X509()
             x509.parse(s)
             certChain = X509CertChain([x509])
@@ -124,9 +147,23 @@ def handleArgs(argv, argString, flagsList=[]):
             directory = arg
         elif opt == "--reqcert":
             reqCert = True
+        elif opt == "-l":
+            expLabel = arg
+        elif opt == "-L":
+            expLength = int(arg)
+        elif opt == "-a":
+            alpn.append(bytearray(arg, 'utf-8'))
+        elif opt == "--param":
+            s = open(arg, "rb").read()
+            if sys.version_info[0] >= 3:
+                s = str(s, 'utf-8')
+            dhparam = parseDH(s)
         else:
             assert(False)
-            
+
+    # when no names provided, don't return array
+    if not alpn:
+        alpn = None
     if not argv:
         printError("Missing address")
     if len(argv)>1:
@@ -156,6 +193,14 @@ def handleArgs(argv, argString, flagsList=[]):
         retList.append(directory)
     if "reqcert" in flagsList:
         retList.append(reqCert)
+    if "l" in argString:
+        retList.append(expLabel)
+    if "L" in argString:
+        retList.append(expLength)
+    if "a" in argString:
+        retList.append(alpn)
+    if "param=" in flagsList:
+        retList.append(dhparam)
     return retList
 
 
@@ -164,14 +209,30 @@ def printGoodConnection(connection, seconds):
     print("  Version: %s" % connection.getVersionName())
     print("  Cipher: %s %s" % (connection.getCipherName(), 
         connection.getCipherImplementation()))
+    print("  Ciphersuite: {0}".\
+            format(CipherSuite.ietfNames[connection.session.cipherSuite]))
     if connection.session.srpUsername:
         print("  Client SRP username: %s" % connection.session.srpUsername)
     if connection.session.clientCertChain:
         print("  Client X.509 SHA1 fingerprint: %s" % 
             connection.session.clientCertChain.getFingerprint())
+    else:
+        print("  No client certificate provided by peer")
     if connection.session.serverCertChain:
         print("  Server X.509 SHA1 fingerprint: %s" % 
             connection.session.serverCertChain.getFingerprint())
+    if connection.version >= (3, 3) and connection.serverSigAlg is not None:
+        scheme = SignatureScheme.toRepr(connection.serverSigAlg)
+        if scheme is None:
+            scheme = "{1}+{0}".format(
+                HashAlgorithm.toStr(connection.serverSigAlg[0]),
+                SignatureAlgorithm.toStr(connection.serverSigAlg[1]))
+        print("  Key exchange signature: {0}".format(scheme))
+    if connection.ecdhCurve is not None:
+        print("  Group used for key exchange: {0}".format(\
+                GroupName.toStr(connection.ecdhCurve)))
+    if connection.dhGroupSize is not None:
+        print("  DH group size: {0} bits".format(connection.dhGroupSize))
     if connection.session.serverName:
         print("  SNI: %s" % connection.session.serverName)
     if connection.session.tackExt:   
@@ -181,12 +242,28 @@ def printGoodConnection(connection, seconds):
             emptyStr = "\n  (via TACK Certificate)" 
         print("  TACK: %s" % emptyStr)
         print(str(connection.session.tackExt))
+    if connection.session.appProto:
+        print("  Application Layer Protocol negotiated: {0}".format(
+            connection.session.appProto.decode('utf-8')))
     print("  Next-Protocol Negotiated: %s" % connection.next_proto) 
-    
+    print("  Encrypt-then-MAC: {0}".format(connection.encryptThenMAC))
+    print("  Extended Master Secret: {0}".format(
+                                               connection.extendedMasterSecret))
+
+def printExporter(connection, expLabel, expLength):
+    if expLabel is None:
+        return
+    expLabel = bytearray(expLabel, "utf-8")
+    exp = connection.keyingMaterialExporter(expLabel, expLength)
+    exp = b2a_hex(exp).upper()
+    print("  Exporter label: {0}".format(expLabel))
+    print("  Exporter length: {0}".format(expLength))
+    print("  Keying material: {0}".format(exp))
 
 def clientCmd(argv):
-    (address, privateKey, certChain, username, password) = \
-        handleArgs(argv, "kcup")
+    (address, privateKey, certChain, username, password, expLabel,
+            expLength, alpn) = \
+        handleArgs(argv, "kcuplLa")
         
     if (certChain and not privateKey) or (not certChain and privateKey):
         raise SyntaxError("Must specify CERT and KEY together")
@@ -194,11 +271,14 @@ def clientCmd(argv):
         raise SyntaxError("Must specify USER with PASS")
     if certChain and username:
         raise SyntaxError("Can use SRP or client cert for auth, not both")
+    if expLabel is not None and not expLabel:
+        raise ValueError("Label must be non-empty")
 
     #Connect to server
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(5)
     sock.connect(address)
+    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     connection = TLSConnection(sock)
     
     settings = HandshakeSettings()
@@ -211,7 +291,7 @@ def clientCmd(argv):
                 settings=settings, serverName=address[0])
         else:
             connection.handshakeClientCert(certChain, privateKey,
-                settings=settings, serverName=address[0])
+                settings=settings, serverName=address[0], alpn=alpn)
         stop = time.clock()        
         print("Handshake success")        
     except TLSLocalAlert as a:
@@ -237,12 +317,14 @@ def clientCmd(argv):
             raise
         sys.exit(-1)
     printGoodConnection(connection, stop-start)
+    printExporter(connection, expLabel, expLength)
     connection.close()
 
 
 def serverCmd(argv):
-    (address, privateKey, certChain, tacks, 
-        verifierDB, directory, reqCert) = handleArgs(argv, "kctbvd", ["reqcert"])
+    (address, privateKey, certChain, tacks, verifierDB, directory, reqCert,
+            expLabel, expLength, dhparam) = handleArgs(argv, "kctbvdlL",
+                                                       ["reqcert", "param="])
 
 
     if (certChain and not privateKey) or (not certChain and privateKey):
@@ -262,9 +344,15 @@ def serverCmd(argv):
         print("Using verifier DB...")
     if tacks:
         print("Using Tacks...")
+    if reqCert:
+        print("Asking for client certificates...")
         
     #############
     sessionCache = SessionCache()
+    username = None
+    sni = None
+    if is_valid_hostname(address[0]):
+        sni = address[0]
 
     class MyHTTPServer(ThreadingMixIn, TLSSocketServerMixIn, HTTPServer):
         def handshake(self, connection):
@@ -280,6 +368,9 @@ def serverCmd(argv):
                 start = time.clock()
                 settings = HandshakeSettings()
                 settings.useExperimentalTackExtension=True
+                settings.dhParams = dhparam
+                connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY,
+                                      1)
                 connection.handshakeServer(certChain=certChain,
                                               privateKey=privateKey,
                                               verifierDB=verifierDB,
@@ -287,7 +378,10 @@ def serverCmd(argv):
                                               activationFlags=activationFlags,
                                               sessionCache=sessionCache,
                                               settings=settings,
-                                              nextProtos=[b"http/1.1"])
+                                              nextProtos=[b"http/1.1"],
+                                              alpn=[bytearray(b'http/1.1')],
+                                              reqCert=reqCert,
+                                              sni=sni)
                                               # As an example (does not work here):
                                               #nextProtos=[b"spdy/3", b"spdy/2", b"http/1.1"])
                 stop = time.clock()
@@ -318,6 +412,7 @@ def serverCmd(argv):
                 
             connection.ignoreAbruptClose = True
             printGoodConnection(connection, stop-start)
+            printExporter(connection, expLabel, expLength)
             return True
 
     httpd = MyHTTPServer(address, SimpleHTTPRequestHandler)

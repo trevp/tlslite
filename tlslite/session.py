@@ -25,23 +25,31 @@ class Session(object):
     they can create a new connection based on an old session without
     the overhead of a full handshake.
 
-    The session for a L{tlslite.TLSConnection.TLSConnection} can be
+    The session for a :py:class:`~tlslite.tlsconnection.TLSConnection` can be
     retrieved from the connection's 'session' attribute.
 
-    @type srpUsername: str
-    @ivar srpUsername: The client's SRP username (or None).
+    :vartype srpUsername: str
+    :ivar srpUsername: The client's SRP username (or None).
 
-    @type clientCertChain: L{tlslite.x509certchain.X509CertChain}
-    @ivar clientCertChain: The client's certificate chain (or None).
+    :vartype clientCertChain: ~tlslite.x509certchain.X509CertChain
+    :ivar clientCertChain: The client's certificate chain (or None).
 
-    @type serverCertChain: L{tlslite.x509certchain.X509CertChain}
-    @ivar serverCertChain: The server's certificate chain (or None).
+    :vartype serverCertChain: ~tlslite.x509certchain.X509CertChain
+    :ivar serverCertChain: The server's certificate chain (or None).
 
-    @type tackExt: L{tack.structures.TackExtension.TackExtension}
-    @ivar tackExt: The server's TackExtension (or None).
+    :vartype tackExt: tack.structures.TackExtension.TackExtension
+    :ivar tackExt: The server's TackExtension (or None).
 
-    @type tackInHelloExt: L{bool}
-    @ivar tackInHelloExt: True if a TACK was presented via TLS Extension.
+    :vartype tackInHelloExt: bool
+    :ivar tackInHelloExt: True if a TACK was presented via TLS Extension.
+
+    :vartype encryptThenMAC: bool
+    :ivar encryptThenMAC: True if connection uses CBC cipher in
+        encrypt-then-MAC mode
+
+    :vartype appProto: bytearray
+    :ivar appProto: name of the negotiated application level protocol, None
+        if not negotiated
     """
 
     def __init__(self):
@@ -55,10 +63,15 @@ class Session(object):
         self.tackInHelloExt = False
         self.serverName = ""
         self.resumable = False
+        self.encryptThenMAC = False
+        self.extendedMasterSecret = False
+        self.appProto = bytearray(0)
 
     def create(self, masterSecret, sessionID, cipherSuite,
-            srpUsername, clientCertChain, serverCertChain, 
-            tackExt, tackInHelloExt, serverName, resumable=True):
+               srpUsername, clientCertChain, serverCertChain,
+               tackExt, tackInHelloExt, serverName, resumable=True,
+               encryptThenMAC=False, extendedMasterSecret=False,
+               appProto=bytearray(0)):
         self.masterSecret = masterSecret
         self.sessionID = sessionID
         self.cipherSuite = cipherSuite
@@ -69,6 +82,9 @@ class Session(object):
         self.tackInHelloExt = tackInHelloExt  
         self.serverName = serverName
         self.resumable = resumable
+        self.encryptThenMAC = encryptThenMAC
+        self.extendedMasterSecret = extendedMasterSecret
+        self.appProto = appProto
 
     def _clone(self):
         other = Session()
@@ -82,13 +98,16 @@ class Session(object):
         other.tackInHelloExt = self.tackInHelloExt
         other.serverName = self.serverName
         other.resumable = self.resumable
+        other.encryptThenMAC = self.encryptThenMAC
+        other.extendedMasterSecret = self.extendedMasterSecret
+        other.appProto = self.appProto
         return other
 
     def valid(self):
         """If this session can be used for session resumption.
 
-        @rtype: bool
-        @return: If this session can be used for session resumption.
+        :rtype: bool
+        :returns: If this session can be used for session resumption.
         """
         return self.resumable and self.sessionID
 
@@ -112,15 +131,15 @@ class Session(object):
     def getCipherName(self):
         """Get the name of the cipher used with this connection.
 
-        @rtype: str
-        @return: The name of the cipher used with this connection.
+        :rtype: str
+        :returns: The name of the cipher used with this connection.
         """
         return CipherSuite.canonicalCipherName(self.cipherSuite)
         
     def getMacName(self):
         """Get the name of the HMAC hash algo used with this connection.
 
-        @rtype: str
-        @return: The name of the HMAC hash algo used with this connection.
+        :rtype: str
+        :returns: The name of the HMAC hash algo used with this connection.
         """
         return CipherSuite.canonicalMacName(self.cipherSuite)

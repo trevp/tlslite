@@ -12,7 +12,7 @@ from tlslite.integration.clienthelper import ClientHelper
 IMAP4_TLS_PORT = 993
 
 class IMAP4_TLS(IMAP4, ClientHelper):
-    """This class extends L{imaplib.IMAP4} with TLS support."""
+    """This class extends :py:class:`imaplib.IMAP4` with TLS support."""
 
     def __init__(self, host = '', port = IMAP4_TLS_PORT,
                  username=None, password=None,
@@ -23,6 +23,7 @@ class IMAP4_TLS(IMAP4, ClientHelper):
 
         For client authentication, use one of these argument
         combinations:
+
          - username, password (SRP)
          - certChain, privateKey (certificate)
 
@@ -30,6 +31,7 @@ class IMAP4_TLS(IMAP4, ClientHelper):
         implicit mutual authentication performed by SRP
         or you can do certificate-based server
         authentication with one of these argument combinations:
+
          - x509Fingerprint
 
         Certificate-based server authentication is compatible with
@@ -37,39 +39,39 @@ class IMAP4_TLS(IMAP4, ClientHelper):
 
         The caller should be prepared to handle TLS-specific
         exceptions.  See the client handshake functions in
-        L{tlslite.TLSConnection.TLSConnection} for details on which
+        :py:class:`~tlslite.tlsconnection.TLSConnection` for details on which
         exceptions might be raised.
 
-        @type host: str
-        @param host: Server to connect to.
+        :type host: str
+        :param host: Server to connect to.
 
-        @type port: int
-        @param port: Port to connect to.
+        :type port: int
+        :param port: Port to connect to.
 
-        @type username: str
-        @param username: SRP username.  Requires the
-        'password' argument.
+        :type username: str
+        :param username: SRP username.  Requires the
+            'password' argument.
 
-        @type password: str
-        @param password: SRP password for mutual authentication.
-        Requires the 'username' argument.
+        :type password: str
+        :param password: SRP password for mutual authentication.
+            Requires the 'username' argument.
 
-        @type certChain: L{tlslite.x509certchain.X509CertChain}
-        @param certChain: Certificate chain for client authentication.
-        Requires the 'privateKey' argument.  Excludes the SRP arguments.
+        :type certChain: ~tlslite.x509certchain.X509CertChain
+        :param certChain: Certificate chain for client authentication.
+            Requires the 'privateKey' argument.  Excludes the SRP arguments.
 
-        @type privateKey: L{tlslite.utils.rsakey.RSAKey}
-        @param privateKey: Private key for client authentication.
-        Requires the 'certChain' argument.  Excludes the SRP arguments.
-        
-        @type checker: L{tlslite.checker.Checker}
-        @param checker: Callable object called after handshaking to 
-        evaluate the connection and raise an Exception if necessary.
+        :type privateKey: ~tlslite.utils.rsakey.RSAKey
+        :param privateKey: Private key for client authentication.
+            Requires the 'certChain' argument.  Excludes the SRP arguments.
 
-        @type settings: L{tlslite.handshakesettings.HandshakeSettings}
-        @param settings: Various settings which can be used to control
-        the ciphersuites, certificate types, and SSL/TLS versions
-        offered by the client.
+        :type checker: ~tlslite.checker.Checker
+        :param checker: Callable object called after handshaking to
+            evaluate the connection and raise an Exception if necessary.
+
+        :type settings: ~tlslite.handshakesettings.HandshakeSettings
+        :param settings: Various settings which can be used to control
+            the ciphersuites, certificate types, and SSL/TLS versions
+            offered by the client.
         """
 
         ClientHelper.__init__(self,
