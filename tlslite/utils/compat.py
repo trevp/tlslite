@@ -7,6 +7,7 @@ import sys
 import os
 import math
 import binascii
+import traceback
 
 if sys.version_info >= (3,0):
 
@@ -51,6 +52,11 @@ if sys.version_info >= (3,0):
     def compatLong(num):
         return int(num)
 
+    def formatExceptionTrace(e):
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        newStr = "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+        return newStr
+
 else:
     # Python 2.6 requires strings instead of bytearrays in a couple places,
     # so we define this function so it does the conversion if needed.
@@ -85,9 +91,7 @@ else:
 
     def compatLong(num):
         return long(num)
-        
-import traceback
-def formatExceptionTrace(e):
-    newStr = "".join(traceback.format_exception(sys.exc_type, sys.exc_value, sys.exc_traceback))
-    return newStr
 
+    def formatExceptionTrace(e):
+        newStr = "".join(traceback.format_exception(sys.exc_type, sys.exc_value, sys.exc_traceback))
+        return newStr
