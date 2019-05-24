@@ -68,7 +68,7 @@ class TLSConnection(TLSRecordLayer):
 
     def handshakeClientAnonymous(self, session=None, settings=None, 
                                 checker=None, serverName="",
-                                async=False):
+                                asynchronus=False):
         """Perform an anonymous handshake in the role of client.
 
         This function performs an SSL or TLS handshake using an
@@ -102,8 +102,8 @@ class TLSConnection(TLSRecordLayer):
         @type serverName: string
         @param serverName: The ServerNameIndication TLS Extension.
 
-        @type async: bool
-        @param async: If False, this function will block until the
+        @type asynchronus: bool
+        @param asynchronus: If False, this function will block until the
         handshake is completed.  If True, this function will return a
         generator.  Successive invocations of the generator will
         return 0 if it is waiting to read from the socket, 1 if it is
@@ -111,7 +111,7 @@ class TLSConnection(TLSRecordLayer):
         the handshake operation is completed.
 
         @rtype: None or an iterable
-        @return: If 'async' is True, a generator object will be
+        @return: If 'asynchronous' is True, a generator object will be
         returned.
 
         @raise socket.error: If a socket error occurs.
@@ -126,7 +126,7 @@ class TLSConnection(TLSRecordLayer):
                                                 settings=settings,
                                                 checker=checker,
                                                 serverName=serverName)
-        if async:
+        if asynchronus:
             return handshaker
         for result in handshaker:
             pass
@@ -134,7 +134,7 @@ class TLSConnection(TLSRecordLayer):
     def handshakeClientSRP(self, username, password, session=None,
                            settings=None, checker=None, 
                            reqTack=True, serverName="",
-                           async=False):
+                           asynchronous=False):
         """Perform an SRP handshake in the role of client.
 
         This function performs a TLS/SRP handshake.  SRP mutually
@@ -179,8 +179,8 @@ class TLSConnection(TLSRecordLayer):
         @type serverName: string
         @param serverName: The ServerNameIndication TLS Extension.
 
-        @type async: bool
-        @param async: If False, this function will block until the
+        @type asynchronous: bool
+        @param asynchronous: If False, this function will block until the
         handshake is completed.  If True, this function will return a
         generator.  Successive invocations of the generator will
         return 0 if it is waiting to read from the socket, 1 if it is
@@ -188,7 +188,7 @@ class TLSConnection(TLSRecordLayer):
         the handshake operation is completed.
 
         @rtype: None or an iterable
-        @return: If 'async' is True, a generator object will be
+        @return: If 'asynchronous' is True, a generator object will be
         returned.
 
         @raise socket.error: If a socket error occurs.
@@ -208,7 +208,7 @@ class TLSConnection(TLSRecordLayer):
         #
         # If 'async' is True, the generator is returned to the caller, 
         # otherwise it is executed to completion here.  
-        if async:
+        if asynchronous:
             return handshaker
         for result in handshaker:
             pass
@@ -216,7 +216,7 @@ class TLSConnection(TLSRecordLayer):
     def handshakeClientCert(self, certChain=None, privateKey=None,
                             session=None, settings=None, checker=None,
                             nextProtos=None, reqTack=True, serverName="",
-                            async=False):
+                            asynchronous=False):
         """Perform a certificate-based handshake in the role of client.
 
         This function performs an SSL or TLS handshake.  The server
@@ -273,8 +273,8 @@ class TLSConnection(TLSRecordLayer):
         @type serverName: string
         @param serverName: The ServerNameIndication TLS Extension.
 
-        @type async: bool
-        @param async: If False, this function will block until the
+        @type asynchronous: bool
+        @param asynchronous: If False, this function will block until the
         handshake is completed.  If True, this function will return a
         generator.  Successive invocations of the generator will
         return 0 if it is waiting to read from the socket, 1 if it is
@@ -282,7 +282,7 @@ class TLSConnection(TLSRecordLayer):
         the handshake operation is completed.
 
         @rtype: None or an iterable
-        @return: If 'async' is True, a generator object will be
+        @return: If 'asynchronous' is True, a generator object will be
         returned.
 
         @raise socket.error: If a socket error occurs.
@@ -303,7 +303,7 @@ class TLSConnection(TLSRecordLayer):
         #
         # If 'async' is True, the generator is returned to the caller, 
         # otherwise it is executed to completion here.                        
-        if async:
+        if asynchronous:
             return handshaker
         for result in handshaker:
             pass
