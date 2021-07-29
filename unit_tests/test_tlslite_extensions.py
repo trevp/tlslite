@@ -260,13 +260,13 @@ class TestSNIExtension(unittest.TestCase):
             bytearray(b'example.org')])
 
         self.assertEqual(bytearray(
-            b'\x00\x1c' +   # lenght of array - 28 bytes
+            b'\x00\x1c' +   # length of array - 28 bytes
             b'\x00' +       # type of element - host_name (0)
             b'\x00\x0b' +   # length of element - 11 bytes
             # utf-8 encoding of example.com
             b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d' +
-            b'\x00' +       # type of elemnt - host_name (0)
-            b'\x00\x0b' +   # length of elemnet - 11 bytes
+            b'\x00' +       # type of element - host_name (0)
+            b'\x00\x0b' +   # length of element - 11 bytes
             # utf-8 encoding of example.org
             b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x6f\x72\x67'
             ), server_name.extData)
@@ -274,13 +274,13 @@ class TestSNIExtension(unittest.TestCase):
         self.assertEqual(bytearray(
             b'\x00\x00' +   # type of extension - SNI (0)
             b'\x00\x1e' +   # length of extension - 26 bytes
-            b'\x00\x1c' +   # lenght of array - 24 bytes
+            b'\x00\x1c' +   # length of array - 24 bytes
             b'\x00' +       # type of element - host_name (0)
             b'\x00\x0b' +   # length of element - 11 bytes
             # utf-8 encoding of example.com
             b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x63\x6f\x6d' +
-            b'\x00' +       # type of elemnt - host_name (0)
-            b'\x00\x0b' +   # length of elemnet - 11 bytes
+            b'\x00' +       # type of element - host_name (0)
+            b'\x00\x0b' +   # length of element - 11 bytes
             # utf-8 encoding of example.org
             b'\x65\x78\x61\x6d\x70\x6c\x65\x2e\x6f\x72\x67'
             ), server_name.write())

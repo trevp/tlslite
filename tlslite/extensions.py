@@ -226,7 +226,7 @@ class SNIExtension(TLSExtension):
 
         Any of the parameters may be None, in that case the list inside the
         extension won't be defined, if either hostNames or serverNames is
-        an empty list, then the extension will define a list of lenght 0.
+        an empty list, then the extension will define a list of length 0.
 
         If multiple parameters are specified at the same time, then the
         resulting list of names will be concatenated in order of hostname,
@@ -608,7 +608,7 @@ class SRPExtension(TLSExtension):
         @param identity: UTF-8 encoded identity (user name) to be provided
             to user. MUST be shorter than 2^8-1.
 
-        @raise ValueError: when the identity lenght is longer than 2^8-1
+        @raise ValueError: when the identity length is longer than 2^8-1
         """
 
         if identity is None:
@@ -747,7 +747,7 @@ class TACKExtension(TLSExtension):
 
         def __repr__(self):
             """
-            Return programmmer readable representation of TACK object
+            Return programmer readable representation of TACK object
 
             @rtype: str
             """
@@ -883,7 +883,7 @@ class TACKExtension(TLSExtension):
 
     def create(self, tacks, activation_flags):
         """
-        Initialize the insance of TACKExtension
+        Initialize the instance of TACKExtension
 
         @rtype: TACKExtension
         """

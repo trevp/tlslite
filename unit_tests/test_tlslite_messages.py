@@ -163,7 +163,7 @@ class TestClientHello(unittest.TestCase):
             b'\x00\x03' +         # extension length - 3 bytes
             b'\x02' +             # length of array - 2 bytes
             b'\x00' +             # type - x509 (0)
-            b'\x01'               # type - opengpg (1)
+            b'\x01'               # type - openpgp (1)
             ))
         client_hello = ClientHello()
         client_hello = client_hello.parse(p)
@@ -562,7 +562,7 @@ class TestClientHello(unittest.TestCase):
             b'\x00\x02' +           # version - SSLv2
             b'\x00\x15' +           # cipher spec length - 21 bytes
             b'\x00\x00' +           # session ID length - 0 bytes
-            b'\x00\x10' +           # challange length - 16 bytes
+            b'\x00\x10' +           # challenge length - 16 bytes
             b'\x07\x00\xc0' +       # cipher - SSL2_DES_192_EDE3_CBC_WITH_MD5
             b'\x05\x00\x80' +       # cipher - SSL2_IDEA_128_CBC_WITH_MD5
             b'\x03\x00\x80' +       # cipher - SSL2_RC2_CBC_128_CBC_WITH_MD5
@@ -849,7 +849,7 @@ class TestServerHello(unittest.TestCase):
             # utf-8 encoding of 'spdy/3'
             b'\x73\x70\x64\x79\x2f\x33'
             b'\x08' +               # second entry length - 8 bytes
-            # utf-8 endoding of 'http/1.1'
+            # utf-8 encoding of 'http/1.1'
             b'\x68\x74\x74\x70\x2f\x31\x2e\x31'
             )), list(server_hello.write()))
 

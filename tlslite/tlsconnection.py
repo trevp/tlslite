@@ -97,7 +97,7 @@ class TLSConnection(TLSRecordLayer):
         @type checker: L{tlslite.Checker.Checker}
         @param checker: A Checker instance.  This instance will be
         invoked to examine the other party's authentication
-        credentials, if the handshake completes succesfully.
+        credentials, if the handshake completes successfully.
         
         @type serverName: string
         @param serverName: The ServerNameIndication TLS Extension.
@@ -170,7 +170,7 @@ class TLSConnection(TLSRecordLayer):
         @type checker: L{tlslite.checker.Checker}
         @param checker: A Checker instance.  This instance will be
         invoked to examine the other party's authentication
-        credentials, if the handshake completes succesfully.
+        credentials, if the handshake completes successfully.
 
         @type reqTack: bool
         @param reqTack: Whether or not to send a "tack" TLS Extension, 
@@ -260,7 +260,7 @@ class TLSConnection(TLSRecordLayer):
         @type checker: L{tlslite.checker.Checker}
         @param checker: A Checker instance.  This instance will be
         invoked to examine the other party's authentication
-        credentials, if the handshake completes succesfully.
+        credentials, if the handshake completes successfully.
         
         @type nextProtos: list of strings.
         @param nextProtos: A list of upper layer protocols ordered by
@@ -1051,7 +1051,7 @@ class TLSConnection(TLSRecordLayer):
         @type checker: L{tlslite.checker.Checker}
         @param checker: A Checker instance.  This instance will be
         invoked to examine the other party's authentication
-        credentials, if the handshake completes succesfully.
+        credentials, if the handshake completes successfully.
         
         @type reqCAs: list of L{bytearray} of unsigned bytes
         @param reqCAs: A collection of DER-encoded DistinguishedNames that

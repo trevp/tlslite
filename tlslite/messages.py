@@ -704,7 +704,7 @@ class ServerHello(HandshakeMsg):
         if val is None:
             return
         else:
-        # convinience function, make sure the values are properly encoded
+        # convenience function, make sure the values are properly encoded
             val = [ bytearray(x) for x in val ]
 
         npn_ext = self.getExtension(ExtensionType.supports_npn)
